@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/leave-calendars")
@@ -33,14 +34,14 @@ public class LeaveCalendarController {
     }
 
     @PostMapping
-    public ResponseEntity<LeaveCalendar> create(@RequestBody LeaveCalendar leaveCalendar) {
+    public ResponseEntity<?> create(@RequestBody LeaveCalendar leaveCalendar) {
         try {
             LeaveCalendar saved = leaveCalendarService.create(leaveCalendar);
             return ResponseEntity.status(HttpStatus.CREATED).body(saved);
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (LeaveCalendarConflictException e) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
         }
     }
 }

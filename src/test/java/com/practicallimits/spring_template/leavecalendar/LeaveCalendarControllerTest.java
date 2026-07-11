@@ -79,4 +79,21 @@ class LeaveCalendarControllerTest {
         mockMvc.perform(get("/leave-calendars/current").param("date", "2025-12-31"))
                 .andExpect(status().isNotFound());
     }
+
+    @Test
+    void shouldReturnValidationMessageWhenCreatingInvalidLeaveCalendar() throws Exception {
+        LeaveCalendar leaveCalendar = LeaveCalendar.builder()
+                .start(LocalDate.of(2027, 3, 31))
+                .end(LocalDate.of(2026, 4, 1))
+                .build();
+
+        when(leaveCalendarService.create(any(LeaveCalendar.class)))
+                .thenThrow(new IllegalArgumentException("Leave calendar start date must be on or before end date"));
+
+        mockMvc.perform(post("/leave-calendars")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(leaveCalendar)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Leave calendar start date must be on or before end date"));
+    }
 }
