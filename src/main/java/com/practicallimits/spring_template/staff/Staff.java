@@ -1,10 +1,13 @@
 package com.practicallimits.spring_template.staff;
 
 import com.practicallimits.spring_template.leaveentitlement.LeaveEntitlement;
-import jakarta.persistence.Column;
 import jakarta.persistence.CascadeType;
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -36,8 +39,10 @@ public class Staff {
     @Column(name = "join_date", nullable = false)
     private LocalDate joinDate;
 
-    @Column(name = "work_schedule", nullable = false)
-    private String workSchedule;
+    @Builder.Default
+    @ElementCollection
+    @CollectionTable(name = "work_schedule_day", joinColumns = @JoinColumn(name = "staff_id"))
+    private List<WorkScheduleDay> workSchedule = new ArrayList<>();
 
     @Column(name = "term_date")
     private LocalDate termDate;

@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 
 import java.math.BigDecimal;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -23,13 +24,23 @@ class StaffRepositoryTest {
     @Autowired
     private LeaveTypeRepository leaveTypeRepository;
 
+    private static List<WorkScheduleDay> weekdays() {
+        return List.of(
+                WorkScheduleDay.builder().dayOfWeek(DayOfWeek.MONDAY).daySchedule(DaySchedule.FULL).build(),
+                WorkScheduleDay.builder().dayOfWeek(DayOfWeek.TUESDAY).daySchedule(DaySchedule.FULL).build(),
+                WorkScheduleDay.builder().dayOfWeek(DayOfWeek.WEDNESDAY).daySchedule(DaySchedule.FULL).build(),
+                WorkScheduleDay.builder().dayOfWeek(DayOfWeek.THURSDAY).daySchedule(DaySchedule.FULL).build(),
+                WorkScheduleDay.builder().dayOfWeek(DayOfWeek.FRIDAY).daySchedule(DaySchedule.FULL).build()
+        );
+    }
+
     @Test
     void shouldSaveAndFindStaff() {
         Staff staff = Staff.builder()
                 .id("S001")
                 .name("Alice Smith")
                 .joinDate(LocalDate.of(2023, 1, 1))
-                .workSchedule("WEEKDAYS")
+                .workSchedule(weekdays())
                 .termDate(null)
                 .build();
 
@@ -39,14 +50,14 @@ class StaffRepositoryTest {
         assertThat(found).isPresent();
         assertThat(found.get().getName()).isEqualTo("Alice Smith");
         assertThat(found.get().getJoinDate()).isEqualTo(LocalDate.of(2023, 1, 1));
-        assertThat(found.get().getWorkSchedule()).isEqualTo("WEEKDAYS");
+        assertThat(found.get().getWorkSchedule()).hasSize(5);
         assertThat(found.get().getTermDate()).isNull();
     }
 
     @Test
     void shouldFindAllStaff() {
-        staffRepository.save(Staff.builder().id("S001").name("Alice Smith").joinDate(LocalDate.of(2023, 1, 1)).workSchedule("WEEKDAYS").build());
-        staffRepository.save(Staff.builder().id("S002").name("Bob Jones").joinDate(LocalDate.of(2023, 6, 1)).workSchedule("WEEKDAYS").build());
+        staffRepository.save(Staff.builder().id("S001").name("Alice Smith").joinDate(LocalDate.of(2023, 1, 1)).workSchedule(weekdays()).build());
+        staffRepository.save(Staff.builder().id("S002").name("Bob Jones").joinDate(LocalDate.of(2023, 6, 1)).workSchedule(weekdays()).build());
 
         List<Staff> all = staffRepository.findAll();
         assertThat(all).hasSize(2);
@@ -54,7 +65,7 @@ class StaffRepositoryTest {
 
     @Test
     void shouldDeleteStaff() {
-        staffRepository.save(Staff.builder().id("S001").name("Alice Smith").joinDate(LocalDate.of(2023, 1, 1)).workSchedule("WEEKDAYS").build());
+        staffRepository.save(Staff.builder().id("S001").name("Alice Smith").joinDate(LocalDate.of(2023, 1, 1)).workSchedule(weekdays()).build());
         staffRepository.deleteById("S001");
         assertThat(staffRepository.findById("S001")).isEmpty();
     }
@@ -66,7 +77,7 @@ class StaffRepositoryTest {
                 .id("S001")
                 .name("Alice Smith")
                 .joinDate(LocalDate.of(2023, 1, 1))
-                .workSchedule("WEEKDAYS")
+                .workSchedule(weekdays())
                 .build();
         staff.setLeaveEntitlements(List.of(LeaveEntitlement.builder()
                 .staff(staff)

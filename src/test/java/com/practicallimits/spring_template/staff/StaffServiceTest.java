@@ -12,7 +12,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -35,11 +37,27 @@ class StaffServiceTest {
     @InjectMocks
     private StaffService staffService;
 
+    private static List<WorkScheduleDay> weekdays() {
+        return List.of(
+                WorkScheduleDay.builder().dayOfWeek(DayOfWeek.MONDAY).daySchedule(DaySchedule.FULL).build(),
+                WorkScheduleDay.builder().dayOfWeek(DayOfWeek.TUESDAY).daySchedule(DaySchedule.FULL).build(),
+                WorkScheduleDay.builder().dayOfWeek(DayOfWeek.WEDNESDAY).daySchedule(DaySchedule.FULL).build(),
+                WorkScheduleDay.builder().dayOfWeek(DayOfWeek.THURSDAY).daySchedule(DaySchedule.FULL).build(),
+                WorkScheduleDay.builder().dayOfWeek(DayOfWeek.FRIDAY).daySchedule(DaySchedule.FULL).build()
+        );
+    }
+
+    private static List<WorkScheduleDay> weekdaysAndSaturday() {
+        List<WorkScheduleDay> schedule = new ArrayList<>(weekdays());
+        schedule.add(WorkScheduleDay.builder().dayOfWeek(DayOfWeek.SATURDAY).daySchedule(DaySchedule.FULL).build());
+        return schedule;
+    }
+
     @Test
     void shouldReturnAllStaff() {
         List<Staff> staffList = List.of(
-                Staff.builder().id("S001").name("Alice Smith").joinDate(LocalDate.of(2023, 1, 1)).workSchedule("WEEKDAYS").build(),
-                Staff.builder().id("S002").name("Bob Jones").joinDate(LocalDate.of(2023, 6, 1)).workSchedule("WEEKDAYS").build()
+                Staff.builder().id("S001").name("Alice Smith").joinDate(LocalDate.of(2023, 1, 1)).workSchedule(weekdays()).build(),
+                Staff.builder().id("S002").name("Bob Jones").joinDate(LocalDate.of(2023, 6, 1)).workSchedule(weekdays()).build()
         );
         when(staffRepository.findAll()).thenReturn(staffList);
 
@@ -50,7 +68,7 @@ class StaffServiceTest {
 
     @Test
     void shouldReturnStaffById() {
-        Staff staff = Staff.builder().id("S001").name("Alice Smith").joinDate(LocalDate.of(2023, 1, 1)).workSchedule("WEEKDAYS").build();
+        Staff staff = Staff.builder().id("S001").name("Alice Smith").joinDate(LocalDate.of(2023, 1, 1)).workSchedule(weekdays()).build();
         when(staffRepository.findById("S001")).thenReturn(Optional.of(staff));
 
         Optional<Staff> result = staffService.findById("S001");
@@ -61,7 +79,7 @@ class StaffServiceTest {
 
     @Test
     void shouldSaveStaff() {
-        Staff staff = Staff.builder().id("S001").name("Alice Smith").joinDate(LocalDate.of(2023, 1, 1)).workSchedule("WEEKDAYS").build();
+        Staff staff = Staff.builder().id("S001").name("Alice Smith").joinDate(LocalDate.of(2023, 1, 1)).workSchedule(weekdays()).build();
         when(staffRepository.save(staff)).thenReturn(staff);
 
         Staff result = staffService.save(staff);
@@ -81,7 +99,7 @@ class StaffServiceTest {
                 .id("S001")
                 .name("Alice Smith")
                 .joinDate(LocalDate.of(2023, 7, 1))
-                .workSchedule("WEEKDAYS")
+                .workSchedule(weekdays())
                 .leaveEntitlements(List.of(LeaveEntitlement.builder()
                         .leaveType(LeaveType.builder().id("annual").build())
                         .entitlement(new BigDecimal("20.00"))
@@ -111,7 +129,7 @@ class StaffServiceTest {
                 .id("S001")
                 .name("Alice Smith")
                 .joinDate(LocalDate.of(2023, 7, 1))
-                .workSchedule("WEEKDAYS")
+                .workSchedule(weekdays())
                 .leaveEntitlements(List.of(LeaveEntitlement.builder()
                         .leaveType(LeaveType.builder().id("annual").build())
                         .from(LocalDate.of(2023, 7, 1))
@@ -131,15 +149,15 @@ class StaffServiceTest {
 
     @Test
     void shouldUpdateStaff() {
-        Staff existing = Staff.builder().id("S001").name("Alice Smith").joinDate(LocalDate.of(2023, 1, 1)).workSchedule("WEEKDAYS").build();
-        Staff updated = Staff.builder().id("S001").name("Alice Johnson").joinDate(LocalDate.of(2023, 1, 1)).workSchedule("WEEKDAYS_AND_SATURDAY").build();
+        Staff existing = Staff.builder().id("S001").name("Alice Smith").joinDate(LocalDate.of(2023, 1, 1)).workSchedule(weekdays()).build();
+        Staff updated = Staff.builder().id("S001").name("Alice Johnson").joinDate(LocalDate.of(2023, 1, 1)).workSchedule(weekdaysAndSaturday()).build();
         when(staffRepository.findById("S001")).thenReturn(Optional.of(existing));
         when(staffRepository.save(existing)).thenReturn(existing);
 
         Staff result = staffService.update("S001", updated);
 
         assertThat(result.getName()).isEqualTo("Alice Johnson");
-        assertThat(result.getWorkSchedule()).isEqualTo("WEEKDAYS_AND_SATURDAY");
+        assertThat(result.getWorkSchedule()).hasSize(6);
     }
 
     @Test
@@ -150,12 +168,12 @@ class StaffServiceTest {
                 .start(LocalDate.of(2023, 1, 1))
                 .end(LocalDate.of(2023, 12, 31))
                 .build();
-        Staff existing = Staff.builder().id("S001").name("Alice Smith").joinDate(LocalDate.of(2023, 6, 1)).workSchedule("WEEKDAYS").build();
+        Staff existing = Staff.builder().id("S001").name("Alice Smith").joinDate(LocalDate.of(2023, 6, 1)).workSchedule(weekdays()).build();
         Staff updated = Staff.builder()
                 .id("S001")
                 .name("Alice Johnson")
                 .joinDate(LocalDate.of(2023, 6, 1))
-                .workSchedule("WEEKDAYS_AND_SATURDAY")
+                .workSchedule(weekdaysAndSaturday())
                 .leaveEntitlements(List.of(LeaveEntitlement.builder()
                         .leaveType(LeaveType.builder().id("annual").build())
                         .entitlement(new BigDecimal("20.00"))
@@ -183,7 +201,7 @@ class StaffServiceTest {
 
     @Test
     void shouldDeleteStaff() {
-        Staff staff = Staff.builder().id("S001").name("Alice Smith").joinDate(LocalDate.of(2023, 1, 1)).workSchedule("WEEKDAYS").build();
+        Staff staff = Staff.builder().id("S001").name("Alice Smith").joinDate(LocalDate.of(2023, 1, 1)).workSchedule(weekdays()).build();
         when(staffRepository.findById("S001")).thenReturn(Optional.of(staff));
 
         staffService.delete("S001");

@@ -31,7 +31,7 @@ class LeaveApproverServiceTest {
 
     private Staff staff(String id) {
         return Staff.builder().id(id).name("Name " + id)
-                .joinDate(LocalDate.of(2023, 1, 1)).workSchedule("WEEKDAYS").build();
+                .joinDate(LocalDate.of(2023, 1, 1)).build();
     }
 
     private LeaveApprover approver(String id) {

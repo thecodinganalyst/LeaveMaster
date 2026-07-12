@@ -46,7 +46,9 @@ public class StaffService {
                 .orElseThrow(() -> new StaffNotFoundException(id));
         existing.setName(updated.getName());
         existing.setJoinDate(updated.getJoinDate());
-        existing.setWorkSchedule(updated.getWorkSchedule());
+        if (updated.getWorkSchedule() != null) {
+            existing.setWorkSchedule(new ArrayList<>(updated.getWorkSchedule()));
+        }
         existing.setTermDate(updated.getTermDate());
         if (updated.getLeaveEntitlements() != null) {
             List<LeaveEntitlement> normalized = normalizeLeaveEntitlements(existing, updated.getLeaveEntitlements());
