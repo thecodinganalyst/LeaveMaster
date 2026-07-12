@@ -1,8 +1,18 @@
 package com.practicallimits.spring_template.staff;
 
+import com.practicallimits.spring_template.leavecalendar.LeaveCalendar;
+import com.practicallimits.spring_template.leavecalendar.LeaveCalendarService;
+import com.practicallimits.spring_template.leaveentitlement.LeaveEntitlement;
+import com.practicallimits.spring_template.leavetype.LeaveType;
+import com.practicallimits.spring_template.leavetype.LeaveTypeRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -11,6 +21,8 @@ import java.util.Optional;
 public class StaffService {
 
     private final StaffRepository staffRepository;
+    private final LeaveCalendarService leaveCalendarService;
+    private final LeaveTypeRepository leaveTypeRepository;
 
     public List<Staff> findAll() {
         return staffRepository.findAll();
@@ -21,6 +33,7 @@ public class StaffService {
     }
 
     public Staff save(Staff staff) {
+        staff.setLeaveEntitlements(normalizeLeaveEntitlements(staff, staff.getLeaveEntitlements()));
         return staffRepository.save(staff);
     }
 
@@ -31,6 +44,10 @@ public class StaffService {
         existing.setJoinDate(updated.getJoinDate());
         existing.setWorkSchedule(updated.getWorkSchedule());
         existing.setTermDate(updated.getTermDate());
+        if (updated.getLeaveEntitlements() != null) {
+            existing.getLeaveEntitlements().clear();
+            existing.getLeaveEntitlements().addAll(normalizeLeaveEntitlements(existing, updated.getLeaveEntitlements()));
+        }
         return staffRepository.save(existing);
     }
 
@@ -38,5 +55,77 @@ public class StaffService {
         staffRepository.findById(id)
                 .orElseThrow(() -> new StaffNotFoundException(id));
         staffRepository.deleteById(id);
+    }
+
+    private List<LeaveEntitlement> normalizeLeaveEntitlements(Staff staff, List<LeaveEntitlement> leaveEntitlements) {
+        if (leaveEntitlements == null) {
+            return new ArrayList<>();
+        }
+
+        List<LeaveEntitlement> normalized = new ArrayList<>();
+        for (LeaveEntitlement leaveEntitlement : leaveEntitlements) {
+            if (leaveEntitlement.getLeaveType() == null || leaveEntitlement.getLeaveType().getId() == null) {
+                throw new IllegalArgumentException("Leave entitlement requires leaveType.id");
+            }
+
+            LeaveType leaveType = leaveTypeRepository.findById(leaveEntitlement.getLeaveType().getId())
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "Leave type not found: " + leaveEntitlement.getLeaveType().getId()));
+
+            leaveEntitlement.setStaff(staff);
+            leaveEntitlement.setLeaveType(leaveType);
+            applyPeriodAndProration(staff, leaveEntitlement);
+            normalized.add(leaveEntitlement);
+        }
+        return normalized;
+    }
+
+    private void applyPeriodAndProration(Staff staff, LeaveEntitlement leaveEntitlement) {
+        if (staff.getJoinDate() == null) {
+            throw new IllegalArgumentException("Staff joinDate is required");
+        }
+
+        LocalDate from = leaveEntitlement.getFrom();
+        LocalDate to = leaveEntitlement.getTo();
+        if (from != null && to != null) {
+            if (from.isAfter(to)) {
+                throw new IllegalArgumentException("Leave entitlement from must be on or before to");
+            }
+            return;
+        }
+
+        if (from != null || to != null) {
+            throw new IllegalArgumentException("Leave entitlement requires both from and to when setting period manually");
+        }
+
+        Optional<LeaveCalendar> leaveCalendar = leaveCalendarService.getCalendarFor(staff.getJoinDate());
+        if (leaveCalendar.isEmpty()) {
+            throw new IllegalArgumentException("No leave calendar found for join date: " + staff.getJoinDate());
+        }
+
+        LeaveCalendar calendar = leaveCalendar.get();
+        leaveEntitlement.setFrom(calendar.getStart());
+        leaveEntitlement.setTo(calendar.getEnd());
+        leaveEntitlement.setEntitlement(prorateEntitlement(leaveEntitlement.getEntitlement(),
+                staff.getJoinDate(), calendar.getStart(), calendar.getEnd()));
+    }
+
+    private BigDecimal prorateEntitlement(BigDecimal fullPeriodEntitlement, LocalDate joinDate, LocalDate from, LocalDate to) {
+        if (fullPeriodEntitlement == null) {
+            throw new IllegalArgumentException("Leave entitlement amount is required");
+        }
+
+        if (!joinDate.isAfter(from)) {
+            return fullPeriodEntitlement;
+        }
+
+        long totalDays = ChronoUnit.DAYS.between(from, to) + 1;
+        long entitledDays = ChronoUnit.DAYS.between(joinDate, to) + 1;
+        if (entitledDays <= 0) {
+            return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        }
+        return fullPeriodEntitlement
+                .multiply(BigDecimal.valueOf(entitledDays))
+                .divide(BigDecimal.valueOf(totalDays), 2, RoundingMode.HALF_UP);
     }
 }

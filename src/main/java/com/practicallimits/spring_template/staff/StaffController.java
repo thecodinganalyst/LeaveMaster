@@ -28,8 +28,12 @@ public class StaffController {
 
     @PostMapping
     public ResponseEntity<Staff> create(@RequestBody Staff staff) {
-        Staff saved = staffService.save(staff);
-        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
+        try {
+            Staff saved = staffService.save(staff);
+            return ResponseEntity.status(HttpStatus.CREATED).body(saved);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 
     @PutMapping("/{id}")
@@ -39,6 +43,8 @@ public class StaffController {
             return ResponseEntity.ok(updated);
         } catch (StaffNotFoundException e) {
             return ResponseEntity.notFound().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
         }
     }
 
