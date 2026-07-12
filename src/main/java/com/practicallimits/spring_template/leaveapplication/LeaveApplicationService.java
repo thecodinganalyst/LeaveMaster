@@ -1,6 +1,7 @@
 package com.practicallimits.spring_template.leaveapplication;
 
 import com.practicallimits.spring_template.leavecalendar.LeaveCalendar;
+import com.practicallimits.spring_template.leavecalendar.LeaveCalendarNotFoundException;
 import com.practicallimits.spring_template.leavecalendar.LeaveCalendarService;
 import com.practicallimits.spring_template.leavecalendar.PublicHoliday;
 import com.practicallimits.spring_template.leaveentitlement.LeaveEntitlement;
@@ -50,15 +51,12 @@ public class LeaveApplicationService {
         return leaveApplicationRepository.findByStaff(staff);
     }
 
-    public List<LeaveApplication> findByStaffId(String staffId, int year) {
-        if (year < 1900 || year > 9999) {
-            throw new IllegalArgumentException("Invalid year: " + year);
-        }
+    public List<LeaveApplication> findByStaffId(String staffId, String leaveCalendarId) {
+        LeaveCalendar calendar = leaveCalendarService.findById(leaveCalendarId)
+                .orElseThrow(() -> new LeaveCalendarNotFoundException(leaveCalendarId));
         Staff staff = staffRepository.findById(staffId)
                 .orElseThrow(() -> new StaffNotFoundException(staffId));
-        LocalDate from = LocalDate.of(year, 1, 1);
-        LocalDate to = LocalDate.of(year, 12, 31);
-        return leaveApplicationRepository.findByStaffAndLeaveDateBetween(staff, from, to);
+        return leaveApplicationRepository.findByStaffAndLeaveDateBetween(staff, calendar.getStart(), calendar.getEnd());
     }
 
     public List<LeaveBalance> getLeaveBalances(String staffId) {

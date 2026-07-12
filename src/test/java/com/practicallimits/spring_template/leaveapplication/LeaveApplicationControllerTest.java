@@ -1,5 +1,6 @@
 package com.practicallimits.spring_template.leaveapplication;
 
+import com.practicallimits.spring_template.leavecalendar.LeaveCalendarNotFoundException;
 import com.practicallimits.spring_template.leaveentitlement.LeaveEntitlement;
 import com.practicallimits.spring_template.leavetype.LeaveType;
 import com.practicallimits.spring_template.leavetype.LeaveTypeNotFoundException;
@@ -104,11 +105,11 @@ class LeaveApplicationControllerTest {
     }
 
     @Test
-    void shouldReturnLeaveApplicationsByStaffIdAndYear() throws Exception {
-        when(leaveApplicationService.findByStaffId("S001", 2024))
+    void shouldReturnLeaveApplicationsByStaffIdAndLeaveCalendar() throws Exception {
+        when(leaveApplicationService.findByStaffId("S001", "2024-01-01_2024-12-31"))
                 .thenReturn(List.of(application("id1", LocalDate.of(2024, 1, 8))));
 
-        mockMvc.perform(get("/leave-applications/staff/S001").param("year", "2024"))
+        mockMvc.perform(get("/leave-applications/staff/S001").param("leaveCalendarId", "2024-01-01_2024-12-31"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].leaveDate").value("2024-01-08"));
@@ -124,25 +125,24 @@ class LeaveApplicationControllerTest {
     }
 
     @Test
-    void shouldReturn404WhenStaffNotFoundForLeaveApplicationsByYear() throws Exception {
-        when(leaveApplicationService.findByStaffId("nonexistent", 2024))
+    void shouldReturn404WhenStaffNotFoundForLeaveApplicationsByCalendar() throws Exception {
+        when(leaveApplicationService.findByStaffId("nonexistent", "2024-01-01_2024-12-31"))
                 .thenThrow(new StaffNotFoundException("nonexistent"));
 
-        mockMvc.perform(get("/leave-applications/staff/nonexistent").param("year", "2024"))
+        mockMvc.perform(get("/leave-applications/staff/nonexistent").param("leaveCalendarId", "2024-01-01_2024-12-31"))
                 .andExpect(status().isNotFound());
     }
 
     @Test
-    void shouldReturn400WhenInvalidYearProvided() throws Exception {
-        when(leaveApplicationService.findByStaffId("S001", 0))
-                .thenThrow(new IllegalArgumentException("Invalid year: 0"));
+    void shouldReturn404WhenLeaveCalendarNotFound() throws Exception {
+        when(leaveApplicationService.findByStaffId("S001", "nonexistent"))
+                .thenThrow(new LeaveCalendarNotFoundException("nonexistent"));
 
-        mockMvc.perform(get("/leave-applications/staff/S001").param("year", "0"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Invalid year: 0"));
+        mockMvc.perform(get("/leave-applications/staff/S001").param("leaveCalendarId", "nonexistent"))
+                .andExpect(status().isNotFound());
     }
 
-
+    @Test
     void shouldApplyLeaveAndReturnCreated() throws Exception {
         LeaveApplicationRequest request = LeaveApplicationRequest.builder()
                 .staffId("S001")

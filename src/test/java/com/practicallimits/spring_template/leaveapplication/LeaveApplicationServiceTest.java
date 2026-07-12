@@ -1,6 +1,7 @@
 package com.practicallimits.spring_template.leaveapplication;
 
 import com.practicallimits.spring_template.leavecalendar.LeaveCalendar;
+import com.practicallimits.spring_template.leavecalendar.LeaveCalendarNotFoundException;
 import com.practicallimits.spring_template.leavecalendar.LeaveCalendarService;
 import com.practicallimits.spring_template.leavecalendar.PublicHoliday;
 import com.practicallimits.spring_template.leaveentitlement.LeaveEntitlement;
@@ -259,8 +260,13 @@ class LeaveApplicationServiceTest {
     }
 
     @Test
-    void shouldReturnLeaveApplicationsByStaffIdAndYear() {
+    void shouldReturnLeaveApplicationsByStaffIdAndLeaveCalendar() {
         Staff staff = weekdayStaff();
+        LeaveCalendar calendar = LeaveCalendar.builder()
+                .id("2024-01-01_2024-12-31")
+                .start(LocalDate.of(2024, 1, 1))
+                .end(LocalDate.of(2024, 12, 31))
+                .build();
         List<LeaveApplication> applications = List.of(
                 LeaveApplication.builder().id("id1").staff(staff).leaveDate(LocalDate.of(2024, 3, 1))
                         .leaveType(annualLeave()).leaveDuration(LeaveDuration.FULL).status(LeaveStatus.APPROVED)
@@ -269,43 +275,56 @@ class LeaveApplicationServiceTest {
                         .leaveType(annualLeave()).leaveDuration(LeaveDuration.FULL).status(LeaveStatus.PENDING)
                         .applicationDate(LocalDate.of(2024, 6, 1)).build()
         );
+        when(leaveCalendarService.findById("2024-01-01_2024-12-31")).thenReturn(Optional.of(calendar));
         when(staffRepository.findById("S001")).thenReturn(Optional.of(staff));
         when(leaveApplicationRepository.findByStaffAndLeaveDateBetween(
                 staff, LocalDate.of(2024, 1, 1), LocalDate.of(2024, 12, 31)))
                 .thenReturn(applications);
 
-        List<LeaveApplication> result = leaveApplicationService.findByStaffId("S001", 2024);
+        List<LeaveApplication> result = leaveApplicationService.findByStaffId("S001", "2024-01-01_2024-12-31");
 
         assertThat(result).hasSize(2);
-        assertThat(result).allMatch(a -> a.getLeaveDate().getYear() == 2024);
     }
 
     @Test
-    void shouldReturnEmptyListWhenNoApplicationsForYear() {
+    void shouldReturnEmptyListWhenNoApplicationsForLeaveCalendar() {
         Staff staff = weekdayStaff();
+        LeaveCalendar calendar = LeaveCalendar.builder()
+                .id("2023-01-01_2023-12-31")
+                .start(LocalDate.of(2023, 1, 1))
+                .end(LocalDate.of(2023, 12, 31))
+                .build();
+        when(leaveCalendarService.findById("2023-01-01_2023-12-31")).thenReturn(Optional.of(calendar));
         when(staffRepository.findById("S001")).thenReturn(Optional.of(staff));
         when(leaveApplicationRepository.findByStaffAndLeaveDateBetween(
                 staff, LocalDate.of(2023, 1, 1), LocalDate.of(2023, 12, 31)))
                 .thenReturn(List.of());
 
-        List<LeaveApplication> result = leaveApplicationService.findByStaffId("S001", 2023);
+        List<LeaveApplication> result = leaveApplicationService.findByStaffId("S001", "2023-01-01_2023-12-31");
 
         assertThat(result).isEmpty();
     }
 
     @Test
-    void shouldThrowWhenFindingByYearForNonExistentStaff() {
+    void shouldThrowWhenFindingByCalendarForNonExistentStaff() {
+        LeaveCalendar calendar = LeaveCalendar.builder()
+                .id("2024-01-01_2024-12-31")
+                .start(LocalDate.of(2024, 1, 1))
+                .end(LocalDate.of(2024, 12, 31))
+                .build();
+        when(leaveCalendarService.findById("2024-01-01_2024-12-31")).thenReturn(Optional.of(calendar));
         when(staffRepository.findById("nonexistent")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> leaveApplicationService.findByStaffId("nonexistent", 2024))
+        assertThatThrownBy(() -> leaveApplicationService.findByStaffId("nonexistent", "2024-01-01_2024-12-31"))
                 .isInstanceOf(StaffNotFoundException.class);
     }
 
     @Test
-    void shouldThrowWhenInvalidYearProvided() {
-        assertThatThrownBy(() -> leaveApplicationService.findByStaffId("S001", 0))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Invalid year: 0");
+    void shouldThrowWhenLeaveCalendarNotFound() {
+        when(leaveCalendarService.findById("nonexistent")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> leaveApplicationService.findByStaffId("S001", "nonexistent"))
+                .isInstanceOf(LeaveCalendarNotFoundException.class);
     }
 
     @Test
