@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/staff")
@@ -27,18 +28,24 @@ public class StaffController {
     }
 
     @PostMapping
-    public ResponseEntity<Staff> create(@RequestBody Staff staff) {
-        Staff saved = staffService.save(staff);
-        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
+    public ResponseEntity<?> create(@RequestBody Staff staff) {
+        try {
+            Staff saved = staffService.save(staff);
+            return ResponseEntity.status(HttpStatus.CREATED).body(saved);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Staff> update(@PathVariable String id, @RequestBody Staff staff) {
+    public ResponseEntity<?> update(@PathVariable String id, @RequestBody Staff staff) {
         try {
             Staff updated = staffService.update(id, staff);
             return ResponseEntity.ok(updated);
         } catch (StaffNotFoundException e) {
             return ResponseEntity.notFound().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 
