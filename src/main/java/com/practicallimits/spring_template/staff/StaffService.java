@@ -115,17 +115,17 @@ public class StaffService {
             throw new IllegalArgumentException("Leave entitlement amount is required");
         }
 
-        if (!joinDate.isAfter(from)) {
+        if (joinDate.isBefore(from) || joinDate.isEqual(from)) {
             return fullPeriodEntitlement;
         }
 
-        long totalDays = ChronoUnit.DAYS.between(from, to) + 1;
-        long entitledDays = ChronoUnit.DAYS.between(joinDate, to) + 1;
-        if (entitledDays <= 0) {
+        long totalPeriodDays = ChronoUnit.DAYS.between(from, to) + 1;
+        long remainingPeriodDays = ChronoUnit.DAYS.between(joinDate, to) + 1;
+        if (remainingPeriodDays <= 0) {
             return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
         }
         return fullPeriodEntitlement
-                .multiply(BigDecimal.valueOf(entitledDays))
-                .divide(BigDecimal.valueOf(totalDays), 2, RoundingMode.HALF_UP);
+                .multiply(BigDecimal.valueOf(remainingPeriodDays))
+                .divide(BigDecimal.valueOf(totalPeriodDays), 2, RoundingMode.HALF_UP);
     }
 }
