@@ -29,11 +29,18 @@ public class LeaveApplicationController {
     }
 
     @GetMapping("/staff/{staffId}")
-    public ResponseEntity<List<LeaveApplication>> getByStaffId(@PathVariable String staffId) {
+    public ResponseEntity<?> getByStaffId(
+            @PathVariable String staffId,
+            @RequestParam(required = false) Integer year) {
         try {
-            return ResponseEntity.ok(leaveApplicationService.findByStaffId(staffId));
+            List<LeaveApplication> applications = year != null
+                    ? leaveApplicationService.findByStaffId(staffId, year)
+                    : leaveApplicationService.findByStaffId(staffId);
+            return ResponseEntity.ok(applications);
         } catch (StaffNotFoundException e) {
             return ResponseEntity.notFound().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 

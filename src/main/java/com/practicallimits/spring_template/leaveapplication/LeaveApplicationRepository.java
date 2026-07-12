@@ -12,6 +12,8 @@ import java.util.List;
 public interface LeaveApplicationRepository extends JpaRepository<LeaveApplication, String> {
     List<LeaveApplication> findByStaff(Staff staff);
 
+    List<LeaveApplication> findByStaffAndLeaveDateBetween(Staff staff, LocalDate from, LocalDate to);
+
     List<LeaveApplication> findByStaffAndLeaveTypeAndLeaveDateBetweenAndStatusIn(
             Staff staff, LeaveType leaveType, LocalDate from, LocalDate to, List<LeaveStatus> statuses);
 }

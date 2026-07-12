@@ -259,6 +259,56 @@ class LeaveApplicationServiceTest {
     }
 
     @Test
+    void shouldReturnLeaveApplicationsByStaffIdAndYear() {
+        Staff staff = weekdayStaff();
+        List<LeaveApplication> applications = List.of(
+                LeaveApplication.builder().id("id1").staff(staff).leaveDate(LocalDate.of(2024, 3, 1))
+                        .leaveType(annualLeave()).leaveDuration(LeaveDuration.FULL).status(LeaveStatus.APPROVED)
+                        .applicationDate(LocalDate.of(2024, 2, 28)).build(),
+                LeaveApplication.builder().id("id2").staff(staff).leaveDate(LocalDate.of(2024, 6, 10))
+                        .leaveType(annualLeave()).leaveDuration(LeaveDuration.FULL).status(LeaveStatus.PENDING)
+                        .applicationDate(LocalDate.of(2024, 6, 1)).build()
+        );
+        when(staffRepository.findById("S001")).thenReturn(Optional.of(staff));
+        when(leaveApplicationRepository.findByStaffAndLeaveDateBetween(
+                staff, LocalDate.of(2024, 1, 1), LocalDate.of(2024, 12, 31)))
+                .thenReturn(applications);
+
+        List<LeaveApplication> result = leaveApplicationService.findByStaffId("S001", 2024);
+
+        assertThat(result).hasSize(2);
+        assertThat(result).allMatch(a -> a.getLeaveDate().getYear() == 2024);
+    }
+
+    @Test
+    void shouldReturnEmptyListWhenNoApplicationsForYear() {
+        Staff staff = weekdayStaff();
+        when(staffRepository.findById("S001")).thenReturn(Optional.of(staff));
+        when(leaveApplicationRepository.findByStaffAndLeaveDateBetween(
+                staff, LocalDate.of(2023, 1, 1), LocalDate.of(2023, 12, 31)))
+                .thenReturn(List.of());
+
+        List<LeaveApplication> result = leaveApplicationService.findByStaffId("S001", 2023);
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void shouldThrowWhenFindingByYearForNonExistentStaff() {
+        when(staffRepository.findById("nonexistent")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> leaveApplicationService.findByStaffId("nonexistent", 2024))
+                .isInstanceOf(StaffNotFoundException.class);
+    }
+
+    @Test
+    void shouldThrowWhenInvalidYearProvided() {
+        assertThatThrownBy(() -> leaveApplicationService.findByStaffId("S001", 0))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Invalid year: 0");
+    }
+
+    @Test
     void shouldReturnLeaveApplicationById() {
         LeaveApplication app = LeaveApplication.builder().id("id1").staff(weekdayStaff())
                 .leaveDate(LocalDate.of(2024, 1, 8)).leaveType(annualLeave())

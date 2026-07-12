@@ -104,6 +104,17 @@ class LeaveApplicationControllerTest {
     }
 
     @Test
+    void shouldReturnLeaveApplicationsByStaffIdAndYear() throws Exception {
+        when(leaveApplicationService.findByStaffId("S001", 2024))
+                .thenReturn(List.of(application("id1", LocalDate.of(2024, 1, 8))));
+
+        mockMvc.perform(get("/leave-applications/staff/S001").param("year", "2024"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].leaveDate").value("2024-01-08"));
+    }
+
+    @Test
     void shouldReturn404WhenStaffNotFoundForLeaveApplications() throws Exception {
         when(leaveApplicationService.findByStaffId("nonexistent"))
                 .thenThrow(new StaffNotFoundException("nonexistent"));
@@ -113,6 +124,25 @@ class LeaveApplicationControllerTest {
     }
 
     @Test
+    void shouldReturn404WhenStaffNotFoundForLeaveApplicationsByYear() throws Exception {
+        when(leaveApplicationService.findByStaffId("nonexistent", 2024))
+                .thenThrow(new StaffNotFoundException("nonexistent"));
+
+        mockMvc.perform(get("/leave-applications/staff/nonexistent").param("year", "2024"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldReturn400WhenInvalidYearProvided() throws Exception {
+        when(leaveApplicationService.findByStaffId("S001", 0))
+                .thenThrow(new IllegalArgumentException("Invalid year: 0"));
+
+        mockMvc.perform(get("/leave-applications/staff/S001").param("year", "0"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Invalid year: 0"));
+    }
+
+
     void shouldApplyLeaveAndReturnCreated() throws Exception {
         LeaveApplicationRequest request = LeaveApplicationRequest.builder()
                 .staffId("S001")

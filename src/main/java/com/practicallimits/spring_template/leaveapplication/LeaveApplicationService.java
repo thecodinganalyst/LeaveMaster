@@ -50,6 +50,17 @@ public class LeaveApplicationService {
         return leaveApplicationRepository.findByStaff(staff);
     }
 
+    public List<LeaveApplication> findByStaffId(String staffId, int year) {
+        if (year < 1900 || year > 9999) {
+            throw new IllegalArgumentException("Invalid year: " + year);
+        }
+        Staff staff = staffRepository.findById(staffId)
+                .orElseThrow(() -> new StaffNotFoundException(staffId));
+        LocalDate from = LocalDate.of(year, 1, 1);
+        LocalDate to = LocalDate.of(year, 12, 31);
+        return leaveApplicationRepository.findByStaffAndLeaveDateBetween(staff, from, to);
+    }
+
     public List<LeaveBalance> getLeaveBalances(String staffId) {
         Staff staff = staffRepository.findById(staffId)
                 .orElseThrow(() -> new StaffNotFoundException(staffId));
