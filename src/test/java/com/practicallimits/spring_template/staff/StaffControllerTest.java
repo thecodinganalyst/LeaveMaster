@@ -8,7 +8,9 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -30,11 +32,27 @@ class StaffControllerTest {
     @MockitoBean
     private StaffService staffService;
 
+    private static List<WorkScheduleDay> weekdays() {
+        return List.of(
+                WorkScheduleDay.builder().dayOfWeek(DayOfWeek.MONDAY).daySchedule(DaySchedule.FULL).build(),
+                WorkScheduleDay.builder().dayOfWeek(DayOfWeek.TUESDAY).daySchedule(DaySchedule.FULL).build(),
+                WorkScheduleDay.builder().dayOfWeek(DayOfWeek.WEDNESDAY).daySchedule(DaySchedule.FULL).build(),
+                WorkScheduleDay.builder().dayOfWeek(DayOfWeek.THURSDAY).daySchedule(DaySchedule.FULL).build(),
+                WorkScheduleDay.builder().dayOfWeek(DayOfWeek.FRIDAY).daySchedule(DaySchedule.FULL).build()
+        );
+    }
+
+    private static List<WorkScheduleDay> weekdaysAndSaturday() {
+        List<WorkScheduleDay> schedule = new ArrayList<>(weekdays());
+        schedule.add(WorkScheduleDay.builder().dayOfWeek(DayOfWeek.SATURDAY).daySchedule(DaySchedule.FULL).build());
+        return schedule;
+    }
+
     @Test
     void shouldReturnAllStaff() throws Exception {
         List<Staff> staffList = List.of(
-                Staff.builder().id("S001").name("Alice Smith").joinDate(LocalDate.of(2023, 1, 1)).workSchedule("WEEKDAYS").build(),
-                Staff.builder().id("S002").name("Bob Jones").joinDate(LocalDate.of(2023, 6, 1)).workSchedule("WEEKDAYS").build()
+                Staff.builder().id("S001").name("Alice Smith").joinDate(LocalDate.of(2023, 1, 1)).workSchedule(weekdays()).build(),
+                Staff.builder().id("S002").name("Bob Jones").joinDate(LocalDate.of(2023, 6, 1)).workSchedule(weekdays()).build()
         );
         when(staffService.findAll()).thenReturn(staffList);
 
@@ -47,14 +65,15 @@ class StaffControllerTest {
 
     @Test
     void shouldReturnStaffById() throws Exception {
-        Staff staff = Staff.builder().id("S001").name("Alice Smith").joinDate(LocalDate.of(2023, 1, 1)).workSchedule("WEEKDAYS").build();
+        Staff staff = Staff.builder().id("S001").name("Alice Smith").joinDate(LocalDate.of(2023, 1, 1)).workSchedule(weekdays()).build();
         when(staffService.findById("S001")).thenReturn(Optional.of(staff));
 
         mockMvc.perform(get("/staff/S001"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value("S001"))
                 .andExpect(jsonPath("$.name").value("Alice Smith"))
-                .andExpect(jsonPath("$.workSchedule").value("WEEKDAYS"));
+                .andExpect(jsonPath("$.workSchedule").isArray())
+                .andExpect(jsonPath("$.workSchedule.length()").value(5));
     }
 
     @Test
@@ -67,7 +86,7 @@ class StaffControllerTest {
 
     @Test
     void shouldCreateStaff() throws Exception {
-        Staff staff = Staff.builder().id("S001").name("Alice Smith").joinDate(LocalDate.of(2023, 1, 1)).workSchedule("WEEKDAYS").build();
+        Staff staff = Staff.builder().id("S001").name("Alice Smith").joinDate(LocalDate.of(2023, 1, 1)).workSchedule(weekdays()).build();
         when(staffService.save(any(Staff.class))).thenReturn(staff);
 
         mockMvc.perform(post("/staff")
@@ -80,7 +99,7 @@ class StaffControllerTest {
 
     @Test
     void shouldReturn400WhenCreatingStaffWithInvalidEntitlementData() throws Exception {
-        Staff staff = Staff.builder().id("S001").name("Alice Smith").joinDate(LocalDate.of(2023, 1, 1)).workSchedule("WEEKDAYS").build();
+        Staff staff = Staff.builder().id("S001").name("Alice Smith").joinDate(LocalDate.of(2023, 1, 1)).workSchedule(weekdays()).build();
         when(staffService.save(any(Staff.class))).thenThrow(new IllegalArgumentException("invalid entitlement"));
 
         mockMvc.perform(post("/staff")
@@ -92,7 +111,7 @@ class StaffControllerTest {
 
     @Test
     void shouldUpdateStaff() throws Exception {
-        Staff updated = Staff.builder().id("S001").name("Alice Johnson").joinDate(LocalDate.of(2023, 1, 1)).workSchedule("WEEKDAYS_AND_SATURDAY").build();
+        Staff updated = Staff.builder().id("S001").name("Alice Johnson").joinDate(LocalDate.of(2023, 1, 1)).workSchedule(weekdaysAndSaturday()).build();
         when(staffService.update(eq("S001"), any(Staff.class))).thenReturn(updated);
 
         mockMvc.perform(put("/staff/S001")
@@ -100,7 +119,8 @@ class StaffControllerTest {
                         .content(objectMapper.writeValueAsString(updated)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("Alice Johnson"))
-                .andExpect(jsonPath("$.workSchedule").value("WEEKDAYS_AND_SATURDAY"));
+                .andExpect(jsonPath("$.workSchedule").isArray())
+                .andExpect(jsonPath("$.workSchedule.length()").value(6));
     }
 
     @Test

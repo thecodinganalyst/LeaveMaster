@@ -26,7 +26,6 @@ class LeaveApproverRepositoryTest {
                 .id(id)
                 .name(name)
                 .joinDate(LocalDate.of(2023, 1, 1))
-                .workSchedule("WEEKDAYS")
                 .build());
     }
 
