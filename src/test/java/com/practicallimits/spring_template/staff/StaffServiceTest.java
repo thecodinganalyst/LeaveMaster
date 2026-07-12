@@ -98,6 +98,7 @@ class StaffServiceTest {
         LeaveEntitlement leaveEntitlement = saved.getLeaveEntitlements().getFirst();
         assertThat(leaveEntitlement.getFrom()).isEqualTo(LocalDate.of(2023, 1, 1));
         assertThat(leaveEntitlement.getTo()).isEqualTo(LocalDate.of(2023, 12, 31));
+        // 20.00 * (184 remaining days / 365 total days) = 10.08
         assertThat(leaveEntitlement.getEntitlement()).isEqualByComparingTo("10.08");
         assertThat(leaveEntitlement.getStaff()).isEqualTo(saved);
         assertThat(leaveEntitlement.getLeaveType().getId()).isEqualTo("annual");

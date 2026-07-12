@@ -20,6 +20,8 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class StaffService {
 
+    private static final long INCLUSIVE_DAY_OFFSET = 1L;
+
     private final StaffRepository staffRepository;
     private final LeaveCalendarService leaveCalendarService;
     private final LeaveTypeRepository leaveTypeRepository;
@@ -33,7 +35,9 @@ public class StaffService {
     }
 
     public Staff save(Staff staff) {
-        staff.setLeaveEntitlements(normalizeLeaveEntitlements(staff, staff.getLeaveEntitlements()));
+        if (staff.getLeaveEntitlements() != null) {
+            staff.setLeaveEntitlements(normalizeLeaveEntitlements(staff, staff.getLeaveEntitlements()));
+        }
         return staffRepository.save(staff);
     }
 
@@ -45,8 +49,9 @@ public class StaffService {
         existing.setWorkSchedule(updated.getWorkSchedule());
         existing.setTermDate(updated.getTermDate());
         if (updated.getLeaveEntitlements() != null) {
+            List<LeaveEntitlement> normalized = normalizeLeaveEntitlements(existing, updated.getLeaveEntitlements());
             existing.getLeaveEntitlements().clear();
-            existing.getLeaveEntitlements().addAll(normalizeLeaveEntitlements(existing, updated.getLeaveEntitlements()));
+            existing.getLeaveEntitlements().addAll(normalized);
         }
         return staffRepository.save(existing);
     }
@@ -65,7 +70,7 @@ public class StaffService {
         List<LeaveEntitlement> normalized = new ArrayList<>();
         for (LeaveEntitlement leaveEntitlement : leaveEntitlements) {
             if (leaveEntitlement.getLeaveType() == null || leaveEntitlement.getLeaveType().getId() == null) {
-                throw new IllegalArgumentException("Leave entitlement requires leaveType.id");
+                throw new IllegalArgumentException("Leave entitlement must specify a leave type ID");
             }
 
             LeaveType leaveType = leaveTypeRepository.findById(leaveEntitlement.getLeaveType().getId())
@@ -119,8 +124,8 @@ public class StaffService {
             return fullPeriodEntitlement;
         }
 
-        long totalPeriodDays = ChronoUnit.DAYS.between(from, to) + 1;
-        long remainingPeriodDays = ChronoUnit.DAYS.between(joinDate, to) + 1;
+        long totalPeriodDays = ChronoUnit.DAYS.between(from, to) + INCLUSIVE_DAY_OFFSET;
+        long remainingPeriodDays = ChronoUnit.DAYS.between(joinDate, to) + INCLUSIVE_DAY_OFFSET;
         if (remainingPeriodDays <= 0) {
             return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
         }
