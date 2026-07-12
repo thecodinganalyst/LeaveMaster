@@ -81,12 +81,13 @@ class StaffControllerTest {
     @Test
     void shouldReturn400WhenCreatingStaffWithInvalidEntitlementData() throws Exception {
         Staff staff = Staff.builder().id("S001").name("Alice Smith").joinDate(LocalDate.of(2023, 1, 1)).workSchedule("WEEKDAYS").build();
-        when(staffService.save(any(Staff.class))).thenThrow(new IllegalArgumentException("invalid"));
+        when(staffService.save(any(Staff.class))).thenThrow(new IllegalArgumentException("invalid entitlement"));
 
         mockMvc.perform(post("/staff")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(staff)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("invalid entitlement"));
     }
 
     @Test
@@ -111,6 +112,18 @@ class StaffControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new Staff())))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldReturn400WhenUpdatingStaffWithInvalidEntitlementData() throws Exception {
+        when(staffService.update(eq("S001"), any(Staff.class)))
+                .thenThrow(new IllegalArgumentException("invalid entitlement"));
+
+        mockMvc.perform(put("/staff/S001")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new Staff())))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("invalid entitlement"));
     }
 
     @Test
