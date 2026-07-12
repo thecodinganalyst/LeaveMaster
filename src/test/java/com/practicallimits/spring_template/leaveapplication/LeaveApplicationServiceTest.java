@@ -3,6 +3,7 @@ package com.practicallimits.spring_template.leaveapplication;
 import com.practicallimits.spring_template.leavecalendar.LeaveCalendar;
 import com.practicallimits.spring_template.leavecalendar.LeaveCalendarService;
 import com.practicallimits.spring_template.leavecalendar.PublicHoliday;
+import com.practicallimits.spring_template.leaveentitlement.LeaveEntitlement;
 import com.practicallimits.spring_template.leavetype.LeaveType;
 import com.practicallimits.spring_template.leavetype.LeaveTypeNotFoundException;
 import com.practicallimits.spring_template.leavetype.LeaveTypeRepository;
@@ -17,6 +18,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.List;
@@ -25,6 +27,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -321,5 +324,120 @@ class LeaveApplicationServiceTest {
                 .isInstanceOf(LeaveApplicationNotFoundException.class);
 
         verify(leaveApplicationRepository, never()).deleteById("nonexistent");
+    }
+
+    @Test
+    void shouldReturnEmptyBalancesWhenStaffHasNoEntitlements() {
+        Staff staff = weekdayStaff();
+        when(staffRepository.findById("S001")).thenReturn(Optional.of(staff));
+
+        List<LeaveBalance> balances = leaveApplicationService.getLeaveBalances("S001");
+
+        assertThat(balances).isEmpty();
+    }
+
+    @Test
+    void shouldReturnFullBalanceWhenNoLeaveUsed() {
+        LeaveType leaveType = annualLeave();
+        LeaveEntitlement entitlement = LeaveEntitlement.builder()
+                .leaveType(leaveType)
+                .from(LocalDate.of(2024, 1, 1))
+                .to(LocalDate.of(2024, 12, 31))
+                .entitlement(new BigDecimal("14.00"))
+                .build();
+        Staff staff = Staff.builder()
+                .id("S001")
+                .name("Alice Smith")
+                .joinDate(LocalDate.of(2023, 1, 1))
+                .leaveEntitlements(List.of(entitlement))
+                .build();
+        entitlement.setStaff(staff);
+
+        when(staffRepository.findById("S001")).thenReturn(Optional.of(staff));
+        when(leaveApplicationRepository.findByStaffAndLeaveTypeAndLeaveDateBetweenAndStatusIn(
+                eq(staff), eq(leaveType), any(), any(), any())).thenReturn(List.of());
+
+        List<LeaveBalance> balances = leaveApplicationService.getLeaveBalances("S001");
+
+        assertThat(balances).hasSize(1);
+        assertThat(balances.getFirst().leaveType()).isEqualTo(leaveType);
+        assertThat(balances.getFirst().entitlement()).isEqualByComparingTo(new BigDecimal("14.00"));
+        assertThat(balances.getFirst().used()).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(balances.getFirst().balance()).isEqualByComparingTo(new BigDecimal("14.00"));
+    }
+
+    @Test
+    void shouldDeductApprovedAndPendingLeaveFromBalance() {
+        LeaveType leaveType = annualLeave();
+        LeaveEntitlement entitlement = LeaveEntitlement.builder()
+                .leaveType(leaveType)
+                .from(LocalDate.of(2024, 1, 1))
+                .to(LocalDate.of(2024, 12, 31))
+                .entitlement(new BigDecimal("14.00"))
+                .build();
+        Staff staff = Staff.builder()
+                .id("S001")
+                .name("Alice Smith")
+                .joinDate(LocalDate.of(2023, 1, 1))
+                .leaveEntitlements(List.of(entitlement))
+                .build();
+        entitlement.setStaff(staff);
+
+        List<LeaveApplication> usedApplications = List.of(
+                LeaveApplication.builder().leaveDate(LocalDate.of(2024, 3, 1))
+                        .leaveType(leaveType).leaveDuration(LeaveDuration.FULL).status(LeaveStatus.APPROVED).build(),
+                LeaveApplication.builder().leaveDate(LocalDate.of(2024, 3, 4))
+                        .leaveType(leaveType).leaveDuration(LeaveDuration.FULL).status(LeaveStatus.PENDING).build()
+        );
+
+        when(staffRepository.findById("S001")).thenReturn(Optional.of(staff));
+        when(leaveApplicationRepository.findByStaffAndLeaveTypeAndLeaveDateBetweenAndStatusIn(
+                eq(staff), eq(leaveType), any(), any(), any())).thenReturn(usedApplications);
+
+        List<LeaveBalance> balances = leaveApplicationService.getLeaveBalances("S001");
+
+        assertThat(balances).hasSize(1);
+        assertThat(balances.getFirst().used()).isEqualByComparingTo(new BigDecimal("2"));
+        assertThat(balances.getFirst().balance()).isEqualByComparingTo(new BigDecimal("12.00"));
+    }
+
+    @Test
+    void shouldCountHalfDayLeaveAsHalfDay() {
+        LeaveType leaveType = annualLeave();
+        LeaveEntitlement entitlement = LeaveEntitlement.builder()
+                .leaveType(leaveType)
+                .from(LocalDate.of(2024, 1, 1))
+                .to(LocalDate.of(2024, 12, 31))
+                .entitlement(new BigDecimal("10.00"))
+                .build();
+        Staff staff = Staff.builder()
+                .id("S001")
+                .name("Alice Smith")
+                .joinDate(LocalDate.of(2023, 1, 1))
+                .leaveEntitlements(List.of(entitlement))
+                .build();
+        entitlement.setStaff(staff);
+
+        List<LeaveApplication> usedApplications = List.of(
+                LeaveApplication.builder().leaveDate(LocalDate.of(2024, 3, 1))
+                        .leaveType(leaveType).leaveDuration(LeaveDuration.AM).status(LeaveStatus.APPROVED).build()
+        );
+
+        when(staffRepository.findById("S001")).thenReturn(Optional.of(staff));
+        when(leaveApplicationRepository.findByStaffAndLeaveTypeAndLeaveDateBetweenAndStatusIn(
+                eq(staff), eq(leaveType), any(), any(), any())).thenReturn(usedApplications);
+
+        List<LeaveBalance> balances = leaveApplicationService.getLeaveBalances("S001");
+
+        assertThat(balances.getFirst().used()).isEqualByComparingTo(new BigDecimal("0.5"));
+        assertThat(balances.getFirst().balance()).isEqualByComparingTo(new BigDecimal("9.5"));
+    }
+
+    @Test
+    void shouldThrowWhenGettingBalancesForNonExistentStaff() {
+        when(staffRepository.findById("nonexistent")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> leaveApplicationService.getLeaveBalances("nonexistent"))
+                .isInstanceOf(StaffNotFoundException.class);
     }
 }

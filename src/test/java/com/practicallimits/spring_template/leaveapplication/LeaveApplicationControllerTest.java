@@ -1,5 +1,6 @@
 package com.practicallimits.spring_template.leaveapplication;
 
+import com.practicallimits.spring_template.leaveentitlement.LeaveEntitlement;
 import com.practicallimits.spring_template.leavetype.LeaveType;
 import com.practicallimits.spring_template.leavetype.LeaveTypeNotFoundException;
 import com.practicallimits.spring_template.staff.DaySchedule;
@@ -14,6 +15,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.List;
@@ -203,6 +205,31 @@ class LeaveApplicationControllerTest {
         doThrow(new LeaveApplicationNotFoundException("nonexistent")).when(leaveApplicationService).delete("nonexistent");
 
         mockMvc.perform(delete("/leave-applications/nonexistent"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldReturnLeaveBalancesForStaff() throws Exception {
+        LeaveType leaveType = LeaveType.builder().id("annual").name("Annual Leave").used(true).build();
+        List<LeaveBalance> balances = List.of(
+                new LeaveBalance(leaveType, new BigDecimal("14.00"), new BigDecimal("2.00"), new BigDecimal("12.00")));
+        when(leaveApplicationService.getLeaveBalances("S001")).thenReturn(balances);
+
+        mockMvc.perform(get("/leave-applications/staff/S001/balance"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].leaveType.id").value("annual"))
+                .andExpect(jsonPath("$[0].entitlement").value(14.00))
+                .andExpect(jsonPath("$[0].used").value(2.00))
+                .andExpect(jsonPath("$[0].balance").value(12.00));
+    }
+
+    @Test
+    void shouldReturn404WhenGettingBalancesForUnknownStaff() throws Exception {
+        when(leaveApplicationService.getLeaveBalances("nonexistent"))
+                .thenThrow(new StaffNotFoundException("nonexistent"));
+
+        mockMvc.perform(get("/leave-applications/staff/nonexistent/balance"))
                 .andExpect(status().isNotFound());
     }
 }

@@ -37,6 +37,15 @@ public class LeaveApplicationController {
         }
     }
 
+    @GetMapping("/staff/{staffId}/balance")
+    public ResponseEntity<List<LeaveBalance>> getLeaveBalances(@PathVariable String staffId) {
+        try {
+            return ResponseEntity.ok(leaveApplicationService.getLeaveBalances(staffId));
+        } catch (StaffNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
     @PostMapping
     public ResponseEntity<?> apply(@RequestBody LeaveApplicationRequest request) {
         try {

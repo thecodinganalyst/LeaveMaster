@@ -3,6 +3,7 @@ package com.practicallimits.spring_template.leaveapplication;
 import com.practicallimits.spring_template.leavecalendar.LeaveCalendar;
 import com.practicallimits.spring_template.leavecalendar.LeaveCalendarService;
 import com.practicallimits.spring_template.leavecalendar.PublicHoliday;
+import com.practicallimits.spring_template.leaveentitlement.LeaveEntitlement;
 import com.practicallimits.spring_template.leavetype.LeaveType;
 import com.practicallimits.spring_template.leavetype.LeaveTypeNotFoundException;
 import com.practicallimits.spring_template.leavetype.LeaveTypeRepository;
@@ -13,6 +14,7 @@ import com.practicallimits.spring_template.staff.WorkScheduleDay;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -26,6 +28,8 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class LeaveApplicationService {
+
+    private static final BigDecimal HALF_DAY = new BigDecimal("0.5");
 
     private final LeaveApplicationRepository leaveApplicationRepository;
     private final StaffRepository staffRepository;
@@ -44,6 +48,30 @@ public class LeaveApplicationService {
         Staff staff = staffRepository.findById(staffId)
                 .orElseThrow(() -> new StaffNotFoundException(staffId));
         return leaveApplicationRepository.findByStaff(staff);
+    }
+
+    public List<LeaveBalance> getLeaveBalances(String staffId) {
+        Staff staff = staffRepository.findById(staffId)
+                .orElseThrow(() -> new StaffNotFoundException(staffId));
+
+        List<LeaveStatus> countedStatuses = List.of(LeaveStatus.APPROVED, LeaveStatus.PENDING);
+        List<LeaveBalance> balances = new ArrayList<>();
+
+        for (LeaveEntitlement entitlement : staff.getLeaveEntitlements()) {
+            LeaveType leaveType = entitlement.getLeaveType();
+            List<LeaveApplication> applications = leaveApplicationRepository
+                    .findByStaffAndLeaveTypeAndLeaveDateBetweenAndStatusIn(
+                            staff, leaveType, entitlement.getFrom(), entitlement.getTo(), countedStatuses);
+
+            BigDecimal used = applications.stream()
+                    .map(a -> a.getLeaveDuration() == LeaveDuration.FULL ? BigDecimal.ONE : HALF_DAY)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            BigDecimal balance = entitlement.getEntitlement().subtract(used);
+            balances.add(new LeaveBalance(leaveType, entitlement.getEntitlement(), used, balance));
+        }
+
+        return balances;
     }
 
     public List<LeaveApplication> apply(LeaveApplicationRequest request) {
