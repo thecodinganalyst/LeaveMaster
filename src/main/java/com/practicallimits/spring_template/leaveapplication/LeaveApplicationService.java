@@ -29,6 +29,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class LeaveApplicationService {
 
+    private static final BigDecimal HALF_DAY = new BigDecimal("0.5");
+
     private final LeaveApplicationRepository leaveApplicationRepository;
     private final StaffRepository staffRepository;
     private final LeaveTypeRepository leaveTypeRepository;
@@ -62,7 +64,7 @@ public class LeaveApplicationService {
                             staff, leaveType, entitlement.getFrom(), entitlement.getTo(), countedStatuses);
 
             BigDecimal used = applications.stream()
-                    .map(a -> a.getLeaveDuration() == LeaveDuration.FULL ? BigDecimal.ONE : new BigDecimal("0.5"))
+                    .map(a -> a.getLeaveDuration() == LeaveDuration.FULL ? BigDecimal.ONE : HALF_DAY)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
             BigDecimal balance = entitlement.getEntitlement().subtract(used);
