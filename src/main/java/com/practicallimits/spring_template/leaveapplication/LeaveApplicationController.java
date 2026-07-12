@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -32,11 +33,10 @@ public class LeaveApplicationController {
     @GetMapping("/staff/{staffId}")
     public ResponseEntity<?> getByStaffId(
             @PathVariable String staffId,
-            @RequestParam(required = false) String leaveCalendarId) {
+            @RequestParam(required = false) LocalDate date) {
         try {
-            List<LeaveApplication> applications = leaveCalendarId != null
-                    ? leaveApplicationService.findByStaffId(staffId, leaveCalendarId)
-                    : leaveApplicationService.findByStaffId(staffId);
+            LocalDate filterDate = date != null ? date : LocalDate.now();
+            List<LeaveApplication> applications = leaveApplicationService.findByStaffId(staffId, filterDate);
             return ResponseEntity.ok(applications);
         } catch (StaffNotFoundException | LeaveCalendarNotFoundException e) {
             return ResponseEntity.notFound().build();

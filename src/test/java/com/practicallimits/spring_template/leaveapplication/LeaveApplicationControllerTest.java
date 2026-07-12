@@ -96,7 +96,7 @@ class LeaveApplicationControllerTest {
 
     @Test
     void shouldReturnLeaveApplicationsByStaffId() throws Exception {
-        when(leaveApplicationService.findByStaffId("S001"))
+        when(leaveApplicationService.findByStaffId(eq("S001"), any(LocalDate.class)))
                 .thenReturn(List.of(application("id1", LocalDate.of(2024, 1, 8))));
 
         mockMvc.perform(get("/leave-applications/staff/S001"))
@@ -105,11 +105,11 @@ class LeaveApplicationControllerTest {
     }
 
     @Test
-    void shouldReturnLeaveApplicationsByStaffIdAndLeaveCalendar() throws Exception {
-        when(leaveApplicationService.findByStaffId("S001", "2024-01-01_2024-12-31"))
+    void shouldReturnLeaveApplicationsByStaffIdAndDate() throws Exception {
+        when(leaveApplicationService.findByStaffId("S001", LocalDate.of(2024, 3, 15)))
                 .thenReturn(List.of(application("id1", LocalDate.of(2024, 1, 8))));
 
-        mockMvc.perform(get("/leave-applications/staff/S001").param("leaveCalendarId", "2024-01-01_2024-12-31"))
+        mockMvc.perform(get("/leave-applications/staff/S001").param("date", "2024-03-15"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].leaveDate").value("2024-01-08"));
@@ -117,7 +117,7 @@ class LeaveApplicationControllerTest {
 
     @Test
     void shouldReturn404WhenStaffNotFoundForLeaveApplications() throws Exception {
-        when(leaveApplicationService.findByStaffId("nonexistent"))
+        when(leaveApplicationService.findByStaffId(eq("nonexistent"), any(LocalDate.class)))
                 .thenThrow(new StaffNotFoundException("nonexistent"));
 
         mockMvc.perform(get("/leave-applications/staff/nonexistent"))
@@ -125,20 +125,20 @@ class LeaveApplicationControllerTest {
     }
 
     @Test
-    void shouldReturn404WhenStaffNotFoundForLeaveApplicationsByCalendar() throws Exception {
-        when(leaveApplicationService.findByStaffId("nonexistent", "2024-01-01_2024-12-31"))
+    void shouldReturn404WhenStaffNotFoundForLeaveApplicationsByDate() throws Exception {
+        when(leaveApplicationService.findByStaffId("nonexistent", LocalDate.of(2024, 3, 15)))
                 .thenThrow(new StaffNotFoundException("nonexistent"));
 
-        mockMvc.perform(get("/leave-applications/staff/nonexistent").param("leaveCalendarId", "2024-01-01_2024-12-31"))
+        mockMvc.perform(get("/leave-applications/staff/nonexistent").param("date", "2024-03-15"))
                 .andExpect(status().isNotFound());
     }
 
     @Test
-    void shouldReturn404WhenLeaveCalendarNotFound() throws Exception {
-        when(leaveApplicationService.findByStaffId("S001", "nonexistent"))
-                .thenThrow(new LeaveCalendarNotFoundException("nonexistent"));
+    void shouldReturn404WhenLeaveCalendarNotFoundForDate() throws Exception {
+        when(leaveApplicationService.findByStaffId("S001", LocalDate.of(2024, 3, 15)))
+                .thenThrow(new LeaveCalendarNotFoundException("2024-03-15"));
 
-        mockMvc.perform(get("/leave-applications/staff/S001").param("leaveCalendarId", "nonexistent"))
+        mockMvc.perform(get("/leave-applications/staff/S001").param("date", "2024-03-15"))
                 .andExpect(status().isNotFound());
     }
 

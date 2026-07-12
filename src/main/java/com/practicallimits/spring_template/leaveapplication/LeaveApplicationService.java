@@ -51,9 +51,9 @@ public class LeaveApplicationService {
         return leaveApplicationRepository.findByStaff(staff);
     }
 
-    public List<LeaveApplication> findByStaffId(String staffId, String leaveCalendarId) {
-        LeaveCalendar calendar = leaveCalendarService.findById(leaveCalendarId)
-                .orElseThrow(() -> new LeaveCalendarNotFoundException(leaveCalendarId));
+    public List<LeaveApplication> findByStaffId(String staffId, LocalDate date) {
+        LeaveCalendar calendar = leaveCalendarService.getCalendarFor(date)
+                .orElseThrow(() -> new LeaveCalendarNotFoundException(date.toString()));
         Staff staff = staffRepository.findById(staffId)
                 .orElseThrow(() -> new StaffNotFoundException(staffId));
         return leaveApplicationRepository.findByStaffAndLeaveDateBetween(staff, calendar.getStart(), calendar.getEnd());

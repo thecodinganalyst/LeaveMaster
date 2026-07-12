@@ -260,8 +260,9 @@ class LeaveApplicationServiceTest {
     }
 
     @Test
-    void shouldReturnLeaveApplicationsByStaffIdAndLeaveCalendar() {
+    void shouldReturnLeaveApplicationsByStaffIdAndDate() {
         Staff staff = weekdayStaff();
+        LocalDate date = LocalDate.of(2024, 3, 15);
         LeaveCalendar calendar = LeaveCalendar.builder()
                 .id("2024-01-01_2024-12-31")
                 .start(LocalDate.of(2024, 1, 1))
@@ -275,55 +276,58 @@ class LeaveApplicationServiceTest {
                         .leaveType(annualLeave()).leaveDuration(LeaveDuration.FULL).status(LeaveStatus.PENDING)
                         .applicationDate(LocalDate.of(2024, 6, 1)).build()
         );
-        when(leaveCalendarService.findById("2024-01-01_2024-12-31")).thenReturn(Optional.of(calendar));
+        when(leaveCalendarService.getCalendarFor(date)).thenReturn(Optional.of(calendar));
         when(staffRepository.findById("S001")).thenReturn(Optional.of(staff));
         when(leaveApplicationRepository.findByStaffAndLeaveDateBetween(
                 staff, LocalDate.of(2024, 1, 1), LocalDate.of(2024, 12, 31)))
                 .thenReturn(applications);
 
-        List<LeaveApplication> result = leaveApplicationService.findByStaffId("S001", "2024-01-01_2024-12-31");
+        List<LeaveApplication> result = leaveApplicationService.findByStaffId("S001", date);
 
         assertThat(result).hasSize(2);
     }
 
     @Test
-    void shouldReturnEmptyListWhenNoApplicationsForLeaveCalendar() {
+    void shouldReturnEmptyListWhenNoApplicationsForDate() {
         Staff staff = weekdayStaff();
+        LocalDate date = LocalDate.of(2023, 6, 1);
         LeaveCalendar calendar = LeaveCalendar.builder()
                 .id("2023-01-01_2023-12-31")
                 .start(LocalDate.of(2023, 1, 1))
                 .end(LocalDate.of(2023, 12, 31))
                 .build();
-        when(leaveCalendarService.findById("2023-01-01_2023-12-31")).thenReturn(Optional.of(calendar));
+        when(leaveCalendarService.getCalendarFor(date)).thenReturn(Optional.of(calendar));
         when(staffRepository.findById("S001")).thenReturn(Optional.of(staff));
         when(leaveApplicationRepository.findByStaffAndLeaveDateBetween(
                 staff, LocalDate.of(2023, 1, 1), LocalDate.of(2023, 12, 31)))
                 .thenReturn(List.of());
 
-        List<LeaveApplication> result = leaveApplicationService.findByStaffId("S001", "2023-01-01_2023-12-31");
+        List<LeaveApplication> result = leaveApplicationService.findByStaffId("S001", date);
 
         assertThat(result).isEmpty();
     }
 
     @Test
-    void shouldThrowWhenFindingByCalendarForNonExistentStaff() {
+    void shouldThrowWhenFindingByDateForNonExistentStaff() {
+        LocalDate date = LocalDate.of(2024, 3, 15);
         LeaveCalendar calendar = LeaveCalendar.builder()
                 .id("2024-01-01_2024-12-31")
                 .start(LocalDate.of(2024, 1, 1))
                 .end(LocalDate.of(2024, 12, 31))
                 .build();
-        when(leaveCalendarService.findById("2024-01-01_2024-12-31")).thenReturn(Optional.of(calendar));
+        when(leaveCalendarService.getCalendarFor(date)).thenReturn(Optional.of(calendar));
         when(staffRepository.findById("nonexistent")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> leaveApplicationService.findByStaffId("nonexistent", "2024-01-01_2024-12-31"))
+        assertThatThrownBy(() -> leaveApplicationService.findByStaffId("nonexistent", date))
                 .isInstanceOf(StaffNotFoundException.class);
     }
 
     @Test
-    void shouldThrowWhenLeaveCalendarNotFound() {
-        when(leaveCalendarService.findById("nonexistent")).thenReturn(Optional.empty());
+    void shouldThrowWhenNoLeaveCalendarFoundForDate() {
+        LocalDate date = LocalDate.of(2024, 3, 15);
+        when(leaveCalendarService.getCalendarFor(date)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> leaveApplicationService.findByStaffId("S001", "nonexistent"))
+        assertThatThrownBy(() -> leaveApplicationService.findByStaffId("S001", date))
                 .isInstanceOf(LeaveCalendarNotFoundException.class);
     }
 
