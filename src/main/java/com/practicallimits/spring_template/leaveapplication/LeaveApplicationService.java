@@ -1,6 +1,7 @@
 package com.practicallimits.spring_template.leaveapplication;
 
 import com.practicallimits.spring_template.leavecalendar.LeaveCalendar;
+import com.practicallimits.spring_template.leavecalendar.LeaveCalendarNotFoundException;
 import com.practicallimits.spring_template.leavecalendar.LeaveCalendarService;
 import com.practicallimits.spring_template.leavecalendar.PublicHoliday;
 import com.practicallimits.spring_template.leaveentitlement.LeaveEntitlement;
@@ -48,6 +49,14 @@ public class LeaveApplicationService {
         Staff staff = staffRepository.findById(staffId)
                 .orElseThrow(() -> new StaffNotFoundException(staffId));
         return leaveApplicationRepository.findByStaff(staff);
+    }
+
+    public List<LeaveApplication> findByStaffId(String staffId, LocalDate date) {
+        LeaveCalendar calendar = leaveCalendarService.getCalendarFor(date)
+                .orElseThrow(() -> new LeaveCalendarNotFoundException(date.toString()));
+        Staff staff = staffRepository.findById(staffId)
+                .orElseThrow(() -> new StaffNotFoundException(staffId));
+        return leaveApplicationRepository.findByStaffAndLeaveDateBetween(staff, calendar.getStart(), calendar.getEnd());
     }
 
     public List<LeaveBalance> getLeaveBalances(String staffId) {

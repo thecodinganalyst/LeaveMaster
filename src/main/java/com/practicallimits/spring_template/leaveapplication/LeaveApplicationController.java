@@ -1,11 +1,13 @@
 package com.practicallimits.spring_template.leaveapplication;
 
+import com.practicallimits.spring_template.leavecalendar.LeaveCalendarNotFoundException;
 import com.practicallimits.spring_template.staff.StaffNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -29,10 +31,14 @@ public class LeaveApplicationController {
     }
 
     @GetMapping("/staff/{staffId}")
-    public ResponseEntity<List<LeaveApplication>> getByStaffId(@PathVariable String staffId) {
+    public ResponseEntity<?> getByStaffId(
+            @PathVariable String staffId,
+            @RequestParam(required = false) LocalDate date) {
         try {
-            return ResponseEntity.ok(leaveApplicationService.findByStaffId(staffId));
-        } catch (StaffNotFoundException e) {
+            LocalDate filterDate = date != null ? date : LocalDate.now();
+            List<LeaveApplication> applications = leaveApplicationService.findByStaffId(staffId, filterDate);
+            return ResponseEntity.ok(applications);
+        } catch (StaffNotFoundException | LeaveCalendarNotFoundException e) {
             return ResponseEntity.notFound().build();
         }
     }
