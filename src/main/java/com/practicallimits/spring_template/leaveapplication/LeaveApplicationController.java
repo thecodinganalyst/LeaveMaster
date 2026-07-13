@@ -79,6 +79,8 @@ public class LeaveApplicationController {
         try {
             leaveApplicationService.delete(id);
             return ResponseEntity.noContent().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
         } catch (LeaveApplicationNotFoundException e) {
             return ResponseEntity.notFound().build();
         }

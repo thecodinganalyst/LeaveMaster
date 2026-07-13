@@ -377,16 +377,19 @@ class LeaveApplicationServiceTest {
     }
 
     @Test
-    void shouldDeleteLeaveApplication() {
+    void shouldCancelLeaveApplicationWhenLeaveDateHasNotPassed() {
         LeaveApplication app = LeaveApplication.builder().id("id1").staff(weekdayStaff())
-                .leaveDate(LocalDate.of(2024, 1, 8)).leaveType(annualLeave())
-                .leaveDuration(LeaveDuration.FULL).status(LeaveStatus.DRAFT)
+                .leaveDate(LocalDate.now()).leaveType(annualLeave())
+                .leaveDuration(LeaveDuration.FULL).status(LeaveStatus.APPROVED)
                 .applicationDate(LocalDate.now()).build();
         when(leaveApplicationRepository.findById("id1")).thenReturn(Optional.of(app));
+        when(leaveApplicationRepository.save(any(LeaveApplication.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         leaveApplicationService.delete("id1");
 
-        verify(leaveApplicationRepository).deleteById("id1");
+        assertThat(app.getStatus()).isEqualTo(LeaveStatus.CANCELLED);
+        verify(leaveApplicationRepository).save(app);
     }
 
     @Test
@@ -396,7 +399,22 @@ class LeaveApplicationServiceTest {
         assertThatThrownBy(() -> leaveApplicationService.delete("nonexistent"))
                 .isInstanceOf(LeaveApplicationNotFoundException.class);
 
-        verify(leaveApplicationRepository, never()).deleteById("nonexistent");
+        verify(leaveApplicationRepository, never()).save(any(LeaveApplication.class));
+    }
+
+    @Test
+    void shouldThrowWhenCancellingPastLeaveApplication() {
+        LeaveApplication app = LeaveApplication.builder().id("id1").staff(weekdayStaff())
+                .leaveDate(LocalDate.now().minusDays(1)).leaveType(annualLeave())
+                .leaveDuration(LeaveDuration.FULL).status(LeaveStatus.PENDING)
+                .applicationDate(LocalDate.now()).build();
+        when(leaveApplicationRepository.findById("id1")).thenReturn(Optional.of(app));
+
+        assertThatThrownBy(() -> leaveApplicationService.delete("id1"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Past leave cannot be cancelled");
+
+        verify(leaveApplicationRepository, never()).save(any(LeaveApplication.class));
     }
 
     @Test
