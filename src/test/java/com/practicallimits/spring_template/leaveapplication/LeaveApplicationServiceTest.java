@@ -493,6 +493,41 @@ class LeaveApplicationServiceTest {
     }
 
     @Test
+    void shouldNotCountCancelledLeaveFromBalance() {
+        LeaveType leaveType = annualLeave();
+        LeaveEntitlement entitlement = LeaveEntitlement.builder()
+                .leaveType(leaveType)
+                .from(LocalDate.of(2024, 1, 1))
+                .to(LocalDate.of(2024, 12, 31))
+                .entitlement(new BigDecimal("14.00"))
+                .build();
+        Staff staff = Staff.builder()
+                .id("S001")
+                .name("Alice Smith")
+                .joinDate(LocalDate.of(2023, 1, 1))
+                .leaveEntitlements(List.of(entitlement))
+                .build();
+        entitlement.setStaff(staff);
+
+        List<LeaveApplication> usedApplications = List.of(
+                LeaveApplication.builder().leaveDate(LocalDate.of(2024, 3, 1))
+                        .leaveType(leaveType).leaveDuration(LeaveDuration.FULL).status(LeaveStatus.APPROVED).build(),
+                LeaveApplication.builder().leaveDate(LocalDate.of(2024, 3, 4))
+                        .leaveType(leaveType).leaveDuration(LeaveDuration.FULL).status(LeaveStatus.CANCELLED).build()
+        );
+
+        when(staffRepository.findById("S001")).thenReturn(Optional.of(staff));
+        when(leaveApplicationRepository.findByStaffAndLeaveTypeAndLeaveDateBetweenAndStatusIn(
+                eq(staff), eq(leaveType), any(), any(), any())).thenReturn(usedApplications);
+
+        List<LeaveBalance> balances = leaveApplicationService.getLeaveBalances("S001");
+
+        assertThat(balances).hasSize(1);
+        assertThat(balances.getFirst().used()).isEqualByComparingTo(BigDecimal.ONE);
+        assertThat(balances.getFirst().balance()).isEqualByComparingTo(new BigDecimal("13.00"));
+    }
+
+    @Test
     void shouldCountHalfDayLeaveAsHalfDay() {
         LeaveType leaveType = annualLeave();
         LeaveEntitlement entitlement = LeaveEntitlement.builder()
