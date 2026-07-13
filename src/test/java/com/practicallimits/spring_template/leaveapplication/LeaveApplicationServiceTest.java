@@ -28,6 +28,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -493,7 +494,7 @@ class LeaveApplicationServiceTest {
     }
 
     @Test
-    void shouldNotCountCancelledLeaveFromBalance() {
+    void shouldRequestOnlyApprovedAndPendingLeaveForBalance() {
         LeaveType leaveType = annualLeave();
         LeaveEntitlement entitlement = LeaveEntitlement.builder()
                 .leaveType(leaveType)
@@ -511,9 +512,7 @@ class LeaveApplicationServiceTest {
 
         List<LeaveApplication> usedApplications = List.of(
                 LeaveApplication.builder().leaveDate(LocalDate.of(2024, 3, 1))
-                        .leaveType(leaveType).leaveDuration(LeaveDuration.FULL).status(LeaveStatus.APPROVED).build(),
-                LeaveApplication.builder().leaveDate(LocalDate.of(2024, 3, 4))
-                        .leaveType(leaveType).leaveDuration(LeaveDuration.FULL).status(LeaveStatus.CANCELLED).build()
+                        .leaveType(leaveType).leaveDuration(LeaveDuration.FULL).status(LeaveStatus.APPROVED).build()
         );
 
         when(staffRepository.findById("S001")).thenReturn(Optional.of(staff));
@@ -525,6 +524,12 @@ class LeaveApplicationServiceTest {
         assertThat(balances).hasSize(1);
         assertThat(balances.getFirst().used()).isEqualByComparingTo(BigDecimal.ONE);
         assertThat(balances.getFirst().balance()).isEqualByComparingTo(new BigDecimal("13.00"));
+        verify(leaveApplicationRepository).findByStaffAndLeaveTypeAndLeaveDateBetweenAndStatusIn(
+                eq(staff), eq(leaveType), any(), any(),
+                argThat(statuses -> statuses.contains(LeaveStatus.APPROVED)
+                        && statuses.contains(LeaveStatus.PENDING)
+                        && !statuses.contains(LeaveStatus.CANCELLED)
+                        && statuses.size() == 2));
     }
 
     @Test

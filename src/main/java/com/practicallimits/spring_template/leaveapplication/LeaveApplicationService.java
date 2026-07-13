@@ -73,7 +73,6 @@ public class LeaveApplicationService {
                             staff, leaveType, entitlement.getFrom(), entitlement.getTo(), countedStatuses);
 
             BigDecimal used = applications.stream()
-                    .filter(a -> countedStatuses.contains(a.getStatus()))
                     .map(a -> a.getLeaveDuration() == LeaveDuration.FULL ? BigDecimal.ONE : HALF_DAY)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
