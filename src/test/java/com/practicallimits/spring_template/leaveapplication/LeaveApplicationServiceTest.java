@@ -379,7 +379,7 @@ class LeaveApplicationServiceTest {
     @Test
     void shouldCancelLeaveApplicationWhenLeaveDateHasNotPassed() {
         LeaveApplication app = LeaveApplication.builder().id("id1").staff(weekdayStaff())
-                .leaveDate(LocalDate.now()).leaveType(annualLeave())
+                .leaveDate(LocalDate.now().plusDays(1)).leaveType(annualLeave())
                 .leaveDuration(LeaveDuration.FULL).status(LeaveStatus.APPROVED)
                 .applicationDate(LocalDate.now()).build();
         when(leaveApplicationRepository.findById("id1")).thenReturn(Optional.of(app));

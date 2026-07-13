@@ -244,7 +244,8 @@ class LeaveApplicationControllerTest {
                 .when(leaveApplicationService).delete("id1");
 
         mockMvc.perform(delete("/leave-applications/id1"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Past leave cannot be cancelled"));
     }
 
     @Test

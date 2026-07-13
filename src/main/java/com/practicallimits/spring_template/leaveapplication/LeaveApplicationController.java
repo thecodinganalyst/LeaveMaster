@@ -75,12 +75,12 @@ public class LeaveApplicationController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable String id) {
+    public ResponseEntity<?> delete(@PathVariable String id) {
         try {
             leaveApplicationService.delete(id);
             return ResponseEntity.noContent().build();
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (LeaveApplicationNotFoundException e) {
             return ResponseEntity.notFound().build();
         }
