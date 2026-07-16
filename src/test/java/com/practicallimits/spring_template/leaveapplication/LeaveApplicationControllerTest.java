@@ -239,6 +239,16 @@ class LeaveApplicationControllerTest {
     }
 
     @Test
+    void shouldReturn400WhenCancellingPastLeaveApplication() throws Exception {
+        doThrow(new IllegalArgumentException("Past leave cannot be cancelled"))
+                .when(leaveApplicationService).delete("id1");
+
+        mockMvc.perform(delete("/leave-applications/id1"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Past leave cannot be cancelled"));
+    }
+
+    @Test
     void shouldReturnLeaveBalancesForStaff() throws Exception {
         LeaveType leaveType = LeaveType.builder().id("annual").name("Annual Leave").used(true).build();
         List<LeaveBalance> balances = List.of(

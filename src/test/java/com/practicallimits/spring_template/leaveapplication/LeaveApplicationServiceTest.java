@@ -28,6 +28,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -377,16 +378,19 @@ class LeaveApplicationServiceTest {
     }
 
     @Test
-    void shouldDeleteLeaveApplication() {
+    void shouldCancelLeaveApplicationWhenLeaveDateHasNotPassed() {
         LeaveApplication app = LeaveApplication.builder().id("id1").staff(weekdayStaff())
-                .leaveDate(LocalDate.of(2024, 1, 8)).leaveType(annualLeave())
-                .leaveDuration(LeaveDuration.FULL).status(LeaveStatus.DRAFT)
+                .leaveDate(LocalDate.now().plusDays(1)).leaveType(annualLeave())
+                .leaveDuration(LeaveDuration.FULL).status(LeaveStatus.APPROVED)
                 .applicationDate(LocalDate.now()).build();
         when(leaveApplicationRepository.findById("id1")).thenReturn(Optional.of(app));
+        when(leaveApplicationRepository.save(any(LeaveApplication.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         leaveApplicationService.delete("id1");
 
-        verify(leaveApplicationRepository).deleteById("id1");
+        assertThat(app.getStatus()).isEqualTo(LeaveStatus.CANCELLED);
+        verify(leaveApplicationRepository).save(app);
     }
 
     @Test
@@ -396,7 +400,22 @@ class LeaveApplicationServiceTest {
         assertThatThrownBy(() -> leaveApplicationService.delete("nonexistent"))
                 .isInstanceOf(LeaveApplicationNotFoundException.class);
 
-        verify(leaveApplicationRepository, never()).deleteById("nonexistent");
+        verify(leaveApplicationRepository, never()).save(any(LeaveApplication.class));
+    }
+
+    @Test
+    void shouldThrowWhenCancellingPastLeaveApplication() {
+        LeaveApplication app = LeaveApplication.builder().id("id1").staff(weekdayStaff())
+                .leaveDate(LocalDate.now().minusDays(1)).leaveType(annualLeave())
+                .leaveDuration(LeaveDuration.FULL).status(LeaveStatus.PENDING)
+                .applicationDate(LocalDate.now()).build();
+        when(leaveApplicationRepository.findById("id1")).thenReturn(Optional.of(app));
+
+        assertThatThrownBy(() -> leaveApplicationService.delete("id1"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Past leave cannot be cancelled");
+
+        verify(leaveApplicationRepository, never()).save(any(LeaveApplication.class));
     }
 
     @Test
@@ -472,6 +491,45 @@ class LeaveApplicationServiceTest {
         assertThat(balances).hasSize(1);
         assertThat(balances.getFirst().used()).isEqualByComparingTo(new BigDecimal("2"));
         assertThat(balances.getFirst().balance()).isEqualByComparingTo(new BigDecimal("12.00"));
+    }
+
+    @Test
+    void shouldRequestOnlyApprovedAndPendingLeaveForBalance() {
+        LeaveType leaveType = annualLeave();
+        LeaveEntitlement entitlement = LeaveEntitlement.builder()
+                .leaveType(leaveType)
+                .from(LocalDate.of(2024, 1, 1))
+                .to(LocalDate.of(2024, 12, 31))
+                .entitlement(new BigDecimal("14.00"))
+                .build();
+        Staff staff = Staff.builder()
+                .id("S001")
+                .name("Alice Smith")
+                .joinDate(LocalDate.of(2023, 1, 1))
+                .leaveEntitlements(List.of(entitlement))
+                .build();
+        entitlement.setStaff(staff);
+
+        List<LeaveApplication> usedApplications = List.of(
+                LeaveApplication.builder().leaveDate(LocalDate.of(2024, 3, 1))
+                        .leaveType(leaveType).leaveDuration(LeaveDuration.FULL).status(LeaveStatus.APPROVED).build()
+        );
+
+        when(staffRepository.findById("S001")).thenReturn(Optional.of(staff));
+        when(leaveApplicationRepository.findByStaffAndLeaveTypeAndLeaveDateBetweenAndStatusIn(
+                eq(staff), eq(leaveType), any(), any(), any())).thenReturn(usedApplications);
+
+        List<LeaveBalance> balances = leaveApplicationService.getLeaveBalances("S001");
+
+        assertThat(balances).hasSize(1);
+        assertThat(balances.getFirst().used()).isEqualByComparingTo(BigDecimal.ONE);
+        assertThat(balances.getFirst().balance()).isEqualByComparingTo(new BigDecimal("13.00"));
+        verify(leaveApplicationRepository).findByStaffAndLeaveTypeAndLeaveDateBetweenAndStatusIn(
+                eq(staff), eq(leaveType), any(), any(),
+                argThat(statuses -> statuses.contains(LeaveStatus.APPROVED)
+                        && statuses.contains(LeaveStatus.PENDING)
+                        && !statuses.contains(LeaveStatus.CANCELLED)
+                        && statuses.size() == 2));
     }
 
     @Test

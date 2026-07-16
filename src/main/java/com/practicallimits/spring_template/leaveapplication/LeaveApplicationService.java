@@ -138,9 +138,13 @@ public class LeaveApplicationService {
     }
 
     public void delete(String id) {
-        leaveApplicationRepository.findById(id)
+        LeaveApplication application = leaveApplicationRepository.findById(id)
                 .orElseThrow(() -> new LeaveApplicationNotFoundException(id));
-        leaveApplicationRepository.deleteById(id);
+        if (application.getLeaveDate().isBefore(LocalDate.now())) {
+            throw new IllegalArgumentException("Past leave cannot be cancelled");
+        }
+        application.setStatus(LeaveStatus.CANCELLED);
+        leaveApplicationRepository.save(application);
     }
 
     private List<LocalDate> getWorkingDatesInRange(Set<DayOfWeek> workDays, LocalDate from, LocalDate to) {
