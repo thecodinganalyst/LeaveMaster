@@ -47,6 +47,12 @@ class LeaveApplicationServiceTest {
     @Mock
     private LeaveCalendarService leaveCalendarService;
 
+    @Mock
+    private com.practicallimits.spring_template.leaveapprover.LeaveApproverRepository leaveApproverRepository;
+
+    @Mock
+    private com.practicallimits.spring_template.email.EmailService emailService;
+
     @InjectMocks
     private LeaveApplicationService leaveApplicationService;
 
@@ -404,16 +410,123 @@ class LeaveApplicationServiceTest {
     }
 
     @Test
-    void shouldThrowWhenCancellingPastLeaveApplication() {
+    void shouldCancelPastPendingLeaveApplicationDirectly() {
         LeaveApplication app = LeaveApplication.builder().id("id1").staff(weekdayStaff())
                 .leaveDate(LocalDate.now().minusDays(1)).leaveType(annualLeave())
                 .leaveDuration(LeaveDuration.FULL).status(LeaveStatus.PENDING)
                 .applicationDate(LocalDate.now()).build();
         when(leaveApplicationRepository.findById("id1")).thenReturn(Optional.of(app));
+        when(leaveApplicationRepository.save(any(LeaveApplication.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
-        assertThatThrownBy(() -> leaveApplicationService.delete("id1"))
+        leaveApplicationService.delete("id1");
+
+        assertThat(app.getStatus()).isEqualTo(LeaveStatus.CANCELLED);
+        verify(leaveApplicationRepository).save(app);
+    }
+
+    @Test
+    void shouldCancelPastDraftLeaveApplicationDirectly() {
+        LeaveApplication app = LeaveApplication.builder().id("id1").staff(weekdayStaff())
+                .leaveDate(LocalDate.now().minusDays(1)).leaveType(annualLeave())
+                .leaveDuration(LeaveDuration.FULL).status(LeaveStatus.DRAFT)
+                .applicationDate(LocalDate.now()).build();
+        when(leaveApplicationRepository.findById("id1")).thenReturn(Optional.of(app));
+        when(leaveApplicationRepository.save(any(LeaveApplication.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        leaveApplicationService.delete("id1");
+
+        assertThat(app.getStatus()).isEqualTo(LeaveStatus.CANCELLED);
+        verify(leaveApplicationRepository).save(app);
+    }
+
+    @Test
+    void shouldSetCancelRequestedAndNotifyApproverForPastApprovedLeave() {
+        Staff staff = weekdayStaff();
+        Staff approverStaff = Staff.builder().id("S002").name("Bob").email("bob@example.com")
+                .joinDate(LocalDate.of(2023, 1, 1)).build();
+        com.practicallimits.spring_template.leaveapprover.LeaveApprover leaveApprover =
+                com.practicallimits.spring_template.leaveapprover.LeaveApprover.builder()
+                        .id("la1").staff(staff).approver(approverStaff)
+                        .effectiveFrom(LocalDate.of(2024, 1, 1))
+                        .admin(staff).adminDate(LocalDate.of(2023, 12, 1))
+                        .build();
+        LeaveApplication app = LeaveApplication.builder().id("id1").staff(staff)
+                .leaveDate(LocalDate.now().minusDays(1)).leaveType(annualLeave())
+                .leaveDuration(LeaveDuration.FULL).status(LeaveStatus.APPROVED)
+                .applicationDate(LocalDate.now()).build();
+        when(leaveApplicationRepository.findById("id1")).thenReturn(Optional.of(app));
+        when(leaveApplicationRepository.save(any(LeaveApplication.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(leaveApproverRepository.findActiveApproversForStaff(eq(staff), any(LocalDate.class)))
+                .thenReturn(List.of(leaveApprover));
+
+        leaveApplicationService.delete("id1");
+
+        assertThat(app.getStatus()).isEqualTo(LeaveStatus.CANCEL_REQUESTED);
+        verify(leaveApplicationRepository).save(app);
+        verify(emailService).sendCancellationRequestNotification(eq(app), eq("bob@example.com"));
+    }
+
+    @Test
+    void shouldApproveCancellationAndSetCancelledStatus() {
+        LeaveApplication app = LeaveApplication.builder().id("id1").staff(weekdayStaff())
+                .leaveDate(LocalDate.now().minusDays(1)).leaveType(annualLeave())
+                .leaveDuration(LeaveDuration.FULL).status(LeaveStatus.CANCEL_REQUESTED)
+                .applicationDate(LocalDate.now()).build();
+        when(leaveApplicationRepository.findById("id1")).thenReturn(Optional.of(app));
+        when(leaveApplicationRepository.save(any(LeaveApplication.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        LeaveApplication result = leaveApplicationService.approveCancellation("id1");
+
+        assertThat(result.getStatus()).isEqualTo(LeaveStatus.CANCELLED);
+        verify(leaveApplicationRepository).save(app);
+    }
+
+    @Test
+    void shouldRejectCancellationAndRestoreApprovedStatus() {
+        LeaveApplication app = LeaveApplication.builder().id("id1").staff(weekdayStaff())
+                .leaveDate(LocalDate.now().minusDays(1)).leaveType(annualLeave())
+                .leaveDuration(LeaveDuration.FULL).status(LeaveStatus.CANCEL_REQUESTED)
+                .applicationDate(LocalDate.now()).build();
+        when(leaveApplicationRepository.findById("id1")).thenReturn(Optional.of(app));
+        when(leaveApplicationRepository.save(any(LeaveApplication.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        LeaveApplication result = leaveApplicationService.rejectCancellation("id1");
+
+        assertThat(result.getStatus()).isEqualTo(LeaveStatus.APPROVED);
+        verify(leaveApplicationRepository).save(app);
+    }
+
+    @Test
+    void shouldThrowWhenApprovingCancellationOnNonCancelRequestedApplication() {
+        LeaveApplication app = LeaveApplication.builder().id("id1").staff(weekdayStaff())
+                .leaveDate(LocalDate.now().minusDays(1)).leaveType(annualLeave())
+                .leaveDuration(LeaveDuration.FULL).status(LeaveStatus.APPROVED)
+                .applicationDate(LocalDate.now()).build();
+        when(leaveApplicationRepository.findById("id1")).thenReturn(Optional.of(app));
+
+        assertThatThrownBy(() -> leaveApplicationService.approveCancellation("id1"))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Past leave cannot be cancelled");
+                .hasMessage("Leave application is not pending cancellation approval");
+
+        verify(leaveApplicationRepository, never()).save(any(LeaveApplication.class));
+    }
+
+    @Test
+    void shouldThrowWhenRejectingCancellationOnNonCancelRequestedApplication() {
+        LeaveApplication app = LeaveApplication.builder().id("id1").staff(weekdayStaff())
+                .leaveDate(LocalDate.now().minusDays(1)).leaveType(annualLeave())
+                .leaveDuration(LeaveDuration.FULL).status(LeaveStatus.APPROVED)
+                .applicationDate(LocalDate.now()).build();
+        when(leaveApplicationRepository.findById("id1")).thenReturn(Optional.of(app));
+
+        assertThatThrownBy(() -> leaveApplicationService.rejectCancellation("id1"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Leave application is not pending cancellation approval");
 
         verify(leaveApplicationRepository, never()).save(any(LeaveApplication.class));
     }

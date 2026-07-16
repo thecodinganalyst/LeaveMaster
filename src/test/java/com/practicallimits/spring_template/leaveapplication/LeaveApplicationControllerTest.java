@@ -239,13 +239,71 @@ class LeaveApplicationControllerTest {
     }
 
     @Test
-    void shouldReturn400WhenCancellingPastLeaveApplication() throws Exception {
-        doThrow(new IllegalArgumentException("Past leave cannot be cancelled"))
-                .when(leaveApplicationService).delete("id1");
+    void shouldReturn204WhenDeletingPastApprovedLeaveApplicationRequestsCancellation() throws Exception {
+        doNothing().when(leaveApplicationService).delete("id1");
 
         mockMvc.perform(delete("/leave-applications/id1"))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void shouldApproveCancellationRequest() throws Exception {
+        LeaveApplication updated = application("id1", LocalDate.now().minusDays(1));
+        updated.setStatus(LeaveStatus.CANCELLED);
+        when(leaveApplicationService.approveCancellation("id1")).thenReturn(updated);
+
+        mockMvc.perform(put("/leave-applications/id1/approve-cancellation"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELLED"));
+    }
+
+    @Test
+    void shouldReturn400WhenApprovingCancellationOnWrongStatus() throws Exception {
+        when(leaveApplicationService.approveCancellation("id1"))
+                .thenThrow(new IllegalArgumentException("Leave application is not pending cancellation approval"));
+
+        mockMvc.perform(put("/leave-applications/id1/approve-cancellation"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Past leave cannot be cancelled"));
+                .andExpect(jsonPath("$.error").value("Leave application is not pending cancellation approval"));
+    }
+
+    @Test
+    void shouldReturn404WhenApprovingCancellationOnNonExistentApplication() throws Exception {
+        when(leaveApplicationService.approveCancellation("nonexistent"))
+                .thenThrow(new LeaveApplicationNotFoundException("nonexistent"));
+
+        mockMvc.perform(put("/leave-applications/nonexistent/approve-cancellation"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldRejectCancellationRequest() throws Exception {
+        LeaveApplication updated = application("id1", LocalDate.now().minusDays(1));
+        updated.setStatus(LeaveStatus.APPROVED);
+        when(leaveApplicationService.rejectCancellation("id1")).thenReturn(updated);
+
+        mockMvc.perform(put("/leave-applications/id1/reject-cancellation"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("APPROVED"));
+    }
+
+    @Test
+    void shouldReturn400WhenRejectingCancellationOnWrongStatus() throws Exception {
+        when(leaveApplicationService.rejectCancellation("id1"))
+                .thenThrow(new IllegalArgumentException("Leave application is not pending cancellation approval"));
+
+        mockMvc.perform(put("/leave-applications/id1/reject-cancellation"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Leave application is not pending cancellation approval"));
+    }
+
+    @Test
+    void shouldReturn404WhenRejectingCancellationOnNonExistentApplication() throws Exception {
+        when(leaveApplicationService.rejectCancellation("nonexistent"))
+                .thenThrow(new LeaveApplicationNotFoundException("nonexistent"));
+
+        mockMvc.perform(put("/leave-applications/nonexistent/reject-cancellation"))
+                .andExpect(status().isNotFound());
     }
 
     @Test
