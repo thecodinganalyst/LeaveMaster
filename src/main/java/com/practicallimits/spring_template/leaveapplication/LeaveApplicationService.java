@@ -182,8 +182,11 @@ public class LeaveApplicationService {
         List<LeaveApprover> activeApprovers = leaveApproverRepository
                 .findActiveApproversForStaff(application.getStaff(), LocalDate.now());
         for (LeaveApprover leaveApprover : activeApprovers) {
-            String approverEmail = leaveApprover.getApprover().getEmail();
-            emailService.sendCancellationRequestNotification(application, approverEmail);
+            Staff approver = leaveApprover.getApprover();
+            if (approver == null) {
+                continue;
+            }
+            emailService.sendCancellationRequestNotification(application, approver.getEmail());
         }
     }
 
