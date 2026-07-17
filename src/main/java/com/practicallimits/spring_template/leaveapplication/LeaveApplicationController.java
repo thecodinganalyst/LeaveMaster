@@ -85,4 +85,28 @@ public class LeaveApplicationController {
             return ResponseEntity.notFound().build();
         }
     }
+
+    @PutMapping("/{id}/approve-cancellation")
+    public ResponseEntity<?> approveCancellation(@PathVariable String id) {
+        try {
+            LeaveApplication updated = leaveApplicationService.approveCancellation(id);
+            return ResponseEntity.ok(updated);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (LeaveApplicationNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @PutMapping("/{id}/reject-cancellation")
+    public ResponseEntity<?> rejectCancellation(@PathVariable String id) {
+        try {
+            LeaveApplication updated = leaveApplicationService.rejectCancellation(id);
+            return ResponseEntity.ok(updated);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (LeaveApplicationNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
 }

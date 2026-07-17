@@ -36,6 +36,9 @@ public class Staff {
     @Column(nullable = false)
     private String name;
 
+    @Column
+    private String email;
+
     @Column(name = "join_date", nullable = false)
     private LocalDate joinDate;
 

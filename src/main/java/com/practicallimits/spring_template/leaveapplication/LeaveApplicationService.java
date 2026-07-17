@@ -1,10 +1,13 @@
 package com.practicallimits.spring_template.leaveapplication;
 
+import com.practicallimits.spring_template.email.EmailService;
 import com.practicallimits.spring_template.leavecalendar.LeaveCalendar;
 import com.practicallimits.spring_template.leavecalendar.LeaveCalendarNotFoundException;
 import com.practicallimits.spring_template.leavecalendar.LeaveCalendarService;
 import com.practicallimits.spring_template.leavecalendar.PublicHoliday;
 import com.practicallimits.spring_template.leaveentitlement.LeaveEntitlement;
+import com.practicallimits.spring_template.leaveapprover.LeaveApprover;
+import com.practicallimits.spring_template.leaveapprover.LeaveApproverRepository;
 import com.practicallimits.spring_template.leavetype.LeaveType;
 import com.practicallimits.spring_template.leavetype.LeaveTypeNotFoundException;
 import com.practicallimits.spring_template.leavetype.LeaveTypeRepository;
@@ -36,6 +39,8 @@ public class LeaveApplicationService {
     private final StaffRepository staffRepository;
     private final LeaveTypeRepository leaveTypeRepository;
     private final LeaveCalendarService leaveCalendarService;
+    private final LeaveApproverRepository leaveApproverRepository;
+    private final EmailService emailService;
 
     public List<LeaveApplication> findAll() {
         return leaveApplicationRepository.findAll();
@@ -140,11 +145,49 @@ public class LeaveApplicationService {
     public void delete(String id) {
         LeaveApplication application = leaveApplicationRepository.findById(id)
                 .orElseThrow(() -> new LeaveApplicationNotFoundException(id));
-        if (application.getLeaveDate().isBefore(LocalDate.now())) {
-            throw new IllegalArgumentException("Past leave cannot be cancelled");
+
+        boolean isPast = application.getLeaveDate().isBefore(LocalDate.now());
+
+        if (isPast && application.getStatus() == LeaveStatus.APPROVED) {
+            application.setStatus(LeaveStatus.CANCEL_REQUESTED);
+            leaveApplicationRepository.save(application);
+            notifyApproverOfCancellationRequest(application);
+        } else {
+            application.setStatus(LeaveStatus.CANCELLED);
+            leaveApplicationRepository.save(application);
+        }
+    }
+
+    public LeaveApplication approveCancellation(String id) {
+        LeaveApplication application = leaveApplicationRepository.findById(id)
+                .orElseThrow(() -> new LeaveApplicationNotFoundException(id));
+        if (application.getStatus() != LeaveStatus.CANCEL_REQUESTED) {
+            throw new IllegalArgumentException("Leave application is not pending cancellation approval");
         }
         application.setStatus(LeaveStatus.CANCELLED);
-        leaveApplicationRepository.save(application);
+        return leaveApplicationRepository.save(application);
+    }
+
+    public LeaveApplication rejectCancellation(String id) {
+        LeaveApplication application = leaveApplicationRepository.findById(id)
+                .orElseThrow(() -> new LeaveApplicationNotFoundException(id));
+        if (application.getStatus() != LeaveStatus.CANCEL_REQUESTED) {
+            throw new IllegalArgumentException("Leave application is not pending cancellation approval");
+        }
+        application.setStatus(LeaveStatus.APPROVED);
+        return leaveApplicationRepository.save(application);
+    }
+
+    private void notifyApproverOfCancellationRequest(LeaveApplication application) {
+        List<LeaveApprover> activeApprovers = leaveApproverRepository
+                .findActiveApproversForStaff(application.getStaff(), LocalDate.now());
+        for (LeaveApprover leaveApprover : activeApprovers) {
+            Staff approver = leaveApprover.getApprover();
+            if (approver == null) {
+                continue;
+            }
+            emailService.sendCancellationRequestNotification(application, approver.getEmail());
+        }
     }
 
     private List<LocalDate> getWorkingDatesInRange(Set<DayOfWeek> workDays, LocalDate from, LocalDate to) {
