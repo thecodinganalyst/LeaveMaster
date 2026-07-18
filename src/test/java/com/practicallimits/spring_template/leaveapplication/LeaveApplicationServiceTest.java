@@ -79,7 +79,7 @@ class LeaveApplicationServiceTest {
     private Staff approverStaff() {
         return Staff.builder()
                 .id("S002")
-                .name("Bob")
+                .name("Bob Manager")
                 .email("bob@example.com")
                 .joinDate(LocalDate.of(2023, 1, 1))
                 .build();

@@ -224,7 +224,6 @@ public class LeaveApplicationService {
         boolean canApprove = leaveApproverRepository.findActiveApproversForStaff(application.getStaff(), application.getLeaveDate())
                 .stream()
                 .map(LeaveApprover::getApprover)
-                .filter(approver -> approver != null)
                 .anyMatch(approver -> approverId.equals(approver.getId()));
         if (!canApprove) {
             throw new IllegalArgumentException("Leave application is not pending for this approver");
