@@ -784,4 +784,55 @@ class LeaveApplicationServiceTest {
         assertThatThrownBy(() -> leaveApplicationService.getLeaveBalances("nonexistent"))
                 .isInstanceOf(StaffNotFoundException.class);
     }
+
+    @Test
+    void shouldRejectLeaveApplicationAfterTerminationDate() {
+        Staff staff = Staff.builder()
+                .id("S001").name("Alice Smith").email("alice@example.com")
+                .joinDate(LocalDate.of(2024, 1, 1))
+                .termDate(LocalDate.of(2024, 6, 30))
+                .workSchedule(weekdayStaff().getWorkSchedule())
+                .build();
+
+        when(staffRepository.findById("S001")).thenReturn(Optional.of(staff));
+
+        LeaveApplicationRequest request = LeaveApplicationRequest.builder()
+                .staffId("S001")
+                .fromDate(LocalDate.of(2024, 7, 1))
+                .toDate(LocalDate.of(2024, 7, 5))
+                .leaveTypeId("annual")
+                .build();
+
+        assertThatThrownBy(() -> leaveApplicationService.apply(request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Cannot apply for leave after termination date");
+    }
+
+    @Test
+    void shouldAllowLeaveApplicationBeforeTerminationDate() {
+        Staff staff = Staff.builder()
+                .id("S001").name("Alice Smith").email("alice@example.com")
+                .joinDate(LocalDate.of(2024, 1, 1))
+                .termDate(LocalDate.of(2024, 6, 30))
+                .workSchedule(weekdayStaff().getWorkSchedule())
+                .build();
+        LeaveType leaveType = annualLeave();
+
+        when(staffRepository.findById("S001")).thenReturn(Optional.of(staff));
+        when(leaveTypeRepository.findById("annual")).thenReturn(Optional.of(leaveType));
+        when(leaveCalendarService.getCalendarFor(any(LocalDate.class))).thenReturn(Optional.empty());
+        when(leaveApplicationRepository.save(any(LeaveApplication.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        LeaveApplicationRequest request = LeaveApplicationRequest.builder()
+                .staffId("S001")
+                .fromDate(LocalDate.of(2024, 6, 24))
+                .toDate(LocalDate.of(2024, 6, 28))
+                .leaveTypeId("annual")
+                .build();
+
+        List<LeaveApplication> result = leaveApplicationService.apply(request);
+
+        assertThat(result).hasSize(5);
+    }
 }

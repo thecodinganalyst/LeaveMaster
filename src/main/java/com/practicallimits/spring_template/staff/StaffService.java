@@ -2,6 +2,8 @@ package com.practicallimits.spring_template.staff;
 
 import com.practicallimits.spring_template.leavecalendar.LeaveCalendar;
 import com.practicallimits.spring_template.leavecalendar.LeaveCalendarService;
+import com.practicallimits.spring_template.leaveapprover.LeaveApprover;
+import com.practicallimits.spring_template.leaveapprover.LeaveApproverRepository;
 import com.practicallimits.spring_template.leaveentitlement.LeaveEntitlement;
 import com.practicallimits.spring_template.leavetype.LeaveType;
 import com.practicallimits.spring_template.leavetype.LeaveTypeRepository;
@@ -13,8 +15,10 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +29,7 @@ public class StaffService {
     private final StaffRepository staffRepository;
     private final LeaveCalendarService leaveCalendarService;
     private final LeaveTypeRepository leaveTypeRepository;
+    private final LeaveApproverRepository leaveApproverRepository;
 
     public List<Staff> findAll() {
         return staffRepository.findAll();
@@ -62,6 +67,61 @@ public class StaffService {
         staffRepository.findById(id)
                 .orElseThrow(() -> new StaffNotFoundException(id));
         staffRepository.deleteById(id);
+    }
+
+    public TerminationResult terminate(String id, LocalDate termDate) {
+        Staff existing = staffRepository.findById(id)
+                .orElseThrow(() -> new StaffNotFoundException(id));
+
+        if (termDate == null) {
+            throw new IllegalArgumentException("Termination date is required");
+        }
+        if (termDate.isBefore(existing.getJoinDate())) {
+            throw new IllegalArgumentException("Termination date must not be before join date");
+        }
+
+        existing.setTermDate(termDate);
+
+        for (LeaveEntitlement entitlement : existing.getLeaveEntitlements()) {
+            if (entitlement.getTo() != null && entitlement.getTo().isAfter(termDate)) {
+                LocalDate effectiveFrom = (existing.getJoinDate() != null && existing.getJoinDate().isAfter(entitlement.getFrom()))
+                        ? existing.getJoinDate() : entitlement.getFrom();
+                long totalEffectiveDays = ChronoUnit.DAYS.between(effectiveFrom, entitlement.getTo()) + INCLUSIVE_DAY_OFFSET;
+                long workedDays = ChronoUnit.DAYS.between(effectiveFrom, termDate) + INCLUSIVE_DAY_OFFSET;
+                if (workedDays <= 0) {
+                    entitlement.setEntitlement(BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP));
+                } else if (workedDays < totalEffectiveDays) {
+                    entitlement.setEntitlement(entitlement.getEntitlement()
+                            .multiply(BigDecimal.valueOf(workedDays))
+                            .divide(BigDecimal.valueOf(totalEffectiveDays), 2, RoundingMode.HALF_UP));
+                }
+                entitlement.setTo(termDate);
+            }
+        }
+
+        List<LeaveApprover> approverRecords = leaveApproverRepository.findByApprover(existing);
+        for (LeaveApprover record : approverRecords) {
+            if (record.getEffectiveTo() == null || record.getEffectiveTo().isAfter(termDate)) {
+                record.setEffectiveTo(termDate);
+                leaveApproverRepository.save(record);
+            }
+        }
+
+        Set<String> checkedStaffIds = new HashSet<>();
+        List<Staff> staffWithNoApprover = new ArrayList<>();
+        for (LeaveApprover record : approverRecords) {
+            Staff staffMember = record.getStaff();
+            if (!staffMember.getId().equals(id) && checkedStaffIds.add(staffMember.getId())) {
+                List<LeaveApprover> remaining =
+                        leaveApproverRepository.findActiveApproversForStaff(staffMember, termDate.plusDays(1));
+                if (remaining.isEmpty()) {
+                    staffWithNoApprover.add(staffMember);
+                }
+            }
+        }
+
+        Staff saved = staffRepository.save(existing);
+        return new TerminationResult(saved, staffWithNoApprover);
     }
 
     private List<LeaveEntitlement> normalizeLeaveEntitlements(Staff staff, List<LeaveEntitlement> leaveEntitlements) {
@@ -111,28 +171,33 @@ public class StaffService {
         }
 
         LeaveCalendar calendar = leaveCalendar.get();
+        LocalDate periodEnd = (staff.getTermDate() != null && staff.getTermDate().isBefore(calendar.getEnd()))
+                ? staff.getTermDate() : calendar.getEnd();
         leaveEntitlement.setFrom(calendar.getStart());
-        leaveEntitlement.setTo(calendar.getEnd());
+        leaveEntitlement.setTo(periodEnd);
         leaveEntitlement.setEntitlement(prorateEntitlement(leaveEntitlement.getEntitlement(),
-                staff.getJoinDate(), calendar.getStart(), calendar.getEnd()));
+                staff.getJoinDate(), staff.getTermDate(), calendar.getStart(), calendar.getEnd()));
     }
 
-    private BigDecimal prorateEntitlement(BigDecimal fullPeriodEntitlement, LocalDate joinDate, LocalDate from, LocalDate to) {
+    private BigDecimal prorateEntitlement(BigDecimal fullPeriodEntitlement, LocalDate joinDate, LocalDate termDate, LocalDate from, LocalDate to) {
         if (fullPeriodEntitlement == null) {
             throw new IllegalArgumentException("Leave entitlement amount is required");
         }
 
-        if (joinDate.isBefore(from) || joinDate.isEqual(from)) {
+        LocalDate effectiveFrom = (joinDate != null && joinDate.isAfter(from)) ? joinDate : from;
+        LocalDate effectiveTo = (termDate != null && termDate.isBefore(to)) ? termDate : to;
+
+        if (!effectiveFrom.isAfter(from) && effectiveTo.equals(to)) {
             return fullPeriodEntitlement;
         }
 
         long totalPeriodDays = ChronoUnit.DAYS.between(from, to) + INCLUSIVE_DAY_OFFSET;
-        long remainingPeriodDays = ChronoUnit.DAYS.between(joinDate, to) + INCLUSIVE_DAY_OFFSET;
-        if (remainingPeriodDays <= 0) {
+        long effectiveDays = ChronoUnit.DAYS.between(effectiveFrom, effectiveTo) + INCLUSIVE_DAY_OFFSET;
+        if (effectiveDays <= 0) {
             return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
         }
         return fullPeriodEntitlement
-                .multiply(BigDecimal.valueOf(remainingPeriodDays))
+                .multiply(BigDecimal.valueOf(effectiveDays))
                 .divide(BigDecimal.valueOf(totalPeriodDays), 2, RoundingMode.HALF_UP);
     }
 }

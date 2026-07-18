@@ -2,6 +2,8 @@ package com.practicallimits.spring_template.staff;
 
 import com.practicallimits.spring_template.leavecalendar.LeaveCalendar;
 import com.practicallimits.spring_template.leavecalendar.LeaveCalendarService;
+import com.practicallimits.spring_template.leaveapprover.LeaveApprover;
+import com.practicallimits.spring_template.leaveapprover.LeaveApproverRepository;
 import com.practicallimits.spring_template.leaveentitlement.LeaveEntitlement;
 import com.practicallimits.spring_template.leavetype.LeaveType;
 import com.practicallimits.spring_template.leavetype.LeaveTypeRepository;
@@ -33,6 +35,9 @@ class StaffServiceTest {
 
     @Mock
     private LeaveTypeRepository leaveTypeRepository;
+
+    @Mock
+    private LeaveApproverRepository leaveApproverRepository;
 
     @InjectMocks
     private StaffService staffService;
@@ -217,5 +222,152 @@ class StaffServiceTest {
                 .isInstanceOf(StaffNotFoundException.class);
 
         verify(staffRepository, never()).deleteById("nonexistent");
+    }
+
+    @Test
+    void shouldTerminateStaffAndProrateEntitlement() {
+        LeaveEntitlement entitlement = LeaveEntitlement.builder()
+                .leaveType(LeaveType.builder().id("annual").name("Annual").build())
+                .from(LocalDate.of(2024, 1, 1))
+                .to(LocalDate.of(2024, 12, 31))
+                .entitlement(new BigDecimal("20.00"))
+                .build();
+        Staff staff = Staff.builder()
+                .id("S001")
+                .name("Alice Smith")
+                .joinDate(LocalDate.of(2024, 1, 1))
+                .workSchedule(weekdays())
+                .leaveEntitlements(new ArrayList<>(List.of(entitlement)))
+                .build();
+        entitlement.setStaff(staff);
+
+        when(staffRepository.findById("S001")).thenReturn(Optional.of(staff));
+        when(staffRepository.save(any(Staff.class))).thenAnswer(i -> i.getArgument(0));
+        when(leaveApproverRepository.findByApprover(staff)).thenReturn(List.of());
+
+        LocalDate termDate = LocalDate.of(2024, 6, 30);
+        TerminationResult result = staffService.terminate("S001", termDate);
+
+        assertThat(result.getStaff().getTermDate()).isEqualTo(termDate);
+        LeaveEntitlement updated = result.getStaff().getLeaveEntitlements().getFirst();
+        assertThat(updated.getTo()).isEqualTo(termDate);
+        // 20 * 182 days (Jan 1 to Jun 30) / 366 days (Jan 1 to Dec 31 in 2024) = 9.95
+        assertThat(updated.getEntitlement()).isEqualByComparingTo("9.95");
+        assertThat(result.getStaffWithNoApprover()).isEmpty();
+    }
+
+    @Test
+    void shouldTerminateStaffAndProrateEntitlementWithJoinDateProration() {
+        // Staff joined Jun 1 with already-prorated entitlement, then terminated Aug 31
+        LeaveEntitlement entitlement = LeaveEntitlement.builder()
+                .leaveType(LeaveType.builder().id("annual").name("Annual").build())
+                .from(LocalDate.of(2024, 1, 1))
+                .to(LocalDate.of(2024, 12, 31))
+                .entitlement(new BigDecimal("11.75"))
+                .build();
+        Staff staff = Staff.builder()
+                .id("S001")
+                .name("Alice Smith")
+                .joinDate(LocalDate.of(2024, 6, 1))
+                .workSchedule(weekdays())
+                .leaveEntitlements(new ArrayList<>(List.of(entitlement)))
+                .build();
+        entitlement.setStaff(staff);
+
+        when(staffRepository.findById("S001")).thenReturn(Optional.of(staff));
+        when(staffRepository.save(any(Staff.class))).thenAnswer(i -> i.getArgument(0));
+        when(leaveApproverRepository.findByApprover(staff)).thenReturn(List.of());
+
+        LocalDate termDate = LocalDate.of(2024, 8, 31);
+        TerminationResult result = staffService.terminate("S001", termDate);
+
+        assertThat(result.getStaff().getTermDate()).isEqualTo(termDate);
+        LeaveEntitlement updated = result.getStaff().getLeaveEntitlements().getFirst();
+        assertThat(updated.getTo()).isEqualTo(termDate);
+        // effectiveFrom = Jun 1 (joinDate > entitlement.from)
+        // workedDays = Jun 1 to Aug 31 = 92 days; totalEffectiveDays = Jun 1 to Dec 31 = 214 days
+        // terminationProrated = 11.75 * 92 / 214 = 5.05
+        assertThat(updated.getEntitlement()).isEqualByComparingTo("5.05");
+    }
+
+    @Test
+    void shouldTerminateApproverAndReturnStaffWithNoApprover() {
+        Staff approver = Staff.builder().id("S002").name("Bob").joinDate(LocalDate.of(2023, 1, 1)).build();
+        Staff staffMember = Staff.builder().id("S001").name("Alice").joinDate(LocalDate.of(2023, 1, 1)).build();
+
+        LeaveApprover approverRecord = LeaveApprover.builder()
+                .id("la1")
+                .staff(staffMember)
+                .approver(approver)
+                .effectiveFrom(LocalDate.of(2024, 1, 1))
+                .admin(approver)
+                .adminDate(LocalDate.of(2023, 12, 1))
+                .build();
+
+        when(staffRepository.findById("S002")).thenReturn(Optional.of(approver));
+        when(staffRepository.save(any(Staff.class))).thenAnswer(i -> i.getArgument(0));
+        when(leaveApproverRepository.findByApprover(approver)).thenReturn(List.of(approverRecord));
+        when(leaveApproverRepository.findActiveApproversForStaff(eq(staffMember), any(LocalDate.class)))
+                .thenReturn(List.of());
+
+        LocalDate termDate = LocalDate.of(2024, 6, 30);
+        TerminationResult result = staffService.terminate("S002", termDate);
+
+        assertThat(result.getStaff().getTermDate()).isEqualTo(termDate);
+        assertThat(approverRecord.getEffectiveTo()).isEqualTo(termDate);
+        verify(leaveApproverRepository).save(approverRecord);
+        assertThat(result.getStaffWithNoApprover()).containsExactly(staffMember);
+    }
+
+    @Test
+    void shouldNotListStaffWithNoApproverWhenOtherApproverExists() {
+        Staff approver = Staff.builder().id("S002").name("Bob").joinDate(LocalDate.of(2023, 1, 1)).build();
+        Staff staffMember = Staff.builder().id("S001").name("Alice").joinDate(LocalDate.of(2023, 1, 1)).build();
+        Staff otherApprover = Staff.builder().id("S003").name("Carol").joinDate(LocalDate.of(2023, 1, 1)).build();
+
+        LeaveApprover approverRecord = LeaveApprover.builder()
+                .id("la1")
+                .staff(staffMember)
+                .approver(approver)
+                .effectiveFrom(LocalDate.of(2024, 1, 1))
+                .admin(approver)
+                .adminDate(LocalDate.of(2023, 12, 1))
+                .build();
+        LeaveApprover remainingApproverRecord = LeaveApprover.builder()
+                .id("la2")
+                .staff(staffMember)
+                .approver(otherApprover)
+                .effectiveFrom(LocalDate.of(2024, 1, 1))
+                .admin(approver)
+                .adminDate(LocalDate.of(2023, 12, 1))
+                .build();
+
+        when(staffRepository.findById("S002")).thenReturn(Optional.of(approver));
+        when(staffRepository.save(any(Staff.class))).thenAnswer(i -> i.getArgument(0));
+        when(leaveApproverRepository.findByApprover(approver)).thenReturn(List.of(approverRecord));
+        when(leaveApproverRepository.findActiveApproversForStaff(eq(staffMember), any(LocalDate.class)))
+                .thenReturn(List.of(remainingApproverRecord));
+
+        TerminationResult result = staffService.terminate("S002", LocalDate.of(2024, 6, 30));
+
+        assertThat(result.getStaffWithNoApprover()).isEmpty();
+    }
+
+    @Test
+    void shouldThrowWhenTerminationDateBeforeJoinDate() {
+        Staff staff = Staff.builder().id("S001").name("Alice").joinDate(LocalDate.of(2024, 1, 1)).build();
+        when(staffRepository.findById("S001")).thenReturn(Optional.of(staff));
+
+        assertThatThrownBy(() -> staffService.terminate("S001", LocalDate.of(2023, 12, 31)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Termination date must not be before join date");
+    }
+
+    @Test
+    void shouldThrowWhenTerminatingNonExistentStaff() {
+        when(staffRepository.findById("nonexistent")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> staffService.terminate("nonexistent", LocalDate.of(2024, 6, 30)))
+                .isInstanceOf(StaffNotFoundException.class);
     }
 }

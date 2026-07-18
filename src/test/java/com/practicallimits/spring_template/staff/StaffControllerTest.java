@@ -161,4 +161,57 @@ class StaffControllerTest {
         mockMvc.perform(delete("/staff/nonexistent"))
                 .andExpect(status().isNotFound());
     }
+
+    @Test
+    void shouldTerminateStaff() throws Exception {
+        Staff staff = Staff.builder().id("S001").name("Alice Smith").joinDate(LocalDate.of(2023, 1, 1))
+                .termDate(LocalDate.of(2024, 6, 30)).workSchedule(weekdays()).build();
+        TerminationResult result = new TerminationResult(staff, List.of());
+        when(staffService.terminate(eq("S001"), eq(LocalDate.of(2024, 6, 30)))).thenReturn(result);
+
+        mockMvc.perform(put("/staff/S001/terminate")
+                        .param("termDate", "2024-06-30"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.staff.id").value("S001"))
+                .andExpect(jsonPath("$.staff.termDate").value("2024-06-30"))
+                .andExpect(jsonPath("$.staffWithNoApprover").isArray())
+                .andExpect(jsonPath("$.staffWithNoApprover.length()").value(0));
+    }
+
+    @Test
+    void shouldReturnStaffWithNoApproverOnTermination() throws Exception {
+        Staff staff = Staff.builder().id("S002").name("Bob Manager").joinDate(LocalDate.of(2023, 1, 1))
+                .termDate(LocalDate.of(2024, 6, 30)).workSchedule(weekdays()).build();
+        Staff orphan = Staff.builder().id("S001").name("Alice Smith").joinDate(LocalDate.of(2023, 1, 1)).build();
+        TerminationResult result = new TerminationResult(staff, List.of(orphan));
+        when(staffService.terminate(eq("S002"), eq(LocalDate.of(2024, 6, 30)))).thenReturn(result);
+
+        mockMvc.perform(put("/staff/S002/terminate")
+                        .param("termDate", "2024-06-30"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.staff.id").value("S002"))
+                .andExpect(jsonPath("$.staffWithNoApprover.length()").value(1))
+                .andExpect(jsonPath("$.staffWithNoApprover[0].id").value("S001"));
+    }
+
+    @Test
+    void shouldReturn404WhenTerminatingNonExistentStaff() throws Exception {
+        when(staffService.terminate(eq("nonexistent"), any(LocalDate.class)))
+                .thenThrow(new StaffNotFoundException("nonexistent"));
+
+        mockMvc.perform(put("/staff/nonexistent/terminate")
+                        .param("termDate", "2024-06-30"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldReturn400WhenTerminationDateIsInvalid() throws Exception {
+        when(staffService.terminate(eq("S001"), any(LocalDate.class)))
+                .thenThrow(new IllegalArgumentException("Termination date must not be before join date"));
+
+        mockMvc.perform(put("/staff/S001/terminate")
+                        .param("termDate", "2020-01-01"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Termination date must not be before join date"));
+    }
 }
