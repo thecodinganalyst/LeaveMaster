@@ -164,6 +164,36 @@ public class LeaveApplicationService {
         }
     }
 
+    public LeaveApplication approve(String id, String approverId) {
+        LeaveApplication application = leaveApplicationRepository.findById(id)
+                .orElseThrow(() -> new LeaveApplicationNotFoundException(id));
+        validatePendingApproval(application);
+        Staff approver = staffRepository.findById(approverId)
+                .orElseThrow(() -> new StaffNotFoundException(approverId));
+        validateApproverCanAction(application, approverId);
+        application.setStatus(LeaveStatus.APPROVED);
+        application.setApprover(approver);
+        application.setApprovalDate(LocalDate.now());
+        LeaveApplication updated = leaveApplicationRepository.save(application);
+        emailService.sendLeaveApprovalNotification(updated);
+        return updated;
+    }
+
+    public LeaveApplication reject(String id, String approverId) {
+        LeaveApplication application = leaveApplicationRepository.findById(id)
+                .orElseThrow(() -> new LeaveApplicationNotFoundException(id));
+        validatePendingApproval(application);
+        Staff approver = staffRepository.findById(approverId)
+                .orElseThrow(() -> new StaffNotFoundException(approverId));
+        validateApproverCanAction(application, approverId);
+        application.setStatus(LeaveStatus.DENIED);
+        application.setApprover(approver);
+        application.setApprovalDate(LocalDate.now());
+        LeaveApplication updated = leaveApplicationRepository.save(application);
+        emailService.sendLeaveRejectionNotification(updated);
+        return updated;
+    }
+
     public LeaveApplication approveCancellation(String id) {
         LeaveApplication application = leaveApplicationRepository.findById(id)
                 .orElseThrow(() -> new LeaveApplicationNotFoundException(id));
@@ -182,6 +212,23 @@ public class LeaveApplicationService {
         }
         application.setStatus(LeaveStatus.APPROVED);
         return leaveApplicationRepository.save(application);
+    }
+
+    private void validatePendingApproval(LeaveApplication application) {
+        if (application.getStatus() != LeaveStatus.PENDING) {
+            throw new IllegalArgumentException("Leave application is not pending approval");
+        }
+    }
+
+    private void validateApproverCanAction(LeaveApplication application, String approverId) {
+        boolean canApprove = leaveApproverRepository.findActiveApproversForStaff(application.getStaff(), application.getLeaveDate())
+                .stream()
+                .map(LeaveApprover::getApprover)
+                .filter(approver -> approver != null)
+                .anyMatch(approver -> approverId.equals(approver.getId()));
+        if (!canApprove) {
+            throw new IllegalArgumentException("Leave application is not pending for this approver");
+        }
     }
 
     private void notifyApproverOfCancellationRequest(LeaveApplication application) {

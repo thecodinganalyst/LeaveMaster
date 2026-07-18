@@ -60,6 +60,7 @@ class LeaveApplicationServiceTest {
         return Staff.builder()
                 .id("S001")
                 .name("Alice Smith")
+                .email("alice@example.com")
                 .joinDate(LocalDate.of(2023, 1, 1))
                 .workSchedule(List.of(
                         WorkScheduleDay.builder().dayOfWeek(DayOfWeek.MONDAY).daySchedule(DaySchedule.FULL).build(),
@@ -73,6 +74,26 @@ class LeaveApplicationServiceTest {
 
     private LeaveType annualLeave() {
         return LeaveType.builder().id("annual").name("Annual Leave").used(true).build();
+    }
+
+    private Staff approverStaff() {
+        return Staff.builder()
+                .id("S002")
+                .name("Bob")
+                .email("bob@example.com")
+                .joinDate(LocalDate.of(2023, 1, 1))
+                .build();
+    }
+
+    private com.practicallimits.spring_template.leaveapprover.LeaveApprover activeApprover(Staff staff, Staff approver) {
+        return com.practicallimits.spring_template.leaveapprover.LeaveApprover.builder()
+                .id("la1")
+                .staff(staff)
+                .approver(approver)
+                .effectiveFrom(LocalDate.of(2024, 1, 1))
+                .admin(staff)
+                .adminDate(LocalDate.of(2023, 12, 1))
+                .build();
     }
 
     @Test
@@ -444,14 +465,8 @@ class LeaveApplicationServiceTest {
     @Test
     void shouldSetCancelRequestedAndNotifyApproverForPastApprovedLeave() {
         Staff staff = weekdayStaff();
-        Staff approverStaff = Staff.builder().id("S002").name("Bob").email("bob@example.com")
-                .joinDate(LocalDate.of(2023, 1, 1)).build();
-        com.practicallimits.spring_template.leaveapprover.LeaveApprover leaveApprover =
-                com.practicallimits.spring_template.leaveapprover.LeaveApprover.builder()
-                        .id("la1").staff(staff).approver(approverStaff)
-                        .effectiveFrom(LocalDate.of(2024, 1, 1))
-                        .admin(staff).adminDate(LocalDate.of(2023, 12, 1))
-                        .build();
+        Staff approverStaff = approverStaff();
+        com.practicallimits.spring_template.leaveapprover.LeaveApprover leaveApprover = activeApprover(staff, approverStaff);
         LeaveApplication app = LeaveApplication.builder().id("id1").staff(staff)
                 .leaveDate(LocalDate.now().minusDays(1)).leaveType(annualLeave())
                 .leaveDuration(LeaveDuration.FULL).status(LeaveStatus.APPROVED)
@@ -467,6 +482,91 @@ class LeaveApplicationServiceTest {
         assertThat(app.getStatus()).isEqualTo(LeaveStatus.CANCEL_REQUESTED);
         verify(leaveApplicationRepository).save(app);
         verify(emailService).sendCancellationRequestNotification(eq(app), eq("bob@example.com"));
+    }
+
+    @Test
+    void shouldApprovePendingLeaveAndNotifyRequester() {
+        Staff staff = weekdayStaff();
+        Staff approverStaff = approverStaff();
+        LeaveApplication app = LeaveApplication.builder().id("id1").staff(staff)
+                .leaveDate(LocalDate.now().plusDays(1)).leaveType(annualLeave())
+                .leaveDuration(LeaveDuration.FULL).status(LeaveStatus.PENDING)
+                .applicationDate(LocalDate.now()).build();
+        when(leaveApplicationRepository.findById("id1")).thenReturn(Optional.of(app));
+        when(staffRepository.findById("S002")).thenReturn(Optional.of(approverStaff));
+        when(leaveApproverRepository.findActiveApproversForStaff(staff, app.getLeaveDate()))
+                .thenReturn(List.of(activeApprover(staff, approverStaff)));
+        when(leaveApplicationRepository.save(any(LeaveApplication.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        LeaveApplication result = leaveApplicationService.approve("id1", "S002");
+
+        assertThat(result.getStatus()).isEqualTo(LeaveStatus.APPROVED);
+        assertThat(result.getApprover()).isEqualTo(approverStaff);
+        assertThat(result.getApprovalDate()).isEqualTo(LocalDate.now());
+        verify(leaveApplicationRepository).save(app);
+        verify(emailService).sendLeaveApprovalNotification(app);
+    }
+
+    @Test
+    void shouldRejectPendingLeaveAndNotifyRequester() {
+        Staff staff = weekdayStaff();
+        Staff approverStaff = approverStaff();
+        LeaveApplication app = LeaveApplication.builder().id("id1").staff(staff)
+                .leaveDate(LocalDate.now().plusDays(1)).leaveType(annualLeave())
+                .leaveDuration(LeaveDuration.FULL).status(LeaveStatus.PENDING)
+                .applicationDate(LocalDate.now()).build();
+        when(leaveApplicationRepository.findById("id1")).thenReturn(Optional.of(app));
+        when(staffRepository.findById("S002")).thenReturn(Optional.of(approverStaff));
+        when(leaveApproverRepository.findActiveApproversForStaff(staff, app.getLeaveDate()))
+                .thenReturn(List.of(activeApprover(staff, approverStaff)));
+        when(leaveApplicationRepository.save(any(LeaveApplication.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        LeaveApplication result = leaveApplicationService.reject("id1", "S002");
+
+        assertThat(result.getStatus()).isEqualTo(LeaveStatus.DENIED);
+        assertThat(result.getApprover()).isEqualTo(approverStaff);
+        assertThat(result.getApprovalDate()).isEqualTo(LocalDate.now());
+        verify(leaveApplicationRepository).save(app);
+        verify(emailService).sendLeaveRejectionNotification(app);
+    }
+
+    @Test
+    void shouldThrowWhenApprovingNonPendingLeaveApplication() {
+        LeaveApplication app = LeaveApplication.builder().id("id1").staff(weekdayStaff())
+                .leaveDate(LocalDate.now().plusDays(1)).leaveType(annualLeave())
+                .leaveDuration(LeaveDuration.FULL).status(LeaveStatus.DRAFT)
+                .applicationDate(LocalDate.now()).build();
+        when(leaveApplicationRepository.findById("id1")).thenReturn(Optional.of(app));
+
+        assertThatThrownBy(() -> leaveApplicationService.approve("id1", "S002"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Leave application is not pending approval");
+
+        verify(leaveApplicationRepository, never()).save(any(LeaveApplication.class));
+        verify(emailService, never()).sendLeaveApprovalNotification(any(LeaveApplication.class));
+    }
+
+    @Test
+    void shouldThrowWhenApproverIsNotAssignedToPendingLeaveApplication() {
+        Staff staff = weekdayStaff();
+        Staff approverStaff = approverStaff();
+        LeaveApplication app = LeaveApplication.builder().id("id1").staff(staff)
+                .leaveDate(LocalDate.now().plusDays(1)).leaveType(annualLeave())
+                .leaveDuration(LeaveDuration.FULL).status(LeaveStatus.PENDING)
+                .applicationDate(LocalDate.now()).build();
+        when(leaveApplicationRepository.findById("id1")).thenReturn(Optional.of(app));
+        when(staffRepository.findById("S002")).thenReturn(Optional.of(approverStaff));
+        when(leaveApproverRepository.findActiveApproversForStaff(staff, app.getLeaveDate()))
+                .thenReturn(List.of());
+
+        assertThatThrownBy(() -> leaveApplicationService.approve("id1", "S002"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Leave application is not pending for this approver");
+
+        verify(leaveApplicationRepository, never()).save(any(LeaveApplication.class));
+        verify(emailService, never()).sendLeaveApprovalNotification(any(LeaveApplication.class));
     }
 
     @Test

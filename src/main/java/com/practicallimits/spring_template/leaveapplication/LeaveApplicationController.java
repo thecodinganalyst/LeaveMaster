@@ -96,6 +96,30 @@ public class LeaveApplicationController {
         }
     }
 
+    @PutMapping("/{id}/approve")
+    public ResponseEntity<?> approve(@PathVariable String id, @RequestParam String approverId) {
+        try {
+            LeaveApplication updated = leaveApplicationService.approve(id, approverId);
+            return ResponseEntity.ok(updated);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (LeaveApplicationNotFoundException | StaffNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @PutMapping("/{id}/reject")
+    public ResponseEntity<?> reject(@PathVariable String id, @RequestParam String approverId) {
+        try {
+            LeaveApplication updated = leaveApplicationService.reject(id, approverId);
+            return ResponseEntity.ok(updated);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (LeaveApplicationNotFoundException | StaffNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
     @PutMapping("/{id}/approve-cancellation")
     public ResponseEntity<?> approveCancellation(@PathVariable String id) {
         try {
