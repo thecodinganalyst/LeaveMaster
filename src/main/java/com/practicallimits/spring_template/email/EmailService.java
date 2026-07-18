@@ -38,4 +38,38 @@ public class EmailService {
             log.error("Failed to send cancellation request email to {}: {}", approverEmail, e.getMessage());
         }
     }
+
+    public void sendLeaveApprovalNotification(LeaveApplication application) {
+        sendLeaveDecisionNotification(application, "approved", "Leave Application Approved");
+    }
+
+    public void sendLeaveRejectionNotification(LeaveApplication application) {
+        sendLeaveDecisionNotification(application, "rejected", "Leave Application Rejected");
+    }
+
+    private void sendLeaveDecisionNotification(LeaveApplication application, String decision, String subject) {
+        String requesterEmail = application.getStaff().getEmail();
+        if (requesterEmail == null || requesterEmail.isBlank()) {
+            log.warn("Requester email is not set for staff {}; skipping email notification",
+                    application.getStaff().getId());
+            return;
+        }
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(requesterEmail);
+        message.setSubject(subject);
+        message.setText(String.format(
+                "Dear %s,%n%n" +
+                "Your leave application for %s (%s) has been %s.%n%n" +
+                "Leave Application ID: %s",
+                application.getStaff().getName(),
+                application.getLeaveDate(),
+                application.getLeaveDuration(),
+                decision,
+                application.getId()));
+        try {
+            mailSender.send(message);
+        } catch (Exception e) {
+            log.error("Failed to send leave decision email to {}: {}", requesterEmail, e.getMessage());
+        }
+    }
 }

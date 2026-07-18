@@ -247,6 +247,66 @@ class LeaveApplicationControllerTest {
     }
 
     @Test
+    void shouldApprovePendingLeaveApplication() throws Exception {
+        LeaveApplication updated = application("id1", LocalDate.now().plusDays(1));
+        updated.setStatus(LeaveStatus.APPROVED);
+        when(leaveApplicationService.approve("id1", "S002")).thenReturn(updated);
+
+        mockMvc.perform(put("/leave-applications/id1/approve").param("approverId", "S002"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("APPROVED"));
+    }
+
+    @Test
+    void shouldReturn400WhenApprovingLeaveApplicationOnWrongStatus() throws Exception {
+        when(leaveApplicationService.approve("id1", "S002"))
+                .thenThrow(new IllegalArgumentException("Leave application is not pending approval"));
+
+        mockMvc.perform(put("/leave-applications/id1/approve").param("approverId", "S002"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Leave application is not pending approval"));
+    }
+
+    @Test
+    void shouldReturn404WhenApprovingLeaveApplicationForUnknownApprover() throws Exception {
+        when(leaveApplicationService.approve("id1", "unknown"))
+                .thenThrow(new StaffNotFoundException("unknown"));
+
+        mockMvc.perform(put("/leave-applications/id1/approve").param("approverId", "unknown"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldRejectPendingLeaveApplication() throws Exception {
+        LeaveApplication updated = application("id1", LocalDate.now().plusDays(1));
+        updated.setStatus(LeaveStatus.DENIED);
+        when(leaveApplicationService.reject("id1", "S002")).thenReturn(updated);
+
+        mockMvc.perform(put("/leave-applications/id1/reject").param("approverId", "S002"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("DENIED"));
+    }
+
+    @Test
+    void shouldReturn400WhenRejectingLeaveApplicationOnWrongStatus() throws Exception {
+        when(leaveApplicationService.reject("id1", "S002"))
+                .thenThrow(new IllegalArgumentException("Leave application is not pending approval"));
+
+        mockMvc.perform(put("/leave-applications/id1/reject").param("approverId", "S002"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Leave application is not pending approval"));
+    }
+
+    @Test
+    void shouldReturn404WhenRejectingNonExistentLeaveApplication() throws Exception {
+        when(leaveApplicationService.reject("nonexistent", "S002"))
+                .thenThrow(new LeaveApplicationNotFoundException("nonexistent"));
+
+        mockMvc.perform(put("/leave-applications/nonexistent/reject").param("approverId", "S002"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     void shouldApproveCancellationRequest() throws Exception {
         LeaveApplication updated = application("id1", LocalDate.now().minusDays(1));
         updated.setStatus(LeaveStatus.CANCELLED);
