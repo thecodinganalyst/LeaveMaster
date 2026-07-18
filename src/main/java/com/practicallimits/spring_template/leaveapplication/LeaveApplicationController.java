@@ -30,6 +30,16 @@ public class LeaveApplicationController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @GetMapping("/approver/{approverId}")
+    public ResponseEntity<?> getByApproverId(@PathVariable String approverId) {
+        try {
+            List<LeaveApplication> applications = leaveApplicationService.findPendingByApproverId(approverId);
+            return ResponseEntity.ok(applications);
+        } catch (StaffNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
     @GetMapping("/staff/{staffId}")
     public ResponseEntity<?> getByStaffId(
             @PathVariable String staffId,

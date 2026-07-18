@@ -56,6 +56,12 @@ public class LeaveApplicationService {
         return leaveApplicationRepository.findByStaff(staff);
     }
 
+    public List<LeaveApplication> findPendingByApproverId(String approverId) {
+        staffRepository.findById(approverId)
+                .orElseThrow(() -> new StaffNotFoundException(approverId));
+        return leaveApplicationRepository.findPendingByApproverId(approverId);
+    }
+
     public List<LeaveApplication> findByStaffId(String staffId, LocalDate date) {
         LeaveCalendar calendar = leaveCalendarService.getCalendarFor(date)
                 .orElseThrow(() -> new LeaveCalendarNotFoundException(date.toString()));
