@@ -170,7 +170,7 @@ public class LeaveApplicationService {
         validatePendingApproval(application);
         Staff approver = staffRepository.findById(approverId)
                 .orElseThrow(() -> new StaffNotFoundException(approverId));
-        validateApproverCanAction(application, approverId);
+        validateApproverAssignment(application, approverId);
         application.setStatus(LeaveStatus.APPROVED);
         application.setApprover(approver);
         application.setApprovalDate(LocalDate.now());
@@ -185,7 +185,7 @@ public class LeaveApplicationService {
         validatePendingApproval(application);
         Staff approver = staffRepository.findById(approverId)
                 .orElseThrow(() -> new StaffNotFoundException(approverId));
-        validateApproverCanAction(application, approverId);
+        validateApproverAssignment(application, approverId);
         application.setStatus(LeaveStatus.DENIED);
         application.setApprover(approver);
         application.setApprovalDate(LocalDate.now());
@@ -220,12 +220,12 @@ public class LeaveApplicationService {
         }
     }
 
-    private void validateApproverCanAction(LeaveApplication application, String approverId) {
-        boolean canApprove = leaveApproverRepository.findActiveApproversForStaff(application.getStaff(), application.getLeaveDate())
+    private void validateApproverAssignment(LeaveApplication application, String approverId) {
+        boolean isAssignedApprover = leaveApproverRepository.findActiveApproversForStaff(application.getStaff(), application.getLeaveDate())
                 .stream()
                 .map(LeaveApprover::getApprover)
                 .anyMatch(approver -> approverId.equals(approver.getId()));
-        if (!canApprove) {
+        if (!isAssignedApprover) {
             throw new IllegalArgumentException("Leave application is not pending for this approver");
         }
     }
