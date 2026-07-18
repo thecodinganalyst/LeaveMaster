@@ -1,5 +1,6 @@
 package com.practicallimits.spring_template.leaveapplication;
 
+import com.practicallimits.spring_template.leaveapprover.LeaveApprover;
 import com.practicallimits.spring_template.leavetype.LeaveType;
 import com.practicallimits.spring_template.staff.Staff;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -20,9 +21,9 @@ public interface LeaveApplicationRepository extends JpaRepository<LeaveApplicati
             Staff staff, LeaveType leaveType, LocalDate from, LocalDate to, List<LeaveStatus> statuses);
 
     @Query("SELECT la FROM LeaveApplication la " +
-           "JOIN com.practicallimits.spring_template.leaveapprover.LeaveApprover lap ON lap.staff = la.staff " +
+           "JOIN LeaveApprover lap ON lap.staff = la.staff " +
            "WHERE lap.approver.id = :approverId " +
-           "AND la.status = com.practicallimits.spring_template.leaveapplication.LeaveStatus.PENDING " +
+           "AND la.status = LeaveStatus.PENDING " +
            "AND la.leaveDate >= lap.effectiveFrom " +
            "AND (lap.effectiveTo IS NULL OR la.leaveDate <= lap.effectiveTo)")
     List<LeaveApplication> findPendingByApproverId(@Param("approverId") String approverId);
