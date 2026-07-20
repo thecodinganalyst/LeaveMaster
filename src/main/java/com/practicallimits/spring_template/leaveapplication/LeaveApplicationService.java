@@ -105,6 +105,10 @@ public class LeaveApplicationService {
         Staff staff = staffRepository.findById(request.getStaffId())
                 .orElseThrow(() -> new StaffNotFoundException(request.getStaffId()));
 
+        if (staff.getTermDate() != null && request.getToDate().isAfter(staff.getTermDate())) {
+            throw new IllegalArgumentException("Cannot apply for leave after termination date " + staff.getTermDate());
+        }
+
         LeaveType leaveType = leaveTypeRepository.findById(request.getLeaveTypeId())
                 .orElseThrow(() -> new LeaveTypeNotFoundException(request.getLeaveTypeId()));
 

@@ -5,6 +5,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -56,6 +57,18 @@ public class StaffController {
             return ResponseEntity.noContent().build();
         } catch (StaffNotFoundException e) {
             return ResponseEntity.notFound().build();
+        }
+    }
+
+    @PutMapping("/{id}/terminate")
+    public ResponseEntity<?> terminate(@PathVariable String id, @RequestParam LocalDate termDate) {
+        try {
+            TerminationResult result = staffService.terminate(id, termDate);
+            return ResponseEntity.ok(result);
+        } catch (StaffNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 }

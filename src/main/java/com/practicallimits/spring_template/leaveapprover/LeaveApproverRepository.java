@@ -15,4 +15,6 @@ public interface LeaveApproverRepository extends JpaRepository<LeaveApprover, St
 
     @Query("SELECT la FROM LeaveApprover la WHERE la.staff = :staff AND la.effectiveFrom <= :date AND (la.effectiveTo IS NULL OR la.effectiveTo >= :date)")
     List<LeaveApprover> findActiveApproversForStaff(@Param("staff") Staff staff, @Param("date") LocalDate date);
+
+    List<LeaveApprover> findByApprover(Staff approver);
 }
