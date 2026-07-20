@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/leave-approvers")
@@ -37,18 +38,28 @@ public class LeaveApproverController {
     }
 
     @PostMapping
-    public ResponseEntity<LeaveApprover> create(@RequestBody LeaveApprover leaveApprover) {
-        LeaveApprover saved = leaveApproverService.save(leaveApprover);
-        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
+    public ResponseEntity<?> create(@RequestBody LeaveApproverRequest request) {
+        try {
+            LeaveApprover saved = leaveApproverService.create(request);
+            return ResponseEntity.status(HttpStatus.CREATED).body(saved);
+        } catch (StaffNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<LeaveApprover> update(@PathVariable String id, @RequestBody LeaveApprover leaveApprover) {
+    public ResponseEntity<?> update(@PathVariable String id, @RequestBody LeaveApproverRequest request) {
         try {
-            LeaveApprover updated = leaveApproverService.update(id, leaveApprover);
+            LeaveApprover updated = leaveApproverService.update(id, request);
             return ResponseEntity.ok(updated);
         } catch (LeaveApproverNotFoundException e) {
             return ResponseEntity.notFound().build();
+        } catch (StaffNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 

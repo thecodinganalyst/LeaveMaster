@@ -45,6 +45,15 @@ class LeaveApproverServiceTest {
                 .build();
     }
 
+    private LeaveApproverRequest request() {
+        return LeaveApproverRequest.builder()
+                .staffId("S001")
+                .approverId("S002")
+                .effectiveFrom(LocalDate.of(2024, 1, 1))
+                .adminId("S003")
+                .build();
+    }
+
     @Test
     void shouldReturnAllLeaveApprovers() {
         when(leaveApproverRepository.findAll()).thenReturn(List.of(approver("id1"), approver("id2")));
@@ -85,31 +94,74 @@ class LeaveApproverServiceTest {
     }
 
     @Test
-    void shouldSaveLeaveApprover() {
-        LeaveApprover la = approver("id1");
-        when(leaveApproverRepository.save(la)).thenReturn(la);
+    void shouldCreateLeaveApprover() {
+        Staff s1 = staff("S001");
+        Staff s2 = staff("S002");
+        Staff s3 = staff("S003");
+        when(staffRepository.findById("S001")).thenReturn(Optional.of(s1));
+        when(staffRepository.findById("S002")).thenReturn(Optional.of(s2));
+        when(staffRepository.findById("S003")).thenReturn(Optional.of(s3));
+        LeaveApprover saved = approver("id1");
+        when(leaveApproverRepository.save(any(LeaveApprover.class))).thenReturn(saved);
 
-        LeaveApprover result = leaveApproverService.save(la);
+        LeaveApprover result = leaveApproverService.create(request());
 
         assertThat(result.getId()).isEqualTo("id1");
+        assertThat(result.getStaff().getId()).isEqualTo("S001");
+        assertThat(result.getApprover().getId()).isEqualTo("S002");
+    }
+
+    @Test
+    void shouldThrowWhenCreateWithStaffNotFound() {
+        when(staffRepository.findById("S001")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> leaveApproverService.create(request()))
+                .isInstanceOf(StaffNotFoundException.class);
+    }
+
+    @Test
+    void shouldThrowWhenCreateWithMissingEffectiveFrom() {
+        LeaveApproverRequest req = LeaveApproverRequest.builder()
+                .staffId("S001").approverId("S002").adminId("S003")
+                .build();
+
+        assertThatThrownBy(() -> leaveApproverService.create(req))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("effectiveFrom is required");
+    }
+
+    @Test
+    void shouldThrowWhenCreateWithInvalidDates() {
+        LeaveApproverRequest req = LeaveApproverRequest.builder()
+                .staffId("S001").approverId("S002").adminId("S003")
+                .effectiveFrom(LocalDate.of(2024, 6, 1))
+                .effectiveTo(LocalDate.of(2024, 1, 1))
+                .build();
+
+        assertThatThrownBy(() -> leaveApproverService.create(req))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("effectiveTo must be after effectiveFrom");
     }
 
     @Test
     void shouldUpdateLeaveApprover() {
         LeaveApprover existing = approver("id1");
-        LeaveApprover updated = LeaveApprover.builder()
-                .id("id1")
-                .staff(staff("S001"))
-                .approver(staff("S004"))
-                .effectiveFrom(LocalDate.of(2024, 6, 1))
-                .effectiveTo(LocalDate.of(2025, 6, 1))
-                .admin(staff("S003"))
-                .adminDate(LocalDate.of(2024, 5, 1))
-                .build();
+        Staff s1 = staff("S001");
+        Staff s4 = staff("S004");
+        Staff s3 = staff("S003");
         when(leaveApproverRepository.findById("id1")).thenReturn(Optional.of(existing));
+        when(staffRepository.findById("S001")).thenReturn(Optional.of(s1));
+        when(staffRepository.findById("S004")).thenReturn(Optional.of(s4));
+        when(staffRepository.findById("S003")).thenReturn(Optional.of(s3));
         when(leaveApproverRepository.save(existing)).thenReturn(existing);
 
-        LeaveApprover result = leaveApproverService.update("id1", updated);
+        LeaveApproverRequest updateRequest = LeaveApproverRequest.builder()
+                .staffId("S001").approverId("S004").adminId("S003")
+                .effectiveFrom(LocalDate.of(2024, 6, 1))
+                .effectiveTo(LocalDate.of(2025, 6, 1))
+                .build();
+
+        LeaveApprover result = leaveApproverService.update("id1", updateRequest);
 
         assertThat(result.getApprover().getId()).isEqualTo("S004");
         assertThat(result.getEffectiveFrom()).isEqualTo(LocalDate.of(2024, 6, 1));
@@ -120,8 +172,21 @@ class LeaveApproverServiceTest {
     void shouldThrowWhenUpdatingNonExistentLeaveApprover() {
         when(leaveApproverRepository.findById("nonexistent")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> leaveApproverService.update("nonexistent", new LeaveApprover()))
+        assertThatThrownBy(() -> leaveApproverService.update("nonexistent", request()))
                 .isInstanceOf(LeaveApproverNotFoundException.class);
+    }
+
+    @Test
+    void shouldThrowWhenUpdateWithInvalidDates() {
+        LeaveApproverRequest req = LeaveApproverRequest.builder()
+                .staffId("S001").approverId("S002").adminId("S003")
+                .effectiveFrom(LocalDate.of(2024, 6, 1))
+                .effectiveTo(LocalDate.of(2024, 1, 1))
+                .build();
+
+        assertThatThrownBy(() -> leaveApproverService.update("id1", req))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("effectiveTo must be after effectiveFrom");
     }
 
     @Test
@@ -144,3 +209,4 @@ class LeaveApproverServiceTest {
         verify(leaveApproverRepository, never()).deleteById("nonexistent");
     }
 }
+

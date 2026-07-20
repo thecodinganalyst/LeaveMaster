@@ -48,6 +48,15 @@ class LeaveApproverControllerTest {
                 .build();
     }
 
+    private LeaveApproverRequest request() {
+        return LeaveApproverRequest.builder()
+                .staffId("S001")
+                .approverId("S002")
+                .effectiveFrom(LocalDate.of(2024, 1, 1))
+                .adminId("S003")
+                .build();
+    }
+
     @Test
     void shouldReturnAllLeaveApprovers() throws Exception {
         when(leaveApproverService.findAll()).thenReturn(List.of(approver("id1"), approver("id2")));
@@ -98,14 +107,43 @@ class LeaveApproverControllerTest {
     @Test
     void shouldCreateLeaveApprover() throws Exception {
         LeaveApprover la = approver("id1");
-        when(leaveApproverService.save(any(LeaveApprover.class))).thenReturn(la);
+        when(leaveApproverService.create(any(LeaveApproverRequest.class))).thenReturn(la);
 
         mockMvc.perform(post("/leave-approvers")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(la)))
+                        .content(objectMapper.writeValueAsString(request())))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value("id1"))
                 .andExpect(jsonPath("$.staff.id").value("S001"));
+    }
+
+    @Test
+    void shouldReturn404WhenStaffNotFoundOnCreate() throws Exception {
+        when(leaveApproverService.create(any(LeaveApproverRequest.class)))
+                .thenThrow(new StaffNotFoundException("nonexistent"));
+
+        mockMvc.perform(post("/leave-approvers")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request())))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldReturn400WhenInvalidDatesOnCreate() throws Exception {
+        when(leaveApproverService.create(any(LeaveApproverRequest.class)))
+                .thenThrow(new IllegalArgumentException("effectiveTo must be after effectiveFrom"));
+
+        LeaveApproverRequest badRequest = LeaveApproverRequest.builder()
+                .staffId("S001").approverId("S002").adminId("S003")
+                .effectiveFrom(LocalDate.of(2024, 6, 1))
+                .effectiveTo(LocalDate.of(2024, 1, 1))
+                .build();
+
+        mockMvc.perform(post("/leave-approvers")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(badRequest)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("effectiveTo must be after effectiveFrom"));
     }
 
     @Test
@@ -119,11 +157,17 @@ class LeaveApproverControllerTest {
                 .admin(staff("S003"))
                 .adminDate(LocalDate.of(2024, 5, 1))
                 .build();
-        when(leaveApproverService.update(eq("id1"), any(LeaveApprover.class))).thenReturn(updated);
+        when(leaveApproverService.update(eq("id1"), any(LeaveApproverRequest.class))).thenReturn(updated);
+
+        LeaveApproverRequest updateRequest = LeaveApproverRequest.builder()
+                .staffId("S001").approverId("S004").adminId("S003")
+                .effectiveFrom(LocalDate.of(2024, 6, 1))
+                .effectiveTo(LocalDate.of(2025, 6, 1))
+                .build();
 
         mockMvc.perform(put("/leave-approvers/id1")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(updated)))
+                        .content(objectMapper.writeValueAsString(updateRequest)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.approver.id").value("S004"))
                 .andExpect(jsonPath("$.effectiveTo").value("2025-06-01"));
@@ -131,13 +175,42 @@ class LeaveApproverControllerTest {
 
     @Test
     void shouldReturn404WhenUpdatingNonExistentLeaveApprover() throws Exception {
-        when(leaveApproverService.update(eq("nonexistent"), any(LeaveApprover.class)))
+        when(leaveApproverService.update(eq("nonexistent"), any(LeaveApproverRequest.class)))
                 .thenThrow(new LeaveApproverNotFoundException("nonexistent"));
 
         mockMvc.perform(put("/leave-approvers/nonexistent")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new LeaveApprover())))
+                        .content(objectMapper.writeValueAsString(request())))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldReturn404WhenStaffNotFoundOnUpdate() throws Exception {
+        when(leaveApproverService.update(eq("id1"), any(LeaveApproverRequest.class)))
+                .thenThrow(new StaffNotFoundException("nonexistent"));
+
+        mockMvc.perform(put("/leave-approvers/id1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request())))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldReturn400WhenInvalidDatesOnUpdate() throws Exception {
+        when(leaveApproverService.update(eq("id1"), any(LeaveApproverRequest.class)))
+                .thenThrow(new IllegalArgumentException("effectiveTo must be after effectiveFrom"));
+
+        LeaveApproverRequest badRequest = LeaveApproverRequest.builder()
+                .staffId("S001").approverId("S002").adminId("S003")
+                .effectiveFrom(LocalDate.of(2024, 6, 1))
+                .effectiveTo(LocalDate.of(2024, 1, 1))
+                .build();
+
+        mockMvc.perform(put("/leave-approvers/id1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(badRequest)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("effectiveTo must be after effectiveFrom"));
     }
 
     @Test
@@ -156,3 +229,4 @@ class LeaveApproverControllerTest {
                 .andExpect(status().isNotFound());
     }
 }
+
