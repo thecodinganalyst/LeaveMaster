@@ -32,49 +32,29 @@ public class LeaveApproverService {
     }
 
     public LeaveApprover create(LeaveApproverRequest request) {
-        if (request.getEffectiveFrom() == null) {
-            throw new IllegalArgumentException("effectiveFrom is required");
-        }
-        if (request.getEffectiveTo() != null && !request.getEffectiveTo().isAfter(request.getEffectiveFrom())) {
-            throw new IllegalArgumentException("effectiveTo must be after effectiveFrom");
-        }
-        Staff staff = staffRepository.findById(request.getStaffId())
-                .orElseThrow(() -> new StaffNotFoundException(request.getStaffId()));
-        Staff approver = staffRepository.findById(request.getApproverId())
-                .orElseThrow(() -> new StaffNotFoundException(request.getApproverId()));
-        Staff admin = staffRepository.findById(request.getAdminId())
-                .orElseThrow(() -> new StaffNotFoundException(request.getAdminId()));
+        validateDates(request);
+        Staff[] staffEntities = resolveStaff(request);
         LeaveApprover leaveApprover = LeaveApprover.builder()
-                .staff(staff)
-                .approver(approver)
+                .staff(staffEntities[0])
+                .approver(staffEntities[1])
                 .effectiveFrom(request.getEffectiveFrom())
                 .effectiveTo(request.getEffectiveTo())
-                .admin(admin)
+                .admin(staffEntities[2])
                 .adminDate(LocalDate.now())
                 .build();
         return leaveApproverRepository.save(leaveApprover);
     }
 
     public LeaveApprover update(String id, LeaveApproverRequest request) {
-        if (request.getEffectiveFrom() == null) {
-            throw new IllegalArgumentException("effectiveFrom is required");
-        }
-        if (request.getEffectiveTo() != null && !request.getEffectiveTo().isAfter(request.getEffectiveFrom())) {
-            throw new IllegalArgumentException("effectiveTo must be after effectiveFrom");
-        }
+        validateDates(request);
         LeaveApprover existing = leaveApproverRepository.findById(id)
                 .orElseThrow(() -> new LeaveApproverNotFoundException(id));
-        Staff staff = staffRepository.findById(request.getStaffId())
-                .orElseThrow(() -> new StaffNotFoundException(request.getStaffId()));
-        Staff approver = staffRepository.findById(request.getApproverId())
-                .orElseThrow(() -> new StaffNotFoundException(request.getApproverId()));
-        Staff admin = staffRepository.findById(request.getAdminId())
-                .orElseThrow(() -> new StaffNotFoundException(request.getAdminId()));
-        existing.setStaff(staff);
-        existing.setApprover(approver);
+        Staff[] staffEntities = resolveStaff(request);
+        existing.setStaff(staffEntities[0]);
+        existing.setApprover(staffEntities[1]);
         existing.setEffectiveFrom(request.getEffectiveFrom());
         existing.setEffectiveTo(request.getEffectiveTo());
-        existing.setAdmin(admin);
+        existing.setAdmin(staffEntities[2]);
         existing.setAdminDate(LocalDate.now());
         return leaveApproverRepository.save(existing);
     }
@@ -83,5 +63,24 @@ public class LeaveApproverService {
         leaveApproverRepository.findById(id)
                 .orElseThrow(() -> new LeaveApproverNotFoundException(id));
         leaveApproverRepository.deleteById(id);
+    }
+
+    private void validateDates(LeaveApproverRequest request) {
+        if (request.getEffectiveFrom() == null) {
+            throw new IllegalArgumentException("effectiveFrom is required");
+        }
+        if (request.getEffectiveTo() != null && !request.getEffectiveTo().isAfter(request.getEffectiveFrom())) {
+            throw new IllegalArgumentException("effectiveTo must be after effectiveFrom");
+        }
+    }
+
+    private Staff[] resolveStaff(LeaveApproverRequest request) {
+        Staff staff = staffRepository.findById(request.getStaffId())
+                .orElseThrow(() -> new StaffNotFoundException(request.getStaffId()));
+        Staff approver = staffRepository.findById(request.getApproverId())
+                .orElseThrow(() -> new StaffNotFoundException(request.getApproverId()));
+        Staff admin = staffRepository.findById(request.getAdminId())
+                .orElseThrow(() -> new StaffNotFoundException(request.getAdminId()));
+        return new Staff[]{staff, approver, admin};
     }
 }
