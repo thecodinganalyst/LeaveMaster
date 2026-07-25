@@ -390,4 +390,41 @@ class LeaveApplicationControllerTest {
         mockMvc.perform(get("/leave-applications/staff/nonexistent/balance"))
                 .andExpect(status().isNotFound());
     }
+
+    @Test
+    void shouldReturnPendingLeaveApplicationsByApproverId() throws Exception {
+        LeaveApplication app = LeaveApplication.builder()
+                .id("LA001")
+                .staff(staff())
+                .leaveDate(LocalDate.of(2026, 8, 1))
+                .leaveType(LeaveType.builder().id("annual").name("Annual Leave").used(true).build())
+                .leaveDuration(com.practical.leavemaster.leaveapplication.LeaveDuration.FULL)
+                .status(com.practical.leavemaster.leaveapplication.LeaveStatus.PENDING)
+                .applicationDate(LocalDate.of(2026, 7, 1))
+                .build();
+        when(leaveApplicationService.findPendingByApproverId("S002")).thenReturn(List.of(app));
+
+        mockMvc.perform(get("/leave-applications/approver/S002"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].id").value("LA001"));
+    }
+
+    @Test
+    void shouldReturn404WhenApproverNotFoundForPendingApplications() throws Exception {
+        when(leaveApplicationService.findPendingByApproverId("nonexistent"))
+                .thenThrow(new StaffNotFoundException("nonexistent"));
+
+        mockMvc.perform(get("/leave-applications/approver/nonexistent"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldReturn400WhenDeletingLeaveApplicationWithBadRequest() throws Exception {
+        doThrow(new IllegalArgumentException("Cannot delete")).when(leaveApplicationService).delete("id1");
+
+        mockMvc.perform(delete("/leave-applications/id1"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Cannot delete"));
+    }
 }

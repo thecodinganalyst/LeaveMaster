@@ -835,4 +835,117 @@ class LeaveApplicationServiceTest {
 
         assertThat(result).hasSize(5);
     }
+
+    @Test
+    void shouldReturnLeaveApplicationsByStaffId() {
+        Staff staff = weekdayStaff();
+        List<LeaveApplication> applications = List.of(
+                LeaveApplication.builder().id("LA001").staff(staff).leaveDate(LocalDate.of(2026, 8, 1))
+                        .leaveType(annualLeave()).leaveDuration(LeaveDuration.FULL)
+                        .status(LeaveStatus.PENDING).applicationDate(LocalDate.of(2026, 7, 1)).build()
+        );
+
+        when(staffRepository.findById("S001")).thenReturn(Optional.of(staff));
+        when(leaveApplicationRepository.findByStaff(staff)).thenReturn(applications);
+
+        List<LeaveApplication> result = leaveApplicationService.findByStaffId("S001");
+
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().getId()).isEqualTo("LA001");
+    }
+
+    @Test
+    void shouldThrowWhenStaffNotFoundForFindByStaffId() {
+        when(staffRepository.findById("nonexistent")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> leaveApplicationService.findByStaffId("nonexistent"))
+                .isInstanceOf(StaffNotFoundException.class);
+    }
+
+    @Test
+    void shouldReturnPendingLeaveApplicationsByApproverId() {
+        Staff approver = approverStaff();
+        List<LeaveApplication> applications = List.of(
+                LeaveApplication.builder().id("LA001").staff(weekdayStaff()).leaveDate(LocalDate.of(2026, 8, 1))
+                        .leaveType(annualLeave()).leaveDuration(LeaveDuration.FULL)
+                        .status(LeaveStatus.PENDING).applicationDate(LocalDate.of(2026, 7, 1)).build()
+        );
+
+        when(staffRepository.findById("S002")).thenReturn(Optional.of(approver));
+        when(leaveApplicationRepository.findPendingByApproverId("S002")).thenReturn(applications);
+
+        List<LeaveApplication> result = leaveApplicationService.findPendingByApproverId("S002");
+
+        assertThat(result).hasSize(1);
+    }
+
+    @Test
+    void shouldThrowWhenApproverNotFoundForPendingLeaveApplications() {
+        when(staffRepository.findById("nonexistent")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> leaveApplicationService.findPendingByApproverId("nonexistent"))
+                .isInstanceOf(StaffNotFoundException.class);
+    }
+
+    @Test
+    void shouldThrowWhenApproverNotFoundForApprove() {
+        Staff staff = weekdayStaff();
+        LeaveApplication application = LeaveApplication.builder()
+                .id("id1").staff(staff).leaveDate(LocalDate.of(2026, 8, 1))
+                .leaveType(annualLeave()).leaveDuration(LeaveDuration.FULL)
+                .status(LeaveStatus.PENDING).applicationDate(LocalDate.of(2026, 7, 1)).build();
+
+        when(leaveApplicationRepository.findById("id1")).thenReturn(Optional.of(application));
+        when(staffRepository.findById("nonexistent")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> leaveApplicationService.approve("id1", "nonexistent"))
+                .isInstanceOf(StaffNotFoundException.class);
+    }
+
+    @Test
+    void shouldThrowWhenApplicationNotFoundForApprove() {
+        when(leaveApplicationRepository.findById("nonexistent")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> leaveApplicationService.approve("nonexistent", "S002"))
+                .isInstanceOf(LeaveApplicationNotFoundException.class);
+    }
+
+    @Test
+    void shouldThrowWhenApproverNotFoundForReject() {
+        Staff staff = weekdayStaff();
+        LeaveApplication application = LeaveApplication.builder()
+                .id("id1").staff(staff).leaveDate(LocalDate.of(2026, 8, 1))
+                .leaveType(annualLeave()).leaveDuration(LeaveDuration.FULL)
+                .status(LeaveStatus.PENDING).applicationDate(LocalDate.of(2026, 7, 1)).build();
+
+        when(leaveApplicationRepository.findById("id1")).thenReturn(Optional.of(application));
+        when(staffRepository.findById("nonexistent")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> leaveApplicationService.reject("id1", "nonexistent"))
+                .isInstanceOf(StaffNotFoundException.class);
+    }
+
+    @Test
+    void shouldThrowWhenApplicationNotFoundForReject() {
+        when(leaveApplicationRepository.findById("nonexistent")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> leaveApplicationService.reject("nonexistent", "S002"))
+                .isInstanceOf(LeaveApplicationNotFoundException.class);
+    }
+
+    @Test
+    void shouldThrowWhenApplicationNotFoundForApproveCancellation() {
+        when(leaveApplicationRepository.findById("nonexistent")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> leaveApplicationService.approveCancellation("nonexistent"))
+                .isInstanceOf(LeaveApplicationNotFoundException.class);
+    }
+
+    @Test
+    void shouldThrowWhenApplicationNotFoundForRejectCancellation() {
+        when(leaveApplicationRepository.findById("nonexistent")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> leaveApplicationService.rejectCancellation("nonexistent"))
+                .isInstanceOf(LeaveApplicationNotFoundException.class);
+    }
 }
