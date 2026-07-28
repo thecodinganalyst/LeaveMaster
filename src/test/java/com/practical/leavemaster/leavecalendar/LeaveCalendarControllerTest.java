@@ -96,4 +96,48 @@ class LeaveCalendarControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("Leave calendar start date must be on or before end date"));
     }
+
+    @Test
+    void shouldReturnAllLeaveCalendars() throws Exception {
+        List<LeaveCalendar> calendars = List.of(
+                LeaveCalendar.builder()
+                        .id("fy2025")
+                        .start(LocalDate.of(2025, 4, 1))
+                        .end(LocalDate.of(2026, 3, 31))
+                        .publicHolidays(List.of())
+                        .build(),
+                LeaveCalendar.builder()
+                        .id("fy2026")
+                        .start(LocalDate.of(2026, 4, 1))
+                        .end(LocalDate.of(2027, 3, 31))
+                        .publicHolidays(List.of())
+                        .build()
+        );
+
+        when(leaveCalendarService.findAll()).thenReturn(calendars);
+
+        mockMvc.perform(get("/leave-calendars"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].id").value("fy2025"))
+                .andExpect(jsonPath("$[1].id").value("fy2026"));
+    }
+
+    @Test
+    void shouldReturn409WhenCreatingConflictingLeaveCalendar() throws Exception {
+        LeaveCalendar leaveCalendar = LeaveCalendar.builder()
+                .start(LocalDate.of(2026, 4, 1))
+                .end(LocalDate.of(2027, 3, 31))
+                .publicHolidays(List.of())
+                .build();
+
+        when(leaveCalendarService.create(any(LeaveCalendar.class)))
+                .thenThrow(new LeaveCalendarConflictException("Leave calendar overlaps an existing calendar"));
+
+        mockMvc.perform(post("/leave-calendars")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(leaveCalendar)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("Leave calendar overlaps an existing calendar"));
+    }
 }

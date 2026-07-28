@@ -370,4 +370,139 @@ class StaffServiceTest {
         assertThatThrownBy(() -> staffService.terminate("nonexistent", LocalDate.of(2024, 6, 30)))
                 .isInstanceOf(StaffNotFoundException.class);
     }
+
+    @Test
+    void shouldThrowWhenTerminationDateIsNull() {
+        Staff staff = Staff.builder().id("S001").name("Alice").joinDate(LocalDate.of(2024, 1, 1)).build();
+        when(staffRepository.findById("S001")).thenReturn(Optional.of(staff));
+
+        assertThatThrownBy(() -> staffService.terminate("S001", null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Termination date is required");
+    }
+
+    @Test
+    void shouldThrowWhenLeaveEntitlementHasNoLeaveType() {
+        Staff staff = Staff.builder()
+                .id("S001")
+                .name("Alice Smith")
+                .joinDate(LocalDate.of(2023, 1, 1))
+                .leaveEntitlements(List.of(LeaveEntitlement.builder()
+                        .entitlement(new BigDecimal("20.00"))
+                        .build()))
+                .build();
+
+        assertThatThrownBy(() -> staffService.save(staff))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Leave entitlement must specify a leave type ID");
+    }
+
+    @Test
+    void shouldThrowWhenLeaveTypeNotFoundDuringSave() {
+        Staff staff = Staff.builder()
+                .id("S001")
+                .name("Alice Smith")
+                .joinDate(LocalDate.of(2023, 1, 1))
+                .leaveEntitlements(List.of(LeaveEntitlement.builder()
+                        .leaveType(LeaveType.builder().id("nonexistent").build())
+                        .entitlement(new BigDecimal("20.00"))
+                        .build()))
+                .build();
+
+        when(leaveTypeRepository.findById("nonexistent")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> staffService.save(staff))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Leave type not found");
+    }
+
+    @Test
+    void shouldThrowWhenLeaveEntitlementFromIsAfterTo() {
+        LeaveType annual = LeaveType.builder().id("annual").name("Annual").used(true).build();
+        Staff staff = Staff.builder()
+                .id("S001")
+                .name("Alice Smith")
+                .joinDate(LocalDate.of(2023, 1, 1))
+                .leaveEntitlements(List.of(LeaveEntitlement.builder()
+                        .leaveType(LeaveType.builder().id("annual").build())
+                        .from(LocalDate.of(2023, 12, 31))
+                        .to(LocalDate.of(2023, 1, 1))
+                        .entitlement(new BigDecimal("20.00"))
+                        .build()))
+                .build();
+
+        when(leaveTypeRepository.findById("annual")).thenReturn(Optional.of(annual));
+
+        assertThatThrownBy(() -> staffService.save(staff))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("from must be on or before to");
+    }
+
+    @Test
+    void shouldThrowWhenOnlyOneOfFromOrToIsProvided() {
+        LeaveType annual = LeaveType.builder().id("annual").name("Annual").used(true).build();
+        Staff staff = Staff.builder()
+                .id("S001")
+                .name("Alice Smith")
+                .joinDate(LocalDate.of(2023, 1, 1))
+                .leaveEntitlements(List.of(LeaveEntitlement.builder()
+                        .leaveType(LeaveType.builder().id("annual").build())
+                        .from(LocalDate.of(2023, 1, 1))
+                        .entitlement(new BigDecimal("20.00"))
+                        .build()))
+                .build();
+
+        when(leaveTypeRepository.findById("annual")).thenReturn(Optional.of(annual));
+
+        assertThatThrownBy(() -> staffService.save(staff))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("requires both from and to");
+    }
+
+    @Test
+    void shouldThrowWhenNoLeaveCalendarFoundForJoinDate() {
+        LeaveType annual = LeaveType.builder().id("annual").name("Annual").used(true).build();
+        Staff staff = Staff.builder()
+                .id("S001")
+                .name("Alice Smith")
+                .joinDate(LocalDate.of(2023, 1, 1))
+                .leaveEntitlements(List.of(LeaveEntitlement.builder()
+                        .leaveType(LeaveType.builder().id("annual").build())
+                        .entitlement(new BigDecimal("20.00"))
+                        .build()))
+                .build();
+
+        when(leaveTypeRepository.findById("annual")).thenReturn(Optional.of(annual));
+        when(leaveCalendarService.getCalendarFor(LocalDate.of(2023, 1, 1))).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> staffService.save(staff))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("No leave calendar found for join date");
+    }
+
+    @Test
+    void shouldThrowWhenEntitlementAmountIsNull() {
+        LeaveType annual = LeaveType.builder().id("annual").name("Annual").used(true).build();
+        LeaveCalendar leaveCalendar = LeaveCalendar.builder()
+                .id("2023")
+                .start(LocalDate.of(2023, 1, 1))
+                .end(LocalDate.of(2023, 12, 31))
+                .build();
+        Staff staff = Staff.builder()
+                .id("S001")
+                .name("Alice Smith")
+                .joinDate(LocalDate.of(2023, 7, 1))
+                .leaveEntitlements(List.of(LeaveEntitlement.builder()
+                        .leaveType(LeaveType.builder().id("annual").build())
+                        .entitlement(null)
+                        .build()))
+                .build();
+
+        when(leaveTypeRepository.findById("annual")).thenReturn(Optional.of(annual));
+        when(leaveCalendarService.getCalendarFor(LocalDate.of(2023, 7, 1))).thenReturn(Optional.of(leaveCalendar));
+
+        assertThatThrownBy(() -> staffService.save(staff))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Leave entitlement amount is required");
+    }
 }
