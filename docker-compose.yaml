@@ -2,11 +2,11 @@ services:
   postgres:
     image: postgres:17-alpine
     environment:
-      POSTGRES_DB: leavemaster
-      POSTGRES_USER: leavemaster
-      POSTGRES_PASSWORD: leavemaster
+      POSTGRES_DB: ${POSTGRES_DB:-leavemaster}
+      POSTGRES_USER: ${POSTGRES_USER:-leavemaster}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U leavemaster -d leavemaster"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-leavemaster} -d ${POSTGRES_DB:-leavemaster}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -18,9 +18,9 @@ services:
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
-      POSTGRES_DB: leavemaster
-      POSTGRES_USER: leavemaster
-      POSTGRES_PASSWORD: leavemaster
+      POSTGRES_DB: ${POSTGRES_DB:-leavemaster}
+      POSTGRES_USER: ${POSTGRES_USER:-leavemaster}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
     depends_on:
       postgres:
         condition: service_healthy

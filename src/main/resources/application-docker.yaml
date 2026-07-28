@@ -3,7 +3,7 @@ spring:
     url: jdbc:postgresql://${POSTGRES_HOST:postgres}:${POSTGRES_PORT:5432}/${POSTGRES_DB:leavemaster}
     driver-class-name: org.postgresql.Driver
     username: ${POSTGRES_USER:leavemaster}
-    password: ${POSTGRES_PASSWORD:leavemaster}
+    password: ${POSTGRES_PASSWORD}
   h2:
     console:
       enabled: false
