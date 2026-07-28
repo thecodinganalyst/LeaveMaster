@@ -59,13 +59,15 @@ CREATE TABLE leave_application (
 CREATE TABLE public_holiday (
     holiday_date DATE NOT NULL,
     leave_calendar_id VARCHAR(255) NOT NULL,
-    holiday_name VARCHAR(255) NOT NULL
+    holiday_name VARCHAR(255) NOT NULL,
+    PRIMARY KEY (leave_calendar_id, holiday_date, holiday_name)
 );
 
 CREATE TABLE work_schedule_day (
     day_of_week VARCHAR(255) NOT NULL,
     day_schedule VARCHAR(255) NOT NULL,
-    staff_id VARCHAR(255) NOT NULL
+    staff_id VARCHAR(255) NOT NULL,
+    PRIMARY KEY (staff_id, day_of_week)
 );
 
 ALTER TABLE IF EXISTS leave_approver
