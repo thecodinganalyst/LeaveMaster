@@ -1,0 +1,28 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: leavemaster
+      POSTGRES_USER: leavemaster
+      POSTGRES_PASSWORD: leavemaster
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U leavemaster -d leavemaster"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5432:5432"
+
+  app:
+    build: .
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: leavemaster
+      POSTGRES_USER: leavemaster
+      POSTGRES_PASSWORD: leavemaster
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
