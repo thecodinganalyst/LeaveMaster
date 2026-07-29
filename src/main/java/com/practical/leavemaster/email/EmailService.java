@@ -1,18 +1,12 @@
 package com.practical.leavemaster.email;
 
 import com.practical.leavemaster.leaveapplication.LeaveApplication;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class EmailService {
-
-    private final JavaMailSender mailSender;
 
     public void sendCancellationRequestNotification(LeaveApplication application, String approverEmail) {
         if (approverEmail == null || approverEmail.isBlank()) {
@@ -20,23 +14,15 @@ public class EmailService {
                     application.getStaff().getId());
             return;
         }
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(approverEmail);
-        message.setSubject("Leave Cancellation Request - " + application.getStaff().getName());
-        message.setText(String.format(
-                "Dear Approver,%n%n" +
-                "%s has requested cancellation of their approved leave on %s (%s).%n%n" +
-                "Please review and approve or reject this cancellation request.%n%n" +
-                "Leave Application ID: %s",
-                application.getStaff().getName(),
-                application.getLeaveDate(),
-                application.getLeaveDuration(),
-                application.getId()));
-        try {
-            mailSender.send(message);
-        } catch (Exception e) {
-            log.error("Failed to send cancellation request email to {}: {}", approverEmail, e.getMessage());
-        }
+        logPlaceholderNotification(
+                approverEmail,
+                "Leave Cancellation Request - " + application.getStaff().getName(),
+                String.format(
+                        "%s requested cancellation of leave application %s for %s (%s)",
+                        application.getStaff().getName(),
+                        application.getId(),
+                        application.getLeaveDate(),
+                        application.getLeaveDuration()));
     }
 
     public void sendLeaveApprovalNotification(LeaveApplication application) {
@@ -54,22 +40,19 @@ public class EmailService {
                     application.getStaff().getId());
             return;
         }
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(requesterEmail);
-        message.setSubject(subject);
-        message.setText(String.format(
-                "Dear %s,%n%n" +
-                "Your leave application for %s (%s) has been %s.%n%n" +
-                "Leave Application ID: %s",
-                application.getStaff().getName(),
-                application.getLeaveDate(),
-                application.getLeaveDuration(),
-                decision,
-                application.getId()));
-        try {
-            mailSender.send(message);
-        } catch (Exception e) {
-            log.error("Failed to send leave decision email to {}: {}", requesterEmail, e.getMessage());
-        }
+        logPlaceholderNotification(
+                requesterEmail,
+                subject,
+                String.format(
+                        "Leave application %s for %s (%s) was %s",
+                        application.getId(),
+                        application.getLeaveDate(),
+                        application.getLeaveDuration(),
+                        decision));
+    }
+
+    private void logPlaceholderNotification(String recipient, String subject, String message) {
+        log.info("Email placeholder invoked for recipient {} with subject '{}': {}",
+                recipient, subject, message);
     }
 }
