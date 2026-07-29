@@ -27,7 +27,6 @@ class EmailServiceTest {
         logger = (Logger) LoggerFactory.getLogger(EmailService.class);
         appender = new ListAppender<>();
         appender.start();
-        appender.list.clear();
         logger.addAppender(appender);
     }
 
