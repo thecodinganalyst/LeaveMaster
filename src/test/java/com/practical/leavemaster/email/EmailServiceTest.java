@@ -19,13 +19,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 class EmailServiceTest {
 
     private final EmailService emailService = new EmailService();
-    private final Logger logger = (Logger) LoggerFactory.getLogger(EmailService.class);
+    private Logger logger;
     private ListAppender<ILoggingEvent> appender;
 
     @BeforeEach
     void setUp() {
+        logger = (Logger) LoggerFactory.getLogger(EmailService.class);
         appender = new ListAppender<>();
         appender.start();
+        appender.list.clear();
         logger.addAppender(appender);
     }
 
