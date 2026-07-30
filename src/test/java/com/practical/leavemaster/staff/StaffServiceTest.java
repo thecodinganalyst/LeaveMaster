@@ -7,6 +7,7 @@ import com.practical.leavemaster.leaveapprover.LeaveApproverRepository;
 import com.practical.leavemaster.leaveentitlement.LeaveEntitlement;
 import com.practical.leavemaster.leavetype.LeaveType;
 import com.practical.leavemaster.leavetype.LeaveTypeRepository;
+import com.practical.leavemaster.user.AppUserService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -38,6 +39,9 @@ class StaffServiceTest {
 
     @Mock
     private LeaveApproverRepository leaveApproverRepository;
+
+    @Mock
+    private AppUserService appUserService;
 
     @InjectMocks
     private StaffService staffService;

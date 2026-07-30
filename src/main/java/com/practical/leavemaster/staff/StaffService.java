@@ -7,6 +7,7 @@ import com.practical.leavemaster.leaveapprover.LeaveApproverRepository;
 import com.practical.leavemaster.leaveentitlement.LeaveEntitlement;
 import com.practical.leavemaster.leavetype.LeaveType;
 import com.practical.leavemaster.leavetype.LeaveTypeRepository;
+import com.practical.leavemaster.user.AppUserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -30,6 +31,7 @@ public class StaffService {
     private final LeaveCalendarService leaveCalendarService;
     private final LeaveTypeRepository leaveTypeRepository;
     private final LeaveApproverRepository leaveApproverRepository;
+    private final AppUserService appUserService;
 
     public List<Staff> findAll() {
         return staffRepository.findAll();
@@ -43,7 +45,12 @@ public class StaffService {
         if (staff.getLeaveEntitlements() != null) {
             staff.setLeaveEntitlements(normalizeLeaveEntitlements(staff, staff.getLeaveEntitlements()));
         }
-        return staffRepository.save(staff);
+        Staff saved = staffRepository.save(staff);
+        String loginName = (staff.getLoginName() != null && !staff.getLoginName().isBlank())
+                ? staff.getLoginName() : staff.getId();
+        boolean active = staff.getJoinDate() != null && !staff.getJoinDate().isAfter(LocalDate.now());
+        appUserService.createForStaff(saved.getId(), loginName, loginName, active);
+        return saved;
     }
 
     public Staff update(String id, Staff updated) {
@@ -121,6 +128,9 @@ public class StaffService {
         }
 
         Staff saved = staffRepository.save(existing);
+        if (!termDate.isAfter(LocalDate.now())) {
+            appUserService.deactivateByStaffId(id);
+        }
         return new TerminationResult(saved, staffWithNoApprover);
     }
 
