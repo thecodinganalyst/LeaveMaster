@@ -4,29 +4,36 @@ import com.practical.leavemaster.leaveapplication.LeaveApplication;
 import com.practical.leavemaster.leaveapplication.LeaveDuration;
 import com.practical.leavemaster.leaveapplication.LeaveStatus;
 import com.practical.leavemaster.staff.Staff;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
+import org.slf4j.LoggerFactory;
 
 import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
 class EmailServiceTest {
 
-    @Mock
-    private JavaMailSender mailSender;
+    private final EmailService emailService = new EmailService();
+    private Logger logger;
+    private ListAppender<ILoggingEvent> appender;
 
-    @InjectMocks
-    private EmailService emailService;
+    @BeforeEach
+    void setUp() {
+        logger = (Logger) LoggerFactory.getLogger(EmailService.class);
+        appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+    }
+
+    @AfterEach
+    void tearDown() {
+        logger.detachAppender(appender);
+    }
 
     private Staff staffWithEmail(String id, String name, String email) {
         return Staff.builder()
@@ -49,19 +56,20 @@ class EmailServiceTest {
     }
 
     @Test
-    void shouldSendCancellationRequestNotification() {
+    void shouldLogPlaceholderForCancellationRequestNotification() {
         Staff staff = staffWithEmail("S001", "Alice Smith", "alice@example.com");
         LeaveApplication app = application(staff);
-        ArgumentCaptor<SimpleMailMessage> captor = ArgumentCaptor.forClass(SimpleMailMessage.class);
 
         emailService.sendCancellationRequestNotification(app, "approver@example.com");
 
-        verify(mailSender).send(captor.capture());
-        SimpleMailMessage message = captor.getValue();
-        assertThat(message.getTo()).containsExactly("approver@example.com");
-        assertThat(message.getSubject()).contains("Alice Smith");
-        assertThat(message.getText()).contains("Alice Smith");
-        assertThat(message.getText()).contains("LA001");
+        assertThat(appender.list)
+                .extracting(ILoggingEvent::getFormattedMessage)
+                .anySatisfy(message -> {
+                    assertThat(message).contains("Email placeholder invoked");
+                    assertThat(message).contains("approver@example.com");
+                    assertThat(message).contains("Alice Smith");
+                    assertThat(message).contains("LA001");
+                });
     }
 
     @Test
@@ -71,7 +79,12 @@ class EmailServiceTest {
 
         emailService.sendCancellationRequestNotification(app, null);
 
-        verifyNoInteractions(mailSender);
+        assertThat(appender.list)
+                .extracting(ILoggingEvent::getFormattedMessage)
+                .anySatisfy(message -> {
+                    assertThat(message).contains("Approver email is not set");
+                    assertThat(message).contains("S001");
+                });
     }
 
     @Test
@@ -81,49 +94,48 @@ class EmailServiceTest {
 
         emailService.sendCancellationRequestNotification(app, "  ");
 
-        verifyNoInteractions(mailSender);
+        assertThat(appender.list)
+                .extracting(ILoggingEvent::getFormattedMessage)
+                .anySatisfy(message -> {
+                    assertThat(message).contains("Approver email is not set");
+                    assertThat(message).contains("S001");
+                });
     }
 
     @Test
-    void shouldLogErrorAndContinueWhenCancellationEmailFails() {
+    void shouldLogPlaceholderForLeaveApprovalNotification() {
         Staff staff = staffWithEmail("S001", "Alice Smith", "alice@example.com");
         LeaveApplication app = application(staff);
-        doThrow(new RuntimeException("SMTP failure")).when(mailSender).send(any(SimpleMailMessage.class));
-
-        emailService.sendCancellationRequestNotification(app, "approver@example.com");
-
-        verify(mailSender).send(any(SimpleMailMessage.class));
-    }
-
-    @Test
-    void shouldSendLeaveApprovalNotification() {
-        Staff staff = staffWithEmail("S001", "Alice Smith", "alice@example.com");
-        LeaveApplication app = application(staff);
-        ArgumentCaptor<SimpleMailMessage> captor = ArgumentCaptor.forClass(SimpleMailMessage.class);
 
         emailService.sendLeaveApprovalNotification(app);
 
-        verify(mailSender).send(captor.capture());
-        SimpleMailMessage message = captor.getValue();
-        assertThat(message.getTo()).containsExactly("alice@example.com");
-        assertThat(message.getSubject()).contains("Approved");
-        assertThat(message.getText()).contains("approved");
-        assertThat(message.getText()).contains("LA001");
+        assertThat(appender.list)
+                .extracting(ILoggingEvent::getFormattedMessage)
+                .anySatisfy(message -> {
+                    assertThat(message).contains("Email placeholder invoked");
+                    assertThat(message).contains("alice@example.com");
+                    assertThat(message).contains("Leave Application Approved");
+                    assertThat(message).contains("approved");
+                    assertThat(message).contains("LA001");
+                });
     }
 
     @Test
-    void shouldSendLeaveRejectionNotification() {
+    void shouldLogPlaceholderForLeaveRejectionNotification() {
         Staff staff = staffWithEmail("S001", "Alice Smith", "alice@example.com");
         LeaveApplication app = application(staff);
-        ArgumentCaptor<SimpleMailMessage> captor = ArgumentCaptor.forClass(SimpleMailMessage.class);
 
         emailService.sendLeaveRejectionNotification(app);
 
-        verify(mailSender).send(captor.capture());
-        SimpleMailMessage message = captor.getValue();
-        assertThat(message.getTo()).containsExactly("alice@example.com");
-        assertThat(message.getSubject()).contains("Rejected");
-        assertThat(message.getText()).contains("rejected");
+        assertThat(appender.list)
+                .extracting(ILoggingEvent::getFormattedMessage)
+                .anySatisfy(message -> {
+                    assertThat(message).contains("Email placeholder invoked");
+                    assertThat(message).contains("alice@example.com");
+                    assertThat(message).contains("Leave Application Rejected");
+                    assertThat(message).contains("rejected");
+                    assertThat(message).contains("LA001");
+                });
     }
 
     @Test
@@ -133,7 +145,12 @@ class EmailServiceTest {
 
         emailService.sendLeaveApprovalNotification(app);
 
-        verifyNoInteractions(mailSender);
+        assertThat(appender.list)
+                .extracting(ILoggingEvent::getFormattedMessage)
+                .anySatisfy(message -> {
+                    assertThat(message).contains("Requester email is not set");
+                    assertThat(message).contains("S001");
+                });
     }
 
     @Test
@@ -143,17 +160,11 @@ class EmailServiceTest {
 
         emailService.sendLeaveApprovalNotification(app);
 
-        verifyNoInteractions(mailSender);
-    }
-
-    @Test
-    void shouldLogErrorAndContinueWhenApprovalEmailFails() {
-        Staff staff = staffWithEmail("S001", "Alice Smith", "alice@example.com");
-        LeaveApplication app = application(staff);
-        doThrow(new RuntimeException("SMTP failure")).when(mailSender).send(any(SimpleMailMessage.class));
-
-        emailService.sendLeaveApprovalNotification(app);
-
-        verify(mailSender).send(any(SimpleMailMessage.class));
+        assertThat(appender.list)
+                .extracting(ILoggingEvent::getFormattedMessage)
+                .anySatisfy(message -> {
+                    assertThat(message).contains("Requester email is not set");
+                    assertThat(message).contains("S001");
+                });
     }
 }
