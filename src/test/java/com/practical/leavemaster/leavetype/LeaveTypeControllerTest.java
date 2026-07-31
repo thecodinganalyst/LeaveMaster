@@ -6,6 +6,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import tools.jackson.databind.ObjectMapper;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -30,6 +31,9 @@ class LeaveTypeControllerTest {
 
     @MockitoBean
     private LeaveTypeService leaveTypeService;
+
+    @MockitoBean
+    private SecurityFilterChain securityFilterChain;
 
     @Test
     void shouldReturnAllLeaveTypes() throws Exception {

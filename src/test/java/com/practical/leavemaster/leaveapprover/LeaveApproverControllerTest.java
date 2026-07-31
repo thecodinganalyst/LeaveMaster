@@ -8,6 +8,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import tools.jackson.databind.ObjectMapper;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -33,6 +34,9 @@ class LeaveApproverControllerTest {
 
     @MockitoBean
     private LeaveApproverService leaveApproverService;
+
+    @MockitoBean
+    private SecurityFilterChain securityFilterChain;
 
     private Staff staff(String id) {
         return Staff.builder().id(id).name("Name " + id)
@@ -231,4 +235,3 @@ class LeaveApproverControllerTest {
                 .andExpect(status().isNotFound());
     }
 }
-

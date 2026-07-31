@@ -6,6 +6,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import tools.jackson.databind.ObjectMapper;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -33,6 +34,9 @@ class StaffControllerTest {
 
     @MockitoBean
     private StaffService staffService;
+
+    @MockitoBean
+    private SecurityFilterChain securityFilterChain;
 
     private static List<WorkScheduleDay> weekdays() {
         return List.of(
