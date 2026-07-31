@@ -154,12 +154,20 @@ public class StaffService {
                     .orElseThrow(() -> new IllegalArgumentException(
                             "Leave type not found: " + leaveEntitlement.getLeaveType().getId()));
 
+            markLeaveTypeAsUsed(leaveType);
             leaveEntitlement.setStaff(staff);
             leaveEntitlement.setLeaveType(leaveType);
             applyPeriodAndProration(staff, leaveEntitlement);
             normalized.add(leaveEntitlement);
         }
         return normalized;
+    }
+
+    private void markLeaveTypeAsUsed(LeaveType leaveType) {
+        if (!leaveType.isUsed()) {
+            leaveType.setUsed(true);
+            leaveTypeRepository.save(leaveType);
+        }
     }
 
     private void applyPeriodAndProration(Staff staff, LeaveEntitlement leaveEntitlement) {

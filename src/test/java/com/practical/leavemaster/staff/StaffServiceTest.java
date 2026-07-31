@@ -136,6 +136,35 @@ class StaffServiceTest {
     }
 
     @Test
+    void shouldMarkLeaveTypeAsUsedWhenSavingEntitlement() {
+        LeaveType annual = LeaveType.builder().id("annual").name("Annual").used(false).build();
+        LeaveCalendar leaveCalendar = LeaveCalendar.builder()
+                .id("2023")
+                .start(LocalDate.of(2023, 1, 1))
+                .end(LocalDate.of(2023, 12, 31))
+                .build();
+        Staff staff = Staff.builder()
+                .id("S001")
+                .name("Alice Smith")
+                .joinDate(LocalDate.of(2023, 7, 1))
+                .workSchedule(weekdays())
+                .leaveEntitlements(List.of(LeaveEntitlement.builder()
+                        .leaveType(LeaveType.builder().id("annual").build())
+                        .entitlement(new BigDecimal("20.00"))
+                        .build()))
+                .build();
+
+        when(leaveTypeRepository.findById("annual")).thenReturn(Optional.of(annual));
+        when(leaveCalendarService.getCalendarFor(LocalDate.of(2023, 7, 1))).thenReturn(Optional.of(leaveCalendar));
+        when(staffRepository.save(any(Staff.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        staffService.save(staff);
+
+        assertThat(annual.isUsed()).isTrue();
+        verify(leaveTypeRepository).save(annual);
+    }
+
+    @Test
     void shouldKeepManualEntitlementPeriodWithoutProration() {
         LeaveType annual = LeaveType.builder().id("annual").name("Annual").used(true).build();
         Staff staff = Staff.builder()
