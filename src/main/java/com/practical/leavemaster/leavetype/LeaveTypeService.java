@@ -21,6 +21,7 @@ public class LeaveTypeService {
     }
 
     public LeaveType save(LeaveType leaveType) {
+        leaveType.setUsed(false);
         return leaveTypeRepository.save(leaveType);
     }
 
@@ -28,7 +29,6 @@ public class LeaveTypeService {
         LeaveType existing = leaveTypeRepository.findById(id)
                 .orElseThrow(() -> new LeaveTypeNotFoundException(id));
         existing.setName(updated.getName());
-        existing.setUsed(updated.isUsed());
         return leaveTypeRepository.save(existing);
     }
 

@@ -48,12 +48,13 @@ class LeaveTypeServiceTest {
 
     @Test
     void shouldSaveLeaveType() {
-        LeaveType leaveType = LeaveType.builder().id("annual").name("Annual Leave").used(false).build();
-        when(leaveTypeRepository.save(leaveType)).thenReturn(leaveType);
+        LeaveType leaveType = LeaveType.builder().id("annual").name("Annual Leave").used(true).build();
+        when(leaveTypeRepository.save(any(LeaveType.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         LeaveType result = leaveTypeService.save(leaveType);
 
         assertThat(result.getId()).isEqualTo("annual");
+        assertThat(result.isUsed()).isFalse();
     }
 
     @Test
@@ -66,7 +67,7 @@ class LeaveTypeServiceTest {
         LeaveType result = leaveTypeService.update("annual", updated);
 
         assertThat(result.getName()).isEqualTo("Annual Leave Updated");
-        assertThat(result.isUsed()).isTrue();
+        assertThat(result.isUsed()).isFalse();
     }
 
     @Test
