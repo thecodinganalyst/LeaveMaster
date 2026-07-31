@@ -80,6 +80,13 @@ Provider login endpoints:
 - `/oauth2/authorization/github`
 - `/oauth2/authorization/facebook`
 
+Provider setup guides:
+
+- [Google OIDC setup](docs/idp/google.md)
+- [Microsoft Entra ID OIDC setup](docs/idp/microsoft.md)
+- [GitHub OAuth app setup](docs/idp/github.md)
+- [Facebook Login setup](docs/idp/facebook.md)
+
 ### Build
 
 ```bash
