@@ -18,10 +18,7 @@ import lombok.NoArgsConstructor;
 public class AppUser {
 
     @Id
-    @Column(nullable = false, unique = true)
-    private String id;
-
-    @Column(name = "login_name", nullable = false, unique = true)
+    @Column(name = "login_name", nullable = false)
     private String loginName;
 
     @Column(nullable = false)

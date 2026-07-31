@@ -33,33 +33,32 @@ class AppUserControllerTest {
     @Test
     void shouldReturnAllUsers() throws Exception {
         List<AppUser> users = List.of(
-                AppUser.builder().id("U001").loginName("alice").password("pass").active(true).build(),
-                AppUser.builder().id("U002").loginName("bob").password("pass").active(false).build()
+                AppUser.builder().loginName("alice").password("pass").active(true).build(),
+                AppUser.builder().loginName("bob").password("pass").active(false).build()
         );
         when(appUserService.findAll()).thenReturn(users);
 
         mockMvc.perform(get("/users"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(2))
-                .andExpect(jsonPath("$[0].id").value("U001"))
-                .andExpect(jsonPath("$[1].id").value("U002"));
+                .andExpect(jsonPath("$[0].loginName").value("alice"))
+                .andExpect(jsonPath("$[1].loginName").value("bob"));
     }
 
     @Test
-    void shouldReturnUserById() throws Exception {
-        AppUser user = AppUser.builder().id("U001").loginName("alice").password("pass").active(true).build();
-        when(appUserService.findById("U001")).thenReturn(Optional.of(user));
+    void shouldReturnUserByLoginName() throws Exception {
+        AppUser user = AppUser.builder().loginName("alice").password("pass").active(true).build();
+        when(appUserService.findByLoginName("alice")).thenReturn(Optional.of(user));
 
-        mockMvc.perform(get("/users/U001"))
+        mockMvc.perform(get("/users/alice"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value("U001"))
                 .andExpect(jsonPath("$.loginName").value("alice"))
                 .andExpect(jsonPath("$.active").value(true));
     }
 
     @Test
     void shouldReturn404WhenUserNotFound() throws Exception {
-        when(appUserService.findById("nonexistent")).thenReturn(Optional.empty());
+        when(appUserService.findByLoginName("nonexistent")).thenReturn(Optional.empty());
 
         mockMvc.perform(get("/users/nonexistent"))
                 .andExpect(status().isNotFound());
@@ -67,20 +66,19 @@ class AppUserControllerTest {
 
     @Test
     void shouldCreateUser() throws Exception {
-        AppUser user = AppUser.builder().id("U001").loginName("alice").password("pass").active(true).build();
+        AppUser user = AppUser.builder().loginName("alice").password("pass").active(true).build();
         when(appUserService.save(any(AppUser.class))).thenReturn(user);
 
         mockMvc.perform(post("/users")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(user)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").value("U001"))
                 .andExpect(jsonPath("$.loginName").value("alice"));
     }
 
     @Test
     void shouldReturn409WhenCreatingUserWithDuplicateLoginName() throws Exception {
-        AppUser user = AppUser.builder().id("U001").loginName("alice").password("pass").active(true).build();
+        AppUser user = AppUser.builder().loginName("alice").password("pass").active(true).build();
         when(appUserService.save(any(AppUser.class))).thenThrow(new DuplicateLoginNameException("alice"));
 
         mockMvc.perform(post("/users")
@@ -92,14 +90,13 @@ class AppUserControllerTest {
 
     @Test
     void shouldUpdateUser() throws Exception {
-        AppUser updated = AppUser.builder().id("U001").loginName("alice-updated").password("pass").active(false).build();
-        when(appUserService.update(eq("U001"), any(AppUser.class))).thenReturn(updated);
+        AppUser updated = AppUser.builder().loginName("alice").password("pass").active(false).build();
+        when(appUserService.update(eq("alice"), any(AppUser.class))).thenReturn(updated);
 
-        mockMvc.perform(put("/users/U001")
+        mockMvc.perform(put("/users/alice")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updated)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.loginName").value("alice-updated"))
                 .andExpect(jsonPath("$.active").value(false));
     }
 
@@ -115,22 +112,10 @@ class AppUserControllerTest {
     }
 
     @Test
-    void shouldReturn409WhenUpdatingWithDuplicateLoginName() throws Exception {
-        when(appUserService.update(eq("U001"), any(AppUser.class)))
-                .thenThrow(new DuplicateLoginNameException("bob"));
-
-        mockMvc.perform(put("/users/U001")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new AppUser())))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error").value("Login name already exists: bob"));
-    }
-
-    @Test
     void shouldDeleteUser() throws Exception {
-        doNothing().when(appUserService).delete("U001");
+        doNothing().when(appUserService).delete("alice");
 
-        mockMvc.perform(delete("/users/U001"))
+        mockMvc.perform(delete("/users/alice"))
                 .andExpect(status().isNoContent());
     }
 
@@ -144,14 +129,14 @@ class AppUserControllerTest {
 
     @Test
     void shouldChangePassword() throws Exception {
-        AppUser user = AppUser.builder().id("U001").loginName("alice").password("newPass").active(true).build();
-        when(appUserService.changePassword(eq("U001"), eq("newPass"))).thenReturn(user);
+        AppUser user = AppUser.builder().loginName("alice").password("newPass").active(true).build();
+        when(appUserService.changePassword(eq("alice"), eq("newPass"))).thenReturn(user);
 
-        mockMvc.perform(put("/users/U001/change-password")
+        mockMvc.perform(put("/users/alice/change-password")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("password", "newPass"))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value("U001"));
+                .andExpect(jsonPath("$.loginName").value("alice"));
     }
 
     @Test
@@ -167,10 +152,10 @@ class AppUserControllerTest {
 
     @Test
     void shouldReturn400WhenChangingPasswordToBlank() throws Exception {
-        when(appUserService.changePassword(eq("U001"), eq("")))
+        when(appUserService.changePassword(eq("alice"), eq("")))
                 .thenThrow(new IllegalArgumentException("New password must not be blank"));
 
-        mockMvc.perform(put("/users/U001/change-password")
+        mockMvc.perform(put("/users/alice/change-password")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("password", ""))))
                 .andExpect(status().isBadRequest())
@@ -179,10 +164,10 @@ class AppUserControllerTest {
 
     @Test
     void shouldActivateUser() throws Exception {
-        AppUser user = AppUser.builder().id("U001").loginName("alice").password("pass").active(true).build();
-        when(appUserService.activate("U001")).thenReturn(user);
+        AppUser user = AppUser.builder().loginName("alice").password("pass").active(true).build();
+        when(appUserService.activate("alice")).thenReturn(user);
 
-        mockMvc.perform(put("/users/U001/activate"))
+        mockMvc.perform(put("/users/alice/activate"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.active").value(true));
     }
@@ -197,10 +182,10 @@ class AppUserControllerTest {
 
     @Test
     void shouldDeactivateUser() throws Exception {
-        AppUser user = AppUser.builder().id("U001").loginName("alice").password("pass").active(false).build();
-        when(appUserService.deactivate("U001")).thenReturn(user);
+        AppUser user = AppUser.builder().loginName("alice").password("pass").active(false).build();
+        when(appUserService.deactivate("alice")).thenReturn(user);
 
-        mockMvc.perform(put("/users/U001/deactivate"))
+        mockMvc.perform(put("/users/alice/deactivate"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.active").value(false));
     }
@@ -215,14 +200,14 @@ class AppUserControllerTest {
 
     @Test
     void shouldLoginSuccessfully() throws Exception {
-        AppUser user = AppUser.builder().id("U001").loginName("alice").password("pass").active(true).build();
+        AppUser user = AppUser.builder().loginName("alice").password("pass").active(true).build();
         when(appUserService.login("alice", "pass")).thenReturn(user);
 
         mockMvc.perform(post("/users/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("loginName", "alice", "password", "pass"))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value("U001"));
+                .andExpect(jsonPath("$.loginName").value("alice"));
     }
 
     @Test

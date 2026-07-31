@@ -26,8 +26,8 @@ class AppUserServiceTest {
     @Test
     void shouldReturnAllUsers() {
         List<AppUser> users = List.of(
-                AppUser.builder().id("U001").loginName("alice").password("pass").active(true).build(),
-                AppUser.builder().id("U002").loginName("bob").password("pass").active(false).build()
+                AppUser.builder().loginName("alice").password("pass").active(true).build(),
+                AppUser.builder().loginName("bob").password("pass").active(false).build()
         );
         when(appUserRepository.findAll()).thenReturn(users);
 
@@ -37,11 +37,11 @@ class AppUserServiceTest {
     }
 
     @Test
-    void shouldFindUserById() {
-        AppUser user = AppUser.builder().id("U001").loginName("alice").password("pass").active(true).build();
-        when(appUserRepository.findById("U001")).thenReturn(Optional.of(user));
+    void shouldFindUserByLoginName() {
+        AppUser user = AppUser.builder().loginName("alice").password("pass").active(true).build();
+        when(appUserRepository.findById("alice")).thenReturn(Optional.of(user));
 
-        Optional<AppUser> result = appUserService.findById("U001");
+        Optional<AppUser> result = appUserService.findByLoginName("alice");
 
         assertThat(result).isPresent();
         assertThat(result.get().getLoginName()).isEqualTo("alice");
@@ -49,30 +49,19 @@ class AppUserServiceTest {
 
     @Test
     void shouldSaveUser() {
-        AppUser user = AppUser.builder().id("U001").loginName("alice").password("pass").active(true).build();
-        when(appUserRepository.existsByLoginName("alice")).thenReturn(false);
+        AppUser user = AppUser.builder().loginName("alice").password("pass").active(true).build();
+        when(appUserRepository.existsById("alice")).thenReturn(false);
         when(appUserRepository.save(user)).thenReturn(user);
 
         AppUser result = appUserService.save(user);
 
-        assertThat(result.getId()).isEqualTo("U001");
-    }
-
-    @Test
-    void shouldGenerateIdWhenSavingUserWithoutId() {
-        AppUser user = AppUser.builder().loginName("alice").password("pass").active(true).build();
-        when(appUserRepository.existsByLoginName("alice")).thenReturn(false);
-        when(appUserRepository.save(any(AppUser.class))).thenAnswer(i -> i.getArgument(0));
-
-        AppUser result = appUserService.save(user);
-
-        assertThat(result.getId()).isNotBlank();
+        assertThat(result.getLoginName()).isEqualTo("alice");
     }
 
     @Test
     void shouldThrowWhenSavingWithDuplicateLoginName() {
-        AppUser user = AppUser.builder().id("U001").loginName("alice").password("pass").active(true).build();
-        when(appUserRepository.existsByLoginName("alice")).thenReturn(true);
+        AppUser user = AppUser.builder().loginName("alice").password("pass").active(true).build();
+        when(appUserRepository.existsById("alice")).thenReturn(true);
 
         assertThatThrownBy(() -> appUserService.save(user))
                 .isInstanceOf(DuplicateLoginNameException.class)
@@ -81,15 +70,13 @@ class AppUserServiceTest {
 
     @Test
     void shouldUpdateUser() {
-        AppUser existing = AppUser.builder().id("U001").loginName("alice").password("pass").active(true).build();
-        AppUser updated = AppUser.builder().id("U001").loginName("alice-updated").password("pass").active(false).build();
-        when(appUserRepository.findById("U001")).thenReturn(Optional.of(existing));
-        when(appUserRepository.existsByLoginName("alice-updated")).thenReturn(false);
+        AppUser existing = AppUser.builder().loginName("alice").password("pass").active(true).build();
+        AppUser updated = AppUser.builder().loginName("alice").password("pass").active(false).build();
+        when(appUserRepository.findById("alice")).thenReturn(Optional.of(existing));
         when(appUserRepository.save(existing)).thenReturn(existing);
 
-        AppUser result = appUserService.update("U001", updated);
+        AppUser result = appUserService.update("alice", updated);
 
-        assertThat(result.getLoginName()).isEqualTo("alice-updated");
         assertThat(result.isActive()).isFalse();
     }
 
@@ -102,65 +89,53 @@ class AppUserServiceTest {
     }
 
     @Test
-    void shouldThrowWhenUpdatingWithDuplicateLoginName() {
-        AppUser existing = AppUser.builder().id("U001").loginName("alice").password("pass").active(true).build();
-        AppUser updated = AppUser.builder().id("U001").loginName("bob").password("pass").active(true).build();
-        when(appUserRepository.findById("U001")).thenReturn(Optional.of(existing));
-        when(appUserRepository.existsByLoginName("bob")).thenReturn(true);
-
-        assertThatThrownBy(() -> appUserService.update("U001", updated))
-                .isInstanceOf(DuplicateLoginNameException.class)
-                .hasMessageContaining("bob");
-    }
-
-    @Test
     void shouldChangePassword() {
-        AppUser existing = AppUser.builder().id("U001").loginName("alice").password("old").active(true).build();
-        when(appUserRepository.findById("U001")).thenReturn(Optional.of(existing));
+        AppUser existing = AppUser.builder().loginName("alice").password("old").active(true).build();
+        when(appUserRepository.findById("alice")).thenReturn(Optional.of(existing));
         when(appUserRepository.save(existing)).thenReturn(existing);
 
-        AppUser result = appUserService.changePassword("U001", "newPass");
+        AppUser result = appUserService.changePassword("alice", "newPass");
 
         assertThat(result.getPassword()).isEqualTo("newPass");
     }
 
     @Test
     void shouldThrowWhenChangingPasswordToBlank() {
-        assertThatThrownBy(() -> appUserService.changePassword("U001", ""))
+        assertThatThrownBy(() -> appUserService.changePassword("alice", ""))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("New password must not be blank");
     }
 
     @Test
     void shouldActivateUser() {
-        AppUser existing = AppUser.builder().id("U001").loginName("alice").password("pass").active(false).build();
-        when(appUserRepository.findById("U001")).thenReturn(Optional.of(existing));
+        AppUser existing = AppUser.builder().loginName("alice").password("pass").active(false).build();
+        when(appUserRepository.findById("alice")).thenReturn(Optional.of(existing));
         when(appUserRepository.save(existing)).thenReturn(existing);
 
-        AppUser result = appUserService.activate("U001");
+        AppUser result = appUserService.activate("alice");
 
         assertThat(result.isActive()).isTrue();
     }
 
     @Test
     void shouldDeactivateUser() {
-        AppUser existing = AppUser.builder().id("U001").loginName("alice").password("pass").active(true).build();
-        when(appUserRepository.findById("U001")).thenReturn(Optional.of(existing));
+        AppUser existing = AppUser.builder().loginName("alice").password("pass").active(true).build();
+        when(appUserRepository.findById("alice")).thenReturn(Optional.of(existing));
         when(appUserRepository.save(existing)).thenReturn(existing);
 
-        AppUser result = appUserService.deactivate("U001");
+        AppUser result = appUserService.deactivate("alice");
 
         assertThat(result.isActive()).isFalse();
     }
 
     @Test
     void shouldDeleteUser() {
-        AppUser user = AppUser.builder().id("U001").loginName("alice").password("pass").active(true).build();
-        when(appUserRepository.findById("U001")).thenReturn(Optional.of(user));
+        AppUser user = AppUser.builder().loginName("alice").password("pass").active(true).build();
+        when(appUserRepository.findById("alice")).thenReturn(Optional.of(user));
 
-        appUserService.delete("U001");
+        appUserService.delete("alice");
 
-        verify(appUserRepository).deleteById("U001");
+        verify(appUserRepository).deleteById("alice");
     }
 
     @Test
@@ -173,7 +148,7 @@ class AppUserServiceTest {
 
     @Test
     void shouldCreateUserForStaff() {
-        when(appUserRepository.existsByLoginName("alice")).thenReturn(false);
+        when(appUserRepository.existsById("alice")).thenReturn(false);
         when(appUserRepository.save(any(AppUser.class))).thenAnswer(i -> i.getArgument(0));
 
         AppUser result = appUserService.createForStaff("S001", "alice", "pass", true);
@@ -185,7 +160,7 @@ class AppUserServiceTest {
 
     @Test
     void shouldThrowWhenCreatingForStaffWithDuplicateLoginName() {
-        when(appUserRepository.existsByLoginName("alice")).thenReturn(true);
+        when(appUserRepository.existsById("alice")).thenReturn(true);
 
         assertThatThrownBy(() -> appUserService.createForStaff("S001", "alice", "pass", true))
                 .isInstanceOf(DuplicateLoginNameException.class);
@@ -193,7 +168,7 @@ class AppUserServiceTest {
 
     @Test
     void shouldDeactivateUserByStaffId() {
-        AppUser user = AppUser.builder().id("U001").loginName("alice").password("pass").active(true).staffId("S001").build();
+        AppUser user = AppUser.builder().loginName("alice").password("pass").active(true).staffId("S001").build();
         when(appUserRepository.findByStaffId("S001")).thenReturn(Optional.of(user));
         when(appUserRepository.save(user)).thenReturn(user);
 
@@ -205,18 +180,18 @@ class AppUserServiceTest {
 
     @Test
     void shouldLoginSuccessfully() {
-        AppUser user = AppUser.builder().id("U001").loginName("alice").password("pass").active(true).build();
-        when(appUserRepository.findByLoginName("alice")).thenReturn(Optional.of(user));
+        AppUser user = AppUser.builder().loginName("alice").password("pass").active(true).build();
+        when(appUserRepository.findById("alice")).thenReturn(Optional.of(user));
 
         AppUser result = appUserService.login("alice", "pass");
 
-        assertThat(result.getId()).isEqualTo("U001");
+        assertThat(result.getLoginName()).isEqualTo("alice");
     }
 
     @Test
     void shouldThrowWhenLoginWithWrongPassword() {
-        AppUser user = AppUser.builder().id("U001").loginName("alice").password("pass").active(true).build();
-        when(appUserRepository.findByLoginName("alice")).thenReturn(Optional.of(user));
+        AppUser user = AppUser.builder().loginName("alice").password("pass").active(true).build();
+        when(appUserRepository.findById("alice")).thenReturn(Optional.of(user));
 
         assertThatThrownBy(() -> appUserService.login("alice", "wrong"))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -225,8 +200,8 @@ class AppUserServiceTest {
 
     @Test
     void shouldThrowWhenLoginWithInactiveUser() {
-        AppUser user = AppUser.builder().id("U001").loginName("alice").password("pass").active(false).build();
-        when(appUserRepository.findByLoginName("alice")).thenReturn(Optional.of(user));
+        AppUser user = AppUser.builder().loginName("alice").password("pass").active(false).build();
+        when(appUserRepository.findById("alice")).thenReturn(Optional.of(user));
 
         assertThatThrownBy(() -> appUserService.login("alice", "pass"))
                 .isInstanceOf(IllegalStateException.class)
@@ -235,7 +210,7 @@ class AppUserServiceTest {
 
     @Test
     void shouldThrowWhenLoginWithNonExistentUser() {
-        when(appUserRepository.findByLoginName("nonexistent")).thenReturn(Optional.empty());
+        when(appUserRepository.findById("nonexistent")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> appUserService.login("nonexistent", "pass"))
                 .isInstanceOf(AppUserNotFoundException.class);

@@ -5,7 +5,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -17,72 +16,59 @@ public class AppUserService {
         return appUserRepository.findAll();
     }
 
-    public Optional<AppUser> findById(String id) {
-        return appUserRepository.findById(id);
-    }
-
     public Optional<AppUser> findByLoginName(String loginName) {
-        return appUserRepository.findByLoginName(loginName);
+        return appUserRepository.findById(loginName);
     }
 
     public AppUser save(AppUser user) {
-        if (appUserRepository.existsByLoginName(user.getLoginName())) {
+        if (appUserRepository.existsById(user.getLoginName())) {
             throw new DuplicateLoginNameException(user.getLoginName());
-        }
-        if (user.getId() == null || user.getId().isBlank()) {
-            user.setId(UUID.randomUUID().toString());
         }
         return appUserRepository.save(user);
     }
 
-    public AppUser update(String id, AppUser updated) {
-        AppUser existing = appUserRepository.findById(id)
-                .orElseThrow(() -> new AppUserNotFoundException(id));
-        if (!existing.getLoginName().equals(updated.getLoginName())
-                && appUserRepository.existsByLoginName(updated.getLoginName())) {
-            throw new DuplicateLoginNameException(updated.getLoginName());
-        }
-        existing.setLoginName(updated.getLoginName());
+    public AppUser update(String loginName, AppUser updated) {
+        AppUser existing = appUserRepository.findById(loginName)
+                .orElseThrow(() -> new AppUserNotFoundException(loginName));
         existing.setActive(updated.isActive());
         return appUserRepository.save(existing);
     }
 
-    public AppUser changePassword(String id, String newPassword) {
+    public AppUser changePassword(String loginName, String newPassword) {
         if (newPassword == null || newPassword.isBlank()) {
             throw new IllegalArgumentException("New password must not be blank");
         }
-        AppUser existing = appUserRepository.findById(id)
-                .orElseThrow(() -> new AppUserNotFoundException(id));
+        AppUser existing = appUserRepository.findById(loginName)
+                .orElseThrow(() -> new AppUserNotFoundException(loginName));
         existing.setPassword(newPassword);
         return appUserRepository.save(existing);
     }
 
-    public AppUser activate(String id) {
-        AppUser existing = appUserRepository.findById(id)
-                .orElseThrow(() -> new AppUserNotFoundException(id));
+    public AppUser activate(String loginName) {
+        AppUser existing = appUserRepository.findById(loginName)
+                .orElseThrow(() -> new AppUserNotFoundException(loginName));
         existing.setActive(true);
         return appUserRepository.save(existing);
     }
 
-    public AppUser deactivate(String id) {
-        AppUser existing = appUserRepository.findById(id)
-                .orElseThrow(() -> new AppUserNotFoundException(id));
+    public AppUser deactivate(String loginName) {
+        AppUser existing = appUserRepository.findById(loginName)
+                .orElseThrow(() -> new AppUserNotFoundException(loginName));
         existing.setActive(false);
         return appUserRepository.save(existing);
     }
 
-    public void delete(String id) {
-        appUserRepository.findById(id)
-                .orElseThrow(() -> new AppUserNotFoundException(id));
-        appUserRepository.deleteById(id);
+    public void delete(String loginName) {
+        appUserRepository.findById(loginName)
+                .orElseThrow(() -> new AppUserNotFoundException(loginName));
+        appUserRepository.deleteById(loginName);
     }
 
     public AppUser createForStaff(String staffId, String loginName, String password, boolean active) {
-        if (appUserRepository.existsByLoginName(loginName)) {
+        if (appUserRepository.existsById(loginName)) {
             throw new DuplicateLoginNameException(loginName);
         }
         AppUser user = AppUser.builder()
-                .id(UUID.randomUUID().toString())
                 .loginName(loginName)
                 .password(password)
                 .active(active)
@@ -99,7 +85,7 @@ public class AppUserService {
     }
 
     public AppUser login(String loginName, String password) {
-        AppUser user = appUserRepository.findByLoginName(loginName)
+        AppUser user = appUserRepository.findById(loginName)
                 .orElseThrow(() -> new AppUserNotFoundException(loginName));
         if (!user.isActive()) {
             throw new IllegalStateException("User account is not active");

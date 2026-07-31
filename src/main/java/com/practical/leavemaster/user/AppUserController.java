@@ -20,9 +20,9 @@ public class AppUserController {
         return appUserService.findAll();
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<AppUser> getById(@PathVariable String id) {
-        return appUserService.findById(id)
+    @GetMapping("/{loginName}")
+    public ResponseEntity<AppUser> getByLoginName(@PathVariable String loginName) {
+        return appUserService.findByLoginName(loginName)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -39,32 +39,30 @@ public class AppUserController {
         }
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<?> update(@PathVariable String id, @RequestBody AppUser user) {
+    @PutMapping("/{loginName}")
+    public ResponseEntity<?> update(@PathVariable String loginName, @RequestBody AppUser user) {
         try {
-            AppUser updated = appUserService.update(id, user);
+            AppUser updated = appUserService.update(loginName, user);
             return ResponseEntity.ok(updated);
         } catch (AppUserNotFoundException e) {
             return ResponseEntity.notFound().build();
-        } catch (DuplicateLoginNameException e) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
         }
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable String id) {
+    @DeleteMapping("/{loginName}")
+    public ResponseEntity<Void> delete(@PathVariable String loginName) {
         try {
-            appUserService.delete(id);
+            appUserService.delete(loginName);
             return ResponseEntity.noContent().build();
         } catch (AppUserNotFoundException e) {
             return ResponseEntity.notFound().build();
         }
     }
 
-    @PutMapping("/{id}/change-password")
-    public ResponseEntity<?> changePassword(@PathVariable String id, @RequestBody Map<String, String> body) {
+    @PutMapping("/{loginName}/change-password")
+    public ResponseEntity<?> changePassword(@PathVariable String loginName, @RequestBody Map<String, String> body) {
         try {
-            AppUser updated = appUserService.changePassword(id, body.get("password"));
+            AppUser updated = appUserService.changePassword(loginName, body.get("password"));
             return ResponseEntity.ok(updated);
         } catch (AppUserNotFoundException e) {
             return ResponseEntity.notFound().build();
@@ -73,20 +71,20 @@ public class AppUserController {
         }
     }
 
-    @PutMapping("/{id}/activate")
-    public ResponseEntity<?> activate(@PathVariable String id) {
+    @PutMapping("/{loginName}/activate")
+    public ResponseEntity<?> activate(@PathVariable String loginName) {
         try {
-            AppUser updated = appUserService.activate(id);
+            AppUser updated = appUserService.activate(loginName);
             return ResponseEntity.ok(updated);
         } catch (AppUserNotFoundException e) {
             return ResponseEntity.notFound().build();
         }
     }
 
-    @PutMapping("/{id}/deactivate")
-    public ResponseEntity<?> deactivate(@PathVariable String id) {
+    @PutMapping("/{loginName}/deactivate")
+    public ResponseEntity<?> deactivate(@PathVariable String loginName) {
         try {
-            AppUser updated = appUserService.deactivate(id);
+            AppUser updated = appUserService.deactivate(loginName);
             return ResponseEntity.ok(updated);
         } catch (AppUserNotFoundException e) {
             return ResponseEntity.notFound().build();

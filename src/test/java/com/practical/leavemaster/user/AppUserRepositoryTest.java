@@ -17,7 +17,6 @@ class AppUserRepositoryTest {
     @Test
     void shouldSaveAndFindUser() {
         AppUser user = AppUser.builder()
-                .id("U001")
                 .loginName("alice")
                 .password("secret")
                 .active(true)
@@ -25,39 +24,23 @@ class AppUserRepositoryTest {
 
         appUserRepository.save(user);
 
-        Optional<AppUser> found = appUserRepository.findById("U001");
+        Optional<AppUser> found = appUserRepository.findById("alice");
         assertThat(found).isPresent();
         assertThat(found.get().getLoginName()).isEqualTo("alice");
         assertThat(found.get().isActive()).isTrue();
     }
 
     @Test
-    void shouldFindByLoginName() {
-        AppUser user = AppUser.builder()
-                .id("U001")
-                .loginName("alice")
-                .password("secret")
-                .active(true)
-                .build();
-        appUserRepository.save(user);
-
-        Optional<AppUser> found = appUserRepository.findByLoginName("alice");
-        assertThat(found).isPresent();
-        assertThat(found.get().getId()).isEqualTo("U001");
-    }
-
-    @Test
     void shouldReturnTrueWhenLoginNameExists() {
-        appUserRepository.save(AppUser.builder().id("U001").loginName("alice").password("secret").active(true).build());
+        appUserRepository.save(AppUser.builder().loginName("alice").password("secret").active(true).build());
 
-        assertThat(appUserRepository.existsByLoginName("alice")).isTrue();
-        assertThat(appUserRepository.existsByLoginName("bob")).isFalse();
+        assertThat(appUserRepository.existsById("alice")).isTrue();
+        assertThat(appUserRepository.existsById("bob")).isFalse();
     }
 
     @Test
     void shouldFindByStaffId() {
         AppUser user = AppUser.builder()
-                .id("U001")
                 .loginName("alice")
                 .password("secret")
                 .active(true)
@@ -72,8 +55,8 @@ class AppUserRepositoryTest {
 
     @Test
     void shouldDeleteUser() {
-        appUserRepository.save(AppUser.builder().id("U001").loginName("alice").password("secret").active(true).build());
-        appUserRepository.deleteById("U001");
-        assertThat(appUserRepository.findById("U001")).isEmpty();
+        appUserRepository.save(AppUser.builder().loginName("alice").password("secret").active(true).build());
+        appUserRepository.deleteById("alice");
+        assertThat(appUserRepository.findById("alice")).isEmpty();
     }
 }
