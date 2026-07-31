@@ -5,7 +5,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import tools.jackson.databind.ObjectMapper;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -31,6 +33,9 @@ class AppUserControllerTest {
 
     @MockitoBean
     private AppUserService appUserService;
+
+    @MockitoBean
+    private SecurityFilterChain securityFilterChain;
 
     @Test
     void shouldReturnAllUsers() throws Exception {
@@ -111,6 +116,18 @@ class AppUserControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new AppUser())))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldReturn400WhenUpdatingUserWithInvalidOidcCredentials() throws Exception {
+        when(appUserService.update(eq("alice"), any(AppUser.class)))
+                .thenThrow(new IllegalArgumentException("Both oidcProvider and oidcSubject must be provided together"));
+
+        mockMvc.perform(put("/users/alice")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(AppUser.builder().active(true).oidcProvider("github").build())))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Both oidcProvider and oidcSubject must be provided together"));
     }
 
     @Test
@@ -247,4 +264,5 @@ class AppUserControllerTest {
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error").value("User account is not active"));
     }
+
 }

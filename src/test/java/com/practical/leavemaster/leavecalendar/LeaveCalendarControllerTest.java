@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
@@ -32,6 +33,9 @@ class LeaveCalendarControllerTest {
 
     @MockitoBean
     private LeaveCalendarService leaveCalendarService;
+
+    @MockitoBean
+    private SecurityFilterChain securityFilterChain;
 
     @Test
     void shouldCreateLeaveCalendar() throws Exception {

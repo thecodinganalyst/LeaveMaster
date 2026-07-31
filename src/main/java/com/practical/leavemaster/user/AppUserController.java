@@ -46,6 +46,8 @@ public class AppUserController {
             return ResponseEntity.ok(updated);
         } catch (AppUserNotFoundException e) {
             return ResponseEntity.notFound().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 

@@ -59,6 +59,39 @@ Optional environment variables (all have defaults except `POSTGRES_PASSWORD`):
 | `POSTGRES_DB` | `leavemaster` | Database name |
 | `POSTGRES_USER` | `leavemaster` | Database user |
 
+### OIDC / Social Login Providers
+
+LeaveMaster supports OAuth2/OIDC login flows for Google, Microsoft Entra ID, GitHub, and Facebook.
+
+OIDC login is restricted to existing active application users. Admins must map each user to an IdP identity using:
+
+- `oidcProvider` (for example: `google`, `microsoft`, `github`, `facebook`)
+- `oidcSubject` (provider user identifier, usually `sub` or `id`)
+
+Set these environment variables with credentials from each provider app registration:
+
+| Variable | Description |
+|----------|-------------|
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google OAuth app credentials |
+| `MICROSOFT_CLIENT_ID` / `MICROSOFT_CLIENT_SECRET` | Microsoft Entra ID app credentials |
+| `MICROSOFT_TENANT_ID` | Entra tenant ID (or `common`) |
+| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | GitHub OAuth app credentials |
+| `FACEBOOK_CLIENT_ID` / `FACEBOOK_CLIENT_SECRET` | Facebook app credentials |
+
+Provider login endpoints:
+
+- `/oauth2/authorization/google`
+- `/oauth2/authorization/microsoft`
+- `/oauth2/authorization/github`
+- `/oauth2/authorization/facebook`
+
+Provider setup guides:
+
+- [Google OIDC setup](docs/idp/google.md)
+- [Microsoft Entra ID OIDC setup](docs/idp/microsoft.md)
+- [GitHub OAuth app setup](docs/idp/github.md)
+- [Facebook Login setup](docs/idp/facebook.md)
+
 ### Build
 
 ```bash
