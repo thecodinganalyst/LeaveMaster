@@ -2,6 +2,7 @@ package com.practical.leavemaster.staff;
 
 import com.practical.leavemaster.leavecalendar.LeaveCalendar;
 import com.practical.leavemaster.leavecalendar.LeaveCalendarService;
+import com.practical.leavemaster.leaveapplication.LeaveApplicationRepository;
 import com.practical.leavemaster.leaveapprover.LeaveApprover;
 import com.practical.leavemaster.leaveapprover.LeaveApproverRepository;
 import com.practical.leavemaster.leaveentitlement.LeaveEntitlement;
@@ -39,6 +40,9 @@ class StaffServiceTest {
 
     @Mock
     private LeaveApproverRepository leaveApproverRepository;
+
+    @Mock
+    private LeaveApplicationRepository leaveApplicationRepository;
 
     @Mock
     private AppUserService appUserService;
@@ -216,6 +220,30 @@ class StaffServiceTest {
         staffService.delete("S001");
 
         verify(staffRepository).deleteById("S001");
+    }
+
+    @Test
+    void shouldThrowWhenDeletingStaffWithLeaveApplications() {
+        Staff staff = Staff.builder().id("S001").name("Alice Smith").joinDate(LocalDate.of(2023, 1, 1)).workSchedule(weekdays()).build();
+        when(staffRepository.findById("S001")).thenReturn(Optional.of(staff));
+        when(leaveApplicationRepository.existsByStaffId("S001")).thenReturn(true);
+
+        assertThatThrownBy(() -> staffService.delete("S001"))
+                .isInstanceOf(StaffInUseException.class);
+
+        verify(staffRepository, never()).deleteById("S001");
+    }
+
+    @Test
+    void shouldThrowWhenDeletingStaffWithLeaveApprovals() {
+        Staff staff = Staff.builder().id("S001").name("Alice Smith").joinDate(LocalDate.of(2023, 1, 1)).workSchedule(weekdays()).build();
+        when(staffRepository.findById("S001")).thenReturn(Optional.of(staff));
+        when(leaveApplicationRepository.existsByApproverId("S001")).thenReturn(true);
+
+        assertThatThrownBy(() -> staffService.delete("S001"))
+                .isInstanceOf(StaffInUseException.class);
+
+        verify(staffRepository, never()).deleteById("S001");
     }
 
     @Test

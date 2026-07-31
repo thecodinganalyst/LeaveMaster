@@ -2,6 +2,7 @@ package com.practical.leavemaster.staff;
 
 import com.practical.leavemaster.leavecalendar.LeaveCalendar;
 import com.practical.leavemaster.leavecalendar.LeaveCalendarService;
+import com.practical.leavemaster.leaveapplication.LeaveApplicationRepository;
 import com.practical.leavemaster.leaveapprover.LeaveApprover;
 import com.practical.leavemaster.leaveapprover.LeaveApproverRepository;
 import com.practical.leavemaster.leaveentitlement.LeaveEntitlement;
@@ -31,6 +32,7 @@ public class StaffService {
     private final LeaveCalendarService leaveCalendarService;
     private final LeaveTypeRepository leaveTypeRepository;
     private final LeaveApproverRepository leaveApproverRepository;
+    private final LeaveApplicationRepository leaveApplicationRepository;
     private final AppUserService appUserService;
 
     public List<Staff> findAll() {
@@ -73,6 +75,9 @@ public class StaffService {
     public void delete(String id) {
         staffRepository.findById(id)
                 .orElseThrow(() -> new StaffNotFoundException(id));
+        if (leaveApplicationRepository.existsByStaffId(id) || leaveApplicationRepository.existsByApproverId(id)) {
+            throw new StaffInUseException(id);
+        }
         staffRepository.deleteById(id);
     }
 
