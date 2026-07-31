@@ -283,6 +283,16 @@ class LeaveApplicationControllerTest {
     }
 
     @Test
+    void shouldReturn400WhenApprovingLeaveApplicationByUnauthorizedApprover() throws Exception {
+        when(leaveApplicationService.approve("id1", "S999"))
+                .thenThrow(new IllegalArgumentException("Leave application is not pending for this approver"));
+
+        mockMvc.perform(put("/leave-applications/id1/approve").param("approverId", "S999"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Leave application is not pending for this approver"));
+    }
+
+    @Test
     void shouldRejectPendingLeaveApplication() throws Exception {
         LeaveApplication updated = application("id1", LocalDate.now().plusDays(1));
         updated.setStatus(LeaveStatus.DENIED);
@@ -310,6 +320,25 @@ class LeaveApplicationControllerTest {
 
         mockMvc.perform(put("/leave-applications/nonexistent/reject").param("approverId", "S002"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldReturn404WhenRejectingLeaveApplicationForUnknownApprover() throws Exception {
+        when(leaveApplicationService.reject("id1", "unknown"))
+                .thenThrow(new StaffNotFoundException("unknown"));
+
+        mockMvc.perform(put("/leave-applications/id1/reject").param("approverId", "unknown"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldReturn400WhenRejectingLeaveApplicationByUnauthorizedApprover() throws Exception {
+        when(leaveApplicationService.reject("id1", "S999"))
+                .thenThrow(new IllegalArgumentException("Leave application is not pending for this approver"));
+
+        mockMvc.perform(put("/leave-applications/id1/reject").param("approverId", "S999"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Leave application is not pending for this approver"));
     }
 
     @Test
