@@ -77,13 +77,22 @@ class AppUserServiceTest {
     @Test
     void shouldUpdateUser() {
         AppUser existing = AppUser.builder().loginName("alice").password("pass").active(true).build();
-        AppUser updated = AppUser.builder().loginName("alice").password("pass").active(false).build();
+        AppUser updated = AppUser.builder()
+                .loginName("alice")
+                .password("pass")
+                .active(false)
+                .oidcProvider("github")
+                .oidcSubject("12345")
+                .build();
         when(appUserRepository.findById("alice")).thenReturn(Optional.of(existing));
+        when(appUserRepository.findByOidcProviderAndOidcSubject("github", "12345")).thenReturn(Optional.empty());
         when(appUserRepository.save(existing)).thenReturn(existing);
 
         AppUser result = appUserService.update("alice", updated);
 
         assertThat(result.isActive()).isFalse();
+        assertThat(result.getOidcProvider()).isEqualTo("github");
+        assertThat(result.getOidcSubject()).isEqualTo("12345");
     }
 
     @Test
@@ -92,6 +101,31 @@ class AppUserServiceTest {
 
         assertThatThrownBy(() -> appUserService.update("nonexistent", new AppUser()))
                 .isInstanceOf(AppUserNotFoundException.class);
+    }
+
+    @Test
+    void shouldThrowWhenUpdatingUserWithPartialOidcCredentials() {
+        AppUser existing = AppUser.builder().loginName("alice").password("pass").active(true).build();
+        AppUser updated = AppUser.builder().active(true).oidcProvider("github").build();
+        when(appUserRepository.findById("alice")).thenReturn(Optional.of(existing));
+
+        assertThatThrownBy(() -> appUserService.update("alice", updated))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Both oidcProvider and oidcSubject");
+    }
+
+    @Test
+    void shouldThrowWhenUpdatingUserWithOidcCredentialsAlreadyAssigned() {
+        AppUser existing = AppUser.builder().loginName("alice").password("pass").active(true).build();
+        AppUser anotherUser = AppUser.builder().loginName("bob").password("pass").active(true).build();
+        AppUser updated = AppUser.builder().active(true).oidcProvider("github").oidcSubject("12345").build();
+        when(appUserRepository.findById("alice")).thenReturn(Optional.of(existing));
+        when(appUserRepository.findByOidcProviderAndOidcSubject("github", "12345"))
+                .thenReturn(Optional.of(anotherUser));
+
+        assertThatThrownBy(() -> appUserService.update("alice", updated))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("already assigned");
     }
 
     @Test

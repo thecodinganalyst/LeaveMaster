@@ -5,6 +5,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 @Service
@@ -27,6 +28,7 @@ public class AppUserService {
             throw new DuplicateLoginNameException(user.getLoginName());
         }
         user.setPassword(passwordEncoder.encode(user.getPassword()));
+        applyOidcCredentials(user, user.getOidcProvider(), user.getOidcSubject());
         return appUserRepository.save(user);
     }
 
@@ -34,6 +36,7 @@ public class AppUserService {
         AppUser existing = appUserRepository.findById(loginName)
                 .orElseThrow(() -> new AppUserNotFoundException(loginName));
         existing.setActive(updated.isActive());
+        applyOidcCredentials(existing, updated.getOidcProvider(), updated.getOidcSubject());
         return appUserRepository.save(existing);
     }
 
@@ -76,6 +79,8 @@ public class AppUserService {
                 .password(passwordEncoder.encode(password))
                 .active(active)
                 .staffId(staffId)
+                .oidcProvider(null)
+                .oidcSubject(null)
                 .build();
         return appUserRepository.save(user);
     }
@@ -97,5 +102,32 @@ public class AppUserService {
             throw new IllegalArgumentException("Invalid credentials");
         }
         return user;
+    }
+
+    private void applyOidcCredentials(AppUser target, String oidcProvider, String oidcSubject) {
+        boolean hasProvider = oidcProvider != null && !oidcProvider.isBlank();
+        boolean hasSubject = oidcSubject != null && !oidcSubject.isBlank();
+
+        if (hasProvider != hasSubject) {
+            throw new IllegalArgumentException("Both oidcProvider and oidcSubject must be provided together");
+        }
+
+        if (!hasProvider) {
+            target.setOidcProvider(null);
+            target.setOidcSubject(null);
+            return;
+        }
+
+        String normalizedProvider = oidcProvider.trim().toLowerCase(Locale.ROOT);
+        String normalizedSubject = oidcSubject.trim();
+
+        appUserRepository.findByOidcProviderAndOidcSubject(normalizedProvider, normalizedSubject)
+                .filter(existing -> !existing.getLoginName().equals(target.getLoginName()))
+                .ifPresent(existing -> {
+                    throw new IllegalArgumentException("OIDC identity is already assigned to another user");
+                });
+
+        target.setOidcProvider(normalizedProvider);
+        target.setOidcSubject(normalizedSubject);
     }
 }

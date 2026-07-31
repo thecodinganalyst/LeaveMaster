@@ -63,6 +63,11 @@ Optional environment variables (all have defaults except `POSTGRES_PASSWORD`):
 
 LeaveMaster supports OAuth2/OIDC login flows for Google, Microsoft Entra ID, GitHub, and Facebook.
 
+OIDC login is restricted to existing active application users. Admins must map each user to an IdP identity using:
+
+- `oidcProvider` (for example: `google`, `microsoft`, `github`, `facebook`)
+- `oidcSubject` (provider user identifier, usually `sub` or `id`)
+
 Set these environment variables with credentials from each provider app registration:
 
 | Variable | Description |

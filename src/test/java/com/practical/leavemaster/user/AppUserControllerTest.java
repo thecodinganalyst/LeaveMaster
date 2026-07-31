@@ -119,6 +119,18 @@ class AppUserControllerTest {
     }
 
     @Test
+    void shouldReturn400WhenUpdatingUserWithInvalidOidcCredentials() throws Exception {
+        when(appUserService.update(eq("alice"), any(AppUser.class)))
+                .thenThrow(new IllegalArgumentException("Both oidcProvider and oidcSubject must be provided together"));
+
+        mockMvc.perform(put("/users/alice")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(AppUser.builder().active(true).oidcProvider("github").build())))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Both oidcProvider and oidcSubject must be provided together"));
+    }
+
+    @Test
     void shouldDeleteUser() throws Exception {
         doNothing().when(appUserService).delete("alice");
 

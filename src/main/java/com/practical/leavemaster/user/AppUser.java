@@ -29,4 +29,10 @@ public class AppUser {
 
     @Column(name = "staff_id")
     private String staffId;
+
+    @Column(name = "oidc_provider")
+    private String oidcProvider;
+
+    @Column(name = "oidc_subject")
+    private String oidcSubject;
 }

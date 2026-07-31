@@ -54,6 +54,22 @@ class AppUserRepositoryTest {
     }
 
     @Test
+    void shouldFindByOidcProviderAndOidcSubject() {
+        AppUser user = AppUser.builder()
+                .loginName("alice")
+                .password("secret")
+                .active(true)
+                .oidcProvider("github")
+                .oidcSubject("12345")
+                .build();
+        appUserRepository.save(user);
+
+        Optional<AppUser> found = appUserRepository.findByOidcProviderAndOidcSubject("github", "12345");
+        assertThat(found).isPresent();
+        assertThat(found.get().getLoginName()).isEqualTo("alice");
+    }
+
+    @Test
     void shouldDeleteUser() {
         appUserRepository.save(AppUser.builder().loginName("alice").password("secret").active(true).build());
         appUserRepository.deleteById("alice");

@@ -1,5 +1,6 @@
 package com.practical.leavemaster.config;
 
+import com.practical.leavemaster.user.AppUserRepository;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -23,7 +24,8 @@ public class SecurityConfig {
     @ConditionalOnBean(HttpSecurity.class)
     public SecurityFilterChain securityFilterChain(
         HttpSecurity http,
-        ObjectProvider<ClientRegistrationRepository> clientRegistrationRepositoryProvider
+        ObjectProvider<ClientRegistrationRepository> clientRegistrationRepositoryProvider,
+        AppUserRepository appUserRepository
     ) throws Exception {
         http
             .sessionManagement(session -> session
@@ -61,7 +63,11 @@ public class SecurityConfig {
             );
 
         if (clientRegistrationRepositoryProvider.getIfAvailable() != null) {
+            ExistingUserOnlyOAuth2UserService existingUserOnlyOAuth2UserService =
+                new ExistingUserOnlyOAuth2UserService(appUserRepository);
             http.oauth2Login(oauth2 -> oauth2
+                .userInfoEndpoint(userInfo -> userInfo
+                    .userService(existingUserOnlyOAuth2UserService))
                 .successHandler((request, response, authentication) ->
                     response.setStatus(HttpServletResponse.SC_OK))
                 .failureHandler((request, response, exception) ->
