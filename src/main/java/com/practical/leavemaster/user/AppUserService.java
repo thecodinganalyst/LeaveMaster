@@ -1,6 +1,7 @@
 package com.practical.leavemaster.user;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -11,6 +12,7 @@ import java.util.Optional;
 public class AppUserService {
 
     private final AppUserRepository appUserRepository;
+    private final PasswordEncoder passwordEncoder;
 
     public List<AppUser> findAll() {
         return appUserRepository.findAll();
@@ -24,6 +26,7 @@ public class AppUserService {
         if (appUserRepository.existsById(user.getLoginName())) {
             throw new DuplicateLoginNameException(user.getLoginName());
         }
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
         return appUserRepository.save(user);
     }
 
@@ -40,7 +43,7 @@ public class AppUserService {
         }
         AppUser existing = appUserRepository.findById(loginName)
                 .orElseThrow(() -> new AppUserNotFoundException(loginName));
-        existing.setPassword(newPassword);
+        existing.setPassword(passwordEncoder.encode(newPassword));
         return appUserRepository.save(existing);
     }
 
@@ -70,7 +73,7 @@ public class AppUserService {
         }
         AppUser user = AppUser.builder()
                 .loginName(loginName)
-                .password(password)
+                .password(passwordEncoder.encode(password))
                 .active(active)
                 .staffId(staffId)
                 .build();
@@ -90,7 +93,7 @@ public class AppUserService {
         if (!user.isActive()) {
             throw new IllegalStateException("User account is not active");
         }
-        if (!user.getPassword().equals(password)) {
+        if (!passwordEncoder.matches(password, user.getPassword())) {
             throw new IllegalArgumentException("Invalid credentials");
         }
         return user;

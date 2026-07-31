@@ -5,6 +5,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
 import java.util.Optional;
@@ -19,6 +20,9 @@ class AppUserServiceTest {
 
     @Mock
     private AppUserRepository appUserRepository;
+
+    @Mock
+    private PasswordEncoder passwordEncoder;
 
     @InjectMocks
     private AppUserService appUserService;
@@ -51,11 +55,13 @@ class AppUserServiceTest {
     void shouldSaveUser() {
         AppUser user = AppUser.builder().loginName("alice").password("pass").active(true).build();
         when(appUserRepository.existsById("alice")).thenReturn(false);
+        when(passwordEncoder.encode("pass")).thenReturn("$2a$10$encoded");
         when(appUserRepository.save(user)).thenReturn(user);
 
         AppUser result = appUserService.save(user);
 
         assertThat(result.getLoginName()).isEqualTo("alice");
+        verify(passwordEncoder).encode("pass");
     }
 
     @Test
@@ -92,11 +98,13 @@ class AppUserServiceTest {
     void shouldChangePassword() {
         AppUser existing = AppUser.builder().loginName("alice").password("old").active(true).build();
         when(appUserRepository.findById("alice")).thenReturn(Optional.of(existing));
+        when(passwordEncoder.encode("newPass")).thenReturn("$2a$10$encodedNewPass");
         when(appUserRepository.save(existing)).thenReturn(existing);
 
         AppUser result = appUserService.changePassword("alice", "newPass");
 
-        assertThat(result.getPassword()).isEqualTo("newPass");
+        assertThat(result.getPassword()).isEqualTo("$2a$10$encodedNewPass");
+        verify(passwordEncoder).encode("newPass");
     }
 
     @Test
@@ -149,6 +157,7 @@ class AppUserServiceTest {
     @Test
     void shouldCreateUserForStaff() {
         when(appUserRepository.existsById("alice")).thenReturn(false);
+        when(passwordEncoder.encode("pass")).thenReturn("$2a$10$encoded");
         when(appUserRepository.save(any(AppUser.class))).thenAnswer(i -> i.getArgument(0));
 
         AppUser result = appUserService.createForStaff("S001", "alice", "pass", true);
@@ -156,6 +165,7 @@ class AppUserServiceTest {
         assertThat(result.getStaffId()).isEqualTo("S001");
         assertThat(result.getLoginName()).isEqualTo("alice");
         assertThat(result.isActive()).isTrue();
+        verify(passwordEncoder).encode("pass");
     }
 
     @Test
@@ -180,8 +190,9 @@ class AppUserServiceTest {
 
     @Test
     void shouldLoginSuccessfully() {
-        AppUser user = AppUser.builder().loginName("alice").password("pass").active(true).build();
+        AppUser user = AppUser.builder().loginName("alice").password("$2a$10$encoded").active(true).build();
         when(appUserRepository.findById("alice")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("pass", "$2a$10$encoded")).thenReturn(true);
 
         AppUser result = appUserService.login("alice", "pass");
 
@@ -190,8 +201,9 @@ class AppUserServiceTest {
 
     @Test
     void shouldThrowWhenLoginWithWrongPassword() {
-        AppUser user = AppUser.builder().loginName("alice").password("pass").active(true).build();
+        AppUser user = AppUser.builder().loginName("alice").password("$2a$10$encoded").active(true).build();
         when(appUserRepository.findById("alice")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("wrong", "$2a$10$encoded")).thenReturn(false);
 
         assertThatThrownBy(() -> appUserService.login("alice", "wrong"))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -200,7 +212,7 @@ class AppUserServiceTest {
 
     @Test
     void shouldThrowWhenLoginWithInactiveUser() {
-        AppUser user = AppUser.builder().loginName("alice").password("pass").active(false).build();
+        AppUser user = AppUser.builder().loginName("alice").password("$2a$10$encoded").active(false).build();
         when(appUserRepository.findById("alice")).thenReturn(Optional.of(user));
 
         assertThatThrownBy(() -> appUserService.login("alice", "pass"))
