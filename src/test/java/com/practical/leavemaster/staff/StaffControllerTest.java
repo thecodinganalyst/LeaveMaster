@@ -163,6 +163,14 @@ class StaffControllerTest {
     }
 
     @Test
+    void shouldReturn409WhenDeletingStaffInUse() throws Exception {
+        doThrow(new StaffInUseException("S001")).when(staffService).delete("S001");
+
+        mockMvc.perform(delete("/staff/S001"))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
     void shouldTerminateStaff() throws Exception {
         Staff staff = Staff.builder().id("S001").name("Alice Smith").joinDate(LocalDate.of(2023, 1, 1))
                 .termDate(LocalDate.of(2024, 6, 30)).workSchedule(weekdays()).build();

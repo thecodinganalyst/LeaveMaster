@@ -57,6 +57,8 @@ public class StaffController {
             return ResponseEntity.noContent().build();
         } catch (StaffNotFoundException e) {
             return ResponseEntity.notFound().build();
+        } catch (StaffInUseException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
         }
     }
 
