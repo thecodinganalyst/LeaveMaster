@@ -4,13 +4,14 @@ LeaveMaster is a Spring Boot REST API for managing employee leave. It handles le
 
 ## Features
 
-- **Staff management** — create, update, and terminate staff records, each with a customisable weekly work schedule and leave entitlements.
+- **Staff management** — create, update, and terminate staff records, each with a customisable weekly work schedule, leave entitlements, and an optional location assignment.
 - **Leave types** — define the types of leave available in your organisation (e.g. Annual Leave, Medical Leave).
 - **Leave entitlements** — assign leave quotas per staff member per leave type for a given date range.
-- **Leave applications** — staff can apply for leave; applications can be approved, rejected, or cancelled by authorised approvers.
+- **Leave applications** — staff can apply for leave; applications can be approved, rejected, or cancelled by authorised approvers. Public holidays that match the staff member's location (or global holidays) are automatically excluded.
 - **Leave balance** — query the remaining leave balance for a staff member across all leave types.
 - **Leave approvers** — assign one or more approvers to a staff member with configurable effective dates.
-- **Leave calendar** — define yearly leave calendars that contain public holidays, which are automatically excluded when calculating leave duration.
+- **Leave calendar** — define yearly leave calendars that contain public holidays. Each public holiday can be scoped to a specific location or left global (applying to all locations).
+- **Locations** — maintain a list of locations (country, or country + state) used to scope public holidays and assign staff to the correct holiday set.
 - **Email notifications** — send email alerts on leave-status changes.
 - **Swagger UI** — interactive API documentation available out of the box.
 
@@ -130,6 +131,8 @@ Use JDBC URL `jdbc:h2:mem:leavemaster`, username `sa`, and an empty password.
 
 ## API Overview
 
+For detailed endpoint documentation, see [docs/api.md](docs/api.md).
+
 | Resource | Base Path | Description |
 |----------|-----------|-------------|
 | Staff | `/staff` | Manage staff records and work schedules |
@@ -137,6 +140,7 @@ Use JDBC URL `jdbc:h2:mem:leavemaster`, username `sa`, and an empty password.
 | Leave Applications | `/leave-applications` | Apply for, approve, reject, and cancel leave |
 | Leave Approvers | `/leave-approvers` | Assign approvers to staff members |
 | Leave Calendars | `/leave-calendars` | Manage yearly calendars with public holidays |
+| Locations | `/locations` | Manage locations for public holiday scoping |
 
 ### Leave Application Status Flow
 
