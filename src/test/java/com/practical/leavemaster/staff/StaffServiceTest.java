@@ -8,6 +8,7 @@ import com.practical.leavemaster.leaveapprover.LeaveApproverRepository;
 import com.practical.leavemaster.leaveentitlement.LeaveEntitlement;
 import com.practical.leavemaster.leavetype.LeaveType;
 import com.practical.leavemaster.leavetype.LeaveTypeRepository;
+import com.practical.leavemaster.tenant.TenantActivityService;
 import com.practical.leavemaster.user.AppUserService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -46,6 +47,9 @@ class StaffServiceTest {
 
     @Mock
     private AppUserService appUserService;
+
+    @Mock
+    private TenantActivityService tenantActivityService;
 
     @InjectMocks
     private StaffService staffService;

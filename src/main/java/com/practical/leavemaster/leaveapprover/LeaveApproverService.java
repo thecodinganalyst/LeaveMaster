@@ -3,6 +3,7 @@ package com.practical.leavemaster.leaveapprover;
 import com.practical.leavemaster.staff.Staff;
 import com.practical.leavemaster.staff.StaffNotFoundException;
 import com.practical.leavemaster.staff.StaffRepository;
+import com.practical.leavemaster.tenant.TenantActivityService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -16,6 +17,7 @@ public class LeaveApproverService {
 
     private final LeaveApproverRepository leaveApproverRepository;
     private final StaffRepository staffRepository;
+    private final TenantActivityService tenantActivityService;
 
     public List<LeaveApprover> findAll() {
         return leaveApproverRepository.findAll();
@@ -41,8 +43,11 @@ public class LeaveApproverService {
                 .effectiveTo(request.getEffectiveTo())
                 .admin(staffEntities[2])
                 .adminDate(LocalDate.now())
+                .tenantId(staffEntities[0].getTenantId())
                 .build();
-        return leaveApproverRepository.save(leaveApprover);
+        LeaveApprover saved = leaveApproverRepository.save(leaveApprover);
+        tenantActivityService.touch(resolveTenantId(saved));
+        return saved;
     }
 
     public LeaveApprover update(String id, LeaveApproverRequest request) {
@@ -56,13 +61,17 @@ public class LeaveApproverService {
         existing.setEffectiveTo(request.getEffectiveTo());
         existing.setAdmin(staffEntities[2]);
         existing.setAdminDate(LocalDate.now());
-        return leaveApproverRepository.save(existing);
+        existing.setTenantId(staffEntities[0].getTenantId());
+        LeaveApprover saved = leaveApproverRepository.save(existing);
+        tenantActivityService.touch(resolveTenantId(saved));
+        return saved;
     }
 
     public void delete(String id) {
-        leaveApproverRepository.findById(id)
+        LeaveApprover existing = leaveApproverRepository.findById(id)
                 .orElseThrow(() -> new LeaveApproverNotFoundException(id));
         leaveApproverRepository.deleteById(id);
+        tenantActivityService.touch(resolveTenantId(existing));
     }
 
     private void validateDates(LeaveApproverRequest request) {
@@ -82,5 +91,12 @@ public class LeaveApproverService {
         Staff admin = staffRepository.findById(request.getAdminId())
                 .orElseThrow(() -> new StaffNotFoundException(request.getAdminId()));
         return new Staff[]{staff, approver, admin};
+    }
+
+    private String resolveTenantId(LeaveApprover leaveApprover) {
+        if (leaveApprover.getTenantId() != null && !leaveApprover.getTenantId().isBlank()) {
+            return leaveApprover.getTenantId();
+        }
+        return leaveApprover.getStaff() != null ? leaveApprover.getStaff().getTenantId() : null;
     }
 }

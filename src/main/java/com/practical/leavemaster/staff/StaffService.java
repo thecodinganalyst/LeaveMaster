@@ -8,6 +8,7 @@ import com.practical.leavemaster.leaveapprover.LeaveApproverRepository;
 import com.practical.leavemaster.leaveentitlement.LeaveEntitlement;
 import com.practical.leavemaster.leavetype.LeaveType;
 import com.practical.leavemaster.leavetype.LeaveTypeRepository;
+import com.practical.leavemaster.tenant.TenantActivityService;
 import com.practical.leavemaster.user.AppUserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -34,6 +35,7 @@ public class StaffService {
     private final LeaveApproverRepository leaveApproverRepository;
     private final LeaveApplicationRepository leaveApplicationRepository;
     private final AppUserService appUserService;
+    private final TenantActivityService tenantActivityService;
 
     public List<Staff> findAll() {
         return staffRepository.findAll();
@@ -51,7 +53,8 @@ public class StaffService {
         String loginName = (staff.getLoginName() != null && !staff.getLoginName().isBlank())
                 ? staff.getLoginName() : staff.getId();
         boolean active = staff.getJoinDate() != null && !staff.getJoinDate().isAfter(LocalDate.now());
-        appUserService.createForStaff(saved.getId(), loginName, loginName, active);
+        appUserService.createForStaff(saved.getId(), loginName, loginName, active, saved.getTenantId());
+        tenantActivityService.touch(saved.getTenantId());
         return saved;
     }
 
@@ -70,16 +73,19 @@ public class StaffService {
             existing.getLeaveEntitlements().clear();
             existing.getLeaveEntitlements().addAll(normalized);
         }
-        return staffRepository.save(existing);
+        Staff saved = staffRepository.save(existing);
+        tenantActivityService.touch(saved.getTenantId());
+        return saved;
     }
 
     public void delete(String id) {
-        staffRepository.findById(id)
+        Staff existing = staffRepository.findById(id)
                 .orElseThrow(() -> new StaffNotFoundException(id));
         if (leaveApplicationRepository.existsByStaffId(id) || leaveApplicationRepository.existsByApproverId(id)) {
             throw new StaffInUseException(id);
         }
         staffRepository.deleteById(id);
+        tenantActivityService.touch(existing.getTenantId());
     }
 
     public TerminationResult terminate(String id, LocalDate termDate) {
@@ -137,6 +143,7 @@ public class StaffService {
         if (!termDate.isAfter(LocalDate.now())) {
             appUserService.deactivateByStaffId(id);
         }
+        tenantActivityService.touch(saved.getTenantId());
         return new TerminationResult(saved, staffWithNoApprover);
     }
 
@@ -158,6 +165,7 @@ public class StaffService {
             markLeaveTypeAsUsed(leaveType);
             leaveEntitlement.setStaff(staff);
             leaveEntitlement.setLeaveType(leaveType);
+            leaveEntitlement.setTenantId(staff.getTenantId());
             applyPeriodAndProration(staff, leaveEntitlement);
             normalized.add(leaveEntitlement);
         }

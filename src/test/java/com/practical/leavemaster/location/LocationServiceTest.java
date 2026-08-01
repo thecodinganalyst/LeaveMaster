@@ -1,6 +1,7 @@
 package com.practical.leavemaster.location;
 
 import com.practical.leavemaster.staff.StaffRepository;
+import com.practical.leavemaster.tenant.TenantActivityService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -23,6 +24,9 @@ class LocationServiceTest {
 
     @Mock
     private StaffRepository staffRepository;
+
+    @Mock
+    private TenantActivityService tenantActivityService;
 
     @InjectMocks
     private LocationService locationService;

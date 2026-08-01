@@ -3,6 +3,7 @@ package com.practical.leavemaster.leaveapprover;
 import com.practical.leavemaster.staff.Staff;
 import com.practical.leavemaster.staff.StaffNotFoundException;
 import com.practical.leavemaster.staff.StaffRepository;
+import com.practical.leavemaster.tenant.TenantActivityService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -25,6 +26,9 @@ class LeaveApproverServiceTest {
 
     @Mock
     private StaffRepository staffRepository;
+
+    @Mock
+    private TenantActivityService tenantActivityService;
 
     @InjectMocks
     private LeaveApproverService leaveApproverService;
@@ -209,4 +213,3 @@ class LeaveApproverServiceTest {
         verify(leaveApproverRepository, never()).deleteById("nonexistent");
     }
 }
-

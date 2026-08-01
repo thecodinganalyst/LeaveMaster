@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -15,6 +16,9 @@ class TenantRepositoryTest {
 
     @Autowired
     private TenantRepository tenantRepository;
+
+    @Autowired
+    private jakarta.persistence.EntityManager entityManager;
 
     @Test
     void shouldSaveAndFindTenant() {
@@ -32,6 +36,7 @@ class TenantRepositoryTest {
         assertThat(found.get().getName()).isEqualTo("Acme Corp");
         assertThat(found.get().getStatus()).isEqualTo(TenantStatus.ACTIVE);
         assertThat(found.get().getEndDate()).isNull();
+        assertThat(found.get().getLastModified()).isNotNull();
     }
 
     @Test
@@ -66,5 +71,22 @@ class TenantRepositoryTest {
         tenantRepository.save(Tenant.builder().id("t1").name("Tenant 1").startDate(LocalDate.now()).status(TenantStatus.ACTIVE).build());
         tenantRepository.deleteById("t1");
         assertThat(tenantRepository.findById("t1")).isEmpty();
+    }
+
+    @Test
+    void shouldFindActiveTenantsInactiveForMoreThanAMonth() {
+        tenantRepository.save(Tenant.builder().id("t1").name("Tenant 1").startDate(LocalDate.now()).status(TenantStatus.ACTIVE).build());
+        tenantRepository.save(Tenant.builder().id("t2").name("Tenant 2").startDate(LocalDate.now()).status(TenantStatus.ACTIVE).build());
+        tenantRepository.save(Tenant.builder().id("t3").name("Tenant 3").startDate(LocalDate.now()).status(TenantStatus.DORMANT).build());
+
+        tenantRepository.updateLastModified("t1", LocalDateTime.now().minusMonths(2));
+        tenantRepository.updateLastModified("t2", LocalDateTime.now().minusDays(10));
+        tenantRepository.updateLastModified("t3", LocalDateTime.now().minusMonths(2));
+        entityManager.clear();
+
+        List<Tenant> dormantCandidates = tenantRepository.findAllByStatusAndLastModifiedBefore(
+                TenantStatus.ACTIVE, LocalDateTime.now().minusMonths(1));
+
+        assertThat(dormantCandidates).extracting(Tenant::getId).containsExactly("t1");
     }
 }
