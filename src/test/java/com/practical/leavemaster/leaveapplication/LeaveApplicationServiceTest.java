@@ -570,6 +570,43 @@ class LeaveApplicationServiceTest {
     }
 
     @Test
+    void shouldThrowWhenRejectingNonPendingLeaveApplication() {
+        LeaveApplication app = LeaveApplication.builder().id("id1").staff(weekdayStaff())
+                .leaveDate(LocalDate.now().plusDays(1)).leaveType(annualLeave())
+                .leaveDuration(LeaveDuration.FULL).status(LeaveStatus.DRAFT)
+                .applicationDate(LocalDate.now()).build();
+        when(leaveApplicationRepository.findById("id1")).thenReturn(Optional.of(app));
+
+        assertThatThrownBy(() -> leaveApplicationService.reject("id1", "S002"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Leave application is not pending approval");
+
+        verify(leaveApplicationRepository, never()).save(any(LeaveApplication.class));
+        verify(emailService, never()).sendLeaveRejectionNotification(any(LeaveApplication.class));
+    }
+
+    @Test
+    void shouldThrowWhenApproverIsNotAssignedToRejectLeaveApplication() {
+        Staff staff = weekdayStaff();
+        Staff approverStaff = approverStaff();
+        LeaveApplication app = LeaveApplication.builder().id("id1").staff(staff)
+                .leaveDate(LocalDate.now().plusDays(1)).leaveType(annualLeave())
+                .leaveDuration(LeaveDuration.FULL).status(LeaveStatus.PENDING)
+                .applicationDate(LocalDate.now()).build();
+        when(leaveApplicationRepository.findById("id1")).thenReturn(Optional.of(app));
+        when(staffRepository.findById("S002")).thenReturn(Optional.of(approverStaff));
+        when(leaveApproverRepository.findActiveApproversForStaff(staff, app.getLeaveDate()))
+                .thenReturn(List.of());
+
+        assertThatThrownBy(() -> leaveApplicationService.reject("id1", "S002"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Leave application is not pending for this approver");
+
+        verify(leaveApplicationRepository, never()).save(any(LeaveApplication.class));
+        verify(emailService, never()).sendLeaveRejectionNotification(any(LeaveApplication.class));
+    }
+
+    @Test
     void shouldApproveCancellationAndSetCancelledStatus() {
         LeaveApplication app = LeaveApplication.builder().id("id1").staff(weekdayStaff())
                 .leaveDate(LocalDate.now().minusDays(1)).leaveType(annualLeave())
