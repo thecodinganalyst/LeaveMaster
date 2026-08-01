@@ -70,14 +70,23 @@ class LeaveApplicationControllerTest {
     }
 
     @Test
-    void shouldReturnAllLeaveApplications() throws Exception {
-        when(leaveApplicationService.findAll()).thenReturn(
+    void shouldReturnVisibleLeaveApplicationsForStaff() throws Exception {
+        when(leaveApplicationService.findVisibleForStaff("S001")).thenReturn(
                 List.of(application("id1", LocalDate.of(2024, 1, 8))));
 
-        mockMvc.perform(get("/leave-applications"))
+        mockMvc.perform(get("/leave-applications").param("staffId", "S001"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].id").value("id1"));
+    }
+
+    @Test
+    void shouldReturn404WhenStaffNotFoundForVisibleLeaveApplications() throws Exception {
+        when(leaveApplicationService.findVisibleForStaff("nonexistent"))
+                .thenThrow(new StaffNotFoundException("nonexistent"));
+
+        mockMvc.perform(get("/leave-applications").param("staffId", "nonexistent"))
+                .andExpect(status().isNotFound());
     }
 
     @Test
