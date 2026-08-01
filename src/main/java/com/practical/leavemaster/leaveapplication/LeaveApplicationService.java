@@ -56,6 +56,12 @@ public class LeaveApplicationService {
         return leaveApplicationRepository.findByStaff(staff);
     }
 
+    public List<LeaveApplication> findVisibleForStaff(String staffId) {
+        staffRepository.findById(staffId)
+                .orElseThrow(() -> new StaffNotFoundException(staffId));
+        return leaveApplicationRepository.findVisibleForStaff(staffId);
+    }
+
     public List<LeaveApplication> findPendingByApproverId(String approverId) {
         staffRepository.findById(approverId)
                 .orElseThrow(() -> new StaffNotFoundException(approverId));

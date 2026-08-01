@@ -19,8 +19,12 @@ public class LeaveApplicationController {
     private final LeaveApplicationService leaveApplicationService;
 
     @GetMapping
-    public List<LeaveApplication> getAll() {
-        return leaveApplicationService.findAll();
+    public ResponseEntity<?> getAll(@RequestParam String staffId) {
+        try {
+            return ResponseEntity.ok(leaveApplicationService.findVisibleForStaff(staffId));
+        } catch (StaffNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @GetMapping("/{id}")

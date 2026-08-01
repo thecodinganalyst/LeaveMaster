@@ -985,4 +985,30 @@ class LeaveApplicationServiceTest {
         assertThatThrownBy(() -> leaveApplicationService.rejectCancellation("nonexistent"))
                 .isInstanceOf(LeaveApplicationNotFoundException.class);
     }
+
+    @Test
+    void shouldReturnOwnAndApprovedStaffLeaveRecordsForVisibleForStaff() {
+        Staff staff = weekdayStaff();
+        List<LeaveApplication> applications = List.of(
+                LeaveApplication.builder().id("LA001").staff(staff).leaveDate(LocalDate.of(2026, 8, 1))
+                        .leaveType(annualLeave()).leaveDuration(LeaveDuration.FULL)
+                        .status(LeaveStatus.APPROVED).applicationDate(LocalDate.of(2026, 7, 1)).build()
+        );
+
+        when(staffRepository.findById("S001")).thenReturn(Optional.of(staff));
+        when(leaveApplicationRepository.findVisibleForStaff("S001")).thenReturn(applications);
+
+        List<LeaveApplication> result = leaveApplicationService.findVisibleForStaff("S001");
+
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().getId()).isEqualTo("LA001");
+    }
+
+    @Test
+    void shouldThrowWhenStaffNotFoundForFindVisibleForStaff() {
+        when(staffRepository.findById("nonexistent")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> leaveApplicationService.findVisibleForStaff("nonexistent"))
+                .isInstanceOf(StaffNotFoundException.class);
+    }
 }

@@ -31,4 +31,15 @@ public interface LeaveApplicationRepository extends JpaRepository<LeaveApplicati
            "AND la.leaveDate >= lap.effectiveFrom " +
            "AND (lap.effectiveTo IS NULL OR la.leaveDate <= lap.effectiveTo)")
     List<LeaveApplication> findPendingByApproverId(@Param("approverId") String approverId);
+
+    @Query("SELECT DISTINCT la FROM LeaveApplication la " +
+           "WHERE la.staff.id = :staffId " +
+           "OR EXISTS (" +
+           "    SELECT lap FROM LeaveApprover lap " +
+           "    WHERE lap.approver.id = :staffId " +
+           "    AND lap.staff = la.staff " +
+           "    AND la.leaveDate >= lap.effectiveFrom " +
+           "    AND (lap.effectiveTo IS NULL OR la.leaveDate <= lap.effectiveTo)" +
+           ")")
+    List<LeaveApplication> findVisibleForStaff(@Param("staffId") String staffId);
 }
