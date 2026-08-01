@@ -1,7 +1,9 @@
-package com.practical.leavemaster.leavetype;
+package com.practical.leavemaster.tenant;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -9,13 +11,15 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
+
 @Entity
-@Table(name = "leave_type")
+@Table(name = "tenant")
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class LeaveType {
+public class Tenant {
 
     @Id
     @Column(nullable = false, unique = true)
@@ -24,9 +28,13 @@ public class LeaveType {
     @Column(nullable = false)
     private String name;
 
-    @Column(nullable = false)
-    private boolean used;
+    @Column(name = "start_date", nullable = false)
+    private LocalDate startDate;
 
-    @Column(name = "tenant_id")
-    private String tenantId;
+    @Column(name = "end_date")
+    private LocalDate endDate;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private TenantStatus status;
 }

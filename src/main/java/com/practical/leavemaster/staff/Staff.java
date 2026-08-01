@@ -65,4 +65,7 @@ public class Staff {
 
     @Transient
     private String loginName;
+
+    @Column(name = "tenant_id")
+    private String tenantId;
 }

@@ -35,4 +35,7 @@ public class AppUser {
 
     @Column(name = "oidc_subject")
     private String oidcSubject;
+
+    @Column(name = "tenant_id")
+    private String tenantId;
 }

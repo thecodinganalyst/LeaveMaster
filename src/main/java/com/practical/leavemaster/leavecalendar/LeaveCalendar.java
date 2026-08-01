@@ -38,4 +38,7 @@ public class LeaveCalendar {
     @ElementCollection
     @CollectionTable(name = "public_holiday", joinColumns = @JoinColumn(name = "leave_calendar_id"))
     private List<PublicHoliday> publicHolidays = new ArrayList<>();
+
+    @Column(name = "tenant_id")
+    private String tenantId;
 }

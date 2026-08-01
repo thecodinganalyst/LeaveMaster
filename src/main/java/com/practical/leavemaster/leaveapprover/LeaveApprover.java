@@ -48,4 +48,7 @@ public class LeaveApprover {
 
     @Column(name = "admin_date", nullable = false)
     private LocalDate adminDate;
+
+    @Column(name = "tenant_id")
+    private String tenantId;
 }
