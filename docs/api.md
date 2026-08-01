@@ -26,8 +26,8 @@ This document lists all REST API endpoints exposed by LeaveMaster and describes 
 |--------|------|-------------|
 | `GET` | `/staff` | Retrieve a list of all staff records. |
 | `GET` | `/staff/{id}` | Retrieve a single staff record by ID. Returns `404` if not found. |
-| `POST` | `/staff` | Create a new staff record. Returns `400` for invalid input. |
-| `PUT` | `/staff/{id}` | Update an existing staff record. Returns `404` if not found, `400` for invalid input. |
+| `POST` | `/staff` | Create a new staff record. Accepts an optional `location` object (`{ "id": "..." }`) to assign the staff member to a location. Returns `400` for invalid input. |
+| `PUT` | `/staff/{id}` | Update an existing staff record, including the optional `location` assignment. Returns `404` if not found, `400` for invalid input. |
 | `DELETE` | `/staff/{id}` | Delete a staff record. Returns `204` on success, `404` if not found, `409` if the staff member is referenced by other records. |
 | `PUT` | `/staff/{id}/terminate` | Terminate a staff member on a given date (query param `termDate`). Cancels any approved future leave and removes pending leave applications. Returns `400` for invalid input. |
 
@@ -64,7 +64,19 @@ This document lists all REST API endpoints exposed by LeaveMaster and describes 
 |--------|------|-------------|
 | `GET` | `/leave-calendars` | Retrieve a list of all leave calendars. |
 | `GET` | `/leave-calendars/current` | Retrieve the leave calendar that covers the given date (query param `date`, defaults to today). Returns `404` if no matching calendar is found. |
-| `POST` | `/leave-calendars` | Create a new leave calendar for a specific year, including its list of public holidays. Returns `400` for invalid input, `409` if a calendar already exists for the same period. |
+| `POST` | `/leave-calendars` | Create a new leave calendar for a specific year, including its list of public holidays. Each public holiday may include an optional `locationId` field to scope it to a specific location; omit `locationId` (or set it to `null`) for a holiday that applies globally to all locations. Returns `400` for invalid input, `409` if a calendar already exists for the same period. |
+
+---
+
+## Locations (`/locations`)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/locations` | Retrieve a list of all locations. |
+| `GET` | `/locations/{id}` | Retrieve a single location by ID. Returns `404` if not found. |
+| `POST` | `/locations` | Create a new location. Body: `{ "id": "...", "locationName": "...", "country": "...", "state": "..." }`. `state` is optional (omit for country-level locations). |
+| `PUT` | `/locations/{id}` | Update an existing location. Returns `404` if not found. |
+| `DELETE` | `/locations/{id}` | Delete a location. Returns `204` on success, `404` if not found, `409` if the location is assigned to one or more staff members. |
 
 ---
 
