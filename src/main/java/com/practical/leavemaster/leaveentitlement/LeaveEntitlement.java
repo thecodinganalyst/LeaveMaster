@@ -52,4 +52,7 @@ public class LeaveEntitlement {
 
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal entitlement;
+
+    @Column(name = "tenant_id")
+    private String tenantId;
 }

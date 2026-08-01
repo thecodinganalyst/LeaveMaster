@@ -17,4 +17,6 @@ public interface LeaveCalendarRepository extends JpaRepository<LeaveCalendar, St
     Optional<LeaveCalendar> findTopByOrderByEndDesc();
 
     boolean existsByStartLessThanEqualAndEndGreaterThanEqual(LocalDate end, LocalDate start);
+
+    void deleteAllByTenantId(String tenantId);
 }

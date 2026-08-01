@@ -11,4 +11,6 @@ public interface AppUserRepository extends JpaRepository<AppUser, String> {
     Optional<AppUser> findByStaffId(String staffId);
 
     Optional<AppUser> findByOidcProviderAndOidcSubject(String oidcProvider, String oidcSubject);
+
+    void deleteAllByTenantId(String tenantId);
 }

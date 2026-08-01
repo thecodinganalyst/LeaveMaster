@@ -29,4 +29,7 @@ public class Location {
 
     @Column
     private String state;
+
+    @Column(name = "tenant_id")
+    private String tenantId;
 }

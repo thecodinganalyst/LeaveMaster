@@ -5,4 +5,6 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface LeaveTypeRepository extends JpaRepository<LeaveType, String> {
+
+    void deleteAllByTenantId(String tenantId);
 }

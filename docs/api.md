@@ -4,6 +4,26 @@ This document lists all REST API endpoints exposed by LeaveMaster and describes 
 
 ---
 
+## Tenants (`/tenants`)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/tenants` | Retrieve a list of all tenants. |
+| `GET` | `/tenants/{id}` | Retrieve a single tenant by ID. Returns `404` if not found. |
+| `POST` | `/tenants` | Create a new tenant. Body: `{ "id": "...", "name": "...", "startDate": "YYYY-MM-DD", "endDate": "YYYY-MM-DD", "status": "ACTIVE" }`. `endDate` is optional. `status` must be one of `ACTIVE`, `DORMANT`, or `TERMINATED`. |
+| `PUT` | `/tenants/{id}` | Update an existing tenant (name, dates, or status). Returns `404` if not found. |
+| `DELETE` | `/tenants/{id}` | Delete a tenant. Returns `204` on success, `404` if not found. |
+
+### Tenant Status Values
+
+| Status | Meaning |
+|--------|---------|
+| `ACTIVE` | Tenant is currently active and operational. |
+| `DORMANT` | Tenant exists but is temporarily inactive. |
+| `TERMINATED` | Tenant has been permanently terminated. |
+
+---
+
 ## Users (`/users`)
 
 | Method | Path | Description |

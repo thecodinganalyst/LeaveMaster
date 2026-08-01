@@ -64,4 +64,7 @@ public class LeaveApplication {
 
     @Column(name = "approval_date")
     private LocalDate approvalDate;
+
+    @Column(name = "tenant_id")
+    private String tenantId;
 }
