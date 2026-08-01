@@ -1,5 +1,13 @@
 package com.practical.leavemaster.tenant;
 
+import com.practical.leavemaster.leaveapplication.LeaveApplicationRepository;
+import com.practical.leavemaster.leaveapprover.LeaveApproverRepository;
+import com.practical.leavemaster.leavecalendar.LeaveCalendarRepository;
+import com.practical.leavemaster.leavetype.LeaveTypeRepository;
+import com.practical.leavemaster.location.LocationRepository;
+import com.practical.leavemaster.staff.Staff;
+import com.practical.leavemaster.staff.StaffRepository;
+import com.practical.leavemaster.user.AppUserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -20,6 +28,27 @@ class TenantServiceTest {
 
     @Mock
     private TenantRepository tenantRepository;
+
+    @Mock
+    private LeaveApplicationRepository leaveApplicationRepository;
+
+    @Mock
+    private LeaveApproverRepository leaveApproverRepository;
+
+    @Mock
+    private StaffRepository staffRepository;
+
+    @Mock
+    private LeaveTypeRepository leaveTypeRepository;
+
+    @Mock
+    private LeaveCalendarRepository leaveCalendarRepository;
+
+    @Mock
+    private LocationRepository locationRepository;
+
+    @Mock
+    private AppUserRepository appUserRepository;
 
     @InjectMocks
     private TenantService tenantService;
@@ -81,12 +110,21 @@ class TenantServiceTest {
     }
 
     @Test
-    void shouldDeleteTenant() {
+    void shouldDeleteTenantAndAllRelatedData() {
         Tenant tenant = Tenant.builder().id("t1").name("Tenant 1").startDate(LocalDate.now()).status(TenantStatus.ACTIVE).build();
+        Staff staff = Staff.builder().id("s1").name("Alice").joinDate(LocalDate.now()).tenantId("t1").build();
         when(tenantRepository.findById("t1")).thenReturn(Optional.of(tenant));
+        when(staffRepository.findAllByTenantId("t1")).thenReturn(List.of(staff));
 
         tenantService.delete("t1");
 
+        verify(leaveApplicationRepository).deleteAllByTenantId("t1");
+        verify(leaveApproverRepository).deleteAllByTenantId("t1");
+        verify(staffRepository).deleteAll(List.of(staff));
+        verify(leaveTypeRepository).deleteAllByTenantId("t1");
+        verify(leaveCalendarRepository).deleteAllByTenantId("t1");
+        verify(locationRepository).deleteAllByTenantId("t1");
+        verify(appUserRepository).deleteAllByTenantId("t1");
         verify(tenantRepository).deleteById("t1");
     }
 

@@ -17,4 +17,6 @@ public interface LeaveApproverRepository extends JpaRepository<LeaveApprover, St
     List<LeaveApprover> findActiveApproversForStaff(@Param("staff") Staff staff, @Param("date") LocalDate date);
 
     List<LeaveApprover> findByApprover(Staff approver);
+
+    void deleteAllByTenantId(String tenantId);
 }

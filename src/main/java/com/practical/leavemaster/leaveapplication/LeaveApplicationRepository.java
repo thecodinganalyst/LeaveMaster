@@ -42,4 +42,6 @@ public interface LeaveApplicationRepository extends JpaRepository<LeaveApplicati
            "    AND (lap.effectiveTo IS NULL OR la.leaveDate <= lap.effectiveTo)" +
            ")")
     List<LeaveApplication> findVisibleForStaff(@Param("staffId") String staffId);
+
+    void deleteAllByTenantId(String tenantId);
 }
