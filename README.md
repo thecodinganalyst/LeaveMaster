@@ -12,6 +12,7 @@ LeaveMaster is a Spring Boot REST API for managing employee leave. It handles le
 - **Leave approvers** — assign one or more approvers to a staff member with configurable effective dates.
 - **Leave calendar** — define yearly leave calendars that contain public holidays. Each public holiday can be scoped to a specific location or left global (applying to all locations).
 - **Locations** — maintain a list of locations (country, or country + state) used to scope public holidays and assign staff to the correct holiday set.
+- **Tenants** — manage tenants that own all other resources; each tenant has a lifecycle status (`ACTIVE`, `DORMANT`, `TERMINATED`) and date range, and every record in the system is scoped to a tenant.
 - **Email notifications** — send email alerts on leave-status changes.
 - **Swagger UI** — interactive API documentation available out of the box.
 
@@ -135,6 +136,7 @@ For detailed endpoint documentation, see [docs/api.md](docs/api.md).
 
 | Resource | Base Path | Description |
 |----------|-----------|-------------|
+| Tenants | `/tenants` | Manage tenants and their lifecycle status |
 | Staff | `/staff` | Manage staff records and work schedules |
 | Leave Types | `/leave-types` | Define available leave types |
 | Leave Applications | `/leave-applications` | Apply for, approve, reject, and cancel leave |
