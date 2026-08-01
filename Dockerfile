@@ -8,7 +8,6 @@ RUN chmod +x gradlew && ./gradlew bootJar --no-daemon
 
 FROM eclipse-temurin:25-jdk
 WORKDIR /app
-ENV SPRING_PROFILES_ACTIVE=docker
 COPY --from=builder /workspace/build/libs/*.jar app.jar
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
