@@ -13,6 +13,7 @@ import com.practical.leavemaster.staff.Staff;
 import com.practical.leavemaster.staff.StaffNotFoundException;
 import com.practical.leavemaster.staff.StaffRepository;
 import com.practical.leavemaster.staff.WorkScheduleDay;
+import com.practical.leavemaster.tenant.TenantActivityService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -53,6 +54,9 @@ class LeaveApplicationServiceTest {
     @Mock
     private com.practical.leavemaster.email.EmailService emailService;
 
+    @Mock
+    private TenantActivityService tenantActivityService;
+
     @InjectMocks
     private LeaveApplicationService leaveApplicationService;
 
@@ -62,6 +66,7 @@ class LeaveApplicationServiceTest {
                 .name("Alice Smith")
                 .email("alice@example.com")
                 .joinDate(LocalDate.of(2023, 1, 1))
+                .tenantId("tenant-1")
                 .workSchedule(List.of(
                         WorkScheduleDay.builder().dayOfWeek(DayOfWeek.MONDAY).daySchedule(DaySchedule.FULL).build(),
                         WorkScheduleDay.builder().dayOfWeek(DayOfWeek.TUESDAY).daySchedule(DaySchedule.FULL).build(),
@@ -122,6 +127,7 @@ class LeaveApplicationServiceTest {
         assertThat(result).allMatch(a -> a.getStatus() == LeaveStatus.DRAFT);
         assertThat(result).allMatch(a -> a.getLeaveDuration() == LeaveDuration.FULL);
         assertThat(result).allMatch(a -> a.getLeaveType().getId().equals("annual"));
+        assertThat(result).allMatch(a -> "tenant-1".equals(a.getTenantId()));
     }
 
     @Test

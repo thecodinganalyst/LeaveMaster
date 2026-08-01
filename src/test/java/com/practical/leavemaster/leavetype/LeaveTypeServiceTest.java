@@ -1,5 +1,6 @@
 package com.practical.leavemaster.leavetype;
 
+import com.practical.leavemaster.tenant.TenantActivityService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -18,6 +19,9 @@ class LeaveTypeServiceTest {
 
     @Mock
     private LeaveTypeRepository leaveTypeRepository;
+
+    @Mock
+    private TenantActivityService tenantActivityService;
 
     @InjectMocks
     private LeaveTypeService leaveTypeService;

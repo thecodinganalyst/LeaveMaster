@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -36,6 +37,7 @@ public class TenantService {
     }
 
     public Tenant save(Tenant tenant) {
+        tenant.setLastModified(LocalDateTime.now());
         return tenantRepository.save(tenant);
     }
 
@@ -46,7 +48,24 @@ public class TenantService {
         existing.setStartDate(updated.getStartDate());
         existing.setEndDate(updated.getEndDate());
         existing.setStatus(updated.getStatus());
+        existing.setLastModified(LocalDateTime.now());
         return tenantRepository.save(existing);
+    }
+
+    @Transactional
+    public int markDormantTenants(LocalDateTime cutoff) {
+        List<Tenant> dormantCandidates = tenantRepository.findAllByStatusAndLastModifiedBefore(TenantStatus.ACTIVE, cutoff);
+        if (dormantCandidates.isEmpty()) {
+            return 0;
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        dormantCandidates.forEach(tenant -> {
+            tenant.setStatus(TenantStatus.DORMANT);
+            tenant.setLastModified(now);
+        });
+        tenantRepository.saveAll(dormantCandidates);
+        return dormantCandidates.size();
     }
 
     @Transactional

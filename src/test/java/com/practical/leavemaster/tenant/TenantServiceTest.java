@@ -15,6 +15,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -85,6 +86,7 @@ class TenantServiceTest {
         Tenant result = tenantService.save(tenant);
 
         assertThat(result.getId()).isEqualTo("t1");
+        assertThat(result.getLastModified()).isNotNull();
     }
 
     @Test
@@ -107,6 +109,26 @@ class TenantServiceTest {
 
         assertThatThrownBy(() -> tenantService.update("nonexistent", new Tenant()))
                 .isInstanceOf(TenantNotFoundException.class);
+    }
+
+    @Test
+    void shouldMarkInactiveActiveTenantsDormant() {
+        Tenant inactive = Tenant.builder()
+                .id("t1")
+                .name("Tenant 1")
+                .startDate(LocalDate.now())
+                .status(TenantStatus.ACTIVE)
+                .lastModified(LocalDateTime.now().minusMonths(2))
+                .build();
+        when(tenantRepository.findAllByStatusAndLastModifiedBefore(eq(TenantStatus.ACTIVE), any(LocalDateTime.class)))
+                .thenReturn(List.of(inactive));
+
+        int updatedCount = tenantService.markDormantTenants(LocalDateTime.now().minusMonths(1));
+
+        assertThat(updatedCount).isEqualTo(1);
+        assertThat(inactive.getStatus()).isEqualTo(TenantStatus.DORMANT);
+        assertThat(inactive.getLastModified()).isNotNull();
+        verify(tenantRepository).saveAll(List.of(inactive));
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.practical.leavemaster.leavetype;
 
+import com.practical.leavemaster.tenant.TenantActivityService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -11,6 +12,7 @@ import java.util.Optional;
 public class LeaveTypeService {
 
     private final LeaveTypeRepository leaveTypeRepository;
+    private final TenantActivityService tenantActivityService;
 
     public List<LeaveType> findAll() {
         return leaveTypeRepository.findAll();
@@ -22,14 +24,18 @@ public class LeaveTypeService {
 
     public LeaveType save(LeaveType leaveType) {
         leaveType.setUsed(false);
-        return leaveTypeRepository.save(leaveType);
+        LeaveType saved = leaveTypeRepository.save(leaveType);
+        tenantActivityService.touch(saved.getTenantId());
+        return saved;
     }
 
     public LeaveType update(String id, LeaveType updated) {
         LeaveType existing = leaveTypeRepository.findById(id)
                 .orElseThrow(() -> new LeaveTypeNotFoundException(id));
         existing.setName(updated.getName());
-        return leaveTypeRepository.save(existing);
+        LeaveType saved = leaveTypeRepository.save(existing);
+        tenantActivityService.touch(saved.getTenantId());
+        return saved;
     }
 
     public void delete(String id) {
@@ -39,5 +45,6 @@ public class LeaveTypeService {
             throw new LeaveTypeInUseException(id);
         }
         leaveTypeRepository.deleteById(id);
+        tenantActivityService.touch(leaveType.getTenantId());
     }
 }

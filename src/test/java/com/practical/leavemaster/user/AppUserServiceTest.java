@@ -1,5 +1,6 @@
 package com.practical.leavemaster.user;
 
+import com.practical.leavemaster.tenant.TenantActivityService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -23,6 +24,9 @@ class AppUserServiceTest {
 
     @Mock
     private PasswordEncoder passwordEncoder;
+
+    @Mock
+    private TenantActivityService tenantActivityService;
 
     @InjectMocks
     private AppUserService appUserService;

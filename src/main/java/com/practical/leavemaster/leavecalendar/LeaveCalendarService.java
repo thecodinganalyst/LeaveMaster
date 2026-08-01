@@ -1,5 +1,6 @@
 package com.practical.leavemaster.leavecalendar;
 
+import com.practical.leavemaster.tenant.TenantActivityService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -13,6 +14,7 @@ import java.util.Optional;
 public class LeaveCalendarService {
 
     private final LeaveCalendarRepository leaveCalendarRepository;
+    private final TenantActivityService tenantActivityService;
 
     public List<LeaveCalendar> findAll() {
         return leaveCalendarRepository.findAllByOrderByStartAsc();
@@ -38,7 +40,9 @@ public class LeaveCalendarService {
             throw new LeaveCalendarConflictException("Leave calendar overlaps an existing calendar");
         }
 
-        return leaveCalendarRepository.save(normalized);
+        LeaveCalendar saved = leaveCalendarRepository.save(normalized);
+        tenantActivityService.touch(saved.getTenantId());
+        return saved;
     }
 
     public Optional<LeaveCalendar> getCalendarFor(LocalDate date) {
@@ -55,6 +59,7 @@ public class LeaveCalendarService {
         LeaveCalendar calendar = latest.get();
         while (date.isAfter(calendar.getEnd())) {
             calendar = leaveCalendarRepository.save(nextCalendarFrom(calendar));
+            tenantActivityService.touch(calendar.getTenantId());
         }
 
         return Optional.of(calendar);
@@ -98,6 +103,7 @@ public class LeaveCalendarService {
                 .start(nextStart)
                 .end(nextEnd)
                 .publicHolidays(nextPublicHolidays)
+                .tenantId(current.getTenantId())
                 .build();
     }
 
@@ -117,6 +123,7 @@ public class LeaveCalendarService {
                 .start(leaveCalendar.getStart())
                 .end(leaveCalendar.getEnd())
                 .publicHolidays(publicHolidays)
+                .tenantId(leaveCalendar.getTenantId())
                 .build();
     }
 

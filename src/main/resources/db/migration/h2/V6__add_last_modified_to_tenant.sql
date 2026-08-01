@@ -1,0 +1,9 @@
+ALTER TABLE tenant
+    ADD COLUMN last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+
+UPDATE tenant
+SET last_modified = CURRENT_TIMESTAMP
+WHERE last_modified IS NULL;
+
+ALTER TABLE tenant
+    ALTER COLUMN last_modified SET NOT NULL;

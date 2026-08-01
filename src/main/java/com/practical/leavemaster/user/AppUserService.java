@@ -1,5 +1,6 @@
 package com.practical.leavemaster.user;
 
+import com.practical.leavemaster.tenant.TenantActivityService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -14,6 +15,7 @@ public class AppUserService {
 
     private final AppUserRepository appUserRepository;
     private final PasswordEncoder passwordEncoder;
+    private final TenantActivityService tenantActivityService;
 
     public List<AppUser> findAll() {
         return appUserRepository.findAll();
@@ -29,7 +31,9 @@ public class AppUserService {
         }
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         applyOidcCredentials(user, user.getOidcProvider(), user.getOidcSubject());
-        return appUserRepository.save(user);
+        AppUser saved = appUserRepository.save(user);
+        tenantActivityService.touch(saved.getTenantId());
+        return saved;
     }
 
     public AppUser update(String loginName, AppUser updated) {
@@ -37,7 +41,9 @@ public class AppUserService {
                 .orElseThrow(() -> new AppUserNotFoundException(loginName));
         existing.setActive(updated.isActive());
         applyOidcCredentials(existing, updated.getOidcProvider(), updated.getOidcSubject());
-        return appUserRepository.save(existing);
+        AppUser saved = appUserRepository.save(existing);
+        tenantActivityService.touch(saved.getTenantId());
+        return saved;
     }
 
     public AppUser changePassword(String loginName, String newPassword) {
@@ -47,30 +53,41 @@ public class AppUserService {
         AppUser existing = appUserRepository.findById(loginName)
                 .orElseThrow(() -> new AppUserNotFoundException(loginName));
         existing.setPassword(passwordEncoder.encode(newPassword));
-        return appUserRepository.save(existing);
+        AppUser saved = appUserRepository.save(existing);
+        tenantActivityService.touch(saved.getTenantId());
+        return saved;
     }
 
     public AppUser activate(String loginName) {
         AppUser existing = appUserRepository.findById(loginName)
                 .orElseThrow(() -> new AppUserNotFoundException(loginName));
         existing.setActive(true);
-        return appUserRepository.save(existing);
+        AppUser saved = appUserRepository.save(existing);
+        tenantActivityService.touch(saved.getTenantId());
+        return saved;
     }
 
     public AppUser deactivate(String loginName) {
         AppUser existing = appUserRepository.findById(loginName)
                 .orElseThrow(() -> new AppUserNotFoundException(loginName));
         existing.setActive(false);
-        return appUserRepository.save(existing);
+        AppUser saved = appUserRepository.save(existing);
+        tenantActivityService.touch(saved.getTenantId());
+        return saved;
     }
 
     public void delete(String loginName) {
-        appUserRepository.findById(loginName)
+        AppUser existing = appUserRepository.findById(loginName)
                 .orElseThrow(() -> new AppUserNotFoundException(loginName));
         appUserRepository.deleteById(loginName);
+        tenantActivityService.touch(existing.getTenantId());
     }
 
     public AppUser createForStaff(String staffId, String loginName, String password, boolean active) {
+        return createForStaff(staffId, loginName, password, active, null);
+    }
+
+    public AppUser createForStaff(String staffId, String loginName, String password, boolean active, String tenantId) {
         if (appUserRepository.existsById(loginName)) {
             throw new DuplicateLoginNameException(loginName);
         }
@@ -81,14 +98,18 @@ public class AppUserService {
                 .staffId(staffId)
                 .oidcProvider(null)
                 .oidcSubject(null)
+                .tenantId(tenantId)
                 .build();
-        return appUserRepository.save(user);
+        AppUser saved = appUserRepository.save(user);
+        tenantActivityService.touch(saved.getTenantId());
+        return saved;
     }
 
     public void deactivateByStaffId(String staffId) {
         appUserRepository.findByStaffId(staffId).ifPresent(user -> {
             user.setActive(false);
-            appUserRepository.save(user);
+            AppUser saved = appUserRepository.save(user);
+            tenantActivityService.touch(saved.getTenantId());
         });
     }
 

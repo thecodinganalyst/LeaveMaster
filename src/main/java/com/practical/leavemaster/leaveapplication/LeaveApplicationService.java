@@ -15,6 +15,7 @@ import com.practical.leavemaster.staff.Staff;
 import com.practical.leavemaster.staff.StaffNotFoundException;
 import com.practical.leavemaster.staff.StaffRepository;
 import com.practical.leavemaster.staff.WorkScheduleDay;
+import com.practical.leavemaster.tenant.TenantActivityService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -41,6 +42,7 @@ public class LeaveApplicationService {
     private final LeaveCalendarService leaveCalendarService;
     private final LeaveApproverRepository leaveApproverRepository;
     private final EmailService emailService;
+    private final TenantActivityService tenantActivityService;
 
     public List<LeaveApplication> findAll() {
         return leaveApplicationRepository.findAll();
@@ -141,8 +143,11 @@ public class LeaveApplicationService {
                     .status(status)
                     .attachment(request.getAttachment())
                     .applicationDate(LocalDate.now())
+                    .tenantId(staff.getTenantId())
                     .build();
-            applications.add(leaveApplicationRepository.save(application));
+            LeaveApplication saved = leaveApplicationRepository.save(application);
+            tenantActivityService.touch(resolveTenantId(saved));
+            applications.add(saved);
         }
         return applications;
     }
@@ -155,7 +160,9 @@ public class LeaveApplicationService {
         existing.setApprovalDate(updated.getApprovalDate());
         existing.setLeaveDuration(updated.getLeaveDuration());
         existing.setAttachment(updated.getAttachment());
-        return leaveApplicationRepository.save(existing);
+        LeaveApplication saved = leaveApplicationRepository.save(existing);
+        tenantActivityService.touch(resolveTenantId(saved));
+        return saved;
     }
 
     public void delete(String id) {
@@ -166,11 +173,13 @@ public class LeaveApplicationService {
 
         if (isPast && application.getStatus() == LeaveStatus.APPROVED) {
             application.setStatus(LeaveStatus.CANCEL_REQUESTED);
-            leaveApplicationRepository.save(application);
+            LeaveApplication saved = leaveApplicationRepository.save(application);
+            tenantActivityService.touch(resolveTenantId(saved));
             notifyApproverOfCancellationRequest(application);
         } else {
             application.setStatus(LeaveStatus.CANCELLED);
-            leaveApplicationRepository.save(application);
+            LeaveApplication saved = leaveApplicationRepository.save(application);
+            tenantActivityService.touch(resolveTenantId(saved));
         }
     }
 
@@ -185,6 +194,7 @@ public class LeaveApplicationService {
         application.setApprover(approver);
         application.setApprovalDate(LocalDate.now());
         LeaveApplication updated = leaveApplicationRepository.save(application);
+        tenantActivityService.touch(resolveTenantId(updated));
         emailService.sendLeaveApprovalNotification(updated);
         return updated;
     }
@@ -200,6 +210,7 @@ public class LeaveApplicationService {
         application.setApprover(approver);
         application.setApprovalDate(LocalDate.now());
         LeaveApplication updated = leaveApplicationRepository.save(application);
+        tenantActivityService.touch(resolveTenantId(updated));
         emailService.sendLeaveRejectionNotification(updated);
         return updated;
     }
@@ -211,7 +222,9 @@ public class LeaveApplicationService {
             throw new IllegalArgumentException("Leave application is not pending cancellation approval");
         }
         application.setStatus(LeaveStatus.CANCELLED);
-        return leaveApplicationRepository.save(application);
+        LeaveApplication saved = leaveApplicationRepository.save(application);
+        tenantActivityService.touch(resolveTenantId(saved));
+        return saved;
     }
 
     public LeaveApplication rejectCancellation(String id) {
@@ -221,7 +234,9 @@ public class LeaveApplicationService {
             throw new IllegalArgumentException("Leave application is not pending cancellation approval");
         }
         application.setStatus(LeaveStatus.APPROVED);
-        return leaveApplicationRepository.save(application);
+        LeaveApplication saved = leaveApplicationRepository.save(application);
+        tenantActivityService.touch(resolveTenantId(saved));
+        return saved;
     }
 
     private void validatePendingApproval(LeaveApplication application) {
@@ -262,6 +277,13 @@ public class LeaveApplicationService {
             date = date.plusDays(1);
         }
         return dates;
+    }
+
+    private String resolveTenantId(LeaveApplication application) {
+        if (application.getTenantId() != null && !application.getTenantId().isBlank()) {
+            return application.getTenantId();
+        }
+        return application.getStaff() != null ? application.getStaff().getTenantId() : null;
     }
 
     private boolean isPublicHoliday(LocalDate date, LeaveCalendar calendar, Staff staff) {

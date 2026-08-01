@@ -1,5 +1,6 @@
 package com.practical.leavemaster.leavecalendar;
 
+import com.practical.leavemaster.tenant.TenantActivityService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -20,6 +21,9 @@ class LeaveCalendarServiceTest {
     @Mock
     private LeaveCalendarRepository leaveCalendarRepository;
 
+    @Mock
+    private TenantActivityService tenantActivityService;
+
     @InjectMocks
     private LeaveCalendarService leaveCalendarService;
 
@@ -29,6 +33,7 @@ class LeaveCalendarServiceTest {
                 .id("fy2026")
                 .start(LocalDate.of(2026, 4, 1))
                 .end(LocalDate.of(2027, 3, 31))
+                .tenantId("tenant-1")
                 .publicHolidays(List.of(
                         PublicHoliday.builder().holidayDate(LocalDate.of(2026, 5, 1)).holidayName("Labour Day").build()
                 ))
@@ -42,6 +47,7 @@ class LeaveCalendarServiceTest {
         LeaveCalendar result = leaveCalendarService.create(leaveCalendar);
 
         assertThat(result.getId()).isEqualTo("fy2026");
+        assertThat(result.getTenantId()).isEqualTo("tenant-1");
         assertThat(result.getPublicHolidays()).hasSize(1);
     }
 
@@ -51,6 +57,7 @@ class LeaveCalendarServiceTest {
                 .id("fy2026")
                 .start(LocalDate.of(2026, 4, 1))
                 .end(LocalDate.of(2027, 3, 31))
+                .tenantId("tenant-1")
                 .publicHolidays(List.of(
                         PublicHoliday.builder().holidayDate(LocalDate.of(2026, 5, 1)).holidayName("Labour Day").build()
                 ))
@@ -67,6 +74,7 @@ class LeaveCalendarServiceTest {
         assertThat(result.get().getId()).isEqualTo("2027-04-01_2028-03-31");
         assertThat(result.get().getStart()).isEqualTo(LocalDate.of(2027, 4, 1));
         assertThat(result.get().getEnd()).isEqualTo(LocalDate.of(2028, 3, 31));
+        assertThat(result.get().getTenantId()).isEqualTo("tenant-1");
         assertThat(result.get().getPublicHolidays()).containsExactly(
                 PublicHoliday.builder().holidayDate(LocalDate.of(2027, 5, 1)).holidayName("Labour Day").build()
         );
