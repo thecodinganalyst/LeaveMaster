@@ -1,0 +1,104 @@
+# API Documentation
+
+This document lists all REST API endpoints exposed by LeaveMaster and describes what each one does.
+
+---
+
+## Users (`/users`)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/users` | Retrieve a list of all application users. |
+| `GET` | `/users/{loginName}` | Retrieve a single user by their login name. Returns `404` if not found. |
+| `POST` | `/users` | Create a new application user. Returns `409` if the login name is already taken, `400` for invalid input. |
+| `PUT` | `/users/{loginName}` | Update the details of an existing user. Returns `404` if not found, `400` for invalid input. |
+| `DELETE` | `/users/{loginName}` | Delete a user. Returns `204` on success, `404` if not found. |
+| `PUT` | `/users/{loginName}/change-password` | Change the password of a user. Body: `{ "password": "..." }`. Returns `400` for invalid input. |
+| `PUT` | `/users/{loginName}/activate` | Activate a previously deactivated user account. |
+| `PUT` | `/users/{loginName}/deactivate` | Deactivate an active user account. |
+| `POST` | `/users/login` | Authenticate a user. Body: `{ "loginName": "...", "password": "..." }`. Returns the user on success, `401` for invalid credentials, `403` if the account is inactive. |
+
+---
+
+## Staff (`/staff`)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/staff` | Retrieve a list of all staff records. |
+| `GET` | `/staff/{id}` | Retrieve a single staff record by ID. Returns `404` if not found. |
+| `POST` | `/staff` | Create a new staff record. Returns `400` for invalid input. |
+| `PUT` | `/staff/{id}` | Update an existing staff record. Returns `404` if not found, `400` for invalid input. |
+| `DELETE` | `/staff/{id}` | Delete a staff record. Returns `204` on success, `404` if not found, `409` if the staff member is referenced by other records. |
+| `PUT` | `/staff/{id}/terminate` | Terminate a staff member on a given date (query param `termDate`). Cancels any approved future leave and removes pending leave applications. Returns `400` for invalid input. |
+
+---
+
+## Leave Types (`/leave-types`)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/leave-types` | Retrieve a list of all leave types defined in the system (e.g. Annual Leave, Medical Leave). |
+| `GET` | `/leave-types/{id}` | Retrieve a single leave type by ID. Returns `404` if not found. |
+| `POST` | `/leave-types` | Create a new leave type. |
+| `PUT` | `/leave-types/{id}` | Update an existing leave type. Returns `404` if not found. |
+| `DELETE` | `/leave-types/{id}` | Delete a leave type. Returns `204` on success, `404` if not found, `409` if the leave type is in use by existing entitlements or applications. |
+
+---
+
+## Leave Approvers (`/leave-approvers`)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/leave-approvers` | Retrieve a list of all leave-approver assignments. |
+| `GET` | `/leave-approvers/{id}` | Retrieve a single leave-approver assignment by ID. Returns `404` if not found. |
+| `GET` | `/leave-approvers/staff/{staffId}` | Retrieve all leave-approver assignments for a given staff member. Returns `404` if the staff member does not exist. |
+| `POST` | `/leave-approvers` | Create a new leave-approver assignment, linking an approver to a staff member with optional effective dates. Returns `404` if either staff record is not found, `400` for invalid input. |
+| `PUT` | `/leave-approvers/{id}` | Update an existing leave-approver assignment. Returns `404` if not found, `400` for invalid input. |
+| `DELETE` | `/leave-approvers/{id}` | Delete a leave-approver assignment. Returns `204` on success, `404` if not found. |
+
+---
+
+## Leave Calendars (`/leave-calendars`)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/leave-calendars` | Retrieve a list of all leave calendars. |
+| `GET` | `/leave-calendars/current` | Retrieve the leave calendar that covers the given date (query param `date`, defaults to today). Returns `404` if no matching calendar is found. |
+| `POST` | `/leave-calendars` | Create a new leave calendar for a specific year, including its list of public holidays. Returns `400` for invalid input, `409` if a calendar already exists for the same period. |
+
+---
+
+## Leave Applications (`/leave-applications`)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/leave-applications?staffId={staffId}` | Retrieve all leave applications visible to a staff member (their own applications plus applications from their direct reports that they can approve). Returns `404` if the staff member does not exist. |
+| `GET` | `/leave-applications/{id}` | Retrieve a single leave application by ID. Returns `404` if not found. |
+| `GET` | `/leave-applications/staff/{staffId}` | Retrieve all leave applications for a specific staff member, optionally filtered by calendar year of a given date (query param `date`, defaults to today). Returns `404` if the staff member or calendar is not found. |
+| `GET` | `/leave-applications/staff/{staffId}/balance` | Retrieve the remaining leave balance for a staff member across all leave types. Returns `404` if the staff member does not exist. |
+| `GET` | `/leave-applications/approver/{approverId}` | Retrieve all leave applications with status `PENDING` that are awaiting action by the specified approver. Returns `404` if the approver staff record does not exist. |
+| `POST` | `/leave-applications` | Submit a new leave application on behalf of a staff member. A separate `LeaveApplication` record is created for each working day in the requested date range, excluding public holidays. Returns `400` for invalid input (e.g. insufficient balance, non-working days, duplicate application). |
+| `PUT` | `/leave-applications/{id}` | Update a leave application (e.g. change remarks or status while still in `DRAFT`). Returns `404` if not found. |
+| `DELETE` | `/leave-applications/{id}` | Delete a leave application. Only applications in `DRAFT` or `PENDING` status may be deleted. Returns `400` if the application is in a non-deletable status, `404` if not found. |
+| `PUT` | `/leave-applications/{id}/approve` | Approve a `PENDING` leave application. Query param `approverId` must identify a valid approver for the applicant. Returns `400` if the application is not in an approvable state or the approver is not authorised. |
+| `PUT` | `/leave-applications/{id}/reject` | Reject a `PENDING` leave application. Query param `approverId` must identify a valid approver for the applicant. Returns `400` if the application is not in a rejectable state or the approver is not authorised. |
+| `PUT` | `/leave-applications/{id}/approve-cancellation` | Approve a cancellation request (`CANCEL_REQUESTED`) for a previously approved leave application, moving it to `CANCELLED`. Returns `400` if the application is not awaiting cancellation approval. |
+| `PUT` | `/leave-applications/{id}/reject-cancellation` | Reject a cancellation request, returning the application to `APPROVED` status. Returns `400` if the application is not awaiting cancellation approval. |
+
+---
+
+## Leave Application Status Flow
+
+```
+DRAFT → PENDING → APPROVED → CANCEL_REQUESTED → CANCELLED
+                ↘ DENIED
+```
+
+| Status | Meaning |
+|--------|---------|
+| `DRAFT` | Application saved but not yet submitted. |
+| `PENDING` | Submitted and awaiting approval. |
+| `APPROVED` | Approved by an authorised approver. |
+| `DENIED` | Rejected by an approver. |
+| `CANCEL_REQUESTED` | Cancellation requested on an approved leave. |
+| `CANCELLED` | Cancellation approved; leave is restored to the staff member's balance. |
