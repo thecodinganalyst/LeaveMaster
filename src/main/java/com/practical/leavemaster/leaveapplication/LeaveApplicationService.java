@@ -130,7 +130,7 @@ public class LeaveApplicationService {
         List<LeaveApplication> applications = new ArrayList<>();
         for (LocalDate date : leaveDates) {
             Optional<LeaveCalendar> calendar = leaveCalendarService.getCalendarFor(date);
-            if (calendar.isPresent() && isPublicHoliday(date, calendar.get())) {
+            if (calendar.isPresent() && isPublicHoliday(date, calendar.get(), staff)) {
                 continue;
             }
             LeaveApplication application = LeaveApplication.builder()
@@ -264,9 +264,11 @@ public class LeaveApplicationService {
         return dates;
     }
 
-    private boolean isPublicHoliday(LocalDate date, LeaveCalendar calendar) {
+    private boolean isPublicHoliday(LocalDate date, LeaveCalendar calendar, Staff staff) {
+        String staffLocationId = staff.getLocation() != null ? staff.getLocation().getId() : null;
         return calendar.getPublicHolidays().stream()
-                .map(PublicHoliday::getHolidayDate)
-                .anyMatch(date::equals);
+                .filter(publicHoliday -> date.equals(publicHoliday.getHolidayDate()))
+                .anyMatch(publicHoliday -> publicHoliday.getLocationId() == null
+                        || publicHoliday.getLocationId().equals(staffLocationId));
     }
 }

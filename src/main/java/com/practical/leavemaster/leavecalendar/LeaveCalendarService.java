@@ -89,6 +89,7 @@ public class LeaveCalendarService {
                 .map(publicHoliday -> PublicHoliday.builder()
                         .holidayDate(publicHoliday.getHolidayDate().plusYears(1))
                         .holidayName(publicHoliday.getHolidayName())
+                        .locationId(publicHoliday.getLocationId())
                         .build())
                 .toList();
 
@@ -107,6 +108,7 @@ public class LeaveCalendarService {
                 .map(publicHoliday -> PublicHoliday.builder()
                         .holidayDate(publicHoliday.getHolidayDate())
                         .holidayName(publicHoliday.getHolidayName())
+                        .locationId(publicHoliday.getLocationId())
                         .build())
                 .toList();
 
