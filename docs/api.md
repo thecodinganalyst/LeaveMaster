@@ -77,6 +77,8 @@ Required permissions: `ROLE_MANAGE` for all role endpoints.
 
 Required permissions: `STAFF_READ` for `GET`, `STAFF_WRITE` for `POST`/`PUT`/`DELETE`.
 
+Staff write-side effects: [Staff change lifecycle](staff-change-lifecycle.md)
+
 ---
 
 ## Leave Types (`/leave-types`)
