@@ -61,6 +61,18 @@ Optional environment variables (all have defaults except `POSTGRES_PASSWORD`):
 | `POSTGRES_PASSWORD` | *(required)* | PostgreSQL password |
 | `POSTGRES_DB` | `leavemaster` | Database name |
 | `POSTGRES_USER` | `leavemaster` | Database user |
+| `PLATFORM_ADMIN_PASSWORD` | `changeme` | Password for the default `PlatformAdmin` user (see [Platform Admin](#platform-admin) below) |
+
+### Platform Admin
+
+On every startup, LeaveMaster automatically ensures a `PLATFORM_ADMIN` role and a default `PlatformAdmin` user exist:
+
+- The `PLATFORM_ADMIN` role is created with `TENANT_READ` and `TENANT_WRITE` permissions if it does not already exist.
+- If no user is currently assigned to `PLATFORM_ADMIN`, a `PlatformAdmin` user is created with the password from the `PLATFORM_ADMIN_PASSWORD` environment variable.
+
+> **Important:** Set `PLATFORM_ADMIN_PASSWORD` to a strong, secret value before deploying. The default `changeme` is only suitable for local development.
+
+The initializer is idempotent — restarting the application has no side effects once the role and user are in place.
 
 ### OIDC / Social Login Providers
 
