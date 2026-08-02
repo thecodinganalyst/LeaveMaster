@@ -17,4 +17,9 @@ public interface AppRoleRepository extends JpaRepository<AppRole, String> {
     @Override
     @EntityGraph(attributePaths = {"permissions"})
     Optional<AppRole> findById(String id);
+
+    @EntityGraph(attributePaths = {"permissions"})
+    List<AppRole> findAllByTenantId(String tenantId);
+
+    void deleteAllByTenantId(String tenantId);
 }
