@@ -60,6 +60,11 @@ platform:
   admin:
     password: ${PLATFORM_ADMIN_PASSWORD:changeme}
 
+tenant:
+  admin:
+    default:
+      password: ${TENANT_ADMIN_DEFAULT_PASSWORD:changeme}
+
 springdoc:
   swagger-ui:
     path: /swagger-ui.html

@@ -27,6 +27,7 @@ public class TenantService {
     private final LeaveCalendarRepository leaveCalendarRepository;
     private final LocationRepository locationRepository;
     private final AppUserRepository appUserRepository;
+    private final TenantAdminProvisionService tenantAdminProvisionService;
 
     public List<Tenant> findAll() {
         return tenantRepository.findAll();
@@ -38,7 +39,9 @@ public class TenantService {
 
     public Tenant save(Tenant tenant) {
         tenant.setLastModified(LocalDateTime.now());
-        return tenantRepository.save(tenant);
+        Tenant saved = tenantRepository.save(tenant);
+        tenantAdminProvisionService.provision(saved.getId());
+        return saved;
     }
 
     public Tenant update(String id, Tenant updated) {
@@ -79,6 +82,7 @@ public class TenantService {
         leaveCalendarRepository.deleteAllByTenantId(id);
         locationRepository.deleteAllByTenantId(id);
         appUserRepository.deleteAllByTenantId(id);
+        tenantAdminProvisionService.deprovision(id);
         tenantRepository.deleteById(id);
     }
 }

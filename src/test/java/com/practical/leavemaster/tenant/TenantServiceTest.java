@@ -51,6 +51,9 @@ class TenantServiceTest {
     @Mock
     private AppUserRepository appUserRepository;
 
+    @Mock
+    private TenantAdminProvisionService tenantAdminProvisionService;
+
     @InjectMocks
     private TenantService tenantService;
 
@@ -87,6 +90,7 @@ class TenantServiceTest {
 
         assertThat(result.getId()).isEqualTo("t1");
         assertThat(result.getLastModified()).isNotNull();
+        verify(tenantAdminProvisionService).provision("t1");
     }
 
     @Test
@@ -147,6 +151,7 @@ class TenantServiceTest {
         verify(leaveCalendarRepository).deleteAllByTenantId("t1");
         verify(locationRepository).deleteAllByTenantId("t1");
         verify(appUserRepository).deleteAllByTenantId("t1");
+        verify(tenantAdminProvisionService).deprovision("t1");
         verify(tenantRepository).deleteById("t1");
     }
 

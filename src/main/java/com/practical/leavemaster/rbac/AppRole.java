@@ -34,6 +34,9 @@ public class AppRole {
     @Column(nullable = false)
     private boolean active;
 
+    @Column(name = "tenant_id")
+    private String tenantId;
+
     @Builder.Default
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(

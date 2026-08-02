@@ -24,6 +24,10 @@ public class AppRoleService {
         return appRoleRepository.findAll();
     }
 
+    public List<AppRole> findByTenantId(String tenantId) {
+        return appRoleRepository.findAllByTenantId(tenantId);
+    }
+
     public List<AppPermission> findAllPermissions() {
         return appPermissionRepository.findAll();
     }

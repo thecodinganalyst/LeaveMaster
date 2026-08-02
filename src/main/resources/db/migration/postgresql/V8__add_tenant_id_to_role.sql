@@ -1,0 +1,1 @@
+ALTER TABLE app_role ADD COLUMN tenant_id VARCHAR(255);
