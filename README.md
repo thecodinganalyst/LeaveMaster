@@ -14,6 +14,7 @@ LeaveMaster is a Spring Boot REST API for managing employee leave. It handles le
 - **Locations** — maintain a list of locations (country, or country + state) used to scope public holidays and assign staff to the correct holiday set.
 - **Tenants** — manage tenants that own all other resources; each tenant has a lifecycle status (`ACTIVE`, `DORMANT`, `TERMINATED`) and date range, and every record in the system is scoped to a tenant.
 - **Email notifications** — send email alerts on leave-status changes.
+- **Role-based access control (RBAC)** — enforce permission checks on every API endpoint. Roles are configurable, can be enabled/disabled, and users can be added to or removed from roles.
 - **Swagger UI** — interactive API documentation available out of the box.
 
 ## Technology Stack
@@ -143,6 +144,7 @@ For detailed endpoint documentation, see [docs/api.md](docs/api.md).
 | Leave Approvers | `/leave-approvers` | Assign approvers to staff members |
 | Leave Calendars | `/leave-calendars` | Manage yearly calendars with public holidays |
 | Locations | `/locations` | Manage locations for public holiday scoping |
+| Roles | `/roles` | Manage roles, permissions, and user-to-role assignments |
 
 ### Leave Application Status Flow
 
@@ -159,3 +161,19 @@ DRAFT → PENDING → APPROVED → CANCEL_REQUESTED → CANCELLED
 | `DENIED` | Rejected by an approver |
 | `CANCEL_REQUESTED` | Cancellation requested on an approved leave |
 | `CANCELLED` | Cancellation approved |
+
+## RBAC Permissions
+
+Every protected API call requires a permission that is granted through one or more active roles assigned to the authenticated user.
+
+Default permission codes:
+
+- `TENANT_READ`, `TENANT_WRITE`
+- `USER_READ`, `USER_WRITE`
+- `ROLE_MANAGE`
+- `STAFF_READ`, `STAFF_WRITE`
+- `LEAVE_TYPE_READ`, `LEAVE_TYPE_WRITE`
+- `LEAVE_APPROVER_READ`, `LEAVE_APPROVER_WRITE`
+- `LEAVE_CALENDAR_READ`, `LEAVE_CALENDAR_WRITE`
+- `LOCATION_READ`, `LOCATION_WRITE`
+- `LEAVE_APPLICATION_READ`, `LEAVE_APPLICATION_WRITE`, `LEAVE_APPLICATION_APPROVE`

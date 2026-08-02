@@ -1,5 +1,6 @@
 package com.practical.leavemaster.config;
 
+import com.practical.leavemaster.rbac.RbacPermissions;
 import com.practical.leavemaster.user.AppUserRepository;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.ObjectProvider;
@@ -9,11 +10,12 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
@@ -42,6 +44,43 @@ public class SecurityConfig {
                     "/v3/api-docs/**",
                     "/h2-console/**"
                 ).permitAll()
+                .requestMatchers(HttpMethod.GET, "/users/**").hasAuthority(RbacPermissions.USER_READ)
+                .requestMatchers(HttpMethod.POST, "/users/**").hasAuthority(RbacPermissions.USER_WRITE)
+                .requestMatchers(HttpMethod.PUT, "/users/**").hasAuthority(RbacPermissions.USER_WRITE)
+                .requestMatchers(HttpMethod.DELETE, "/users/**").hasAuthority(RbacPermissions.USER_WRITE)
+                .requestMatchers("/roles/**").hasAuthority(RbacPermissions.ROLE_MANAGE)
+                .requestMatchers(HttpMethod.GET, "/tenants/**").hasAuthority(RbacPermissions.TENANT_READ)
+                .requestMatchers(HttpMethod.POST, "/tenants/**").hasAuthority(RbacPermissions.TENANT_WRITE)
+                .requestMatchers(HttpMethod.PUT, "/tenants/**").hasAuthority(RbacPermissions.TENANT_WRITE)
+                .requestMatchers(HttpMethod.DELETE, "/tenants/**").hasAuthority(RbacPermissions.TENANT_WRITE)
+                .requestMatchers(HttpMethod.GET, "/staff/**").hasAuthority(RbacPermissions.STAFF_READ)
+                .requestMatchers(HttpMethod.POST, "/staff/**").hasAuthority(RbacPermissions.STAFF_WRITE)
+                .requestMatchers(HttpMethod.PUT, "/staff/**").hasAuthority(RbacPermissions.STAFF_WRITE)
+                .requestMatchers(HttpMethod.DELETE, "/staff/**").hasAuthority(RbacPermissions.STAFF_WRITE)
+                .requestMatchers(HttpMethod.GET, "/leave-types/**").hasAuthority(RbacPermissions.LEAVE_TYPE_READ)
+                .requestMatchers(HttpMethod.POST, "/leave-types/**").hasAuthority(RbacPermissions.LEAVE_TYPE_WRITE)
+                .requestMatchers(HttpMethod.PUT, "/leave-types/**").hasAuthority(RbacPermissions.LEAVE_TYPE_WRITE)
+                .requestMatchers(HttpMethod.DELETE, "/leave-types/**").hasAuthority(RbacPermissions.LEAVE_TYPE_WRITE)
+                .requestMatchers(HttpMethod.GET, "/leave-approvers/**").hasAuthority(RbacPermissions.LEAVE_APPROVER_READ)
+                .requestMatchers(HttpMethod.POST, "/leave-approvers/**").hasAuthority(RbacPermissions.LEAVE_APPROVER_WRITE)
+                .requestMatchers(HttpMethod.PUT, "/leave-approvers/**").hasAuthority(RbacPermissions.LEAVE_APPROVER_WRITE)
+                .requestMatchers(HttpMethod.DELETE, "/leave-approvers/**").hasAuthority(RbacPermissions.LEAVE_APPROVER_WRITE)
+                .requestMatchers(HttpMethod.GET, "/leave-calendars/**").hasAuthority(RbacPermissions.LEAVE_CALENDAR_READ)
+                .requestMatchers(HttpMethod.POST, "/leave-calendars/**").hasAuthority(RbacPermissions.LEAVE_CALENDAR_WRITE)
+                .requestMatchers(HttpMethod.PUT, "/leave-calendars/**").hasAuthority(RbacPermissions.LEAVE_CALENDAR_WRITE)
+                .requestMatchers(HttpMethod.DELETE, "/leave-calendars/**").hasAuthority(RbacPermissions.LEAVE_CALENDAR_WRITE)
+                .requestMatchers(HttpMethod.GET, "/locations/**").hasAuthority(RbacPermissions.LOCATION_READ)
+                .requestMatchers(HttpMethod.POST, "/locations/**").hasAuthority(RbacPermissions.LOCATION_WRITE)
+                .requestMatchers(HttpMethod.PUT, "/locations/**").hasAuthority(RbacPermissions.LOCATION_WRITE)
+                .requestMatchers(HttpMethod.DELETE, "/locations/**").hasAuthority(RbacPermissions.LOCATION_WRITE)
+                .requestMatchers(HttpMethod.GET, "/leave-applications/**").hasAuthority(RbacPermissions.LEAVE_APPLICATION_READ)
+                .requestMatchers(HttpMethod.POST, "/leave-applications/**").hasAuthority(RbacPermissions.LEAVE_APPLICATION_WRITE)
+                .requestMatchers(HttpMethod.PUT, "/leave-applications/*/approve").hasAuthority(RbacPermissions.LEAVE_APPLICATION_APPROVE)
+                .requestMatchers(HttpMethod.PUT, "/leave-applications/*/reject").hasAuthority(RbacPermissions.LEAVE_APPLICATION_APPROVE)
+                .requestMatchers(HttpMethod.PUT, "/leave-applications/*/approve-cancellation").hasAuthority(RbacPermissions.LEAVE_APPLICATION_APPROVE)
+                .requestMatchers(HttpMethod.PUT, "/leave-applications/*/reject-cancellation").hasAuthority(RbacPermissions.LEAVE_APPLICATION_APPROVE)
+                .requestMatchers(HttpMethod.PUT, "/leave-applications/**").hasAuthority(RbacPermissions.LEAVE_APPLICATION_WRITE)
+                .requestMatchers(HttpMethod.DELETE, "/leave-applications/**").hasAuthority(RbacPermissions.LEAVE_APPLICATION_WRITE)
                 .anyRequest().authenticated()
             )
             .formLogin(form -> form
