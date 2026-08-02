@@ -56,6 +56,10 @@ spring:
             jwk-set-uri: https://login.microsoftonline.com/${MICROSOFT_TENANT_ID:common}/discovery/v2.0/keys
             user-name-attribute: sub
 
+platform:
+  admin:
+    password: ${PLATFORM_ADMIN_PASSWORD:changeme}
+
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
