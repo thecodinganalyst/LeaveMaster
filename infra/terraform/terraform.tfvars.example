@@ -1,0 +1,13 @@
+project_id = "your-project-id"
+
+region = "asia-southeast1"
+
+database_host = "aws-0-ap-southeast-1.pooler.supabase.com"
+
+database_username = "postgres.your-project-ref"
+
+database_name = "postgres"
+
+image_tag = "replace-with-git-sha"
+
+deploy_service = false
