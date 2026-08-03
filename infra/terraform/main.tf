@@ -2,6 +2,13 @@ locals {
   image_url = "${var.region}-docker.pkg.dev/${var.project_id}/${var.artifact_repository}/${var.service_name}:${var.image_tag}"
 
   database_url = "jdbc:postgresql://${var.database_host}:5432/${var.database_name}?sslmode=require"
+
+  required_apis = toset([
+    "artifactregistry.googleapis.com",
+    "cloudbuild.googleapis.com",
+    "run.googleapis.com",
+    "secretmanager.googleapis.com"
+  ])
 }
 
 resource "google_project_service" "required" {
