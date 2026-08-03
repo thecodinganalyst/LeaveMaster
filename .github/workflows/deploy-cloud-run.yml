@@ -29,6 +29,7 @@ jobs:
     name: Build and deploy
     runs-on: ubuntu-latest
     environment: production
+    if: ${{ vars.WIF_PROVIDER != '' }}
 
     steps:
       - name: Check out repository
