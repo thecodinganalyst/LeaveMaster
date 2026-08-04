@@ -49,6 +49,71 @@ resource "google_cloud_run_v2_service" "api" {
 
   name     = var.service_name
   location = var.region
+
+  deletion_protection = false
+
+  template {
+    service_account = google_service_account.cloud_run.email
+    timeout         = "300s"
+
+    scaling {
+      min_instance_count = 0
+      max_instance_count = 1
+    }
+
+    containers {
+      image = local.image_url
+
+      ports {
+        container_port = 8080
+      }
+
+      resources {
+        limits = {
+          cpu    = "1"
+          memory = "1Gi"
+        }
+
+        cpu_idle = true
+      }
+
+      env {
+        name  = "SPRING_PROFILES_ACTIVE"
+        value = "cloudrun"
+      }
+
+      env {
+        name  = "DATABASE_URL"
+        value = local.database_url
+      }
+
+      env {
+        name  = "DATABASE_USERNAME"
+        value = var.database_username
+      }
+
+      env {
+        name  = "DB_MAX_POOL_SIZE"
+        value = "5"
+      }
+
+      env {
+        name = "DATABASE_PASSWORD"
+
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.database_password.secret_id
+            version = "latest"
+          }
+        }
+      }
+    }
+  }
+
+  depends_on = [
+    google_project_service.required["run.googleapis.com"],
+    google_secret_manager_secret_iam_member.cloud_run_database_password
+  ]
 }
 
 resource "google_cloud_run_v2_service_iam_member" "public" {
