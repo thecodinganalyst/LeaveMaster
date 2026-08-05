@@ -80,7 +80,7 @@ jobs:
           gcloud builds submit \
             --project="${{ vars.GCP_PROJECT_ID }}" \
             --gcs-source-staging-dir="gs://${SOURCE_BUCKET}/source" \
-            --suppress-logs \
+            --logsBucket="gs://${SOURCE_BUCKET}" \
             --tag="${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/leavemaster/leavemaster/leavemaster-api:${{ github.sha }}" \
             .
 
