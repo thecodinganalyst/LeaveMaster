@@ -74,6 +74,12 @@ resource "google_secret_manager_secret_iam_member" "cloud_run_database_password"
   member    = "serviceAccount:${google_service_account.cloud_run.email}"
 }
 
+resource "google_storage_bucket_iam_member" "github_cloudbuild_source" {
+  bucket = google_storage_bucket.cloudbuild_source.name
+  role   = "roles/storage.admin"
+  member = "serviceAccount:${var.github_actions_service_account}"
+}
+
 resource "google_cloud_run_v2_service" "api" {
   count = var.deploy_service ? 1 : 0
 
