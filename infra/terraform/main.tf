@@ -3,12 +3,19 @@ locals {
 
   database_url = "jdbc:postgresql://${var.database_host}:5432/${var.database_name}?sslmode=require"
 
+  cloudbuild_source_bucket_name = "${var.project_id}-cloudbuild-source-${data.google_project.current.number}"
+
   required_apis = toset([
     "artifactregistry.googleapis.com",
     "cloudbuild.googleapis.com",
     "run.googleapis.com",
-    "secretmanager.googleapis.com"
+    "secretmanager.googleapis.com",
+    "storage.googleapis.com"
   ])
+}
+
+data "google_project" "current" {
+  project_id = var.project_id
 }
 
 resource "google_project_service" "required" {
@@ -17,6 +24,29 @@ resource "google_project_service" "required" {
   project            = var.project_id
   service            = each.value
   disable_on_destroy = false
+}
+
+resource "google_storage_bucket" "cloudbuild_source" {
+  name     = local.cloudbuild_source_bucket_name
+  location = var.region
+
+  storage_class               = "STANDARD"
+  uniform_bucket_level_access = true
+  public_access_prevention    = "enforced"
+
+  lifecycle_rule {
+    condition {
+      age = 7
+    }
+
+    action {
+      type = "Delete"
+    }
+  }
+
+  depends_on = [
+    google_project_service.required["storage.googleapis.com"]
+  ]
 }
 
 resource "google_artifact_registry_repository" "docker" {
