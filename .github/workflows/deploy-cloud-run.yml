@@ -23,6 +23,7 @@ env:
   TF_VAR_database_username: ${{ vars.SUPABASE_DB_USERNAME }}
   TF_VAR_database_name: postgres
   TF_VAR_image_tag: ${{ github.sha }}
+  TF_VAR_github_actions_service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
 
 jobs:
   deploy:
@@ -72,8 +73,13 @@ jobs:
 
       - name: Build and push container image
         run: |
+          SOURCE_BUCKET="$(terraform \
+            -chdir=infra/terraform \
+            output -raw cloudbuild_source_bucket)"
+
           gcloud builds submit \
             --project="${{ vars.GCP_PROJECT_ID }}" \
+            --gcs-source-staging-dir="gs://${SOURCE_BUCKET}/source" \
             --tag="${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/leavemaster/leavemaster-api:${{ github.sha }}" \
             .
 
