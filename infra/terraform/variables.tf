@@ -38,3 +38,8 @@ variable "deploy_service" {
   type    = bool
   default = false
 }
+
+variable "github_actions_service_account" {
+  description = "Service account impersonated by GitHub Actions"
+  type        = string
+}
