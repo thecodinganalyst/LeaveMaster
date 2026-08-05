@@ -77,11 +77,15 @@ jobs:
             -chdir=infra/terraform \
             output -raw cloudbuild_source_bucket)"
 
+          CONTAINER_IMAGE="$(terraform \
+            -chdir=infra/terraform \
+            output -raw container_image)"
+
           gcloud builds submit \
             --project="${{ vars.GCP_PROJECT_ID }}" \
             --gcs-source-staging-dir="gs://${SOURCE_BUCKET}/source" \
             --default-buckets-behavior=regional-user-owned-bucket \
-            --tag="${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/leavemaster/leavemaster/leavemaster-api:${{ github.sha }}" \
+            --tag="${CONTAINER_IMAGE}" \
             .
 
       - name: Terraform plan
