@@ -5,3 +5,8 @@ output "cloud_run_url" {
 output "container_image" {
   value = local.image_url
 }
+
+output "cloudbuild_source_bucket" {
+  description = "Bucket used to stage source for Cloud Build"
+  value       = google_storage_bucket.cloudbuild_source.name
+}
