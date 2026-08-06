@@ -27,8 +27,15 @@ public class LocalStorageService implements StorageService {
     @Override
     public String store(String pathPrefix, MultipartFile file) throws IOException {
         String extension = StorageUtils.getExtension(file.getOriginalFilename());
-        String key = pathPrefix + "/" + UUID.randomUUID() + extension;
-        Path target = rootDir.resolve(key);
+        // Sanitize: strip path separators from the extension to prevent traversal
+        extension = extension.replaceAll("[/\\\\]", "");
+        // Sanitize: allow only alphanumerics, hyphens, and underscores in prefix
+        String safePrefix = pathPrefix.replaceAll("[^a-zA-Z0-9\\-_]", "_");
+        String key = safePrefix + "/" + UUID.randomUUID() + extension;
+        Path target = rootDir.resolve(key).normalize();
+        if (!target.startsWith(rootDir)) {
+            throw new IOException("Computed storage path escapes root directory");
+        }
         Files.createDirectories(target.getParent());
         file.transferTo(target);
         return key;
