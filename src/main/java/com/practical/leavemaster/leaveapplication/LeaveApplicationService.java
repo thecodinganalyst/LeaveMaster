@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -134,6 +135,14 @@ public class LeaveApplicationService {
                 workScheduleMap.keySet(), request.getFromDate(), request.getToDate());
 
         List<LeaveApplication> applications = new ArrayList<>();
+        String sharedAttachmentKey = null;
+        if (attachment != null && !attachment.isEmpty()) {
+            try {
+                sharedAttachmentKey = storageService.store(UUID.randomUUID().toString(), attachment);
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to store attachment", e);
+            }
+        }
         for (LocalDate date : leaveDates) {
             Optional<LeaveCalendar> calendar = leaveCalendarService.getCalendarFor(date);
             if (calendar.isPresent() && isPublicHoliday(date, calendar.get(), staff)) {
@@ -145,19 +154,11 @@ public class LeaveApplicationService {
                     .leaveType(leaveType)
                     .leaveDuration(leaveDuration)
                     .status(status)
+                    .attachmentUrl(sharedAttachmentKey)
                     .applicationDate(LocalDate.now())
                     .tenantId(staff.getTenantId())
                     .build();
             LeaveApplication saved = leaveApplicationRepository.save(application);
-            if (attachment != null && !attachment.isEmpty()) {
-                try {
-                    String storageKey = storageService.store(saved.getId(), attachment);
-                    saved.setAttachmentUrl(storageKey);
-                    saved = leaveApplicationRepository.save(saved);
-                } catch (IOException e) {
-                    throw new RuntimeException("Failed to store attachment", e);
-                }
-            }
             tenantActivityService.touch(resolveTenantId(saved));
             applications.add(saved);
         }

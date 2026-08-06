@@ -25,9 +25,9 @@ public class LocalStorageService implements StorageService {
     }
 
     @Override
-    public String store(String applicationId, MultipartFile file) throws IOException {
-        String extension = getExtension(file.getOriginalFilename());
-        String key = applicationId + "/" + UUID.randomUUID() + extension;
+    public String store(String pathPrefix, MultipartFile file) throws IOException {
+        String extension = StorageUtils.getExtension(file.getOriginalFilename());
+        String key = pathPrefix + "/" + UUID.randomUUID() + extension;
         Path target = rootDir.resolve(key);
         Files.createDirectories(target.getParent());
         file.transferTo(target);
@@ -53,12 +53,5 @@ public class LocalStorageService implements StorageService {
         try (InputStream in = Files.newInputStream(filePath)) {
             in.transferTo(response.getOutputStream());
         }
-    }
-
-    private String getExtension(String filename) {
-        if (filename == null || !filename.contains(".")) {
-            return "";
-        }
-        return filename.substring(filename.lastIndexOf('.'));
     }
 }

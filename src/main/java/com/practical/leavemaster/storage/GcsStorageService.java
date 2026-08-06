@@ -28,14 +28,16 @@ public class GcsStorageService implements StorageService {
     }
 
     @Override
-    public String store(String applicationId, MultipartFile file) throws IOException {
-        String extension = getExtension(file.getOriginalFilename());
-        String objectName = applicationId + "/" + UUID.randomUUID() + extension;
+    public String store(String pathPrefix, MultipartFile file) throws IOException {
+        String extension = StorageUtils.getExtension(file.getOriginalFilename());
+        String objectName = pathPrefix + "/" + UUID.randomUUID() + extension;
         BlobId blobId = BlobId.of(bucketName, objectName);
         BlobInfo blobInfo = BlobInfo.newBuilder(blobId)
                 .setContentType(file.getContentType())
                 .build();
-        storage.create(blobInfo, file.getBytes());
+        try (var in = file.getInputStream()) {
+            storage.createFrom(blobInfo, in);
+        }
         return objectName;
     }
 
@@ -49,12 +51,5 @@ public class GcsStorageService implements StorageService {
                 Storage.SignUrlOption.withV4Signature()
         ).toString();
         response.sendRedirect(signedUrl);
-    }
-
-    private String getExtension(String filename) {
-        if (filename == null || !filename.contains(".")) {
-            return "";
-        }
-        return filename.substring(filename.lastIndexOf('.'));
     }
 }

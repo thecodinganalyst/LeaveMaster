@@ -9,15 +9,15 @@ public interface StorageService {
 
     /**
      * Store the given file and return the storage key used to retrieve or access it later.
-     * The key is scoped under the given applicationId so files are organized per application.
+     * The key is scoped under the given pathPrefix so files are organized by context.
      * Keys are not easily guessable (UUID-based).
      *
-     * @param applicationId the leave application ID used as a path prefix
-     * @param file          the uploaded file
+     * @param pathPrefix a logical grouping prefix (e.g. applicationId or a UUID)
+     * @param file       the uploaded file
      * @return an opaque storage key stored in the database
      * @throws IOException if the file cannot be stored
      */
-    String store(String applicationId, MultipartFile file) throws IOException;
+    String store(String pathPrefix, MultipartFile file) throws IOException;
 
     /**
      * Serve the file identified by storageKey to the HTTP response.
