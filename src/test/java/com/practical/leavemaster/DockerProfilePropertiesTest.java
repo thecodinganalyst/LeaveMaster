@@ -34,6 +34,8 @@ class DockerProfilePropertiesTest {
                 .isEqualTo("classpath:db/migration/{vendor}");
         assertThat(new ClassPathResource("db/migration/h2/V1__initial_schema.sql").exists()).isTrue();
         assertThat(new ClassPathResource("db/migration/postgresql/V1__initial_schema.sql").exists()).isTrue();
+        assertThat(new ClassPathResource("db/migration/h2/V1__initial_schema.sql")
+                .getContentAsString(StandardCharsets.UTF_8)).contains("attachment VARBINARY(32600)");
         assertThat(new ClassPathResource("db/migration/postgresql/V1__initial_schema.sql")
                 .getContentAsString(StandardCharsets.UTF_8)).contains("attachment BYTEA");
     }
