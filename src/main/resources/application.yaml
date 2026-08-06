@@ -70,3 +70,7 @@ springdoc:
     path: /swagger-ui.html
   api-docs:
     path: /api-docs
+
+app:
+  storage:
+    local-dir: ${STORAGE_LOCAL_DIR:${java.io.tmpdir}/leavemaster-attachments}

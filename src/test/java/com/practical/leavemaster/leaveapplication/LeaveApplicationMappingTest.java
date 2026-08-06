@@ -1,8 +1,6 @@
 package com.practical.leavemaster.leaveapplication;
 
 import org.junit.jupiter.api.Test;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 import java.lang.reflect.Field;
 
@@ -11,11 +9,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 class LeaveApplicationMappingTest {
 
     @Test
-    void shouldMapAttachmentWithoutLobStorage() throws NoSuchFieldException {
-        Field attachment = LeaveApplication.class.getDeclaredField("attachment");
+    void shouldHaveAttachmentUrlFieldInsteadOfBinaryAttachment() throws NoSuchFieldException {
+        Field attachmentUrl = LeaveApplication.class.getDeclaredField("attachmentUrl");
 
-        assertThat(attachment.getAnnotation(jakarta.persistence.Lob.class)).isNull();
-        assertThat(attachment.getAnnotation(JdbcTypeCode.class)).isNotNull();
-        assertThat(attachment.getAnnotation(JdbcTypeCode.class).value()).isEqualTo(SqlTypes.LONGVARBINARY);
+        assertThat(attachmentUrl.getType()).isEqualTo(String.class);
+        assertThat(attachmentUrl.getAnnotation(jakarta.persistence.Lob.class)).isNull();
+    }
+
+    @Test
+    void shouldNotHaveBinaryAttachmentField() {
+        assertThat(java.util.Arrays.stream(LeaveApplication.class.getDeclaredFields())
+                .map(Field::getName)
+                .noneMatch(name -> name.equals("attachment"))).isTrue();
     }
 }

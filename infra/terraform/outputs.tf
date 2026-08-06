@@ -10,3 +10,8 @@ output "cloudbuild_source_bucket" {
   description = "Bucket used to stage source for Cloud Build"
   value       = google_storage_bucket.cloudbuild_source.name
 }
+
+output "attachments_bucket" {
+  description = "Bucket used to store leave application attachments"
+  value       = google_storage_bucket.attachments.name
+}

@@ -12,6 +12,8 @@ locals {
     "secretmanager.googleapis.com",
     "storage.googleapis.com"
   ])
+
+  attachment_bucket_name = "${var.project_id}-leavemaster-attachments-${data.google_project.current.number}"
 }
 
 data "google_project" "current" {
@@ -47,6 +49,25 @@ resource "google_storage_bucket" "cloudbuild_source" {
   depends_on = [
     google_project_service.required["storage.googleapis.com"]
   ]
+}
+
+resource "google_storage_bucket" "attachments" {
+  name     = local.attachment_bucket_name
+  location = var.region
+
+  storage_class               = "STANDARD"
+  uniform_bucket_level_access = true
+  public_access_prevention    = "enforced"
+
+  depends_on = [
+    google_project_service.required["storage.googleapis.com"]
+  ]
+}
+
+resource "google_storage_bucket_iam_member" "cloud_run_attachments" {
+  bucket = google_storage_bucket.attachments.name
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${google_service_account.cloud_run.email}"
 }
 
 resource "google_artifact_registry_repository" "docker" {
@@ -116,6 +137,11 @@ resource "google_cloud_run_v2_service" "api" {
       env {
         name  = "SPRING_PROFILES_ACTIVE"
         value = "cloudrun"
+      }
+
+      env {
+        name  = "GCS_ATTACHMENT_BUCKET"
+        value = local.attachment_bucket_name
       }
 
       env {

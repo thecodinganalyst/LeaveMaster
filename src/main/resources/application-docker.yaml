@@ -7,3 +7,8 @@ spring:
   h2:
     console:
       enabled: false
+
+
+app:
+  storage:
+    local-dir: ${STORAGE_LOCAL_DIR:/tmp/leavemaster-attachments}

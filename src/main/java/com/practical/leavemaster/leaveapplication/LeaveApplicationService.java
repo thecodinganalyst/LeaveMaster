@@ -15,10 +15,13 @@ import com.practical.leavemaster.staff.Staff;
 import com.practical.leavemaster.staff.StaffNotFoundException;
 import com.practical.leavemaster.staff.StaffRepository;
 import com.practical.leavemaster.staff.WorkScheduleDay;
+import com.practical.leavemaster.storage.StorageService;
 import com.practical.leavemaster.tenant.TenantActivityService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -43,6 +46,7 @@ public class LeaveApplicationService {
     private final LeaveApproverRepository leaveApproverRepository;
     private final EmailService emailService;
     private final TenantActivityService tenantActivityService;
+    private final StorageService storageService;
 
     public List<LeaveApplication> findAll() {
         return leaveApplicationRepository.findAll();
@@ -102,7 +106,7 @@ public class LeaveApplicationService {
         return balances;
     }
 
-    public List<LeaveApplication> apply(LeaveApplicationRequest request) {
+    public List<LeaveApplication> apply(LeaveApplicationRequest request, MultipartFile attachment) {
         if (request.getFromDate() == null || request.getToDate() == null) {
             throw new IllegalArgumentException("fromDate and toDate are required");
         }
@@ -141,15 +145,56 @@ public class LeaveApplicationService {
                     .leaveType(leaveType)
                     .leaveDuration(leaveDuration)
                     .status(status)
-                    .attachment(request.getAttachment())
                     .applicationDate(LocalDate.now())
                     .tenantId(staff.getTenantId())
                     .build();
             LeaveApplication saved = leaveApplicationRepository.save(application);
+            if (attachment != null && !attachment.isEmpty()) {
+                try {
+                    String storageKey = storageService.store(saved.getId(), attachment);
+                    saved.setAttachmentUrl(storageKey);
+                    saved = leaveApplicationRepository.save(saved);
+                } catch (IOException e) {
+                    throw new RuntimeException("Failed to store attachment", e);
+                }
+            }
             tenantActivityService.touch(resolveTenantId(saved));
             applications.add(saved);
         }
         return applications;
+    }
+
+    public LeaveApplication uploadAttachment(String id, MultipartFile file) {
+        LeaveApplication application = leaveApplicationRepository.findById(id)
+                .orElseThrow(() -> new LeaveApplicationNotFoundException(id));
+        try {
+            String storageKey = storageService.store(id, file);
+            application.setAttachmentUrl(storageKey);
+            LeaveApplication saved = leaveApplicationRepository.save(application);
+            tenantActivityService.touch(resolveTenantId(saved));
+            return saved;
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to store attachment", e);
+        }
+    }
+
+    public void serveAttachment(String id, jakarta.servlet.http.HttpServletResponse response) {
+        LeaveApplication application = leaveApplicationRepository.findById(id)
+                .orElseThrow(() -> new LeaveApplicationNotFoundException(id));
+        String storageKey = application.getAttachmentUrl();
+        if (storageKey == null || storageKey.isBlank()) {
+            try {
+                response.sendError(jakarta.servlet.http.HttpServletResponse.SC_NOT_FOUND, "No attachment for this leave application");
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            return;
+        }
+        try {
+            storageService.serve(storageKey, response);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to serve attachment", e);
+        }
     }
 
     public LeaveApplication update(String id, LeaveApplication updated) {
@@ -159,7 +204,6 @@ public class LeaveApplicationService {
         existing.setApprover(updated.getApprover());
         existing.setApprovalDate(updated.getApprovalDate());
         existing.setLeaveDuration(updated.getLeaveDuration());
-        existing.setAttachment(updated.getAttachment());
         LeaveApplication saved = leaveApplicationRepository.save(existing);
         tenantActivityService.touch(resolveTenantId(saved));
         return saved;
