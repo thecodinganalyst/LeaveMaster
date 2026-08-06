@@ -25,3 +25,8 @@ spring:
 
   flyway:
     enabled: true
+
+
+app:
+  storage:
+    gcs-bucket: ${GCS_ATTACHMENT_BUCKET}

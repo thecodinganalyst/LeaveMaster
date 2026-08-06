@@ -57,6 +57,9 @@ class LeaveApplicationServiceTest {
     @Mock
     private TenantActivityService tenantActivityService;
 
+    @Mock
+    private com.practical.leavemaster.storage.StorageService storageService;
+
     @InjectMocks
     private LeaveApplicationService leaveApplicationService;
 
@@ -121,7 +124,7 @@ class LeaveApplicationServiceTest {
         when(leaveApplicationRepository.save(any(LeaveApplication.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        List<LeaveApplication> result = leaveApplicationService.apply(request);
+        List<LeaveApplication> result = leaveApplicationService.apply(request, null);
 
         assertThat(result).hasSize(5);
         assertThat(result).allMatch(a -> a.getStatus() == LeaveStatus.DRAFT);
@@ -148,7 +151,7 @@ class LeaveApplicationServiceTest {
         when(leaveApplicationRepository.save(any(LeaveApplication.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        List<LeaveApplication> result = leaveApplicationService.apply(request);
+        List<LeaveApplication> result = leaveApplicationService.apply(request, null);
 
         assertThat(result).hasSize(5);
         assertThat(result).noneMatch(a -> a.getLeaveDate().getDayOfWeek() == DayOfWeek.SATURDAY);
@@ -180,7 +183,7 @@ class LeaveApplicationServiceTest {
         when(leaveApplicationRepository.save(any(LeaveApplication.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        List<LeaveApplication> result = leaveApplicationService.apply(request);
+        List<LeaveApplication> result = leaveApplicationService.apply(request, null);
 
         assertThat(result).hasSize(4);
         assertThat(result).noneMatch(a -> a.getLeaveDate().equals(holiday));
@@ -203,7 +206,7 @@ class LeaveApplicationServiceTest {
         when(leaveApplicationRepository.save(any(LeaveApplication.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        List<LeaveApplication> result = leaveApplicationService.apply(request);
+        List<LeaveApplication> result = leaveApplicationService.apply(request, null);
 
         assertThat(result).hasSize(1);
         assertThat(result.getFirst().getStatus()).isEqualTo(LeaveStatus.DRAFT);
@@ -227,7 +230,7 @@ class LeaveApplicationServiceTest {
         when(leaveApplicationRepository.save(any(LeaveApplication.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        List<LeaveApplication> result = leaveApplicationService.apply(request);
+        List<LeaveApplication> result = leaveApplicationService.apply(request, null);
 
         assertThat(result).hasSize(1);
         assertThat(result.getFirst().getStatus()).isEqualTo(LeaveStatus.PENDING);
@@ -244,7 +247,7 @@ class LeaveApplicationServiceTest {
                 .leaveTypeId("annual")
                 .build();
 
-        assertThatThrownBy(() -> leaveApplicationService.apply(request))
+        assertThatThrownBy(() -> leaveApplicationService.apply(request, null))
                 .isInstanceOf(StaffNotFoundException.class);
     }
 
@@ -260,7 +263,7 @@ class LeaveApplicationServiceTest {
                 .leaveTypeId("nonexistent")
                 .build();
 
-        assertThatThrownBy(() -> leaveApplicationService.apply(request))
+        assertThatThrownBy(() -> leaveApplicationService.apply(request, null))
                 .isInstanceOf(LeaveTypeNotFoundException.class);
     }
 
@@ -273,7 +276,7 @@ class LeaveApplicationServiceTest {
                 .leaveTypeId("annual")
                 .build();
 
-        assertThatThrownBy(() -> leaveApplicationService.apply(request))
+        assertThatThrownBy(() -> leaveApplicationService.apply(request, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("fromDate must be on or before toDate");
     }
@@ -846,7 +849,7 @@ class LeaveApplicationServiceTest {
                 .leaveTypeId("annual")
                 .build();
 
-        assertThatThrownBy(() -> leaveApplicationService.apply(request))
+        assertThatThrownBy(() -> leaveApplicationService.apply(request, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Cannot apply for leave after termination date");
     }
@@ -874,7 +877,7 @@ class LeaveApplicationServiceTest {
                 .leaveTypeId("annual")
                 .build();
 
-        List<LeaveApplication> result = leaveApplicationService.apply(request);
+        List<LeaveApplication> result = leaveApplicationService.apply(request, null);
 
         assertThat(result).hasSize(5);
     }

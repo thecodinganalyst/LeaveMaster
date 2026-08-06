@@ -19,5 +19,4 @@ public class LeaveApplicationRequest {
     private String leaveTypeId;
     private LeaveDuration leaveDuration;
     private LeaveStatus status;
-    private byte[] attachment;
 }

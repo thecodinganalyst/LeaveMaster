@@ -2,11 +2,15 @@ package com.practical.leavemaster.leaveapplication;
 
 import com.practical.leavemaster.leavecalendar.LeaveCalendarNotFoundException;
 import com.practical.leavemaster.staff.StaffNotFoundException;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -66,15 +70,50 @@ public class LeaveApplicationController {
         }
     }
 
-    @PostMapping
-    public ResponseEntity<?> apply(@RequestBody LeaveApplicationRequest request) {
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> apply(
+            @RequestPart("request") LeaveApplicationRequest request,
+            @RequestPart(value = "file", required = false) MultipartFile file) {
         try {
-            List<LeaveApplication> applications = leaveApplicationService.apply(request);
+            List<LeaveApplication> applications = leaveApplicationService.apply(request, file);
             return ResponseEntity.status(HttpStatus.CREATED).body(applications);
         } catch (StaffNotFoundException | com.practical.leavemaster.leavetype.LeaveTypeNotFoundException e) {
             return ResponseEntity.notFound().build();
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> applyJson(@RequestBody LeaveApplicationRequest request) {
+        try {
+            List<LeaveApplication> applications = leaveApplicationService.apply(request, null);
+            return ResponseEntity.status(HttpStatus.CREATED).body(applications);
+        } catch (StaffNotFoundException | com.practical.leavemaster.leavetype.LeaveTypeNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping(value = "/{id}/attachment", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> uploadAttachment(
+            @PathVariable String id,
+            @RequestPart("file") MultipartFile file) {
+        try {
+            LeaveApplication updated = leaveApplicationService.uploadAttachment(id, file);
+            return ResponseEntity.ok(updated);
+        } catch (LeaveApplicationNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @GetMapping("/{id}/attachment")
+    public void getAttachment(@PathVariable String id, HttpServletResponse response) throws IOException {
+        try {
+            leaveApplicationService.serveAttachment(id, response);
+        } catch (LeaveApplicationNotFoundException e) {
+            response.sendError(HttpServletResponse.SC_NOT_FOUND);
         }
     }
 

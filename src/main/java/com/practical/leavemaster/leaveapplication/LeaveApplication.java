@@ -16,9 +16,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
-
 import java.time.LocalDate;
 
 @Entity
@@ -52,9 +49,8 @@ public class LeaveApplication {
     @Column(nullable = false)
     private LeaveStatus status;
 
-    @JdbcTypeCode(SqlTypes.LONGVARBINARY)
-    @Column(name = "attachment")
-    private byte[] attachment;
+    @Column(name = "attachment_url")
+    private String attachmentUrl;
 
     @ManyToOne
     @JoinColumn(name = "approver_id")

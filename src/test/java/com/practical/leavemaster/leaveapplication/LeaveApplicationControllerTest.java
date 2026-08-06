@@ -167,7 +167,7 @@ class LeaveApplicationControllerTest {
                 .leaveDuration(LeaveDuration.FULL)
                 .status(LeaveStatus.DRAFT)
                 .build();
-        when(leaveApplicationService.apply(any(LeaveApplicationRequest.class)))
+        when(leaveApplicationService.apply(any(LeaveApplicationRequest.class), any()))
                 .thenReturn(List.of(application("id1", LocalDate.of(2024, 1, 8))));
 
         mockMvc.perform(post("/leave-applications")
@@ -180,7 +180,7 @@ class LeaveApplicationControllerTest {
 
     @Test
     void shouldReturn404WhenApplyingWithUnknownStaff() throws Exception {
-        when(leaveApplicationService.apply(any(LeaveApplicationRequest.class)))
+        when(leaveApplicationService.apply(any(LeaveApplicationRequest.class), any()))
                 .thenThrow(new StaffNotFoundException("nonexistent"));
 
         mockMvc.perform(post("/leave-applications")
@@ -191,7 +191,7 @@ class LeaveApplicationControllerTest {
 
     @Test
     void shouldReturn400WhenApplyingWithInvalidDates() throws Exception {
-        when(leaveApplicationService.apply(any(LeaveApplicationRequest.class)))
+        when(leaveApplicationService.apply(any(LeaveApplicationRequest.class), any()))
                 .thenThrow(new IllegalArgumentException("fromDate must be on or before toDate"));
 
         mockMvc.perform(post("/leave-applications")
@@ -203,7 +203,7 @@ class LeaveApplicationControllerTest {
 
     @Test
     void shouldReturn404WhenApplyingWithUnknownLeaveType() throws Exception {
-        when(leaveApplicationService.apply(any(LeaveApplicationRequest.class)))
+        when(leaveApplicationService.apply(any(LeaveApplicationRequest.class), any()))
                 .thenThrow(new LeaveTypeNotFoundException("nonexistent"));
 
         mockMvc.perform(post("/leave-applications")
