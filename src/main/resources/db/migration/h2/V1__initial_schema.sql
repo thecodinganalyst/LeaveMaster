@@ -50,7 +50,7 @@ CREATE TABLE leave_application (
     id VARCHAR(255) NOT NULL,
     leave_type_id VARCHAR(255) NOT NULL,
     staff_id VARCHAR(255) NOT NULL,
-    attachment BLOB,
+    attachment VARBINARY(32600),
     leave_duration VARCHAR(255) NOT NULL,
     status VARCHAR(255) NOT NULL,
     PRIMARY KEY (id)

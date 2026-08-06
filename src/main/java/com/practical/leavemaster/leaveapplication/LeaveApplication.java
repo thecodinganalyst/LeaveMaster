@@ -10,13 +10,14 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDate;
 
@@ -51,7 +52,7 @@ public class LeaveApplication {
     @Column(nullable = false)
     private LeaveStatus status;
 
-    @Lob
+    @JdbcTypeCode(SqlTypes.LONGVARBINARY)
     @Column(name = "attachment")
     private byte[] attachment;
 
