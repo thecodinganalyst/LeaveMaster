@@ -51,7 +51,6 @@ public class LeaveApplication {
     @Column(nullable = false)
     private LeaveStatus status;
 
-    @Lob
     @Column(name = "attachment")
     private byte[] attachment;
 
