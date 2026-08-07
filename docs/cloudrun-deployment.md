@@ -220,6 +220,12 @@ After the workflow completes, the **Show service URL** step prints the public HT
 
 Every push to `main` automatically rebuilds the image at the new Git SHA and updates the Cloud Run service. No manual steps are required.
 
+### 5.1 Make the deployment inaccessible
+
+If you need to remove public access from the production service, go to **Actions → Restrict Cloud Run Access → Run workflow**. The workflow removes the `allUsers` `roles/run.invoker` IAM binding from the `leavemaster-api` Cloud Run service.
+
+> A later run of the **Deploy to Cloud Run** workflow will make the service public again by restoring that binding.
+
 ---
 
 ## 6. Terraform variables reference
