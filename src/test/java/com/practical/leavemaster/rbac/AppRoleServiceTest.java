@@ -205,13 +205,14 @@ class AppRoleServiceTest {
         when(appRoleRepository.findById("missing")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> appRoleService.disable("missing"))
-                .isInstanceOf(RoleNotFoundException.class);
+                .isInstanceOf(RoleNotFoundException.class)
+                .hasMessageContaining("missing");
     }
 
     @Test
     void shouldAddUserToRole() {
         AppRole role = AppRole.builder().id("admin").description("Admin").active(true).build();
-        AppUser user = AppUser.builder().loginName("alice").password("secret").active(true).build();
+        AppUser user = AppUser.builder().loginName("alice").password("$2a$encoded-password").active(true).build();
         when(appRoleRepository.findById("admin")).thenReturn(Optional.of(role));
         when(appUserRepository.findById("alice")).thenReturn(Optional.of(user));
         when(appUserRepository.save(user)).thenReturn(user);
@@ -250,7 +251,7 @@ class AppRoleServiceTest {
         AppRole managerRole = AppRole.builder().id("manager").description("Manager").active(true).build();
         AppUser user = AppUser.builder()
                 .loginName("alice")
-                .password("secret")
+                .password("$2a$encoded-password")
                 .active(true)
                 .roles(new HashSet<>(Set.of(adminRole, managerRole)))
                 .build();
@@ -268,7 +269,19 @@ class AppRoleServiceTest {
         when(appRoleRepository.findById("admin")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> appRoleService.removeUserFromRole("admin", "alice"))
-                .isInstanceOf(RoleNotFoundException.class);
+                .isInstanceOf(RoleNotFoundException.class)
+                .hasMessageContaining("admin");
+    }
+
+    @Test
+    void shouldThrowWhenRemovingMissingUserFromRole() {
+        AppRole role = AppRole.builder().id("admin").description("Admin").active(true).build();
+        when(appRoleRepository.findById("admin")).thenReturn(Optional.of(role));
+        when(appUserRepository.findById("alice")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> appRoleService.removeUserFromRole("admin", "alice"))
+                .isInstanceOf(AppUserNotFoundException.class)
+                .hasMessageContaining("alice");
     }
 
     private static RoleRequest roleRequest(String id, String description, boolean active, Set<String> permissionCodes) {
