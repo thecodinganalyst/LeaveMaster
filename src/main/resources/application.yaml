@@ -55,6 +55,14 @@ spring:
             user-info-uri: https://graph.microsoft.com/oidc/userinfo
             jwk-set-uri: https://login.microsoftonline.com/${MICROSOFT_TENANT_ID:common}/discovery/v2.0/keys
             user-name-attribute: sub
+  ai:
+    mcp:
+      server:
+        name: LeaveMaster MCP Server
+        version: 1.0.0
+        description: MCP server providing access to all LeaveMaster APIs
+        type: SYNC
+        protocol: STREAMABLE
 
 platform:
   admin:
