@@ -30,6 +30,8 @@ public class SecurityConfig {
         AppUserRepository appUserRepository
     ) throws Exception {
         http
+            .csrf(csrf -> csrf
+                .ignoringRequestMatchers("/mcp/**"))
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
             .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
