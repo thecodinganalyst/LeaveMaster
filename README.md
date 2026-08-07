@@ -107,6 +107,10 @@ Provider setup guides:
 - [GitHub OAuth app setup](docs/idp/github.md)
 - [Facebook Login setup](docs/idp/facebook.md)
 
+### Deploy to Google Cloud Run
+
+See the [Cloud Run deployment guide](docs/cloudrun-deployment.md) for step-by-step instructions covering Supabase, Google Cloud, and GitHub Actions setup.
+
 ### Build
 
 ```bash
