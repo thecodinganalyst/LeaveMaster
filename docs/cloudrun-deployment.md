@@ -224,7 +224,14 @@ Every push to `main` automatically rebuilds the image at the new Git SHA and upd
 
 If you need to remove public access from the production service, go to **Actions → Restrict Cloud Run Access → Run workflow**. The workflow removes the `allUsers` `roles/run.invoker` IAM binding from the `leavemaster-api` Cloud Run service.
 
-> A later run of the **Deploy to Cloud Run** workflow will make the service public again by restoring that binding.
+### 5.2 Make the deployment accessible again
+
+To restore public access, either:
+
+1. Go to **Actions → Deploy to Cloud Run → Run workflow** and run the deployment workflow manually, or
+2. Push a new commit to `main` so the deployment workflow runs automatically.
+
+That workflow recreates the public `allUsers` `roles/run.invoker` binding for the `leavemaster-api` Cloud Run service.
 
 ---
 
