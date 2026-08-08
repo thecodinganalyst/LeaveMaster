@@ -6,6 +6,7 @@ import com.practical.leavemaster.tenant.TenantService;
 import com.practical.leavemaster.tenant.TenantStatus;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.access.AccessDeniedException;
@@ -43,13 +44,19 @@ class McpAuthorizationTest {
         }
     }
 
+    @Autowired
+    private TenantMcpTools tenantMcpTools;
+
+    @Autowired
+    private TenantService tenantService;
+
     @AfterEach
     void clearSecurityContext() {
         SecurityContextHolder.clearContext();
     }
 
     @Test
-    void shouldEnforceTenantReadAndWritePermissions(TenantMcpTools tenantMcpTools, TenantService tenantService) {
+    void shouldEnforceTenantReadAndWritePermissions() {
         authenticateWith(RbacPermissions.TENANT_READ);
         when(tenantService.findAll()).thenReturn(java.util.List.of());
 
