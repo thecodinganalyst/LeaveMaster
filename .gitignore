@@ -1,6 +1,6 @@
 HELP.md
-.gradle
-build/
+**/.gradle/
+**/build/
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/
@@ -35,6 +35,21 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Frontend / Node ###
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/coverage/
+
+### Coverage ###
+coverage/
+
+### Environment files ###
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.*.example
 
 ### Terraform ###
 

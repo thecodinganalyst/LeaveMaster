@@ -71,6 +71,9 @@ jobs:
           terraform apply -auto-approve \
             -var="deploy_service=false"
 
+      - name: Build backend artifact
+        run: chmod +x ./backend/gradlew && ./backend/gradlew bootJar
+
       - name: Build and push container image
         run: |
           SOURCE_BUCKET="$(terraform \

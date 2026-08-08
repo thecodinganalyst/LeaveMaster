@@ -1,3 +1,9 @@
 .git
 .gradle
 build
+backend/.gradle
+backend/build
+!backend/build/libs/
+!backend/build/libs/*.jar
+frontend/node_modules
+frontend/dist
