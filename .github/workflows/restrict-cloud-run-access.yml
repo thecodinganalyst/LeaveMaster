@@ -1,0 +1,68 @@
+name: Restrict Cloud Run Access
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: leavemaster-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  CLOUD_RUN_SERVICE_NAME: leavemaster-api
+
+jobs:
+  restrict:
+    name: Make deployment inaccessible
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
+
+      - name: Set up Google Cloud CLI
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Remove public invoker binding
+        run: |
+          PUBLIC_INVOCATION="$(gcloud run services get-iam-policy "${CLOUD_RUN_SERVICE_NAME}" \
+            --project="${{ vars.GCP_PROJECT_ID }}" \
+            --region="${{ vars.GCP_REGION }}" \
+            --flatten="bindings[].members" \
+            --filter="bindings.role=roles/run.invoker AND bindings.members=allUsers" \
+            --format="value(bindings.members)")"
+
+          if [ "${PUBLIC_INVOCATION}" != "allUsers" ]; then
+            echo "Cloud Run service is already inaccessible."
+            exit 0
+          fi
+
+          gcloud run services remove-iam-policy-binding "${CLOUD_RUN_SERVICE_NAME}" \
+            --project="${{ vars.GCP_PROJECT_ID }}" \
+            --region="${{ vars.GCP_REGION }}" \
+            --member="allUsers" \
+            --role="roles/run.invoker"
+
+      - name: Verify service is not publicly accessible
+        run: |
+          PUBLIC_INVOCATION="$(gcloud run services get-iam-policy "${CLOUD_RUN_SERVICE_NAME}" \
+            --project="${{ vars.GCP_PROJECT_ID }}" \
+            --region="${{ vars.GCP_REGION }}" \
+            --flatten="bindings[].members" \
+            --filter="bindings.role=roles/run.invoker AND bindings.members=allUsers" \
+            --format="value(bindings.members)")"
+
+          if [ -n "${PUBLIC_INVOCATION}" ]; then
+            echo "Public Cloud Run invoker binding is still present."
+            exit 1
+          fi
+
+          echo "Removed public access from ${CLOUD_RUN_SERVICE_NAME}."
