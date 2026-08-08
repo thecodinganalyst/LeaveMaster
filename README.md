@@ -2,6 +2,17 @@
 
 LeaveMaster is a Spring Boot REST API for managing employee leave. It handles leave applications, approvals, entitlements, public-holiday calendars, and email notifications — all exposed through a fully documented OpenAPI (Swagger) interface.
 
+## Repository Layout
+
+```text
+LeaveMaster/
+├── backend/         # Spring Boot API
+├── frontend/        # Frontend workspace placeholder
+├── infra/terraform/ # Terraform kept in its existing dedicated location
+├── docs/
+└── .github/workflows/
+```
+
 ## Features
 
 - **Staff management** — create, update, and terminate staff records, each with a customisable weekly work schedule, leave entitlements, and an optional location assignment.
@@ -36,12 +47,12 @@ LeaveMaster is a Spring Boot REST API for managing employee leave. It handles le
 ### Prerequisites
 
 - Java 25+
-- Gradle (or use the included `./gradlew` wrapper)
+- Gradle (or use the included `./backend/gradlew` wrapper)
 
 ### Run locally (H2 in-memory database)
 
 ```bash
-./gradlew bootRun
+./backend/gradlew bootRun
 ```
 
 The application starts on **port 8080** and uses an H2 in-memory database that is pre-migrated by Flyway on startup.
@@ -49,10 +60,11 @@ The application starts on **port 8080** and uses an H2 in-memory database that i
 ### Run with Docker Compose (PostgreSQL)
 
 ```bash
-POSTGRES_PASSWORD=secret docker compose up
+./backend/gradlew bootJar
+POSTGRES_PASSWORD=secret docker compose up --build
 ```
 
-This starts a PostgreSQL 17 container and the application container together. The application is available on **port 8080**.
+This builds the backend JAR from `backend/`, then starts a PostgreSQL 17 container and the application container together. The application is available on **port 8080**.
 
 Optional environment variables (all have defaults except `POSTGRES_PASSWORD`):
 
@@ -114,13 +126,13 @@ See the [Cloud Run deployment guide](docs/cloudrun-deployment.md) for step-by-st
 ### Build
 
 ```bash
-./gradlew build
+./backend/gradlew build
 ```
 
 ### Run tests
 
 ```bash
-./gradlew test
+./backend/gradlew test
 ```
 
 ## API Documentation (Swagger)
