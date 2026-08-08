@@ -1,0 +1,1171 @@
+{
+  "v": 2,
+  "name": "LeaveMaster API",
+  "folders": [
+    {
+      "v": 2,
+      "name": "Users",
+      "folders": [],
+      "requests": [
+        {
+          "v": "3",
+          "id": "users-get-all",
+          "name": "Get All Users",
+          "method": "GET",
+          "endpoint": "<<baseUrl>>/users",
+          "params": [],
+          "headers": [
+            { "key": "Content-Type", "value": "application/json", "active": true }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null },
+          "requestVariables": []
+        },
+        {
+          "v": "3",
+          "id": "users-get-by-login-name",
+          "name": "Get User by Login Name",
+          "method": "GET",
+          "endpoint": "<<baseUrl>>/users/<<loginName>>",
+          "params": [],
+          "headers": [
+            { "key": "Content-Type", "value": "application/json", "active": true }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null },
+          "requestVariables": [
+            { "key": "loginName", "value": "john.doe", "active": true }
+          ]
+        },
+        {
+          "v": "3",
+          "id": "users-create",
+          "name": "Create User",
+          "method": "POST",
+          "endpoint": "<<baseUrl>>/users",
+          "params": [],
+          "headers": [
+            { "key": "Content-Type", "value": "application/json", "active": true }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n  \"loginName\": \"john.doe\",\n  \"password\": \"P@ssw0rd!\",\n  \"active\": true,\n  \"staffId\": \"STAFF001\",\n  \"tenantId\": \"TENANT001\"\n}"
+          },
+          "requestVariables": []
+        },
+        {
+          "v": "3",
+          "id": "users-update",
+          "name": "Update User",
+          "method": "PUT",
+          "endpoint": "<<baseUrl>>/users/<<loginName>>",
+          "params": [],
+          "headers": [
+            { "key": "Content-Type", "value": "application/json", "active": true }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n  \"loginName\": \"john.doe\",\n  \"password\": \"NewP@ssw0rd!\",\n  \"active\": true,\n  \"staffId\": \"STAFF001\",\n  \"tenantId\": \"TENANT001\"\n}"
+          },
+          "requestVariables": [
+            { "key": "loginName", "value": "john.doe", "active": true }
+          ]
+        },
+        {
+          "v": "3",
+          "id": "users-delete",
+          "name": "Delete User",
+          "method": "DELETE",
+          "endpoint": "<<baseUrl>>/users/<<loginName>>",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null },
+          "requestVariables": [
+            { "key": "loginName", "value": "john.doe", "active": true }
+          ]
+        },
+        {
+          "v": "3",
+          "id": "users-change-password",
+          "name": "Change Password",
+          "method": "PUT",
+          "endpoint": "<<baseUrl>>/users/<<loginName>>/change-password",
+          "params": [],
+          "headers": [
+            { "key": "Content-Type", "value": "application/json", "active": true }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n  \"password\": \"NewP@ssw0rd!\"\n}"
+          },
+          "requestVariables": [
+            { "key": "loginName", "value": "john.doe", "active": true }
+          ]
+        },
+        {
+          "v": "3",
+          "id": "users-activate",
+          "name": "Activate User",
+          "method": "PUT",
+          "endpoint": "<<baseUrl>>/users/<<loginName>>/activate",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null },
+          "requestVariables": [
+            { "key": "loginName", "value": "john.doe", "active": true }
+          ]
+        },
+        {
+          "v": "3",
+          "id": "users-deactivate",
+          "name": "Deactivate User",
+          "method": "PUT",
+          "endpoint": "<<baseUrl>>/users/<<loginName>>/deactivate",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null },
+          "requestVariables": [
+            { "key": "loginName", "value": "john.doe", "active": true }
+          ]
+        },
+        {
+          "v": "3",
+          "id": "users-login",
+          "name": "Login",
+          "method": "POST",
+          "endpoint": "<<baseUrl>>/users/login",
+          "params": [],
+          "headers": [
+            { "key": "Content-Type", "value": "application/json", "active": true }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n  \"loginName\": \"john.doe\",\n  \"password\": \"P@ssw0rd!\"\n}"
+          },
+          "requestVariables": []
+        }
+      ]
+    },
+    {
+      "v": 2,
+      "name": "Tenants",
+      "folders": [],
+      "requests": [
+        {
+          "v": "3",
+          "id": "tenants-get-all",
+          "name": "Get All Tenants",
+          "method": "GET",
+          "endpoint": "<<baseUrl>>/tenants",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null },
+          "requestVariables": []
+        },
+        {
+          "v": "3",
+          "id": "tenants-get-by-id",
+          "name": "Get Tenant by ID",
+          "method": "GET",
+          "endpoint": "<<baseUrl>>/tenants/<<id>>",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null },
+          "requestVariables": [
+            { "key": "id", "value": "TENANT001", "active": true }
+          ]
+        },
+        {
+          "v": "3",
+          "id": "tenants-create",
+          "name": "Create Tenant",
+          "method": "POST",
+          "endpoint": "<<baseUrl>>/tenants",
+          "params": [],
+          "headers": [
+            { "key": "Content-Type", "value": "application/json", "active": true }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n  \"id\": \"TENANT001\",\n  \"name\": \"Acme Corp\",\n  \"startDate\": \"2024-01-01\",\n  \"endDate\": null,\n  \"status\": \"ACTIVE\"\n}"
+          },
+          "requestVariables": []
+        },
+        {
+          "v": "3",
+          "id": "tenants-update",
+          "name": "Update Tenant",
+          "method": "PUT",
+          "endpoint": "<<baseUrl>>/tenants/<<id>>",
+          "params": [],
+          "headers": [
+            { "key": "Content-Type", "value": "application/json", "active": true }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n  \"id\": \"TENANT001\",\n  \"name\": \"Acme Corp Updated\",\n  \"startDate\": \"2024-01-01\",\n  \"endDate\": null,\n  \"status\": \"ACTIVE\"\n}"
+          },
+          "requestVariables": [
+            { "key": "id", "value": "TENANT001", "active": true }
+          ]
+        },
+        {
+          "v": "3",
+          "id": "tenants-delete",
+          "name": "Delete Tenant",
+          "method": "DELETE",
+          "endpoint": "<<baseUrl>>/tenants/<<id>>",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null },
+          "requestVariables": [
+            { "key": "id", "value": "TENANT001", "active": true }
+          ]
+        }
+      ]
+    },
+    {
+      "v": 2,
+      "name": "Roles",
+      "folders": [],
+      "requests": [
+        {
+          "v": "3",
+          "id": "roles-get-all",
+          "name": "Get All Roles",
+          "method": "GET",
+          "endpoint": "<<baseUrl>>/roles",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null },
+          "requestVariables": []
+        },
+        {
+          "v": "3",
+          "id": "roles-get-permissions",
+          "name": "Get All Permissions",
+          "method": "GET",
+          "endpoint": "<<baseUrl>>/roles/permissions",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null },
+          "requestVariables": []
+        },
+        {
+          "v": "3",
+          "id": "roles-get-by-id",
+          "name": "Get Role by ID",
+          "method": "GET",
+          "endpoint": "<<baseUrl>>/roles/<<id>>",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null },
+          "requestVariables": [
+            { "key": "id", "value": "ROLE001", "active": true }
+          ]
+        },
+        {
+          "v": "3",
+          "id": "roles-create",
+          "name": "Create Role",
+          "method": "POST",
+          "endpoint": "<<baseUrl>>/roles",
+          "params": [],
+          "headers": [
+            { "key": "Content-Type", "value": "application/json", "active": true }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n  \"id\": \"ROLE001\",\n  \"description\": \"Administrator\",\n  \"active\": true,\n  \"tenantId\": \"TENANT001\"\n}"
+          },
+          "requestVariables": []
+        },
+        {
+          "v": "3",
+          "id": "roles-update",
+          "name": "Update Role",
+          "method": "PUT",
+          "endpoint": "<<baseUrl>>/roles/<<id>>",
+          "params": [],
+          "headers": [
+            { "key": "Content-Type", "value": "application/json", "active": true }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n  \"id\": \"ROLE001\",\n  \"description\": \"Administrator Updated\",\n  \"active\": true,\n  \"tenantId\": \"TENANT001\"\n}"
+          },
+          "requestVariables": [
+            { "key": "id", "value": "ROLE001", "active": true }
+          ]
+        },
+        {
+          "v": "3",
+          "id": "roles-disable",
+          "name": "Disable Role",
+          "method": "PUT",
+          "endpoint": "<<baseUrl>>/roles/<<id>>/disable",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null },
+          "requestVariables": [
+            { "key": "id", "value": "ROLE001", "active": true }
+          ]
+        },
+        {
+          "v": "3",
+          "id": "roles-enable",
+          "name": "Enable Role",
+          "method": "PUT",
+          "endpoint": "<<baseUrl>>/roles/<<id>>/enable",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null },
+          "requestVariables": [
+            { "key": "id", "value": "ROLE001", "active": true }
+          ]
+        },
+        {
+          "v": "3",
+          "id": "roles-add-user",
+          "name": "Add User to Role",
+          "method": "PUT",
+          "endpoint": "<<baseUrl>>/roles/<<id>>/users/<<loginName>>",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null },
+          "requestVariables": [
+            { "key": "id", "value": "ROLE001", "active": true },
+            { "key": "loginName", "value": "john.doe", "active": true }
+          ]
+        },
+        {
+          "v": "3",
+          "id": "roles-remove-user",
+          "name": "Remove User from Role",
+          "method": "DELETE",
+          "endpoint": "<<baseUrl>>/roles/<<id>>/users/<<loginName>>",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null },
+          "requestVariables": [
+            { "key": "id", "value": "ROLE001", "active": true },
+            { "key": "loginName", "value": "john.doe", "active": true }
+          ]
+        }
+      ]
+    },
+    {
+      "v": 2,
+      "name": "Locations",
+      "folders": [],
+      "requests": [
+        {
+          "v": "3",
+          "id": "locations-get-all",
+          "name": "Get All Locations",
+          "method": "GET",
+          "endpoint": "<<baseUrl>>/locations",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null },
+          "requestVariables": []
+        },
+        {
+          "v": "3",
+          "id": "locations-get-by-id",
+          "name": "Get Location by ID",
+          "method": "GET",
+          "endpoint": "<<baseUrl>>/locations/<<id>>",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null },
+          "requestVariables": [
+            { "key": "id", "value": "LOC001", "active": true }
+          ]
+        },
+        {
+          "v": "3",
+          "id": "locations-create",
+          "name": "Create Location",
+          "method": "POST",
+          "endpoint": "<<baseUrl>>/locations",
+          "params": [],
+          "headers": [
+            { "key": "Content-Type", "value": "application/json", "active": true }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n  \"id\": \"LOC001\",\n  \"locationName\": \"Singapore HQ\",\n  \"country\": \"Singapore\",\n  \"state\": null,\n  \"tenantId\": \"TENANT001\"\n}"
+          },
+          "requestVariables": []
+        },
+        {
+          "v": "3",
+          "id": "locations-update",
+          "name": "Update Location",
+          "method": "PUT",
+          "endpoint": "<<baseUrl>>/locations/<<id>>",
+          "params": [],
+          "headers": [
+            { "key": "Content-Type", "value": "application/json", "active": true }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n  \"id\": \"LOC001\",\n  \"locationName\": \"Singapore HQ Updated\",\n  \"country\": \"Singapore\",\n  \"state\": null,\n  \"tenantId\": \"TENANT001\"\n}"
+          },
+          "requestVariables": [
+            { "key": "id", "value": "LOC001", "active": true }
+          ]
+        },
+        {
+          "v": "3",
+          "id": "locations-delete",
+          "name": "Delete Location",
+          "method": "DELETE",
+          "endpoint": "<<baseUrl>>/locations/<<id>>",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null },
+          "requestVariables": [
+            { "key": "id", "value": "LOC001", "active": true }
+          ]
+        }
+      ]
+    },
+    {
+      "v": 2,
+      "name": "Leave Types",
+      "folders": [],
+      "requests": [
+        {
+          "v": "3",
+          "id": "leave-types-get-all",
+          "name": "Get All Leave Types",
+          "method": "GET",
+          "endpoint": "<<baseUrl>>/leave-types",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null },
+          "requestVariables": []
+        },
+        {
+          "v": "3",
+          "id": "leave-types-get-by-id",
+          "name": "Get Leave Type by ID",
+          "method": "GET",
+          "endpoint": "<<baseUrl>>/leave-types/<<id>>",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null },
+          "requestVariables": [
+            { "key": "id", "value": "ANNUAL", "active": true }
+          ]
+        },
+        {
+          "v": "3",
+          "id": "leave-types-create",
+          "name": "Create Leave Type",
+          "method": "POST",
+          "endpoint": "<<baseUrl>>/leave-types",
+          "params": [],
+          "headers": [
+            { "key": "Content-Type", "value": "application/json", "active": true }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n  \"id\": \"ANNUAL\",\n  \"name\": \"Annual Leave\",\n  \"used\": false,\n  \"tenantId\": \"TENANT001\"\n}"
+          },
+          "requestVariables": []
+        },
+        {
+          "v": "3",
+          "id": "leave-types-update",
+          "name": "Update Leave Type",
+          "method": "PUT",
+          "endpoint": "<<baseUrl>>/leave-types/<<id>>",
+          "params": [],
+          "headers": [
+            { "key": "Content-Type", "value": "application/json", "active": true }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n  \"id\": \"ANNUAL\",\n  \"name\": \"Annual Leave Updated\",\n  \"used\": false,\n  \"tenantId\": \"TENANT001\"\n}"
+          },
+          "requestVariables": [
+            { "key": "id", "value": "ANNUAL", "active": true }
+          ]
+        },
+        {
+          "v": "3",
+          "id": "leave-types-delete",
+          "name": "Delete Leave Type",
+          "method": "DELETE",
+          "endpoint": "<<baseUrl>>/leave-types/<<id>>",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null },
+          "requestVariables": [
+            { "key": "id", "value": "ANNUAL", "active": true }
+          ]
+        }
+      ]
+    },
+    {
+      "v": 2,
+      "name": "Staff",
+      "folders": [],
+      "requests": [
+        {
+          "v": "3",
+          "id": "staff-get-all",
+          "name": "Get All Staff",
+          "method": "GET",
+          "endpoint": "<<baseUrl>>/staff",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null },
+          "requestVariables": []
+        },
+        {
+          "v": "3",
+          "id": "staff-get-by-id",
+          "name": "Get Staff by ID",
+          "method": "GET",
+          "endpoint": "<<baseUrl>>/staff/<<id>>",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null },
+          "requestVariables": [
+            { "key": "id", "value": "STAFF001", "active": true }
+          ]
+        },
+        {
+          "v": "3",
+          "id": "staff-create",
+          "name": "Create Staff",
+          "method": "POST",
+          "endpoint": "<<baseUrl>>/staff",
+          "params": [],
+          "headers": [
+            { "key": "Content-Type", "value": "application/json", "active": true }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n  \"id\": \"STAFF001\",\n  \"name\": \"John Doe\",\n  \"email\": \"john.doe@example.com\",\n  \"joinDate\": \"2024-01-15\",\n  \"workSchedule\": [],\n  \"location\": { \"id\": \"LOC001\" }\n}"
+          },
+          "requestVariables": []
+        },
+        {
+          "v": "3",
+          "id": "staff-update",
+          "name": "Update Staff",
+          "method": "PUT",
+          "endpoint": "<<baseUrl>>/staff/<<id>>",
+          "params": [],
+          "headers": [
+            { "key": "Content-Type", "value": "application/json", "active": true }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n  \"id\": \"STAFF001\",\n  \"name\": \"John Doe Updated\",\n  \"email\": \"john.doe@example.com\",\n  \"joinDate\": \"2024-01-15\",\n  \"workSchedule\": [],\n  \"location\": { \"id\": \"LOC001\" }\n}"
+          },
+          "requestVariables": [
+            { "key": "id", "value": "STAFF001", "active": true }
+          ]
+        },
+        {
+          "v": "3",
+          "id": "staff-delete",
+          "name": "Delete Staff",
+          "method": "DELETE",
+          "endpoint": "<<baseUrl>>/staff/<<id>>",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null },
+          "requestVariables": [
+            { "key": "id", "value": "STAFF001", "active": true }
+          ]
+        },
+        {
+          "v": "3",
+          "id": "staff-terminate",
+          "name": "Terminate Staff",
+          "method": "PUT",
+          "endpoint": "<<baseUrl>>/staff/<<id>>/terminate",
+          "params": [
+            { "key": "termDate", "value": "2024-12-31", "active": true }
+          ],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null },
+          "requestVariables": [
+            { "key": "id", "value": "STAFF001", "active": true }
+          ]
+        }
+      ]
+    },
+    {
+      "v": 2,
+      "name": "Leave Approvers",
+      "folders": [],
+      "requests": [
+        {
+          "v": "3",
+          "id": "leave-approvers-get-all",
+          "name": "Get All Leave Approvers",
+          "method": "GET",
+          "endpoint": "<<baseUrl>>/leave-approvers",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null },
+          "requestVariables": []
+        },
+        {
+          "v": "3",
+          "id": "leave-approvers-get-by-staff-id",
+          "name": "Get Leave Approvers by Staff ID",
+          "method": "GET",
+          "endpoint": "<<baseUrl>>/leave-approvers/staff/<<staffId>>",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null },
+          "requestVariables": [
+            { "key": "staffId", "value": "STAFF001", "active": true }
+          ]
+        },
+        {
+          "v": "3",
+          "id": "leave-approvers-get-by-id",
+          "name": "Get Leave Approver by ID",
+          "method": "GET",
+          "endpoint": "<<baseUrl>>/leave-approvers/<<id>>",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null },
+          "requestVariables": [
+            { "key": "id", "value": "approver-uuid", "active": true }
+          ]
+        },
+        {
+          "v": "3",
+          "id": "leave-approvers-create",
+          "name": "Create Leave Approver",
+          "method": "POST",
+          "endpoint": "<<baseUrl>>/leave-approvers",
+          "params": [],
+          "headers": [
+            { "key": "Content-Type", "value": "application/json", "active": true }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n  \"staff\": { \"id\": \"STAFF001\" },\n  \"approver\": { \"id\": \"STAFF002\" },\n  \"effectiveFrom\": \"2024-01-01\"\n}"
+          },
+          "requestVariables": []
+        },
+        {
+          "v": "3",
+          "id": "leave-approvers-update",
+          "name": "Update Leave Approver",
+          "method": "PUT",
+          "endpoint": "<<baseUrl>>/leave-approvers/<<id>>",
+          "params": [],
+          "headers": [
+            { "key": "Content-Type", "value": "application/json", "active": true }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n  \"staff\": { \"id\": \"STAFF001\" },\n  \"approver\": { \"id\": \"STAFF002\" },\n  \"effectiveFrom\": \"2024-02-01\"\n}"
+          },
+          "requestVariables": [
+            { "key": "id", "value": "approver-uuid", "active": true }
+          ]
+        },
+        {
+          "v": "3",
+          "id": "leave-approvers-delete",
+          "name": "Delete Leave Approver",
+          "method": "DELETE",
+          "endpoint": "<<baseUrl>>/leave-approvers/<<id>>",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null },
+          "requestVariables": [
+            { "key": "id", "value": "approver-uuid", "active": true }
+          ]
+        }
+      ]
+    },
+    {
+      "v": 2,
+      "name": "Leave Calendars",
+      "folders": [],
+      "requests": [
+        {
+          "v": "3",
+          "id": "leave-calendars-get-all",
+          "name": "Get All Leave Calendars",
+          "method": "GET",
+          "endpoint": "<<baseUrl>>/leave-calendars",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null },
+          "requestVariables": []
+        },
+        {
+          "v": "3",
+          "id": "leave-calendars-get-current",
+          "name": "Get Current Leave Calendar",
+          "method": "GET",
+          "endpoint": "<<baseUrl>>/leave-calendars/current",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null },
+          "requestVariables": []
+        },
+        {
+          "v": "3",
+          "id": "leave-calendars-create",
+          "name": "Create Leave Calendar",
+          "method": "POST",
+          "endpoint": "<<baseUrl>>/leave-calendars",
+          "params": [],
+          "headers": [
+            { "key": "Content-Type", "value": "application/json", "active": true }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n  \"id\": \"CAL2024\",\n  \"start\": \"2024-01-01\",\n  \"end\": \"2024-12-31\",\n  \"publicHolidays\": [\n    { \"date\": \"2024-01-01\", \"name\": \"New Year's Day\" },\n    { \"date\": \"2024-12-25\", \"name\": \"Christmas Day\" }\n  ]\n}"
+          },
+          "requestVariables": []
+        }
+      ]
+    },
+    {
+      "v": 2,
+      "name": "Leave Applications",
+      "folders": [],
+      "requests": [
+        {
+          "v": "3",
+          "id": "leave-applications-get-all",
+          "name": "Get All Leave Applications (by Staff)",
+          "method": "GET",
+          "endpoint": "<<baseUrl>>/leave-applications",
+          "params": [
+            { "key": "staffId", "value": "STAFF001", "active": true }
+          ],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null },
+          "requestVariables": []
+        },
+        {
+          "v": "3",
+          "id": "leave-applications-get-by-id",
+          "name": "Get Leave Application by ID",
+          "method": "GET",
+          "endpoint": "<<baseUrl>>/leave-applications/<<id>>",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null },
+          "requestVariables": [
+            { "key": "id", "value": "application-uuid", "active": true }
+          ]
+        },
+        {
+          "v": "3",
+          "id": "leave-applications-get-by-approver",
+          "name": "Get Leave Applications by Approver",
+          "method": "GET",
+          "endpoint": "<<baseUrl>>/leave-applications/approver/<<approverId>>",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null },
+          "requestVariables": [
+            { "key": "approverId", "value": "STAFF002", "active": true }
+          ]
+        },
+        {
+          "v": "3",
+          "id": "leave-applications-get-by-staff",
+          "name": "Get Leave Applications by Staff",
+          "method": "GET",
+          "endpoint": "<<baseUrl>>/leave-applications/staff/<<staffId>>",
+          "params": [
+            { "key": "date", "value": "2024-06-01", "active": false }
+          ],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null },
+          "requestVariables": [
+            { "key": "staffId", "value": "STAFF001", "active": true }
+          ]
+        },
+        {
+          "v": "3",
+          "id": "leave-applications-get-balance",
+          "name": "Get Leave Balance by Staff",
+          "method": "GET",
+          "endpoint": "<<baseUrl>>/leave-applications/staff/<<staffId>>/balance",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null },
+          "requestVariables": [
+            { "key": "staffId", "value": "STAFF001", "active": true }
+          ]
+        },
+        {
+          "v": "3",
+          "id": "leave-applications-apply-json",
+          "name": "Apply for Leave (JSON)",
+          "method": "POST",
+          "endpoint": "<<baseUrl>>/leave-applications",
+          "params": [],
+          "headers": [
+            { "key": "Content-Type", "value": "application/json", "active": true }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n  \"staffId\": \"STAFF001\",\n  \"fromDate\": \"2024-06-10\",\n  \"toDate\": \"2024-06-12\",\n  \"leaveTypeId\": \"ANNUAL\",\n  \"leaveDuration\": \"FULL_DAY\",\n  \"status\": \"PENDING\"\n}"
+          },
+          "requestVariables": []
+        },
+        {
+          "v": "3",
+          "id": "leave-applications-apply-multipart",
+          "name": "Apply for Leave (Multipart with Attachment)",
+          "method": "POST",
+          "endpoint": "<<baseUrl>>/leave-applications",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": {
+            "contentType": "multipart/form-data",
+            "body": [
+              {
+                "key": "request",
+                "value": "{\"staffId\":\"STAFF001\",\"fromDate\":\"2024-06-10\",\"toDate\":\"2024-06-12\",\"leaveTypeId\":\"ANNUAL\",\"leaveDuration\":\"FULL_DAY\",\"status\":\"PENDING\"}",
+                "active": true,
+                "isFile": false
+              },
+              {
+                "key": "file",
+                "value": "",
+                "active": false,
+                "isFile": true
+              }
+            ]
+          },
+          "requestVariables": []
+        },
+        {
+          "v": "3",
+          "id": "leave-applications-upload-attachment",
+          "name": "Upload Attachment",
+          "method": "POST",
+          "endpoint": "<<baseUrl>>/leave-applications/<<id>>/attachment",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": {
+            "contentType": "multipart/form-data",
+            "body": [
+              {
+                "key": "file",
+                "value": "",
+                "active": true,
+                "isFile": true
+              }
+            ]
+          },
+          "requestVariables": [
+            { "key": "id", "value": "application-uuid", "active": true }
+          ]
+        },
+        {
+          "v": "3",
+          "id": "leave-applications-get-attachment",
+          "name": "Get Attachment",
+          "method": "GET",
+          "endpoint": "<<baseUrl>>/leave-applications/<<id>>/attachment",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null },
+          "requestVariables": [
+            { "key": "id", "value": "application-uuid", "active": true }
+          ]
+        },
+        {
+          "v": "3",
+          "id": "leave-applications-update",
+          "name": "Update Leave Application",
+          "method": "PUT",
+          "endpoint": "<<baseUrl>>/leave-applications/<<id>>",
+          "params": [],
+          "headers": [
+            { "key": "Content-Type", "value": "application/json", "active": true }
+          ],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": {
+            "contentType": "application/json",
+            "body": "{\n  \"staffId\": \"STAFF001\",\n  \"fromDate\": \"2024-06-10\",\n  \"toDate\": \"2024-06-13\",\n  \"leaveTypeId\": \"ANNUAL\",\n  \"leaveDuration\": \"FULL_DAY\",\n  \"status\": \"PENDING\"\n}"
+          },
+          "requestVariables": [
+            { "key": "id", "value": "application-uuid", "active": true }
+          ]
+        },
+        {
+          "v": "3",
+          "id": "leave-applications-delete",
+          "name": "Delete Leave Application",
+          "method": "DELETE",
+          "endpoint": "<<baseUrl>>/leave-applications/<<id>>",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null },
+          "requestVariables": [
+            { "key": "id", "value": "application-uuid", "active": true }
+          ]
+        },
+        {
+          "v": "3",
+          "id": "leave-applications-approve",
+          "name": "Approve Leave Application",
+          "method": "PUT",
+          "endpoint": "<<baseUrl>>/leave-applications/<<id>>/approve",
+          "params": [
+            { "key": "approverId", "value": "STAFF002", "active": true }
+          ],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null },
+          "requestVariables": [
+            { "key": "id", "value": "application-uuid", "active": true }
+          ]
+        },
+        {
+          "v": "3",
+          "id": "leave-applications-reject",
+          "name": "Reject Leave Application",
+          "method": "PUT",
+          "endpoint": "<<baseUrl>>/leave-applications/<<id>>/reject",
+          "params": [
+            { "key": "approverId", "value": "STAFF002", "active": true }
+          ],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null },
+          "requestVariables": [
+            { "key": "id", "value": "application-uuid", "active": true }
+          ]
+        },
+        {
+          "v": "3",
+          "id": "leave-applications-approve-cancellation",
+          "name": "Approve Leave Cancellation",
+          "method": "PUT",
+          "endpoint": "<<baseUrl>>/leave-applications/<<id>>/approve-cancellation",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null },
+          "requestVariables": [
+            { "key": "id", "value": "application-uuid", "active": true }
+          ]
+        },
+        {
+          "v": "3",
+          "id": "leave-applications-reject-cancellation",
+          "name": "Reject Leave Cancellation",
+          "method": "PUT",
+          "endpoint": "<<baseUrl>>/leave-applications/<<id>>/reject-cancellation",
+          "params": [],
+          "headers": [],
+          "preRequestScript": "",
+          "testScript": "",
+          "auth": { "authType": "none", "authActive": true },
+          "body": { "contentType": null, "body": null },
+          "requestVariables": [
+            { "key": "id", "value": "application-uuid", "active": true }
+          ]
+        }
+      ]
+    }
+  ],
+  "requests": []
+}
