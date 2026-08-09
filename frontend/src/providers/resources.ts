@@ -1,34 +1,28 @@
 import type { IResourceItem } from '@refinedev/core';
 
+const crud = (name: string, label: string, icon: string): IResourceItem => ({
+  name,
+  list: `/${name}`,
+  create: `/${name}/create`,
+  edit: `/${name}/edit/:id`,
+  show: `/${name}/show/:id`,
+  meta: { label, icon },
+});
+
 export const resources: IResourceItem[] = [
+  { name: 'dashboard', list: '/', meta: { label: 'Dashboard', icon: 'dashboard' } },
+  crud('leave-requests', 'Leave Requests', 'calendar'),
+  crud('employees', 'Staff', 'team'),
+  crud('tenants', 'Tenants', 'bank'),
+  crud('users', 'App Users', 'user'),
+  crud('roles', 'Roles', 'safety'),
+  crud('locations', 'Locations', 'environment'),
+  crud('leave-types', 'Leave Types', 'tags'),
   {
-    name: 'dashboard',
-    list: '/',
-    meta: {
-      label: 'Dashboard',
-      icon: 'dashboard',
-    },
+    name: 'leave-calendars',
+    list: '/leave-calendars',
+    create: '/leave-calendars/create',
+    meta: { label: 'Leave Calendars', icon: 'calendar' },
   },
-  {
-    name: 'leave-requests',
-    list: '/leave-requests',
-    create: '/leave-requests/create',
-    edit: '/leave-requests/edit/:id',
-    show: '/leave-requests/show/:id',
-    meta: {
-      label: 'Leave Requests',
-      icon: 'calendar',
-    },
-  },
-  {
-    name: 'employees',
-    list: '/employees',
-    create: '/employees/create',
-    edit: '/employees/edit/:id',
-    show: '/employees/show/:id',
-    meta: {
-      label: 'Employees',
-      icon: 'team',
-    },
-  },
+  crud('leave-approvers', 'Leave Approvers', 'audit'),
 ];

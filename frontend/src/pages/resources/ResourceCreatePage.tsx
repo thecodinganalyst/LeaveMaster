@@ -1,32 +1,42 @@
-import { Button, Form, Input, Select, Space } from 'antd';
+import { useCreate, useResource } from '@refinedev/core';
+import { App, Button, Form, Space } from 'antd';
+import { useNavigate } from 'react-router-dom';
 
 import { FormSection } from '../../components/common/FormSection.tsx';
 import { PageContainer } from '../../components/common/PageContainer.tsx';
 import { PageHeader } from '../../components/common/PageHeader.tsx';
-import { useResourceMeta } from './resourceMeta.ts';
+import { getAdminResourceConfig, normaliseFormValues } from './adminResourceConfig.ts';
+import { ResourceFormFields } from './ResourceFormFields.tsx';
 
 export const ResourceCreatePage = () => {
-  const { label } = useResourceMeta();
+  const { resource } = useResource();
+  const config = getAdminResourceConfig(resource?.name);
+  const { mutateAsync, isLoading } = useCreate();
+  const [form] = Form.useForm();
+  const navigate = useNavigate();
+  const { message } = App.useApp();
+
+  if (!config || config.creatable === false) return null;
+
+  const submit = async (values: Record<string, unknown>) => {
+    try {
+      await mutateAsync({ resource: config.name, values: normaliseFormValues(config, values) });
+      message.success(`${config.singular} created`);
+      navigate(`/${config.name}`);
+    } catch {
+      message.error(`Unable to create ${config.singular.toLowerCase()}`);
+    }
+  };
 
   return (
     <PageContainer>
-      <PageHeader title={`Create ${label}`} subtitle="Reusable form scaffold for new resources." />
+      <PageHeader title={`Create ${config.singular}`} subtitle={`Add a new ${config.singular.toLowerCase()} record.`} />
       <FormSection title="Details">
-        <Form layout="vertical">
-          <Form.Item label="Name" name="name" required>
-            <Input />
-          </Form.Item>
-          <Form.Item label="Status" name="status" initialValue="pending">
-            <Select
-              options={[
-                { value: 'pending', label: 'Pending' },
-                { value: 'approved', label: 'Approved' },
-              ]}
-            />
-          </Form.Item>
+        <Form form={form} layout="vertical" onFinish={submit} initialValues={{ active: true, used: false, status: 'ACTIVE' }}>
+          <ResourceFormFields config={config} />
           <Space>
-            <Button type="primary">Save</Button>
-            <Button htmlType="button">Cancel</Button>
+            <Button type="primary" htmlType="submit" loading={isLoading}>Save</Button>
+            <Button htmlType="button" onClick={() => navigate(`/${config.name}`)}>Cancel</Button>
           </Space>
         </Form>
       </FormSection>
