@@ -5,7 +5,7 @@ import { Link, useParams } from 'react-router-dom';
 import { LoadingState } from '../../components/common/LoadingState.tsx';
 import { PageContainer } from '../../components/common/PageContainer.tsx';
 import { PageHeader } from '../../components/common/PageHeader.tsx';
-import { getAdminResourceConfig } from './adminResourceConfig.ts';
+import { getAdminResourceConfig, toFormValues } from './adminResourceConfig.ts';
 import { RoleMembershipCard } from './RoleMembershipCard.tsx';
 
 const displayValue = (value: unknown) => {
@@ -23,18 +23,18 @@ export const ResourceShowPage = () => {
 
   if (!config || !id) return null;
   if (query.isLoading) return <LoadingState />;
-  const record = (query.data?.data ?? {}) as Record<string, unknown>;
+  const record = toFormValues(config, (query.data?.data ?? {}) as Record<string, unknown>);
 
   return (
     <PageContainer>
       <PageHeader
         title={`${config.singular} details`}
         subtitle={id}
-        extra={canEdit?.can ? <Button type="primary"><Link to={`/${config.name}/edit/${encodeURIComponent(id)}`}>Edit</Link></Button> : undefined}
+        extra={canEdit?.can && config.editable !== false ? <Button type="primary"><Link to={`/${config.name}/edit/${encodeURIComponent(id)}`}>Edit</Link></Button> : undefined}
       />
       <Card>
         <Descriptions bordered column={{ xs: 1, sm: 1, md: 2 }}>
-          {config.fields.filter((field) => field.type !== 'password').map((field) => (
+          {config.fields.filter((field) => field.type !== 'password' && !field.hidden).map((field) => (
             <Descriptions.Item key={field.name} label={field.label}>
               <span style={{ whiteSpace: field.type === 'json' ? 'pre-wrap' : 'normal' }}>{displayValue(record[field.name])}</span>
             </Descriptions.Item>
