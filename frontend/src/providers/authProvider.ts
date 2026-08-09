@@ -1,9 +1,29 @@
 import type { AuthBindings } from '@refinedev/core';
 
 const AUTH_KEY = 'leavemaster.authenticated';
+const DEMO_EMAIL = 'admin@leavemaster.dev';
+const DEMO_PASSWORD = 'LeaveMaster123!';
+
+interface LoginParams {
+  email?: string;
+  password?: string;
+}
 
 export const authProvider: AuthBindings = {
-  login: async () => {
+  login: async (params) => {
+    const { email, password } = (params ?? {}) as LoginParams;
+    const isValidCredentials = email === DEMO_EMAIL && password === DEMO_PASSWORD;
+
+    if (!isValidCredentials) {
+      return {
+        success: false,
+        error: {
+          name: 'InvalidCredentials',
+          message: 'Use demo credentials to sign in.',
+        },
+      };
+    }
+
     localStorage.setItem(AUTH_KEY, 'true');
     return {
       success: true,

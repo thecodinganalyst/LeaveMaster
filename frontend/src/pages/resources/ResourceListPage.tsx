@@ -1,5 +1,5 @@
 import { Button } from 'antd';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 import { DataTable } from '../../components/common/DataTable.tsx';
 import { EmptyState } from '../../components/common/EmptyState.tsx';
@@ -14,6 +14,7 @@ const rows = [
 
 export const ResourceListPage = () => {
   const { label, name } = useResourceMeta();
+  const navigate = useNavigate();
 
   if (!name) {
     return <EmptyState title="Resource unavailable" description="No resource was selected." />;
@@ -25,8 +26,8 @@ export const ResourceListPage = () => {
         title={label}
         subtitle={`Manage ${label.toLowerCase()} records.`}
         extra={
-          <Button type="primary">
-            <Link to={`/${name}/create`}>Create</Link>
+          <Button type="primary" onClick={() => navigate(`/${name}/create`)}>
+            Create
           </Button>
         }
       />

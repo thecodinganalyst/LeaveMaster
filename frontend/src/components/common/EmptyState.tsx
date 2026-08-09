@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Card, Empty } from 'antd';
+import { Card, Empty, Typography } from 'antd';
 
 interface EmptyStateProps {
   title: string;
@@ -10,7 +10,8 @@ interface EmptyStateProps {
 export const EmptyState = ({ title, description, action }: EmptyStateProps) => {
   return (
     <Card>
-      <Empty description={description ?? title}>
+      <Typography.Title level={4}>{title}</Typography.Title>
+      <Empty description={description}>
         {action}
       </Empty>
     </Card>
