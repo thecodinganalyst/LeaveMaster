@@ -45,9 +45,9 @@ class AssistantToolAdapterTest {
         assertThat(result.data()).isInstanceOf(List.class);
         Object first = ((List<?>) result.data()).getFirst();
         assertThat(first).isInstanceOf(Map.class);
-        assertThat((Map<?, ?>) first)
-                .containsEntry("leaveType", "Annual")
-                .containsEntry("balance", 12.5);
+        Map<?, ?> firstMap = (Map<?, ?>) first;
+        assertThat(firstMap.get("leaveType")).isEqualTo("Annual");
+        assertThat(firstMap.get("balance")).isEqualTo(12.5);
         verify(read).call("{}");
         verify(audit).record(anyString(), anyString(), anyString(), anyString(), anyString(), any(), anyString(), any());
     }
