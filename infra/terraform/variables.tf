@@ -43,3 +43,35 @@ variable "github_actions_service_account" {
   description = "Service account impersonated by GitHub Actions"
   type        = string
 }
+
+variable "enable_firebase_hosting" {
+  description = "Whether to enable Firebase services and provision the frontend Hosting site"
+  type        = bool
+  default     = false
+}
+
+variable "frontend_environment" {
+  description = "Logical frontend environment name used when deriving the Firebase Hosting site ID"
+  type        = string
+  default     = "production"
+
+  validation {
+    condition     = can(regex("^[a-z0-9-]+$", var.frontend_environment))
+    error_message = "frontend_environment must contain only lowercase letters, digits, and hyphens."
+  }
+}
+
+variable "firebase_hosting_site_id" {
+  description = "Optional globally unique Firebase Hosting site ID. Defaults to <project_id>-<frontend_environment>."
+  type        = string
+  default     = null
+  nullable    = true
+
+  validation {
+    condition = (
+      var.firebase_hosting_site_id == null ||
+      can(regex("^[a-z0-9][a-z0-9-]*[a-z0-9]$", var.firebase_hosting_site_id))
+    )
+    error_message = "firebase_hosting_site_id must be a valid lowercase domain label when provided."
+  }
+}
