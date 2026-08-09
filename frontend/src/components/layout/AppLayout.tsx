@@ -7,6 +7,7 @@ import {
   AuditOutlined,
   BankOutlined,
   CalendarOutlined,
+  CheckSquareOutlined,
   EnvironmentOutlined,
   MenuOutlined,
   SafetyCertificateOutlined,
@@ -26,6 +27,7 @@ export const AppLayout = ({ children }: PropsWithChildren) => {
   const navigate = useNavigate();
   const { mutate: logout } = useLogout();
   const { data: leaveAccess } = useCan({ resource: 'leave-requests', action: 'list' });
+  const { data: approvalAccess } = useCan({ resource: 'leave-requests', action: 'approve' });
   const { data: employeeAccess } = useCan({ resource: 'employees', action: 'list' });
   const { data: tenantAccess } = useCan({ resource: 'tenants', action: 'list' });
   const { data: userAccess } = useCan({ resource: 'users', action: 'list' });
@@ -39,6 +41,7 @@ export const AppLayout = ({ children }: PropsWithChildren) => {
     () => [
       { key: '/', icon: <AppstoreOutlined />, label: <Link to="/">Dashboard</Link> },
       ...(leaveAccess?.can ? [{ key: '/leave-requests', icon: <CalendarOutlined />, label: <Link to="/leave-requests">Leave Requests</Link> }] : []),
+      ...(approvalAccess?.can ? [{ key: '/approvals', icon: <CheckSquareOutlined />, label: <Link to="/approvals">Approval Inbox</Link> }] : []),
       ...(employeeAccess?.can ? [{ key: '/employees', icon: <TeamOutlined />, label: <Link to="/employees">Staff</Link> }] : []),
       ...(tenantAccess?.can ? [{ key: '/tenants', icon: <BankOutlined />, label: <Link to="/tenants">Tenants</Link> }] : []),
       ...(userAccess?.can ? [{ key: '/users', icon: <UserOutlined />, label: <Link to="/users">App Users</Link> }] : []),
@@ -48,7 +51,7 @@ export const AppLayout = ({ children }: PropsWithChildren) => {
       ...(calendarAccess?.can ? [{ key: '/leave-calendars', icon: <CalendarOutlined />, label: <Link to="/leave-calendars">Leave Calendars</Link> }] : []),
       ...(approverAccess?.can ? [{ key: '/leave-approvers', icon: <AuditOutlined />, label: <Link to="/leave-approvers">Leave Approvers</Link> }] : []),
     ],
-    [approverAccess?.can, calendarAccess?.can, employeeAccess?.can, leaveAccess?.can, leaveTypeAccess?.can, locationAccess?.can, roleAccess?.can, tenantAccess?.can, userAccess?.can],
+    [approvalAccess?.can, approverAccess?.can, calendarAccess?.can, employeeAccess?.can, leaveAccess?.can, leaveTypeAccess?.can, locationAccess?.can, roleAccess?.can, tenantAccess?.can, userAccess?.can],
   );
 
   const selectedKeys = useMemo(() => {
