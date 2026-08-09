@@ -2,6 +2,8 @@ package com.practical.leavemaster.assistant;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
 import java.time.Instant;
@@ -20,6 +22,7 @@ class AssistantAuditService {
     private final AssistantAuditEventRepository repository;
     private final ObjectMapper objectMapper;
 
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     void record(String eventType, String actor, String tenant, String conversationId,
                 String toolName, Object arguments, String outcome, String detail) {
         repository.save(AssistantAuditEvent.builder()
@@ -45,7 +48,6 @@ class AssistantAuditService {
         }
     }
 
-    @SuppressWarnings("unchecked")
     private Object redact(Object value) {
         if (value instanceof Map<?, ?> map) {
             Map<String, Object> sanitized = new LinkedHashMap<>();
