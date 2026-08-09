@@ -9,6 +9,7 @@ import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
+import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.tool.ToolCallbackProvider;
@@ -46,6 +47,7 @@ class AssistantServiceTest {
         ReflectionTestUtils.setField(service, "enabled", true);
 
         when(chatModelProvider.getIfAvailable()).thenReturn(chatModel);
+        when(chatModel.getOptions()).thenReturn(ChatOptions.builder().build());
         when(userRepository.findById("dennis")).thenReturn(Optional.of(AppUser.builder()
                 .loginName("dennis").staffId("S1").tenantId("T1").active(true).build()));
 
