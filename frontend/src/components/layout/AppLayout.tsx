@@ -10,6 +10,7 @@ import {
   CheckSquareOutlined,
   EnvironmentOutlined,
   MenuOutlined,
+  MessageOutlined,
   SafetyCertificateOutlined,
   TagsOutlined,
   TeamOutlined,
@@ -17,12 +18,15 @@ import {
 } from '@ant-design/icons';
 import { Button, Drawer, Grid, Layout, Menu, Space, Typography } from 'antd';
 
+import { AssistantPanel } from '../../features/assistant/AssistantPanel.tsx';
+
 const { Header, Sider, Content } = Layout;
 
 export const AppLayout = ({ children }: PropsWithChildren) => {
   const screens = Grid.useBreakpoint();
   const isDesktop = Boolean(screens.lg);
-  const [open, setOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [assistantOpen, setAssistantOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { mutate: logout } = useLogout();
@@ -66,7 +70,7 @@ export const AppLayout = ({ children }: PropsWithChildren) => {
       selectedKeys={selectedKeys}
       items={menuItems}
       onClick={() => {
-        if (!isDesktop) setOpen(false);
+        if (!isDesktop) setMenuOpen(false);
       }}
     />
   );
@@ -76,7 +80,7 @@ export const AppLayout = ({ children }: PropsWithChildren) => {
       {isDesktop ? (
         <Sider width={250}>{menu}</Sider>
       ) : (
-        <Drawer placement="left" title="LeaveMaster" open={open} onClose={() => setOpen(false)} styles={{ body: { padding: 0 } }}>
+        <Drawer placement="left" title="LeaveMaster" open={menuOpen} onClose={() => setMenuOpen(false)} styles={{ body: { padding: 0 } }}>
           {menu}
         </Drawer>
       )}
@@ -84,13 +88,31 @@ export const AppLayout = ({ children }: PropsWithChildren) => {
       <Layout>
         <Header className="app-header">
           <Space size="middle">
-            {!isDesktop ? <Button type="text" icon={<MenuOutlined />} onClick={() => setOpen(true)} aria-label="Open menu" /> : null}
+            {!isDesktop ? <Button type="text" icon={<MenuOutlined />} onClick={() => setMenuOpen(true)} aria-label="Open menu" /> : null}
             <Typography.Title level={4} style={{ color: '#eaf2ff', margin: 0 }}>LeaveMaster</Typography.Title>
           </Space>
-          <Button onClick={() => logout(undefined, { onSuccess: () => navigate('/login') })}>Sign out</Button>
+          <Space>
+            <Button icon={<MessageOutlined />} onClick={() => setAssistantOpen(true)} aria-label="Open Ask LeaveMaster assistant">
+              {isDesktop ? 'Ask LeaveMaster' : null}
+            </Button>
+            <Button onClick={() => logout(undefined, { onSuccess: () => navigate('/login') })}>Sign out</Button>
+          </Space>
         </Header>
-        <Content style={{ margin: 24 }}>{children}</Content>
+        <Content style={{ margin: isDesktop ? 24 : 12 }}>{children}</Content>
       </Layout>
+
+      <Drawer
+        placement="right"
+        width={isDesktop ? 480 : '100%'}
+        open={assistantOpen}
+        onClose={() => setAssistantOpen(false)}
+        closable={false}
+        destroyOnHidden={false}
+        styles={{ body: { padding: 20 } }}
+        aria-label="Ask LeaveMaster"
+      >
+        <AssistantPanel onClose={() => setAssistantOpen(false)} />
+      </Drawer>
     </Layout>
   );
 };
