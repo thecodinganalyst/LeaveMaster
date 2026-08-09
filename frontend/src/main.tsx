@@ -6,13 +6,13 @@ import { App as AntdApp, ConfigProvider } from 'antd';
 import { notificationProvider } from '@refinedev/antd';
 import { Refine } from '@refinedev/core';
 import routerBindings, { DocumentTitleHandler, UnsavedChangesNotifier } from '@refinedev/react-router-v6';
-import dataProvider from '@refinedev/simple-rest';
 
 import { AppRoutes } from './app/AppRoutes.tsx';
+import { accessControlProvider } from './providers/accessControlProvider.ts';
 import { authProvider } from './providers/authProvider.ts';
+import { leaveMasterDataProvider } from './providers/dataProvider.ts';
 import { resources } from './providers/resources.ts';
 import { appTheme } from './theme/tokens.ts';
-import { env } from './config/env.ts';
 import './styles/app.css';
 
 const queryClient = new QueryClient();
@@ -25,7 +25,8 @@ createRoot(document.getElementById('root')!).render(
           <AntdApp>
             <Refine
               authProvider={authProvider}
-              dataProvider={dataProvider(env.apiUrl)}
+              accessControlProvider={accessControlProvider}
+              dataProvider={leaveMasterDataProvider}
               routerProvider={routerBindings}
               notificationProvider={notificationProvider}
               resources={resources}
