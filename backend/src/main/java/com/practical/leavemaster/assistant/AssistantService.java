@@ -65,8 +65,9 @@ public class AssistantService {
         providerGuard.beforeCall();
 
         List<AssistantDtos.PendingAction> pendingActions = new ArrayList<>();
+        List<AssistantDtos.StructuredResult> structuredResults = new ArrayList<>();
         ToolCallback[] tools = AssistantToolAdapter.forUser(
-                leaveMasterTools.getToolCallbacks(), authentication, user, objectMapper, pendingActions,
+                leaveMasterTools.getToolCallbacks(), authentication, user, objectMapper, pendingActions, structuredResults,
                 conversationId, confirmationService, auditService);
 
         Future<String> providerCall = providerExecutor.submit(() -> {
@@ -109,7 +110,11 @@ public class AssistantService {
             throw new AssistantProviderException("The AI provider could not complete the request", e);
         }
 
-        return new AssistantDtos.ChatResponse(conversationId, content == null ? "" : content, List.copyOf(pendingActions));
+        return new AssistantDtos.ChatResponse(
+                conversationId,
+                content == null ? "" : content,
+                List.copyOf(pendingActions),
+                List.copyOf(structuredResults));
     }
 
     @PreDestroy

@@ -29,7 +29,7 @@ class AssistantControllerTest {
     @Test
     void shouldReturnAssistantResponse() {
         var request = new AssistantDtos.ChatRequest("Hello", "c1");
-        var expected = new AssistantDtos.ChatResponse("c1", "Hi", List.of());
+        var expected = new AssistantDtos.ChatResponse("c1", "Hi", List.of(), List.of());
         when(service.chat(request, authentication)).thenReturn(expected);
         assertThat(controller.chat(request, authentication)).isSameAs(expected);
     }

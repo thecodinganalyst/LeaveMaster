@@ -26,20 +26,58 @@ import static org.mockito.Mockito.when;
 class AssistantToolAdapterTest {
 
     @Test
-    void shouldExecuteAuthorizedReadToolNormallyAndAuditIt() {
-        ToolCallback read = callback("getAllTenants");
-        when(read.call("{}" )).thenReturn("[]");
-        var authentication = authentication(RbacPermissions.TENANT_READ);
+    void shouldExecuteAuthorizedReadToolNormallyAuditItAndExposeStructuredResult() {
+        ToolCallback read = callback("getLeaveBalances");
+        when(read.call("{}" )).thenReturn("[{\"leaveType\":\"Annual\",\"balance\":12.5}]");
+        var authentication = authentication(RbacPermissions.LEAVE_APPLICATION_READ);
         AssistantAuditService audit = mock(AssistantAuditService.class);
+        List<AssistantDtos.StructuredResult> results = new ArrayList<>();
 
         ToolCallback[] adapted = AssistantToolAdapter.forUser(
-                new ToolCallback[]{read}, authentication, user(), new ObjectMapper(), new ArrayList<>(),
+                new ToolCallback[]{read}, authentication, user(), new ObjectMapper(), new ArrayList<>(), results,
                 "c1", mock(AssistantConfirmationService.class), audit);
 
         assertThat(adapted).hasSize(1);
-        assertThat(adapted[0].call("{}")).isEqualTo("[]");
+        assertThat(adapted[0].call("{}")).contains("Annual");
+        assertThat(results).hasSize(1);
+        AssistantDtos.StructuredResult result = results.getFirst();
+        assertThat(result.toolName()).isEqualTo("getLeaveBalances");
+        assertThat(result.data()).isInstanceOf(List.class);
+        Object first = ((List<?>) result.data()).getFirst();
+        assertThat(first).isInstanceOf(Map.class);
+        Map<?, ?> firstMap = (Map<?, ?>) first;
+        assertThat(firstMap.get("leaveType")).isEqualTo("Annual");
+        assertThat(firstMap.get("balance")).isEqualTo(12.5);
         verify(read).call("{}");
         verify(audit).record(anyString(), anyString(), anyString(), anyString(), anyString(), any(), anyString(), any());
+    }
+
+    @Test
+    void shouldKeepAllowedPlainTextReadResultsStructuredWithoutFailing() {
+        ToolCallback read = callback("getLeaveApplicationById");
+        when(read.call("{}" )).thenReturn("not-json");
+        List<AssistantDtos.StructuredResult> results = new ArrayList<>();
+
+        ToolCallback[] adapted = AssistantToolAdapter.forUser(
+                new ToolCallback[]{read}, authentication(RbacPermissions.LEAVE_APPLICATION_READ), user(), new ObjectMapper(),
+                new ArrayList<>(), results, "c1", mock(AssistantConfirmationService.class), mock(AssistantAuditService.class));
+
+        adapted[0].call("{}");
+        assertThat(results).singleElement().satisfies(result -> assertThat(result.data()).isEqualTo("not-json"));
+    }
+
+    @Test
+    void shouldNotEchoSensitiveUserReadResultsIntoStructuredBrowserData() {
+        ToolCallback read = callback("getAllUsers");
+        when(read.call("{}" )).thenReturn("[{\"loginName\":\"dennis\",\"password\":\"secret\"}]");
+        List<AssistantDtos.StructuredResult> results = new ArrayList<>();
+
+        ToolCallback[] adapted = AssistantToolAdapter.forUser(
+                new ToolCallback[]{read}, authentication(RbacPermissions.USER_READ), user(), new ObjectMapper(),
+                new ArrayList<>(), results, "c1", mock(AssistantConfirmationService.class), mock(AssistantAuditService.class));
+
+        assertThat(adapted[0].call("{}")).contains("dennis");
+        assertThat(results).isEmpty();
     }
 
     @Test

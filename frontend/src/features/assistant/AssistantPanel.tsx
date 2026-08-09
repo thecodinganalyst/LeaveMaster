@@ -3,12 +3,14 @@ import { Alert, Button, Card, Divider, Empty, Input, Space, Spin, Tag, Typograph
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { ApiError } from '../../api/http.ts';
-import { confirmAssistantAction, sendAssistantMessage, type PendingAction } from './assistantApi.ts';
+import { confirmAssistantAction, sendAssistantMessage, type PendingAction, type StructuredResult } from './assistantApi.ts';
 import {
   actionEntries,
   actionTitle,
   canConfirmAction,
+  dataEntries,
   printableValue,
+  resultTitle,
   type AssistantActionItem,
   type AssistantMessageItem,
 } from './assistantView.ts';
@@ -21,13 +23,43 @@ const toAction = (action: PendingAction): AssistantActionItem => ({
   ...action,
   id: newId(),
   state: 'pending',
-  confirmationToken: (action as PendingAction & { confirmationToken?: string }).confirmationToken,
 });
 
 const errorMessage = (error: unknown) => {
   if (error instanceof ApiError) return error.message;
   if (error instanceof Error) return error.message;
   return 'The assistant request failed. Please try again.';
+};
+
+const StructuredData = ({ result }: { result: StructuredResult }) => {
+  const items = Array.isArray(result.data) ? result.data : [result.data];
+
+  return (
+    <Card size="small" title={resultTitle(result.toolName)} style={{ marginTop: 8 }}>
+      <Space direction="vertical" size="small" style={{ width: '100%' }}>
+        <Typography.Text type="secondary">Authoritative LeaveMaster data</Typography.Text>
+        {items.length === 0 ? <Typography.Text>No records found.</Typography.Text> : null}
+        {items.map((item, index) => {
+          const entries = dataEntries(item);
+          if (entries.length === 0) {
+            return <Typography.Text key={`${result.toolName}-${index}`}>{printableValue(item)}</Typography.Text>;
+          }
+          return (
+            <Card key={`${result.toolName}-${index}`} size="small" bordered={items.length > 1}>
+              <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                {entries.map(([key, value]) => (
+                  <div key={key} style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
+                    <Typography.Text type="secondary">{key}</Typography.Text>
+                    <Typography.Text style={{ textAlign: 'right', overflowWrap: 'anywhere' }}>{printableValue(value)}</Typography.Text>
+                  </div>
+                ))}
+              </Space>
+            </Card>
+          );
+        })}
+      </Space>
+    </Card>
+  );
 };
 
 interface AssistantPanelProps {
@@ -69,6 +101,7 @@ export const AssistantPanel = ({ onClose }: AssistantPanelProps) => {
           role: 'assistant',
           text: response.message,
           actions: (response.pendingActions ?? []).map(toAction),
+          results: response.structuredResults ?? [],
         },
       ]);
     } catch (error) {
@@ -94,10 +127,20 @@ export const AssistantPanel = ({ onClose }: AssistantPanelProps) => {
     updateAction(action.id, { state: 'confirming', error: undefined });
     try {
       const response = await confirmAssistantAction(action.confirmationToken);
-      updateAction(action.id, { state: 'confirmed' });
+      updateAction(action.id, {
+        state: 'confirmed',
+        executionResult: response.result,
+        replayed: response.replayed,
+      });
       setMessages((current) => [
         ...current,
-        { id: newId(), role: 'system', text: response.message || `${actionTitle(action.toolName)} completed.` },
+        {
+          id: newId(),
+          role: 'system',
+          text: response.replayed
+            ? `${actionTitle(response.toolName)} was already completed. LeaveMaster returned the original result.`
+            : `${actionTitle(response.toolName)} completed successfully.`,
+        },
       ]);
     } catch (error) {
       updateAction(action.id, { state: 'failed', error: errorMessage(error) });
@@ -136,6 +179,10 @@ export const AssistantPanel = ({ onClose }: AssistantPanelProps) => {
                 <Typography.Paragraph style={{ margin: '6px 0 0', whiteSpace: 'pre-wrap' }}>{message.text}</Typography.Paragraph>
               </Card>
 
+              {message.results?.map((result, index) => (
+                <StructuredData key={`${message.id}-${result.toolName}-${index}`} result={result} />
+              ))}
+
               {message.actions?.map((action) => (
                 <Card key={action.id} size="small" title={actionTitle(action.toolName)} style={{ marginTop: 8 }}>
                   <Space direction="vertical" size="small" style={{ width: '100%' }}>
@@ -152,10 +199,18 @@ export const AssistantPanel = ({ onClose }: AssistantPanelProps) => {
                       </div>
                     ))}
                     <Typography.Text type="secondary">Required permission: {action.requiredAuthority}</Typography.Text>
+                    {action.expiresAt ? <Typography.Text type="secondary">Confirmation expires: {new Date(action.expiresAt).toLocaleString()}</Typography.Text> : null}
 
-                    {action.state === 'confirmed' ? <Tag color="success">Confirmed</Tag> : null}
+                    {action.state === 'confirmed' ? (
+                      <Space direction="vertical" size={4}>
+                        <Tag color="success">{action.replayed ? 'Already executed' : 'Confirmed'}</Tag>
+                        {action.executionResult ? (
+                          <Alert type="success" showIcon message="Authoritative server result" description={action.executionResult} />
+                        ) : null}
+                      </Space>
+                    ) : null}
                     {action.state === 'cancelled' ? <Tag>Cancelled</Tag> : null}
-                    {action.error ? <Alert type="error" showIcon message={action.error} /> : null}
+                    {action.error ? <Alert type="error" showIcon message={action.error} description="The action was not confirmed. Ask LeaveMaster to propose it again if needed." /> : null}
 
                     {action.state === 'pending' ? (
                       <Space wrap>
@@ -169,11 +224,11 @@ export const AssistantPanel = ({ onClose }: AssistantPanelProps) => {
                         </Button>
                         <Button onClick={() => cancel(action)} aria-label={`Cancel ${actionTitle(action.toolName)}`}>Cancel</Button>
                         {!action.confirmationToken ? (
-                          <Typography.Text type="secondary">Secure execution will become available when the server issues a confirmation token (#115).</Typography.Text>
+                          <Typography.Text type="secondary">Secure confirmation is unavailable for this proposal. Ask LeaveMaster to generate it again.</Typography.Text>
                         ) : null}
                       </Space>
                     ) : null}
-                    {action.state === 'confirming' ? <Spin size="small" /> : null}
+                    {action.state === 'confirming' ? <Spin size="small" tip="Confirming securely..." /> : null}
                   </Space>
                 </Card>
               ))}

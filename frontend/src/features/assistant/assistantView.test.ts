@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { actionEntries, actionTitle, canConfirmAction, printableValue, type AssistantActionItem } from './assistantView.ts';
+import {
+  actionEntries,
+  actionTitle,
+  canConfirmAction,
+  dataEntries,
+  printableValue,
+  resultTitle,
+  type AssistantActionItem,
+} from './assistantView.ts';
 
 const action = (overrides: Partial<AssistantActionItem> = {}): AssistantActionItem => ({
   id: 'a1',
@@ -15,15 +23,24 @@ const action = (overrides: Partial<AssistantActionItem> = {}): AssistantActionIt
 });
 
 describe('assistantView', () => {
-  it('turns tool names into readable action titles', () => {
+  it('turns tool names into readable action and result titles', () => {
     expect(actionTitle('approveLeaveApplication')).toBe('Approve Leave Application');
     expect(actionTitle('create_tenant')).toBe('Create tenant');
+    expect(resultTitle('getLeaveBalances')).toBe('Leave Balances');
   });
 
   it('renders the exact server proposed arguments and omits null values', () => {
     const entries = actionEntries({ ...action(), arguments: { staffId: 'S1', comment: null, days: 2 } });
     expect(entries).toEqual([['staffId', 'S1'], ['days', 2]]);
     expect(printableValue({ from: '2026-08-13' })).toBe('{"from":"2026-08-13"}');
+  });
+
+  it('turns structured business objects into display rows', () => {
+    expect(dataEntries({ leaveType: 'Annual Leave', balance: 12.5, unused: null })).toEqual([
+      ['leaveType', 'Annual Leave'],
+      ['balance', 12.5],
+    ]);
+    expect(dataEntries(['not', 'an', 'object-row'])).toEqual([]);
   });
 
   it('only enables confirmation for pending actions carrying a server token', () => {

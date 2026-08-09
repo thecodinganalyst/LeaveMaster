@@ -23,10 +23,17 @@ public final class AssistantDtos {
     ) {
     }
 
+    public record StructuredResult(
+            String toolName,
+            Object data
+    ) {
+    }
+
     public record ChatResponse(
             String conversationId,
             String message,
-            List<PendingAction> pendingActions
+            List<PendingAction> pendingActions,
+            List<StructuredResult> structuredResults
     ) {
     }
 
