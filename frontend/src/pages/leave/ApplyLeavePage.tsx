@@ -1,3 +1,4 @@
+import { useCan } from '@refinedev/core';
 import { App, Alert, Button, Card, DatePicker, Form, Select, Space, Typography } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import { useEffect, useState } from 'react';
@@ -23,13 +24,16 @@ export const ApplyLeavePage = () => {
   const [form] = Form.useForm<FormValues>();
   const navigate = useNavigate();
   const { message } = App.useApp();
+  const { data: canWrite } = useCan({ resource: 'leave-requests', action: 'create' });
 
   useEffect(() => {
     void (async () => {
       try {
         const user = await getCurrentUser();
         setStaffId(user.staffId);
-        setLeaveTypes(await getLeaveTypes());
+        if (user.authorities.includes('LEAVE_APPLICATION_WRITE')) {
+          setLeaveTypes(await getLeaveTypes());
+        }
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : 'Unable to initialize leave application.');
       } finally {
@@ -39,7 +43,7 @@ export const ApplyLeavePage = () => {
   }, []);
 
   const submit = async (values: FormValues) => {
-    if (!staffId) return;
+    if (!staffId || !canWrite?.can) return;
     setSubmitting(true);
     setError(undefined);
     try {
@@ -59,6 +63,10 @@ export const ApplyLeavePage = () => {
       setSubmitting(false);
     }
   };
+
+  if (canWrite && !canWrite.can) {
+    return <PageContainer><Alert type="warning" showIcon message="You do not have permission to submit leave applications." /></PageContainer>;
+  }
 
   return (
     <PageContainer>
