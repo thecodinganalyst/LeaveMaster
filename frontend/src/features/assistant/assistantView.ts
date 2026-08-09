@@ -13,9 +13,9 @@ export interface AssistantMessageItem {
 export interface AssistantActionItem extends PendingAction {
   id: string;
   state: ActionState;
-  error?: string;
-  executionResult?: string;
-  replayed?: boolean;
+  error?: string | undefined;
+  executionResult?: string | undefined;
+  replayed?: boolean | undefined;
 }
 
 export const actionTitle = (toolName: string) => {
