@@ -26,20 +26,41 @@ import static org.mockito.Mockito.when;
 class AssistantToolAdapterTest {
 
     @Test
-    void shouldExecuteAuthorizedReadToolNormallyAndAuditIt() {
-        ToolCallback read = callback("getAllTenants");
-        when(read.call("{}" )).thenReturn("[]");
-        var authentication = authentication(RbacPermissions.TENANT_READ);
+    void shouldExecuteAuthorizedReadToolNormallyAuditItAndExposeStructuredResult() {
+        ToolCallback read = callback("getLeaveBalances");
+        when(read.call("{}" )).thenReturn("[{\"leaveType\":\"Annual\",\"balance\":12.5}]");
+        var authentication = authentication(RbacPermissions.LEAVE_APPLICATION_READ);
         AssistantAuditService audit = mock(AssistantAuditService.class);
+        List<AssistantDtos.StructuredResult> results = new ArrayList<>();
 
         ToolCallback[] adapted = AssistantToolAdapter.forUser(
-                new ToolCallback[]{read}, authentication, user(), new ObjectMapper(), new ArrayList<>(),
+                new ToolCallback[]{read}, authentication, user(), new ObjectMapper(), new ArrayList<>(), results,
                 "c1", mock(AssistantConfirmationService.class), audit);
 
         assertThat(adapted).hasSize(1);
-        assertThat(adapted[0].call("{}")).isEqualTo("[]");
+        assertThat(adapted[0].call("{}")).contains("Annual");
+        assertThat(results).singleElement().satisfies(result -> {
+            assertThat(result.toolName()).isEqualTo("getLeaveBalances");
+            assertThat(result.data()).asList().singleElement().asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
+                    .containsEntry("leaveType", "Annual")
+                    .containsEntry("balance", 12.5);
+        });
         verify(read).call("{}");
         verify(audit).record(anyString(), anyString(), anyString(), anyString(), anyString(), any(), anyString(), any());
+    }
+
+    @Test
+    void shouldKeepPlainTextReadResultsStructuredWithoutFailing() {
+        ToolCallback read = callback("getTenantById");
+        when(read.call("{}" )).thenReturn("not-json");
+        List<AssistantDtos.StructuredResult> results = new ArrayList<>();
+
+        ToolCallback[] adapted = AssistantToolAdapter.forUser(
+                new ToolCallback[]{read}, authentication(RbacPermissions.TENANT_READ), user(), new ObjectMapper(),
+                new ArrayList<>(), results, "c1", mock(AssistantConfirmationService.class), mock(AssistantAuditService.class));
+
+        adapted[0].call("{}");
+        assertThat(results).singleElement().satisfies(result -> assertThat(result.data()).isEqualTo("not-json"));
     }
 
     @Test
