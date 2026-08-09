@@ -5,6 +5,7 @@ import com.practical.leavemaster.user.AppUser;
 import com.practical.leavemaster.user.AppUserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.tool.ToolCallbackProvider;
 import org.springframework.ai.tool.definition.ToolDefinition;
@@ -31,6 +32,7 @@ class AssistantConfirmationServiceTest {
     private AssistantPendingActionRepository repository;
     private ToolCallbackProvider toolProvider;
     private AppUserRepository userRepository;
+    private AssistantAuditService auditService;
     private AssistantConfirmationService service;
     private ToolCallback callback;
 
@@ -39,14 +41,41 @@ class AssistantConfirmationServiceTest {
         repository = mock(AssistantPendingActionRepository.class);
         toolProvider = mock(ToolCallbackProvider.class);
         userRepository = mock(AppUserRepository.class);
+        auditService = mock(AssistantAuditService.class);
         callback = mock(ToolCallback.class);
         when(callback.getToolDefinition()).thenReturn(ToolDefinition.builder().name("applyForLeave")
                 .description("apply").inputSchema("{\"type\":\"object\"}").build());
         when(toolProvider.getToolCallbacks()).thenReturn(new ToolCallback[]{callback});
         service = new AssistantConfirmationService(repository, toolProvider, userRepository,
-                mock(AssistantAuditService.class), new ObjectMapper());
+                auditService, new ObjectMapper());
         ReflectionTestUtils.setField(service, "confirmationTtlSeconds", 300L);
         when(userRepository.findById("dennis")).thenReturn(Optional.of(user("dennis", "T1")));
+    }
+
+    @Test
+    void shouldPersistExactPendingActionAndReturnOpaqueExpiringToken() {
+        Map<String, Object> arguments = Map.of("staffId", "S1", "tenantId", "T1", "fromDate", "2026-08-12");
+        Instant before = Instant.now();
+
+        var issued = service.issue("applyForLeave", arguments, RbacPermissions.LEAVE_APPLICATION_WRITE,
+                user("dennis", "T1"), "conversation-1");
+
+        assertThat(issued.confirmationToken()).isNotBlank();
+        assertThat(issued.expiresAt()).isAfter(before);
+        assertThat(issued.arguments()).isEqualTo(arguments);
+        assertThat(issued.actorLoginName()).isEqualTo("dennis");
+        assertThat(issued.tenantId()).isEqualTo("T1");
+
+        ArgumentCaptor<AssistantPendingAction> captor = ArgumentCaptor.forClass(AssistantPendingAction.class);
+        verify(repository).save(captor.capture());
+        AssistantPendingAction stored = captor.getValue();
+        assertThat(stored.getConfirmationToken()).isEqualTo(issued.confirmationToken());
+        assertThat(stored.getToolName()).isEqualTo("applyForLeave");
+        assertThat(stored.getArgumentsJson()).contains("\"staffId\":\"S1\"").contains("\"tenantId\":\"T1\"");
+        assertThat(stored.getStatus()).isEqualTo("PENDING");
+        assertThat(stored.getExpiresAt()).isAfter(stored.getCreatedAt());
+        verify(auditService).record(AssistantAuditService.ACTION_CONFIRMATION, "dennis", "T1",
+                "conversation-1", "applyForLeave", arguments, "PENDING", "Awaiting explicit user confirmation");
     }
 
     @Test
