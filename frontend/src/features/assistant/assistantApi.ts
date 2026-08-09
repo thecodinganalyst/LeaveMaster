@@ -7,12 +7,27 @@ export interface PendingAction {
   actorLoginName: string;
   actorStaffId: string | null;
   tenantId: string | null;
+  confirmationToken: string;
+  expiresAt: string;
+}
+
+export interface StructuredResult {
+  toolName: string;
+  data: unknown;
 }
 
 export interface AssistantChatResponse {
   conversationId: string;
   message: string;
   pendingActions: PendingAction[];
+  structuredResults?: StructuredResult[];
+}
+
+export interface AssistantConfirmationResponse {
+  toolName: string;
+  status: string;
+  result: string;
+  replayed: boolean;
 }
 
 export const sendAssistantMessage = (message: string, conversationId?: string) =>
@@ -21,14 +36,8 @@ export const sendAssistantMessage = (message: string, conversationId?: string) =
     body: JSON.stringify({ message, conversationId: conversationId || null }),
   });
 
-/**
- * Secure action execution is intentionally a separate server contract. Issue #115
- * is responsible for issuing an opaque/idempotent confirmation token and exposing
- * this endpoint. Keeping the client contract here lets the UI be completed without
- * falling back to unsafe direct REST execution based on mutable browser arguments.
- */
 export const confirmAssistantAction = (confirmationToken: string) =>
-  apiFetch<{ message?: string }>('/api/assistant/actions/confirm', {
+  apiFetch<AssistantConfirmationResponse>('/api/assistant/actions/confirm', {
     method: 'POST',
     body: JSON.stringify({ confirmationToken }),
   });
