@@ -13,24 +13,24 @@ export const ResourceEditPage = () => {
   const { resource } = useResource();
   const { id } = useParams();
   const config = getAdminResourceConfig(resource?.name);
-  const { query } = useOne({ resource: config?.name ?? '', id: id ?? '', queryOptions: { enabled: Boolean(config && id) } });
-  const { mutateAsync, mutation: { isPending } } = useUpdate();
+  const recordQuery = useOne({ resource: config?.name ?? '', id: id ?? '', queryOptions: { enabled: Boolean(config && id) } });
+  const { mutateAsync, isLoading: isUpdating } = useUpdate();
   const [form] = Form.useForm();
   const navigate = useNavigate();
   const { message } = App.useApp();
 
   useEffect(() => {
-    if (config && query.data?.data) form.setFieldsValue(toFormValues(config, query.data.data as Record<string, unknown>));
-  }, [config, form, query.data]);
+    if (config && recordQuery.data?.data) form.setFieldsValue(toFormValues(config, recordQuery.data.data as Record<string, unknown>));
+  }, [config, form, recordQuery.data]);
 
-  if (!config || !id) return null;
-  if (query.isLoading) return <Spin />;
+  if (!config || !id || config.editable === false) return null;
+  if (recordQuery.isLoading) return <Spin />;
 
   const submit = async (values: Record<string, unknown>) => {
     try {
       const payload = normaliseFormValues(config, values);
       for (const field of config.fields.filter((item) => item.readOnlyOnEdit)) delete payload[field.name];
-      await mutateAsync({ resource: config.name, id, values: payload, successNotification: false });
+      await mutateAsync({ resource: config.name, id, values: payload });
       message.success(`${config.singular} updated`);
       navigate(`/${config.name}/show/${encodeURIComponent(id)}`);
     } catch {
@@ -45,7 +45,7 @@ export const ResourceEditPage = () => {
         <Form form={form} layout="vertical" onFinish={submit}>
           <ResourceFormFields config={config} editing />
           <Space>
-            <Button type="primary" htmlType="submit" loading={isPending}>Save changes</Button>
+            <Button type="primary" htmlType="submit" loading={isUpdating}>Save changes</Button>
             <Button htmlType="button" onClick={() => navigate(`/${config.name}/show/${encodeURIComponent(id)}`)}>Cancel</Button>
           </Space>
         </Form>
