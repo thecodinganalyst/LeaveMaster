@@ -2,7 +2,18 @@ import type { PropsWithChildren } from 'react';
 import { useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useCan, useLogout } from '@refinedev/core';
-import { AppstoreOutlined, CalendarOutlined, MenuOutlined, TeamOutlined } from '@ant-design/icons';
+import {
+  AppstoreOutlined,
+  AuditOutlined,
+  BankOutlined,
+  CalendarOutlined,
+  EnvironmentOutlined,
+  MenuOutlined,
+  SafetyCertificateOutlined,
+  TagsOutlined,
+  TeamOutlined,
+  UserOutlined,
+} from '@ant-design/icons';
 import { Button, Drawer, Grid, Layout, Menu, Space, Typography } from 'antd';
 
 const { Header, Sider, Content } = Layout;
@@ -16,37 +27,32 @@ export const AppLayout = ({ children }: PropsWithChildren) => {
   const { mutate: logout } = useLogout();
   const { data: leaveAccess } = useCan({ resource: 'leave-requests', action: 'list' });
   const { data: employeeAccess } = useCan({ resource: 'employees', action: 'list' });
+  const { data: tenantAccess } = useCan({ resource: 'tenants', action: 'list' });
+  const { data: userAccess } = useCan({ resource: 'users', action: 'list' });
+  const { data: roleAccess } = useCan({ resource: 'roles', action: 'list' });
+  const { data: locationAccess } = useCan({ resource: 'locations', action: 'list' });
+  const { data: leaveTypeAccess } = useCan({ resource: 'leave-types', action: 'list' });
+  const { data: calendarAccess } = useCan({ resource: 'leave-calendars', action: 'list' });
+  const { data: approverAccess } = useCan({ resource: 'leave-approvers', action: 'list' });
 
   const menuItems = useMemo(
     () => [
       { key: '/', icon: <AppstoreOutlined />, label: <Link to="/">Dashboard</Link> },
-      ...(leaveAccess?.can
-        ? [
-            {
-              key: '/leave-requests',
-              icon: <CalendarOutlined />,
-              label: <Link to="/leave-requests">Leave Requests</Link>,
-            },
-          ]
-        : []),
-      ...(employeeAccess?.can
-        ? [
-            {
-              key: '/employees',
-              icon: <TeamOutlined />,
-              label: <Link to="/employees">Employees</Link>,
-            },
-          ]
-        : []),
+      ...(leaveAccess?.can ? [{ key: '/leave-requests', icon: <CalendarOutlined />, label: <Link to="/leave-requests">Leave Requests</Link> }] : []),
+      ...(employeeAccess?.can ? [{ key: '/employees', icon: <TeamOutlined />, label: <Link to="/employees">Staff</Link> }] : []),
+      ...(tenantAccess?.can ? [{ key: '/tenants', icon: <BankOutlined />, label: <Link to="/tenants">Tenants</Link> }] : []),
+      ...(userAccess?.can ? [{ key: '/users', icon: <UserOutlined />, label: <Link to="/users">App Users</Link> }] : []),
+      ...(roleAccess?.can ? [{ key: '/roles', icon: <SafetyCertificateOutlined />, label: <Link to="/roles">Roles</Link> }] : []),
+      ...(locationAccess?.can ? [{ key: '/locations', icon: <EnvironmentOutlined />, label: <Link to="/locations">Locations</Link> }] : []),
+      ...(leaveTypeAccess?.can ? [{ key: '/leave-types', icon: <TagsOutlined />, label: <Link to="/leave-types">Leave Types</Link> }] : []),
+      ...(calendarAccess?.can ? [{ key: '/leave-calendars', icon: <CalendarOutlined />, label: <Link to="/leave-calendars">Leave Calendars</Link> }] : []),
+      ...(approverAccess?.can ? [{ key: '/leave-approvers', icon: <AuditOutlined />, label: <Link to="/leave-approvers">Leave Approvers</Link> }] : []),
     ],
-    [employeeAccess?.can, leaveAccess?.can],
+    [approverAccess?.can, calendarAccess?.can, employeeAccess?.can, leaveAccess?.can, leaveTypeAccess?.can, locationAccess?.can, roleAccess?.can, tenantAccess?.can, userAccess?.can],
   );
 
   const selectedKeys = useMemo(() => {
-    const key = menuItems.find(
-      (item) => location.pathname === item.key || location.pathname.startsWith(`${item.key}/`),
-    )?.key;
-
+    const key = menuItems.find((item) => location.pathname === item.key || location.pathname.startsWith(`${item.key}/`))?.key;
     return key ? [key] : ['/'];
   }, [location.pathname, menuItems]);
 
@@ -57,9 +63,7 @@ export const AppLayout = ({ children }: PropsWithChildren) => {
       selectedKeys={selectedKeys}
       items={menuItems}
       onClick={() => {
-        if (!isDesktop) {
-          setOpen(false);
-        }
+        if (!isDesktop) setOpen(false);
       }}
     />
   );
@@ -69,13 +73,7 @@ export const AppLayout = ({ children }: PropsWithChildren) => {
       {isDesktop ? (
         <Sider width={250}>{menu}</Sider>
       ) : (
-        <Drawer
-          placement="left"
-          title="LeaveMaster"
-          open={open}
-          onClose={() => setOpen(false)}
-          styles={{ body: { padding: 0 } }}
-        >
+        <Drawer placement="left" title="LeaveMaster" open={open} onClose={() => setOpen(false)} styles={{ body: { padding: 0 } }}>
           {menu}
         </Drawer>
       )}
@@ -83,26 +81,11 @@ export const AppLayout = ({ children }: PropsWithChildren) => {
       <Layout>
         <Header className="app-header">
           <Space size="middle">
-            {!isDesktop ? (
-              <Button type="text" icon={<MenuOutlined />} onClick={() => setOpen(true)} aria-label="Open menu" />
-            ) : null}
-            <Typography.Title level={4} style={{ color: '#eaf2ff', margin: 0 }}>
-              LeaveMaster
-            </Typography.Title>
+            {!isDesktop ? <Button type="text" icon={<MenuOutlined />} onClick={() => setOpen(true)} aria-label="Open menu" /> : null}
+            <Typography.Title level={4} style={{ color: '#eaf2ff', margin: 0 }}>LeaveMaster</Typography.Title>
           </Space>
-          <Button
-            onClick={() =>
-              logout(undefined, {
-                onSuccess: () => {
-                  navigate('/login');
-                },
-              })
-            }
-          >
-            Sign out
-          </Button>
+          <Button onClick={() => logout(undefined, { onSuccess: () => navigate('/login') })}>Sign out</Button>
         </Header>
-
         <Content style={{ margin: 24 }}>{children}</Content>
       </Layout>
     </Layout>
