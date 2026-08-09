@@ -1,5 +1,6 @@
 package com.practical.leavemaster.assistant;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
@@ -16,7 +17,9 @@ public final class AssistantDtos {
             String requiredAuthority,
             String actorLoginName,
             String actorStaffId,
-            String tenantId
+            String tenantId,
+            String confirmationToken,
+            Instant expiresAt
     ) {
     }
 
@@ -24,6 +27,17 @@ public final class AssistantDtos {
             String conversationId,
             String message,
             List<PendingAction> pendingActions
+    ) {
+    }
+
+    public record ConfirmationRequest(String confirmationToken) {
+    }
+
+    public record ConfirmationResponse(
+            String toolName,
+            String status,
+            String result,
+            boolean replayed
     ) {
     }
 }
