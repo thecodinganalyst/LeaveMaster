@@ -56,6 +56,15 @@ spring:
             jwk-set-uri: https://login.microsoftonline.com/${MICROSOFT_TENANT_ID:common}/discovery/v2.0/keys
             user-name-attribute: sub
   ai:
+    model:
+      chat: ${SPRING_AI_MODEL_CHAT:none}
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      chat:
+        options:
+          model: ${OPENAI_MODEL:gpt-5-mini}
+    tools:
+      throw-exception-on-error: true
     mcp:
       server:
         name: LeaveMaster MCP Server
@@ -82,3 +91,6 @@ springdoc:
 app:
   storage:
     local-dir: ${STORAGE_LOCAL_DIR:${java.io.tmpdir}/leavemaster-attachments}
+  assistant:
+    enabled: ${ASSISTANT_ENABLED:false}
+    timeout-seconds: ${ASSISTANT_TIMEOUT_SECONDS:30}
