@@ -61,7 +61,7 @@ export const ResourceListPage = () => {
       const id = String(row[config.idField] ?? '');
       return (
         <Space wrap>
-          <Link to={`/${config.name}/show/${encodeURIComponent(id)}`}>View</Link>
+          {config.name !== 'leave-calendars' ? <Link to={`/${config.name}/show/${encodeURIComponent(id)}`}>View</Link> : null}
           {canEdit?.can && config.editable !== false ? <Link to={`/${config.name}/edit/${encodeURIComponent(id)}`}>Edit</Link> : null}
           {canDelete?.can && config.deletable !== false ? (
             <Popconfirm title={`Delete ${config.singular.toLowerCase()}?`} description="This action cannot be undone." onConfirm={() => remove(id)}>
