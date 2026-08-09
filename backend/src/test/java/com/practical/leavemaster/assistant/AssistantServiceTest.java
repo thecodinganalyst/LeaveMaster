@@ -9,6 +9,7 @@ import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
+import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.tool.ToolCallbackProvider;
 import org.springframework.ai.tool.definition.ToolDefinition;
@@ -52,7 +53,7 @@ class AssistantServiceTest {
 
     @Test
     void shouldReturnModelResponseWithConversationId() {
-        when(chatModel.call(any())).thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage("You have access.")))));
+        when(chatModel.call(any(Prompt.class))).thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage("You have access.")))));
 
         var result = service.chat(new AssistantDtos.ChatRequest("What can I see?", null), authentication(RbacPermissions.TENANT_READ));
 
@@ -63,7 +64,7 @@ class AssistantServiceTest {
 
     @Test
     void shouldPreserveSuppliedConversationId() {
-        when(chatModel.call(any())).thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage("Hello")))));
+        when(chatModel.call(any(Prompt.class))).thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage("Hello")))));
 
         var result = service.chat(new AssistantDtos.ChatRequest("Hello", "conversation-1"), authentication(RbacPermissions.TENANT_READ));
 
@@ -72,7 +73,7 @@ class AssistantServiceTest {
 
     @Test
     void shouldFailSafelyWhenProviderFails() {
-        when(chatModel.call(any())).thenThrow(new RuntimeException("provider down"));
+        when(chatModel.call(any(Prompt.class))).thenThrow(new RuntimeException("provider down"));
 
         assertThatThrownBy(() -> service.chat(new AssistantDtos.ChatRequest("Hello", null), authentication(RbacPermissions.TENANT_READ)))
                 .isInstanceOf(AssistantProviderException.class)
