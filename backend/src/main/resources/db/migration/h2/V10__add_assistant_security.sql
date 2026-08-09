@@ -1,4 +1,4 @@
-CREATE TABLE assistant_pending_action (
+CREATE TABLE IF NOT EXISTS assistant_pending_action (
     confirmation_token VARCHAR(64) PRIMARY KEY,
     tool_name VARCHAR(120) NOT NULL,
     arguments_json VARCHAR(20000) NOT NULL,
@@ -14,10 +14,10 @@ CREATE TABLE assistant_pending_action (
     executed_at TIMESTAMP
 );
 
-CREATE INDEX idx_assistant_pending_actor ON assistant_pending_action(actor_login_name, created_at);
-CREATE INDEX idx_assistant_pending_expiry ON assistant_pending_action(expires_at);
+CREATE INDEX IF NOT EXISTS idx_assistant_pending_actor ON assistant_pending_action(actor_login_name, created_at);
+CREATE INDEX IF NOT EXISTS idx_assistant_pending_expiry ON assistant_pending_action(expires_at);
 
-CREATE TABLE assistant_audit_event (
+CREATE TABLE IF NOT EXISTS assistant_audit_event (
     id VARCHAR(36) PRIMARY KEY,
     event_type VARCHAR(64) NOT NULL,
     actor_login_name VARCHAR(255) NOT NULL,
@@ -30,5 +30,5 @@ CREATE TABLE assistant_audit_event (
     created_at TIMESTAMP NOT NULL
 );
 
-CREATE INDEX idx_assistant_audit_actor_time ON assistant_audit_event(actor_login_name, created_at);
-CREATE INDEX idx_assistant_audit_tenant_time ON assistant_audit_event(tenant_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_assistant_audit_actor_time ON assistant_audit_event(actor_login_name, created_at);
+CREATE INDEX IF NOT EXISTS idx_assistant_audit_tenant_time ON assistant_audit_event(tenant_id, created_at);
