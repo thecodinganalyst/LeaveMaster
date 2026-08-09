@@ -9,12 +9,27 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import tools.jackson.databind.ObjectMapper;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
 final class AssistantToolAdapter {
     private AssistantToolAdapter() {
+    }
+
+    static ToolCallback[] forUser(
+            ToolCallback[] callbacks,
+            Authentication authentication,
+            AppUser user,
+            ObjectMapper objectMapper,
+            List<AssistantDtos.PendingAction> pendingActions,
+            String conversationId,
+            AssistantConfirmationService confirmationService,
+            AssistantAuditService auditService
+    ) {
+        return forUser(callbacks, authentication, user, objectMapper, pendingActions, new ArrayList<>(),
+                conversationId, confirmationService, auditService);
     }
 
     static ToolCallback[] forUser(
