@@ -35,4 +35,12 @@ final class AssistantToolPolicy {
             "createLeaveApprover", "updateLeaveApprover", "deleteLeaveApprover", "applyForLeave", "updateLeaveApplication", "deleteLeaveApplication",
             "approveLeaveApplication", "rejectLeaveApplication", "approveCancellation", "rejectCancellation"
     );
+
+    static final Set<String> STRUCTURED_RESULT_TOOLS = Set.of(
+            "getAllStaff", "getStaffById",
+            "getAllLeaveTypes", "getLeaveTypeById",
+            "getAllLeaveApprovers", "getLeaveApproversByStaffId", "getLeaveApproverById",
+            "getAllLeaveApplications", "getLeaveApplicationById", "getLeaveApplicationsByStaffId",
+            "getVisibleLeaveApplicationsForStaff", "getPendingLeaveApplicationsByApproverId", "getLeaveBalances"
+    );
 }
