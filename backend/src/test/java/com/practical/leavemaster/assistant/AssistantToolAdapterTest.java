@@ -53,17 +53,31 @@ class AssistantToolAdapterTest {
     }
 
     @Test
-    void shouldKeepPlainTextReadResultsStructuredWithoutFailing() {
-        ToolCallback read = callback("getTenantById");
+    void shouldKeepAllowedPlainTextReadResultsStructuredWithoutFailing() {
+        ToolCallback read = callback("getLeaveApplicationById");
         when(read.call("{}" )).thenReturn("not-json");
         List<AssistantDtos.StructuredResult> results = new ArrayList<>();
 
         ToolCallback[] adapted = AssistantToolAdapter.forUser(
-                new ToolCallback[]{read}, authentication(RbacPermissions.TENANT_READ), user(), new ObjectMapper(),
+                new ToolCallback[]{read}, authentication(RbacPermissions.LEAVE_APPLICATION_READ), user(), new ObjectMapper(),
                 new ArrayList<>(), results, "c1", mock(AssistantConfirmationService.class), mock(AssistantAuditService.class));
 
         adapted[0].call("{}");
         assertThat(results).singleElement().satisfies(result -> assertThat(result.data()).isEqualTo("not-json"));
+    }
+
+    @Test
+    void shouldNotEchoSensitiveUserReadResultsIntoStructuredBrowserData() {
+        ToolCallback read = callback("getAllUsers");
+        when(read.call("{}" )).thenReturn("[{\"loginName\":\"dennis\",\"password\":\"secret\"}]");
+        List<AssistantDtos.StructuredResult> results = new ArrayList<>();
+
+        ToolCallback[] adapted = AssistantToolAdapter.forUser(
+                new ToolCallback[]{read}, authentication(RbacPermissions.USER_READ), user(), new ObjectMapper(),
+                new ArrayList<>(), results, "c1", mock(AssistantConfirmationService.class), mock(AssistantAuditService.class));
+
+        assertThat(adapted[0].call("{}")).contains("dennis");
+        assertThat(results).isEmpty();
     }
 
     @Test
