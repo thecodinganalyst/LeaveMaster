@@ -30,7 +30,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class AssistantServiceTest {
-
     private ObjectProvider<ChatModel> chatModelProvider;
     private ChatModel chatModel;
     private ToolCallbackProvider toolProvider;
@@ -43,14 +42,16 @@ class AssistantServiceTest {
         chatModel = mock(ChatModel.class);
         toolProvider = mock(ToolCallbackProvider.class);
         userRepository = mock(AppUserRepository.class);
-        service = new AssistantService(chatModelProvider, toolProvider, userRepository, new ObjectMapper());
+        service = new AssistantService(chatModelProvider, toolProvider, userRepository, new ObjectMapper(),
+                mock(AssistantConfirmationService.class), mock(AssistantAuditService.class),
+                mock(AssistantRateLimitService.class), mock(AssistantProviderGuard.class));
         ReflectionTestUtils.setField(service, "enabled", true);
+        ReflectionTestUtils.setField(service, "timeoutSeconds", 5L);
 
         when(chatModelProvider.getIfAvailable()).thenReturn(chatModel);
         when(chatModel.getOptions()).thenReturn(ChatOptions.builder().build());
         when(userRepository.findById("dennis")).thenReturn(Optional.of(AppUser.builder()
                 .loginName("dennis").staffId("S1").tenantId("T1").active(true).build()));
-
         ToolCallback tenantReadCallback = callback("getAllTenants");
         when(toolProvider.getToolCallbacks()).thenReturn(new ToolCallback[]{tenantReadCallback});
     }
@@ -58,9 +59,7 @@ class AssistantServiceTest {
     @Test
     void shouldReturnModelResponseWithConversationId() {
         when(chatModel.call(any(Prompt.class))).thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage("You have access.")))));
-
         var result = service.chat(new AssistantDtos.ChatRequest("What can I see?", null), authentication(RbacPermissions.TENANT_READ));
-
         assertThat(result.message()).isEqualTo("You have access.");
         assertThat(result.conversationId()).isNotBlank();
         assertThat(result.pendingActions()).isEmpty();
@@ -69,26 +68,21 @@ class AssistantServiceTest {
     @Test
     void shouldPreserveSuppliedConversationId() {
         when(chatModel.call(any(Prompt.class))).thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage("Hello")))));
-
         var result = service.chat(new AssistantDtos.ChatRequest("Hello", "conversation-1"), authentication(RbacPermissions.TENANT_READ));
-
         assertThat(result.conversationId()).isEqualTo("conversation-1");
     }
 
     @Test
     void shouldFailSafelyWhenProviderFails() {
         when(chatModel.call(any(Prompt.class))).thenThrow(new RuntimeException("provider down"));
-
         assertThatThrownBy(() -> service.chat(new AssistantDtos.ChatRequest("Hello", null), authentication(RbacPermissions.TENANT_READ)))
-                .isInstanceOf(AssistantProviderException.class)
-                .hasMessageContaining("could not complete");
+                .isInstanceOf(AssistantProviderException.class).hasMessageContaining("could not complete");
     }
 
     @Test
     void shouldRejectBlankMessageAndDisabledProvider() {
         assertThatThrownBy(() -> service.chat(new AssistantDtos.ChatRequest(" ", null), authentication(RbacPermissions.TENANT_READ)))
                 .isInstanceOf(IllegalArgumentException.class);
-
         ReflectionTestUtils.setField(service, "enabled", false);
         assertThatThrownBy(() -> service.chat(new AssistantDtos.ChatRequest("Hello", null), authentication(RbacPermissions.TENANT_READ)))
                 .isInstanceOf(AssistantUnavailableException.class);
@@ -99,7 +93,6 @@ class AssistantServiceTest {
         when(chatModelProvider.getIfAvailable()).thenReturn(null);
         assertThatThrownBy(() -> service.chat(new AssistantDtos.ChatRequest("Hello", null), authentication(RbacPermissions.TENANT_READ)))
                 .isInstanceOf(AssistantUnavailableException.class);
-
         when(chatModelProvider.getIfAvailable()).thenReturn(chatModel);
         when(userRepository.findById("dennis")).thenReturn(Optional.empty());
         assertThatThrownBy(() -> service.chat(new AssistantDtos.ChatRequest("Hello", null), authentication(RbacPermissions.TENANT_READ)))

@@ -18,15 +18,27 @@ import java.util.Map;
 public class AssistantController {
 
     private final AssistantService assistantService;
+    private final AssistantConfirmationService confirmationService;
 
     @PostMapping("/chat")
     public AssistantDtos.ChatResponse chat(@RequestBody AssistantDtos.ChatRequest request, Authentication authentication) {
         return assistantService.chat(request, authentication);
     }
 
+    @PostMapping("/actions/confirm")
+    public AssistantDtos.ConfirmationResponse confirm(@RequestBody AssistantDtos.ConfirmationRequest request,
+                                                       Authentication authentication) {
+        return confirmationService.confirm(request == null ? null : request.confirmationToken(), authentication);
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     ResponseEntity<Map<String, String>> badRequest(IllegalArgumentException exception) {
         return ResponseEntity.badRequest().body(Map.of("error", exception.getMessage()));
+    }
+
+    @ExceptionHandler(AssistantRateLimitException.class)
+    ResponseEntity<Map<String, String>> rateLimited(AssistantRateLimitException exception) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of("error", exception.getMessage()));
     }
 
     @ExceptionHandler(AssistantUnavailableException.class)
