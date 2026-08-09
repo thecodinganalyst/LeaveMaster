@@ -34,7 +34,6 @@ class AssistantServiceTest {
     private ChatModel chatModel;
     private ToolCallbackProvider toolProvider;
     private AppUserRepository userRepository;
-    private AssistantRateLimitService rateLimitService;
     private AssistantService service;
 
     @BeforeEach
@@ -43,10 +42,11 @@ class AssistantServiceTest {
         chatModel = mock(ChatModel.class);
         toolProvider = mock(ToolCallbackProvider.class);
         userRepository = mock(AppUserRepository.class);
-        rateLimitService = mock(AssistantRateLimitService.class);
         service = new AssistantService(chatModelProvider, toolProvider, userRepository, new ObjectMapper(),
-                mock(AssistantConfirmationService.class), mock(AssistantAuditService.class), rateLimitService);
+                mock(AssistantConfirmationService.class), mock(AssistantAuditService.class),
+                mock(AssistantRateLimitService.class), mock(AssistantProviderGuard.class));
         ReflectionTestUtils.setField(service, "enabled", true);
+        ReflectionTestUtils.setField(service, "timeoutSeconds", 5L);
 
         when(chatModelProvider.getIfAvailable()).thenReturn(chatModel);
         when(chatModel.getOptions()).thenReturn(ChatOptions.builder().build());
