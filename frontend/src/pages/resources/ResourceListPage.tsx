@@ -8,7 +8,7 @@ import { EmptyState } from '../../components/common/EmptyState.tsx';
 import { LoadingState } from '../../components/common/LoadingState.tsx';
 import { PageContainer } from '../../components/common/PageContainer.tsx';
 import { PageHeader } from '../../components/common/PageHeader.tsx';
-import { getAdminResourceConfig } from './adminResourceConfig.ts';
+import { getAdminResourceConfig, toFormValues } from './adminResourceConfig.ts';
 
 const displayValue = (value: unknown) => {
   if (typeof value === 'boolean') return value ? <Tag color="green">Yes</Tag> : <Tag>No</Tag>;
@@ -29,11 +29,12 @@ export const ResourceListPage = () => {
   const { mutateAsync: deleteRecord } = useDelete();
 
   const rows = useMemo(() => {
-    const records = (query.data?.data ?? []) as Record<string, unknown>[];
+    if (!config) return [];
+    const records = ((query.data?.data ?? []) as Record<string, unknown>[]).map((record) => toFormValues(config, record));
     if (!search.trim()) return records;
     const needle = search.toLowerCase();
     return records.filter((record) => Object.values(record).some((value) => String(value ?? '').toLowerCase().includes(needle)));
-  }, [query.data, search]);
+  }, [config, query.data, search]);
 
   if (!config) return <EmptyState title="Resource unavailable" description="No administration configuration exists for this resource." />;
   if (query.isLoading) return <LoadingState />;
@@ -55,15 +56,13 @@ export const ResourceListPage = () => {
   }));
 
   columns.push({
-    title: 'Actions',
-    dataIndex: '__actions',
-    sorter: () => 0,
+    title: 'Actions', dataIndex: '__actions', sorter: () => 0,
     render: (_: unknown, row: Record<string, unknown>) => {
       const id = String(row[config.idField] ?? '');
       return (
         <Space wrap>
           <Link to={`/${config.name}/show/${encodeURIComponent(id)}`}>View</Link>
-          {canEdit?.can ? <Link to={`/${config.name}/edit/${encodeURIComponent(id)}`}>Edit</Link> : null}
+          {canEdit?.can && config.editable !== false ? <Link to={`/${config.name}/edit/${encodeURIComponent(id)}`}>Edit</Link> : null}
           {canDelete?.can && config.deletable !== false ? (
             <Popconfirm title={`Delete ${config.singular.toLowerCase()}?`} description="This action cannot be undone." onConfirm={() => remove(id)}>
               <Button danger type="link" size="small">Delete</Button>
@@ -79,7 +78,7 @@ export const ResourceListPage = () => {
       <PageHeader
         title={config.label}
         subtitle={`Manage ${config.label.toLowerCase()}.`}
-        extra={canCreate?.can ? <Button type="primary" onClick={() => navigate(`/${config.name}/create`)}>Create</Button> : undefined}
+        extra={canCreate?.can && config.creatable !== false ? <Button type="primary" onClick={() => navigate(`/${config.name}/create`)}>Create</Button> : undefined}
       />
       <Input.Search allowClear placeholder={`Search ${config.label.toLowerCase()}`} onChange={(event) => setSearch(event.target.value)} style={{ maxWidth: 360 }} />
       <DataTable rowKey={(row) => String((row as Record<string, unknown>)[config.idField])} dataSource={rows} columns={columns} pagination={{ pageSize: 10, showSizeChanger: true }} />
