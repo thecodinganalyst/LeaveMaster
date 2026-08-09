@@ -5,6 +5,7 @@ export interface AdminField {
   label: string;
   type?: AdminFieldType;
   required?: boolean;
+  requiredOnCreate?: boolean;
   readOnlyOnEdit?: boolean;
   options?: { label: string; value: string | boolean }[];
   list?: boolean;
@@ -17,12 +18,15 @@ export interface AdminResourceConfig {
   singular: string;
   idField: string;
   fields: AdminField[];
+  creatable?: boolean;
+  editable?: boolean;
   deletable?: boolean;
 }
 
 const tenantStatus = [
   { label: 'Active', value: 'ACTIVE' },
-  { label: 'Inactive', value: 'INACTIVE' },
+  { label: 'Dormant', value: 'DORMANT' },
+  { label: 'Terminated', value: 'TERMINATED' },
 ];
 
 export const adminResourceConfigs: Record<string, AdminResourceConfig> = {
@@ -45,14 +49,16 @@ export const adminResourceConfigs: Record<string, AdminResourceConfig> = {
       { name: 'joinDate', label: 'Join date', type: 'date', required: true, list: true },
       { name: 'termDate', label: 'Termination date', type: 'date', list: true },
       { name: 'loginName', label: 'Login name', list: true },
+      { name: 'location', label: 'Location (JSON)', type: 'json' },
       { name: 'workSchedule', label: 'Work schedule (JSON)', type: 'json' },
+      { name: 'leaveEntitlements', label: 'Leave entitlements (JSON)', type: 'json' },
     ],
   },
   users: {
     name: 'users', label: 'App Users', singular: 'App user', idField: 'loginName',
     fields: [
       { name: 'loginName', label: 'Login name', required: true, readOnlyOnEdit: true, list: true },
-      { name: 'password', label: 'Password', type: 'password', required: true },
+      { name: 'password', label: 'Password', type: 'password', requiredOnCreate: true },
       { name: 'active', label: 'Active', type: 'boolean', list: true },
       { name: 'staffId', label: 'Staff ID', list: true },
       { name: 'oidcProvider', label: 'OIDC provider' },
@@ -86,7 +92,7 @@ export const adminResourceConfigs: Record<string, AdminResourceConfig> = {
     ],
   },
   'leave-calendars': {
-    name: 'leave-calendars', label: 'Leave Calendars', singular: 'Leave calendar', idField: 'id',
+    name: 'leave-calendars', label: 'Leave Calendars', singular: 'Leave calendar', idField: 'id', editable: false, deletable: false,
     fields: [
       { name: 'id', label: 'ID', required: true, readOnlyOnEdit: true, list: true },
       { name: 'start', label: 'Start date', type: 'date', required: true, list: true },
@@ -116,6 +122,7 @@ export const normaliseFormValues = (config: AdminResourceConfig, values: Record<
       const raw = String(result[field.name]).trim();
       result[field.name] = raw ? JSON.parse(raw) : [];
     }
+    if (result[field.name] === '') delete result[field.name];
   }
   return result;
 };
@@ -123,13 +130,10 @@ export const normaliseFormValues = (config: AdminResourceConfig, values: Record<
 export const toFormValues = (config: AdminResourceConfig, record: Record<string, unknown>) => {
   const result = { ...record };
   for (const field of config.fields) {
-    if (field.type === 'json' && result[field.name] !== undefined) {
-      result[field.name] = JSON.stringify(result[field.name], null, 2);
-    }
+    if (field.type === 'json' && result[field.name] !== undefined) result[field.name] = JSON.stringify(result[field.name], null, 2);
   }
   if (config.name === 'roles' && Array.isArray(record.permissions)) {
-    result.permissionCodes = (record.permissions as Array<{ code?: string }>).map((permission) => permission.code).filter(Boolean);
-    result.permissionCodes = JSON.stringify(result.permissionCodes, null, 2);
+    result.permissionCodes = JSON.stringify((record.permissions as Array<{ code?: string }>).map((permission) => permission.code).filter(Boolean), null, 2);
   }
   if (config.name === 'leave-approvers') {
     const staff = record.staff as { id?: string } | undefined;
