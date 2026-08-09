@@ -58,6 +58,12 @@ spring:
   ai:
     model:
       chat: ${SPRING_AI_MODEL_CHAT:none}
+    retry:
+      max-attempts: ${ASSISTANT_PROVIDER_RETRY_MAX_ATTEMPTS:3}
+      backoff:
+        initial-interval: ${ASSISTANT_PROVIDER_RETRY_INITIAL_INTERVAL:1s}
+        multiplier: 2
+        max-interval: ${ASSISTANT_PROVIDER_RETRY_MAX_INTERVAL:5s}
     openai:
       api-key: ${OPENAI_API_KEY:}
       chat:
@@ -94,3 +100,11 @@ app:
   assistant:
     enabled: ${ASSISTANT_ENABLED:false}
     timeout-seconds: ${ASSISTANT_TIMEOUT_SECONDS:30}
+    confirmation-ttl-seconds: ${ASSISTANT_CONFIRMATION_TTL_SECONDS:300}
+    max-message-chars: ${ASSISTANT_MAX_MESSAGE_CHARS:4000}
+    rate-limit:
+      user-per-minute: ${ASSISTANT_USER_REQUESTS_PER_MINUTE:20}
+      tenant-per-minute: ${ASSISTANT_TENANT_REQUESTS_PER_MINUTE:100}
+    circuit-breaker:
+      failure-threshold: ${ASSISTANT_CIRCUIT_FAILURE_THRESHOLD:5}
+      open-seconds: ${ASSISTANT_CIRCUIT_OPEN_SECONDS:30}
