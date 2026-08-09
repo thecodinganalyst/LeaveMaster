@@ -22,7 +22,7 @@ export const ResourceListPage = () => {
   const [search, setSearch] = useState('');
   const navigate = useNavigate();
   const { message } = App.useApp();
-  const { query } = useList({ resource: config?.name ?? '', pagination: { mode: 'off' }, queryOptions: { enabled: Boolean(config) } });
+  const listQuery = useList({ resource: config?.name ?? '', pagination: { mode: 'off' }, queryOptions: { enabled: Boolean(config) } });
   const { data: canCreate } = useCan({ resource: config?.name ?? '', action: 'create' });
   const { data: canEdit } = useCan({ resource: config?.name ?? '', action: 'edit' });
   const { data: canDelete } = useCan({ resource: config?.name ?? '', action: 'delete' });
@@ -30,18 +30,18 @@ export const ResourceListPage = () => {
 
   const rows = useMemo(() => {
     if (!config) return [];
-    const records = ((query.data?.data ?? []) as Record<string, unknown>[]).map((record) => toFormValues(config, record));
+    const records = ((listQuery.data?.data ?? []) as Record<string, unknown>[]).map((record) => toFormValues(config, record));
     if (!search.trim()) return records;
     const needle = search.toLowerCase();
     return records.filter((record) => Object.values(record).some((value) => String(value ?? '').toLowerCase().includes(needle)));
-  }, [config, query.data, search]);
+  }, [config, listQuery.data, search]);
 
   if (!config) return <EmptyState title="Resource unavailable" description="No administration configuration exists for this resource." />;
-  if (query.isLoading) return <LoadingState />;
+  if (listQuery.isLoading) return <LoadingState />;
 
   const remove = async (id: string) => {
     try {
-      await deleteRecord({ resource: config.name, id, successNotification: false });
+      await deleteRecord({ resource: config.name, id });
       message.success(`${config.singular} deleted`);
     } catch {
       message.error(`Unable to delete ${config.singular.toLowerCase()}`);
@@ -75,11 +75,7 @@ export const ResourceListPage = () => {
 
   return (
     <PageContainer>
-      <PageHeader
-        title={config.label}
-        subtitle={`Manage ${config.label.toLowerCase()}.`}
-        extra={canCreate?.can && config.creatable !== false ? <Button type="primary" onClick={() => navigate(`/${config.name}/create`)}>Create</Button> : undefined}
-      />
+      <PageHeader title={config.label} subtitle={`Manage ${config.label.toLowerCase()}.`} extra={canCreate?.can && config.creatable !== false ? <Button type="primary" onClick={() => navigate(`/${config.name}/create`)}>Create</Button> : undefined} />
       <Input.Search allowClear placeholder={`Search ${config.label.toLowerCase()}`} onChange={(event) => setSearch(event.target.value)} style={{ maxWidth: 360 }} />
       <DataTable rowKey={(row) => String((row as Record<string, unknown>)[config.idField])} dataSource={rows} columns={columns} pagination={{ pageSize: 10, showSizeChanger: true }} />
     </PageContainer>
