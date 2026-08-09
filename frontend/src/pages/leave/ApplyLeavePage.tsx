@@ -1,6 +1,5 @@
 import { useCan } from '@refinedev/core';
-import { App, Alert, Button, Card, DatePicker, Form, Select, Space, Typography } from 'antd';
-import dayjs, { type Dayjs } from 'dayjs';
+import { App, Alert, Button, Card, Form, Input, Select, Space, Typography } from 'antd';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -11,7 +10,8 @@ import { applyForLeave, getLeaveTypes, type LeaveDuration, type LeaveTypeSummary
 
 interface FormValues {
   leaveTypeId: string;
-  dates: [Dayjs, Dayjs];
+  fromDate: string;
+  toDate: string;
   leaveDuration: LeaveDuration;
 }
 
@@ -49,8 +49,8 @@ export const ApplyLeavePage = () => {
     try {
       const applications = await applyForLeave({
         staffId,
-        fromDate: values.dates[0].format('YYYY-MM-DD'),
-        toDate: values.dates[1].format('YYYY-MM-DD'),
+        fromDate: values.fromDate,
+        toDate: values.toDate,
         leaveTypeId: values.leaveTypeId,
         leaveDuration: values.leaveDuration,
         status: 'PENDING',
@@ -78,18 +78,26 @@ export const ApplyLeavePage = () => {
           <Form.Item name="leaveTypeId" label="Leave type" rules={[{ required: true, message: 'Select a leave type' }]}>
             <Select options={leaveTypes.map((leaveType) => ({ value: leaveType.id, label: leaveType.name }))} placeholder="Select leave type" />
           </Form.Item>
+          <Form.Item name="fromDate" label="From date" rules={[{ required: true, message: 'Select a start date' }]}>
+            <Input type="date" />
+          </Form.Item>
           <Form.Item
-            name="dates"
-            label="Dates"
+            name="toDate"
+            label="To date"
+            dependencies={['fromDate']}
             rules={[
-              { required: true, message: 'Select a date range' },
-              {
-                validator: (_, value: [Dayjs, Dayjs] | undefined) =>
-                  value && value[0].isAfter(value[1], 'day') ? Promise.reject(new Error('Start date must be on or before end date')) : Promise.resolve(),
-              },
+              { required: true, message: 'Select an end date' },
+              ({ getFieldValue }) => ({
+                validator: (_, value: string | undefined) => {
+                  const fromDate = getFieldValue('fromDate') as string | undefined;
+                  return fromDate && value && value < fromDate
+                    ? Promise.reject(new Error('End date must be on or after start date'))
+                    : Promise.resolve();
+                },
+              }),
             ]}
           >
-            <DatePicker.RangePicker style={{ width: '100%' }} format="YYYY-MM-DD" disabledDate={(date) => date.isBefore(dayjs().startOf('day').subtract(1, 'year'))} />
+            <Input type="date" />
           </Form.Item>
           <Form.Item name="leaveDuration" label="Duration" rules={[{ required: true }]}>
             <Select options={[
