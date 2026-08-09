@@ -3,6 +3,7 @@ import { App, Alert, Button, Card, Descriptions, Popconfirm, Select, Space, Tag 
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
+import { getCurrentUser } from '../../auth/session.ts';
 import { PageContainer } from '../../components/common/PageContainer.tsx';
 import { PageHeader } from '../../components/common/PageHeader.tsx';
 import {
@@ -17,6 +18,7 @@ import { canCancelApplication, canEditApplication, statusColor, statusLabel } fr
 export const LeaveDetailsPage = () => {
   const { id } = useParams();
   const [application, setApplication] = useState<LeaveApplication>();
+  const [currentStaffId, setCurrentStaffId] = useState<string | null>(null);
   const [duration, setDuration] = useState<LeaveDuration>('FULL');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -27,8 +29,9 @@ export const LeaveDetailsPage = () => {
   const refresh = async () => {
     if (!id) return;
     try {
-      const data = await getLeaveApplication(id);
+      const [data, user] = await Promise.all([getLeaveApplication(id), getCurrentUser()]);
       setApplication(data);
+      setCurrentStaffId(user.staffId);
       setDuration(data.leaveDuration);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Unable to load leave request.');
@@ -39,8 +42,10 @@ export const LeaveDetailsPage = () => {
 
   useEffect(() => { void refresh(); }, [id]);
 
+  const ownsApplication = Boolean(application && currentStaffId && application.staff.id === currentStaffId);
+
   const saveDuration = async () => {
-    if (!application) return;
+    if (!application || !ownsApplication) return;
     setSaving(true);
     try {
       setApplication(await updateLeaveDuration(application, duration));
@@ -53,7 +58,7 @@ export const LeaveDetailsPage = () => {
   };
 
   const cancel = async () => {
-    if (!application) return;
+    if (!application || !ownsApplication) return;
     setSaving(true);
     try {
       await cancelLeave(application.id);
@@ -84,7 +89,7 @@ export const LeaveDetailsPage = () => {
               <Descriptions.Item label="Approval date">{application.approvalDate ?? '—'}</Descriptions.Item>
             </Descriptions>
 
-            {canWrite?.can && canEditApplication(application) ? (
+            {ownsApplication && canWrite?.can && canEditApplication(application) ? (
               <Space wrap style={{ marginTop: 16 }}>
                 <Select<LeaveDuration>
                   value={duration}
@@ -100,7 +105,7 @@ export const LeaveDetailsPage = () => {
               </Space>
             ) : null}
 
-            {canWrite?.can && canCancelApplication(application) ? (
+            {ownsApplication && canWrite?.can && canCancelApplication(application) ? (
               <Popconfirm
                 title="Cancel this leave request?"
                 description="Approved leave in the past becomes a cancellation request and requires approval; other eligible requests are cancelled immediately."
