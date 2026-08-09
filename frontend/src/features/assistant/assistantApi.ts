@@ -7,8 +7,8 @@ export interface PendingAction {
   actorLoginName: string;
   actorStaffId: string | null;
   tenantId: string | null;
-  confirmationToken: string;
-  expiresAt: string;
+  confirmationToken?: string;
+  expiresAt?: string;
 }
 
 export interface StructuredResult {
