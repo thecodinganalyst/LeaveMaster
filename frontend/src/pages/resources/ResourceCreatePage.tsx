@@ -11,16 +11,16 @@ import { ResourceFormFields } from './ResourceFormFields.tsx';
 export const ResourceCreatePage = () => {
   const { resource } = useResource();
   const config = getAdminResourceConfig(resource?.name);
-  const { mutateAsync, mutation: { isPending } } = useCreate();
+  const { mutateAsync, isLoading } = useCreate();
   const [form] = Form.useForm();
   const navigate = useNavigate();
   const { message } = App.useApp();
 
-  if (!config) return null;
+  if (!config || config.creatable === false) return null;
 
   const submit = async (values: Record<string, unknown>) => {
     try {
-      await mutateAsync({ resource: config.name, values: normaliseFormValues(config, values), successNotification: false });
+      await mutateAsync({ resource: config.name, values: normaliseFormValues(config, values) });
       message.success(`${config.singular} created`);
       navigate(`/${config.name}`);
     } catch {
@@ -35,7 +35,7 @@ export const ResourceCreatePage = () => {
         <Form form={form} layout="vertical" onFinish={submit} initialValues={{ active: true, used: false, status: 'ACTIVE' }}>
           <ResourceFormFields config={config} />
           <Space>
-            <Button type="primary" htmlType="submit" loading={isPending}>Save</Button>
+            <Button type="primary" htmlType="submit" loading={isLoading}>Save</Button>
             <Button htmlType="button" onClick={() => navigate(`/${config.name}`)}>Cancel</Button>
           </Space>
         </Form>
