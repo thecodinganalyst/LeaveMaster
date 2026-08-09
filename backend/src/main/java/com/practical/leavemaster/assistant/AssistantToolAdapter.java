@@ -89,7 +89,9 @@ final class AssistantToolAdapter {
             Map<String, Object> arguments = parseArguments(objectMapper, toolInput);
             try {
                 String result = context == null ? delegate.call(toolInput) : delegate.call(toolInput, context);
-                structuredResults.add(new AssistantDtos.StructuredResult(toolName(delegate), parseResult(objectMapper, result)));
+                if (AssistantToolPolicy.STRUCTURED_RESULT_TOOLS.contains(toolName(delegate))) {
+                    structuredResults.add(new AssistantDtos.StructuredResult(toolName(delegate), parseResult(objectMapper, result)));
+                }
                 auditService.record(AssistantAuditService.TOOL_EXECUTION, user.getLoginName(), user.getTenantId(),
                         conversationId, toolName(delegate), arguments, "SUCCESS", null);
                 return result;
