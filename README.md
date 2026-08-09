@@ -7,8 +7,8 @@ LeaveMaster is a Spring Boot REST API for managing employee leave. It handles le
 ```text
 LeaveMaster/
 ├── backend/         # Spring Boot API
-├── frontend/        # Frontend workspace placeholder
-├── infra/terraform/ # Terraform kept in its existing dedicated location
+├── frontend/        # React/Refine frontend
+├── infra/terraform/ # Terraform infrastructure
 ├── docs/
 └── .github/workflows/
 ```
@@ -26,6 +26,7 @@ LeaveMaster/
 - **Tenants** — manage tenants that own all other resources; each tenant has a lifecycle status (`ACTIVE`, `DORMANT`, `TERMINATED`) and date range, and every record in the system is scoped to a tenant.
 - **Email notifications** — send email alerts on leave-status changes.
 - **Role-based access control (RBAC)** — enforce permission checks on every API endpoint. Roles are configurable, can be enabled/disabled, and users can be added to or removed from roles.
+- **AI assistant backend** — authenticated server-side OpenAI integration that reuses LeaveMaster MCP tools; reads can execute under the user's RBAC permissions while writes are returned as pending actions for confirmation.
 - **Swagger UI** — interactive API documentation available out of the box.
 
 ## Technology Stack
@@ -34,6 +35,7 @@ LeaveMaster/
 |-------|-----------|
 | Language | Java 25 |
 | Framework | Spring Boot 4.1.0 |
+| AI integration | Spring AI 2.0 / OpenAI |
 | Persistence | Spring Data JPA / Hibernate |
 | Database (dev) | H2 (in-memory) |
 | Database (prod) | PostgreSQL 17 |
@@ -57,6 +59,47 @@ LeaveMaster/
 
 The application starts on **port 8080** and uses an H2 in-memory database that is pre-migrated by Flyway on startup.
 
+### Enable the AI assistant locally
+
+The AI assistant is **disabled by default**. To enable it, create an API key in the OpenAI Platform API key dashboard and provide it only to the backend process.
+
+macOS / Linux:
+
+```bash
+export OPENAI_API_KEY="your-openai-api-key"
+export ASSISTANT_ENABLED=true
+export SPRING_AI_MODEL_CHAT=openai
+export OPENAI_MODEL=gpt-5-mini   # optional
+./backend/gradlew bootRun
+```
+
+PowerShell:
+
+```powershell
+$env:OPENAI_API_KEY="your-openai-api-key"
+$env:ASSISTANT_ENABLED="true"
+$env:SPRING_AI_MODEL_CHAT="openai"
+$env:OPENAI_MODEL="gpt-5-mini"  # optional
+./backend/gradlew bootRun
+```
+
+The authenticated assistant endpoint is:
+
+```text
+POST /api/assistant/chat
+```
+
+Example request body:
+
+```json
+{
+  "message": "How much annual leave do I have?",
+  "conversationId": null
+}
+```
+
+**Do not commit the API key** to this repository, put it in `application.yaml`, expose it through a frontend `VITE_*` variable, or send it to the browser. The key belongs only in server-side environment/secret configuration. See [Cloud Run deployment](docs/cloudrun-deployment.md#27-configure-the-openai-api-key-for-the-ai-assistant) for production setup using Google Secret Manager.
+
 ### Run with Docker Compose (PostgreSQL)
 
 ```bash
@@ -74,6 +117,10 @@ Optional environment variables (all have defaults except `POSTGRES_PASSWORD`):
 | `POSTGRES_DB` | `leavemaster` | Database name |
 | `POSTGRES_USER` | `leavemaster` | Database user |
 | `PLATFORM_ADMIN_PASSWORD` | `changeme` | Password for the default `PlatformAdmin` user (see [Platform Admin](#platform-admin) below) |
+| `ASSISTANT_ENABLED` | `false` | Enables `/api/assistant/chat` |
+| `SPRING_AI_MODEL_CHAT` | `none` | Set to `openai` when the assistant is enabled |
+| `OPENAI_API_KEY` | *(none)* | OpenAI API key; required only when the OpenAI assistant is enabled |
+| `OPENAI_MODEL` | `gpt-5-mini` | OpenAI model used by the assistant |
 
 ### Platform Admin
 
@@ -121,7 +168,7 @@ Provider setup guides:
 
 ### Deploy to Google Cloud Run
 
-See the [Cloud Run deployment guide](docs/cloudrun-deployment.md) for step-by-step instructions covering Supabase, Google Cloud, and GitHub Actions setup.
+See the [Cloud Run deployment guide](docs/cloudrun-deployment.md) for step-by-step instructions covering Supabase, Google Cloud, GitHub Actions, and OpenAI assistant secret setup.
 
 ### Build
 
@@ -173,6 +220,7 @@ For detailed endpoint documentation, see [docs/api.md](docs/api.md).
 | Leave Calendars | `/leave-calendars` | Manage yearly calendars with public holidays |
 | Locations | `/locations` | Manage locations for public holiday scoping |
 | Roles | `/roles` | Manage roles, permissions, and user-to-role assignments |
+| AI Assistant | `/api/assistant/chat` | Authenticated conversational interface over authorized LeaveMaster MCP tools |
 
 ### Leave Application Status Flow
 

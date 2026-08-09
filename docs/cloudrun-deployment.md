@@ -21,6 +21,7 @@ The deployment pipeline:
 - A GitHub repository with this codebase.
 - [Terraform](https://developer.hashicorp.com/terraform/install) ≥ 1.8 installed locally for the one-time bootstrap steps.
 - [Google Cloud CLI (`gcloud`)](https://cloud.google.com/sdk/docs/install) installed and authenticated locally.
+- An OpenAI Platform API key if you want to enable the optional LeaveMaster AI assistant.
 
 ---
 
@@ -174,6 +175,73 @@ echo -n "YOUR_SUPABASE_DB_PASSWORD" | \
 
 > **Note:** Terraform creates the secret *resource* but does not manage the secret *value*. You must add the value manually (as above) or via the GCP console before the first deployment.
 
+### 2.7 Configure the OpenAI API key for the AI assistant
+
+The assistant is optional and remains disabled unless you explicitly enable it. Create an API key in the OpenAI Platform API key dashboard and store the value in Google Secret Manager. Never commit the key to this repository or expose it through frontend configuration.
+
+Set your project and create the secret:
+
+```bash
+PROJECT_ID=YOUR_PROJECT_ID
+gcloud config set project "${PROJECT_ID}"
+
+printf '%s' 'YOUR_OPENAI_API_KEY' | \
+  gcloud secrets create leavemaster-openai-api-key \
+    --data-file=- \
+    --replication-policy=automatic \
+    --project="${PROJECT_ID}"
+```
+
+If the secret resource already exists and you only need to rotate/update the key, add a new version instead:
+
+```bash
+printf '%s' 'YOUR_NEW_OPENAI_API_KEY' | \
+  gcloud secrets versions add leavemaster-openai-api-key \
+    --data-file=- \
+    --project="${PROJECT_ID}"
+```
+
+Grant the Cloud Run runtime service account access to the secret:
+
+```bash
+CLOUD_RUN_SA="leavemaster-cloud-run@${PROJECT_ID}.iam.gserviceaccount.com"
+
+gcloud secrets add-iam-policy-binding leavemaster-openai-api-key \
+  --member="serviceAccount:${CLOUD_RUN_SA}" \
+  --role="roles/secretmanager.secretAccessor" \
+  --project="${PROJECT_ID}"
+```
+
+After the normal Terraform/GitHub Actions deployment has created the `leavemaster-api` service, attach the secret and enable the assistant:
+
+```bash
+gcloud run services update leavemaster-api \
+  --region=YOUR_REGION \
+  --set-secrets=OPENAI_API_KEY=leavemaster-openai-api-key:latest \
+  --update-env-vars=ASSISTANT_ENABLED=true,SPRING_AI_MODEL_CHAT=openai,OPENAI_MODEL=gpt-5-mini \
+  --project="${PROJECT_ID}"
+```
+
+Verify the service configuration without printing the secret value:
+
+```bash
+gcloud run services describe leavemaster-api \
+  --region=YOUR_REGION \
+  --project="${PROJECT_ID}" \
+  --format='yaml(spec.template.spec.containers[0].env)'
+```
+
+Expected backend variables are:
+
+| Variable | Purpose |
+|----------|---------|
+| `OPENAI_API_KEY` | Secret-backed OpenAI credential |
+| `ASSISTANT_ENABLED` | Must be `true` to enable `/api/assistant/chat` |
+| `SPRING_AI_MODEL_CHAT` | Set to `openai` to activate the Spring AI OpenAI model |
+| `OPENAI_MODEL` | Optional model override; defaults to `gpt-5-mini` |
+
+> **Important:** The current Terraform Cloud Run resource does not yet manage these assistant-specific environment/secret bindings. A later Terraform deployment can therefore replace a manually updated Cloud Run revision. Until runtime secret/environment management is made declarative under the infrastructure work, re-run the `gcloud run services update` command above after a Terraform deployment if the assistant settings are removed.
+
 ---
 
 ## 3. GitHub — repository configuration
@@ -200,6 +268,8 @@ Go to **Settings → Environments → production → Environment variables** and
 
 > All seven variables are required. The workflow will fail if any are missing.
 
+Do **not** add `OPENAI_API_KEY` as a GitHub repository/environment variable for the running application. Store it in Google Secret Manager as described in step 2.7 so Cloud Run receives it directly at runtime.
+
 ---
 
 ## 4. First deployment
@@ -214,11 +284,15 @@ Push to `main` (or go to **Actions → Deploy to Cloud Run → Run workflow**) t
 
 After the workflow completes, the **Show service URL** step prints the public HTTPS URL of your Cloud Run service.
 
+If you want the AI assistant enabled, complete step 2.7 after the service exists.
+
 ---
 
 ## 5. Subsequent deployments
 
-Every push to `main` automatically rebuilds the image at the new Git SHA and updates the Cloud Run service. No manual steps are required.
+Every push to `main` automatically rebuilds the image at the new Git SHA and updates the Cloud Run service. No manual steps are required for the normal backend deployment.
+
+If you manually enabled the assistant using step 2.7, verify the OpenAI secret/environment binding after deployments until it is managed declaratively by Terraform.
 
 ### 5.1 Make the deployment inaccessible
 
@@ -264,6 +338,8 @@ The Terraform configuration lives in `infra/terraform/`. An example variable fil
 | Service account `leavemaster-cloud-run` | Identity under which Cloud Run runs |
 | Secret Manager secret `leavemaster-db-password` | Holds the Supabase database password; injected into Cloud Run at runtime |
 
+The optional `leavemaster-openai-api-key` secret described in step 2.7 is currently created manually and is not yet part of the Terraform resource list.
+
 ---
 
 ## Troubleshooting
@@ -273,5 +349,7 @@ The Terraform configuration lives in `infra/terraform/`. An example variable fil
 | Workflow fails at `Authenticate to Google Cloud` | WIF misconfiguration or wrong variable values | Double-check `WIF_PROVIDER` and `WIF_SERVICE_ACCOUNT`; verify the attribute condition matches your `GITHUB_ORG/GITHUB_REPO` |
 | Terraform apply fails with *permission denied* | Service account missing IAM roles | Re-run step 2.4 and ensure all roles are bound |
 | Cloud Run container crashes on startup | Database password secret has no version | Add the secret version (step 2.6) |
+| AI assistant returns unavailable | Assistant is disabled, OpenAI model is not activated, or secret binding is missing | Verify `ASSISTANT_ENABLED=true`, `SPRING_AI_MODEL_CHAT=openai`, and the `OPENAI_API_KEY` Secret Manager binding from step 2.7 |
+| OpenAI authentication fails | API key is invalid, revoked, or an old secret version is active | Add a fresh secret version, ensure `:latest` is used, then deploy a new Cloud Run revision |
 | Flyway migration error | Using the transaction-mode pooler (port 6543) | Use the direct connection or session-mode pooler (port 5432) in `SUPABASE_DB_HOST` |
 | `SECRET_NOT_FOUND` | Secret was not created before `terraform apply` | Run step 2.6 before triggering the workflow |
