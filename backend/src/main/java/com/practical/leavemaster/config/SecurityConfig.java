@@ -40,6 +40,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
                     "/users/login",
+                    "/auth/csrf",
                     "/oauth2/**",
                     "/login/oauth2/**",
                     "/swagger-ui/**",

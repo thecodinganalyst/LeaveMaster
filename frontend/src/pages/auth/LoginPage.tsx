@@ -2,7 +2,7 @@ import { useLogin } from '@refinedev/core';
 import { Button, Card, Form, Input, Space, Typography } from 'antd';
 
 interface LoginFormValues {
-  email: string;
+  loginName: string;
   password: string;
 }
 
@@ -17,23 +17,19 @@ export const LoginPage = () => {
             LeaveMaster
           </Typography.Title>
           <Typography.Text type="secondary">
-            Sign in to continue managing leave requests and workforce planning.
-          </Typography.Text>
-          <Typography.Text type="secondary">
-            Demo credentials: admin@leavemaster.dev / LeaveMaster123!
+            Sign in with your LeaveMaster account to continue.
           </Typography.Text>
 
           <Form<LoginFormValues>
             layout="vertical"
-            initialValues={{ email: 'admin@leavemaster.dev', password: 'LeaveMaster123!' }}
-            onFinish={({ email, password }) => {
-              login({ email, password });
+            onFinish={({ loginName, password }) => {
+              login({ loginName, password });
             }}
           >
-            <Form.Item label="Work email" name="email" rules={[{ required: true }, { type: 'email' }]}>
-              <Input type="email" autoComplete="email" />
+            <Form.Item label="Login name" name="loginName" rules={[{ required: true }]}> 
+              <Input autoComplete="username" />
             </Form.Item>
-            <Form.Item label="Password" name="password" rules={[{ required: true, min: 8 }]}>
+            <Form.Item label="Password" name="password" rules={[{ required: true }]}> 
               <Input.Password autoComplete="current-password" />
             </Form.Item>
             <Button type="primary" htmlType="submit" block loading={isPending}>

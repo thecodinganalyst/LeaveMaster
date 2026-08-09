@@ -1,66 +1,93 @@
 import type { AuthBindings } from '@refinedev/core';
 
-const AUTH_KEY = 'leavemaster.authenticated';
-const DEMO_EMAIL = 'admin@leavemaster.dev';
-const DEMO_PASSWORD = 'LeaveMaster123!';
+import { ApiError, apiFetch, clearCsrfToken, loginWithSession } from '../api/http.ts';
+import { clearCurrentUser, getCurrentUser } from '../auth/session.ts';
 
 interface LoginParams {
-  email?: string;
+  loginName?: string;
   password?: string;
 }
 
 export const authProvider: AuthBindings = {
   login: async (params) => {
-    const { email, password } = (params ?? {}) as LoginParams;
-    const isValidCredentials = email === DEMO_EMAIL && password === DEMO_PASSWORD;
+    const { loginName, password } = (params ?? {}) as LoginParams;
 
-    if (!isValidCredentials) {
+    if (!loginName || !password) {
       return {
         success: false,
         error: {
           name: 'InvalidCredentials',
-          message: 'Use demo credentials to sign in.',
+          message: 'Login name and password are required.',
         },
       };
     }
 
-    localStorage.setItem(AUTH_KEY, 'true');
-    return {
-      success: true,
-      redirectTo: '/',
-    };
-  },
-  logout: async () => {
-    localStorage.removeItem(AUTH_KEY);
-    return {
-      success: true,
-      redirectTo: '/login',
-    };
-  },
-  check: async () => {
-    const isAuthenticated = localStorage.getItem(AUTH_KEY) === 'true';
-
-    if (isAuthenticated) {
+    try {
+      await loginWithSession(loginName, password);
+      clearCurrentUser();
+      await getCurrentUser(true);
+      return { success: true, redirectTo: '/' };
+    } catch (error) {
+      const message = error instanceof ApiError ? error.message : 'Unable to sign in.';
       return {
-        authenticated: true,
+        success: false,
+        error: { name: 'AuthenticationError', message },
       };
     }
+  },
 
+  logout: async () => {
+    try {
+      await apiFetch<void>('/logout', { method: 'POST' });
+    } finally {
+      clearCurrentUser();
+      clearCsrfToken();
+    }
+
+    return { success: true, redirectTo: '/login' };
+  },
+
+  check: async () => {
+    try {
+      await getCurrentUser(true);
+      return { authenticated: true };
+    } catch (error) {
+      if (error instanceof ApiError && [401, 403, 404].includes(error.statusCode)) {
+        clearCurrentUser();
+        return { authenticated: false, redirectTo: '/login' };
+      }
+      return {
+        authenticated: false,
+        redirectTo: '/login',
+        error: {
+          name: 'AuthenticationError',
+          message: error instanceof Error ? error.message : 'Unable to verify authentication.',
+        },
+      };
+    }
+  },
+
+  getIdentity: async () => {
+    const user = await getCurrentUser();
     return {
-      authenticated: false,
-      redirectTo: '/login',
+      id: user.loginName,
+      name: user.loginName,
+      staffId: user.staffId,
+      tenantId: user.tenantId,
+      authorities: user.authorities,
     };
   },
-  getIdentity: async () => ({
-    id: 1,
-    name: 'LeaveMaster User',
-  }),
-  onError: async () => {
-    return {
-      error: {
-        name: 'AuthenticationError',
-        message: 'Authentication failed',
-      },
-    };
+
+  onError: async (error) => {
+    if (error instanceof ApiError && error.statusCode === 401) {
+      clearCurrentUser();
+      return { logout: true, redirectTo: '/login', error };
+    }
+
+    if (error instanceof ApiError && error.statusCode === 403) {
+      return { error };
+    }
+
+    return { error };
   },
 };

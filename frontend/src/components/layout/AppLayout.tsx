@@ -1,17 +1,11 @@
 import type { PropsWithChildren } from 'react';
 import { useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useLogout } from '@refinedev/core';
+import { useCan, useLogout } from '@refinedev/core';
 import { AppstoreOutlined, CalendarOutlined, MenuOutlined, TeamOutlined } from '@ant-design/icons';
 import { Button, Drawer, Grid, Layout, Menu, Space, Typography } from 'antd';
 
 const { Header, Sider, Content } = Layout;
-
-const menuItems = [
-  { key: '/', icon: <AppstoreOutlined />, label: <Link to="/">Dashboard</Link> },
-  { key: '/leave-requests', icon: <CalendarOutlined />, label: <Link to="/leave-requests">Leave Requests</Link> },
-  { key: '/employees', icon: <TeamOutlined />, label: <Link to="/employees">Employees</Link> },
-];
 
 export const AppLayout = ({ children }: PropsWithChildren) => {
   const screens = Grid.useBreakpoint();
@@ -20,14 +14,41 @@ export const AppLayout = ({ children }: PropsWithChildren) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { mutate: logout } = useLogout();
+  const { data: leaveAccess } = useCan({ resource: 'leave-requests', action: 'list' });
+  const { data: employeeAccess } = useCan({ resource: 'employees', action: 'list' });
+
+  const menuItems = useMemo(
+    () => [
+      { key: '/', icon: <AppstoreOutlined />, label: <Link to="/">Dashboard</Link> },
+      ...(leaveAccess?.can
+        ? [
+            {
+              key: '/leave-requests',
+              icon: <CalendarOutlined />,
+              label: <Link to="/leave-requests">Leave Requests</Link>,
+            },
+          ]
+        : []),
+      ...(employeeAccess?.can
+        ? [
+            {
+              key: '/employees',
+              icon: <TeamOutlined />,
+              label: <Link to="/employees">Employees</Link>,
+            },
+          ]
+        : []),
+    ],
+    [employeeAccess?.can, leaveAccess?.can],
+  );
 
   const selectedKeys = useMemo(() => {
-    const key = menuItems.find((item) =>
-      location.pathname === item.key || location.pathname.startsWith(`${item.key}/`),
+    const key = menuItems.find(
+      (item) => location.pathname === item.key || location.pathname.startsWith(`${item.key}/`),
     )?.key;
 
     return key ? [key] : ['/'];
-  }, [location.pathname]);
+  }, [location.pathname, menuItems]);
 
   const menu = (
     <Menu
