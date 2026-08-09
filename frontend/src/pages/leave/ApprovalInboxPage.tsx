@@ -36,7 +36,9 @@ export const ApprovalInboxPage = () => {
         getPendingApprovals(user.staffId),
         getVisibleLeave(user.staffId),
       ]);
-      const cancellation = visible.filter((application) => application.status === 'CANCEL_REQUESTED');
+      const cancellation = visible.filter(
+        (application) => application.status === 'CANCEL_REQUESTED' && application.staff.id !== user.staffId,
+      );
       const byId = new Map([...pending, ...cancellation].map((application) => [application.id, application]));
       setApplications([...byId.values()].sort((a, b) => a.leaveDate.localeCompare(b.leaveDate)));
     } catch (cause) {
