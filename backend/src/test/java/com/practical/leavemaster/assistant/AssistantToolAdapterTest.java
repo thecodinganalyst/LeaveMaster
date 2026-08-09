@@ -39,12 +39,15 @@ class AssistantToolAdapterTest {
 
         assertThat(adapted).hasSize(1);
         assertThat(adapted[0].call("{}")).contains("Annual");
-        assertThat(results).singleElement().satisfies(result -> {
-            assertThat(result.toolName()).isEqualTo("getLeaveBalances");
-            assertThat(result.data()).asList().singleElement().asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
-                    .containsEntry("leaveType", "Annual")
-                    .containsEntry("balance", 12.5);
-        });
+        assertThat(results).hasSize(1);
+        AssistantDtos.StructuredResult result = results.getFirst();
+        assertThat(result.toolName()).isEqualTo("getLeaveBalances");
+        assertThat(result.data()).isInstanceOf(List.class);
+        Object first = ((List<?>) result.data()).getFirst();
+        assertThat(first).isInstanceOf(Map.class);
+        assertThat((Map<?, ?>) first)
+                .containsEntry("leaveType", "Annual")
+                .containsEntry("balance", 12.5);
         verify(read).call("{}");
         verify(audit).record(anyString(), anyString(), anyString(), anyString(), anyString(), any(), anyString(), any());
     }
