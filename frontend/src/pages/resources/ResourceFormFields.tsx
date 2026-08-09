@@ -10,7 +10,8 @@ interface Props {
 export const ResourceFormFields = ({ config, editing = false }: Props) => (
   <>
     {config.fields.filter((field) => !field.hidden).map((field) => {
-      const rules = field.required ? [{ required: true, message: `${field.label} is required` }] : undefined;
+      const required = field.required || (!editing && field.requiredOnCreate);
+      const rules = required ? [{ required: true, message: `${field.label} is required` }] : undefined;
       const disabled = editing && field.readOnlyOnEdit;
 
       if (field.type === 'boolean') {
