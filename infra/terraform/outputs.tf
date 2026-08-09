@@ -15,3 +15,23 @@ output "attachments_bucket" {
   description = "Bucket used to store leave application attachments"
   value       = google_storage_bucket.attachments.name
 }
+
+output "firebase_project_id" {
+  description = "Google/Firebase project ID used by frontend deployment tooling"
+  value       = var.enable_firebase_hosting ? google_firebase_project.frontend[0].project : null
+}
+
+output "firebase_hosting_site_id" {
+  description = "Firebase Hosting site ID used by frontend deployment tooling"
+  value       = var.enable_firebase_hosting ? google_firebase_hosting_site.frontend[0].site_id : null
+}
+
+output "firebase_hosting_default_url" {
+  description = "Default Firebase Hosting URL for the frontend"
+  value       = var.enable_firebase_hosting ? google_firebase_hosting_site.frontend[0].default_url : null
+}
+
+output "frontend_environment" {
+  description = "Logical environment associated with the frontend hosting site"
+  value       = var.frontend_environment
+}
