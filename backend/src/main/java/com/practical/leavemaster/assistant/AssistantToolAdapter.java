@@ -23,6 +23,7 @@ final class AssistantToolAdapter {
             AppUser user,
             ObjectMapper objectMapper,
             List<AssistantDtos.PendingAction> pendingActions,
+            List<AssistantDtos.StructuredResult> structuredResults,
             String conversationId,
             AssistantConfirmationService confirmationService,
             AssistantAuditService auditService
@@ -31,7 +32,7 @@ final class AssistantToolAdapter {
                 .filter(callback -> isAuthorized(callback, authentication))
                 .map(callback -> AssistantToolPolicy.WRITE_TOOLS.contains(toolName(callback))
                         ? pendingWrite(callback, authentication, user, objectMapper, pendingActions, conversationId, confirmationService)
-                        : auditedRead(callback, user, objectMapper, conversationId, auditService))
+                        : auditedRead(callback, user, objectMapper, structuredResults, conversationId, auditService))
                 .toArray(ToolCallback[]::new);
     }
 
@@ -67,11 +68,13 @@ final class AssistantToolAdapter {
     }
 
     private static ToolCallback auditedRead(ToolCallback delegate, AppUser user, ObjectMapper objectMapper,
+                                             List<AssistantDtos.StructuredResult> structuredResults,
                                              String conversationId, AssistantAuditService auditService) {
         return wrapper(delegate, (toolInput, context) -> {
             Map<String, Object> arguments = parseArguments(objectMapper, toolInput);
             try {
                 String result = context == null ? delegate.call(toolInput) : delegate.call(toolInput, context);
+                structuredResults.add(new AssistantDtos.StructuredResult(toolName(delegate), parseResult(objectMapper, result)));
                 auditService.record(AssistantAuditService.TOOL_EXECUTION, user.getLoginName(), user.getTenantId(),
                         conversationId, toolName(delegate), arguments, "SUCCESS", null);
                 return result;
@@ -90,6 +93,15 @@ final class AssistantToolAdapter {
             return parsed == null ? Map.of() : Map.copyOf(parsed);
         } catch (Exception e) {
             throw new IllegalArgumentException("Invalid tool arguments", e);
+        }
+    }
+
+    private static Object parseResult(ObjectMapper objectMapper, String result) {
+        if (result == null || result.isBlank()) return result == null ? "" : result;
+        try {
+            return objectMapper.readValue(result, Object.class);
+        } catch (Exception ignored) {
+            return result;
         }
     }
 
