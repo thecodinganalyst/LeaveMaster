@@ -18,12 +18,12 @@ export const ResourceShowPage = () => {
   const { resource } = useResource();
   const { id } = useParams();
   const config = getAdminResourceConfig(resource?.name);
-  const { query } = useOne({ resource: config?.name ?? '', id: id ?? '', queryOptions: { enabled: Boolean(config && id) } });
+  const recordQuery = useOne({ resource: config?.name ?? '', id: id ?? '', queryOptions: { enabled: Boolean(config && id) } });
   const { data: canEdit } = useCan({ resource: config?.name ?? '', action: 'edit' });
 
   if (!config || !id) return null;
-  if (query.isLoading) return <LoadingState />;
-  const record = toFormValues(config, (query.data?.data ?? {}) as Record<string, unknown>);
+  if (recordQuery.isLoading) return <LoadingState />;
+  const record = toFormValues(config, (recordQuery.data?.data ?? {}) as Record<string, unknown>);
 
   return (
     <PageContainer>
