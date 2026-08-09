@@ -3,13 +3,17 @@ import { CatchAllNavigate, NavigateToResource } from '@refinedev/react-router-v6
 import { Outlet, Route, Routes } from 'react-router-dom';
 
 import { AppLayout } from '../components/layout/AppLayout.tsx';
-import { DashboardPage } from '../pages/dashboard/DashboardPage.tsx';
+import { ErrorState } from '../components/common/ErrorState.tsx';
 import { LoginPage } from '../pages/auth/LoginPage.tsx';
+import { DashboardPage } from '../pages/dashboard/DashboardPage.tsx';
+import { ApplyLeavePage } from '../pages/leave/ApplyLeavePage.tsx';
+import { ApprovalInboxPage } from '../pages/leave/ApprovalInboxPage.tsx';
+import { LeaveDetailsPage } from '../pages/leave/LeaveDetailsPage.tsx';
+import { MyLeavePage } from '../pages/leave/MyLeavePage.tsx';
 import { ResourceCreatePage } from '../pages/resources/ResourceCreatePage.tsx';
 import { ResourceEditPage } from '../pages/resources/ResourceEditPage.tsx';
 import { ResourceListPage } from '../pages/resources/ResourceListPage.tsx';
 import { ResourceShowPage } from '../pages/resources/ResourceShowPage.tsx';
-import { ErrorState } from '../components/common/ErrorState.tsx';
 
 export const AppRoutes = () => {
   return (
@@ -24,6 +28,12 @@ export const AppRoutes = () => {
         }
       >
         <Route path="/" element={<DashboardPage />} />
+        <Route path="/leave-requests" element={<MyLeavePage />} />
+        <Route path="/leave-requests/apply" element={<ApplyLeavePage />} />
+        <Route path="/leave-requests/create" element={<ApplyLeavePage />} />
+        <Route path="/leave-requests/show/:id" element={<LeaveDetailsPage />} />
+        <Route path="/leave-requests/edit/:id" element={<LeaveDetailsPage />} />
+        <Route path="/approvals" element={<ApprovalInboxPage />} />
         <Route path="/:resource">
           <Route index element={<ResourceListPage />} />
           <Route path="create" element={<ResourceCreatePage />} />
@@ -44,12 +54,7 @@ export const AppRoutes = () => {
 
       <Route
         path="/error"
-        element={
-          <ErrorState
-            title="Something went wrong"
-            description="An unexpected application error occurred. Please try again."
-          />
-        }
+        element={<ErrorState title="Something went wrong" description="An unexpected application error occurred. Please try again." />}
       />
       <Route path="*" element={<ErrorState title="Page not found" description="The page you requested does not exist." />} />
     </Routes>
