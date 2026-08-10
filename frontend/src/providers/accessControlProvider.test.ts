@@ -29,6 +29,42 @@ describe('accessControlProvider', () => {
     ).resolves.toMatchObject({ can: true });
   });
 
+  it('allows PlatformAdmin tenant CRUD when tenant authorities are present', async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({
+      loginName: 'PlatformAdmin',
+      staffId: null,
+      tenantId: null,
+      active: true,
+      authorities: ['TENANT_READ', 'TENANT_WRITE'],
+    });
+
+    await expect(accessControlProvider.can({ resource: 'tenants', action: 'list', params: {} }))
+      .resolves.toMatchObject({ can: true });
+    await expect(accessControlProvider.can({ resource: 'tenants', action: 'create', params: {} }))
+      .resolves.toMatchObject({ can: true });
+    await expect(accessControlProvider.can({ resource: 'tenants', action: 'edit', params: {} }))
+      .resolves.toMatchObject({ can: true });
+    await expect(accessControlProvider.can({ resource: 'tenants', action: 'delete', params: {} }))
+      .resolves.toMatchObject({ can: true });
+  });
+
+  it('keeps tenant administration read-only without TENANT_WRITE', async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({
+      loginName: 'tenant-reader',
+      staffId: null,
+      tenantId: null,
+      active: true,
+      authorities: ['TENANT_READ'],
+    });
+
+    await expect(accessControlProvider.can({ resource: 'tenants', action: 'list', params: {} }))
+      .resolves.toMatchObject({ can: true });
+    await expect(accessControlProvider.can({ resource: 'tenants', action: 'create', params: {} }))
+      .resolves.toMatchObject({ can: false });
+    await expect(accessControlProvider.can({ resource: 'tenants', action: 'delete', params: {} }))
+      .resolves.toMatchObject({ can: false });
+  });
+
   it('denies write actions when the required authority is absent', async () => {
     vi.mocked(getCurrentUser).mockResolvedValue({
       loginName: 'reader',
