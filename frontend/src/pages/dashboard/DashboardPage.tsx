@@ -1,6 +1,6 @@
-import { useCan } from '@refinedev/core';
+import { useCan, useList } from '@refinedev/core';
 import { Alert, Button, Card, Col, List, Row, Space, Statistic, Tag, Typography } from 'antd';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { getCurrentUser } from '../../auth/session.ts';
@@ -9,14 +9,35 @@ import { PageHeader } from '../../components/common/PageHeader.tsx';
 import { getLeaveBalances, getVisibleLeave, type LeaveApplication, type LeaveBalance } from '../../features/leave/leaveApi.ts';
 import { isUpcoming, sortByLeaveDate, statusColor, statusLabel } from '../../features/leave/leaveView.ts';
 
+interface TenantSummary {
+  id: string;
+  name: string;
+  startDate?: string;
+  endDate?: string;
+  status?: 'ACTIVE' | 'DORMANT' | 'TERMINATED' | string;
+}
+
+const tenantStatusColor: Record<string, string> = {
+  ACTIVE: 'green',
+  DORMANT: 'gold',
+  TERMINATED: 'default',
+};
+
 export const DashboardPage = () => {
   const [staffId, setStaffId] = useState<string | null>(null);
+  const [tenantAdmin, setTenantAdmin] = useState(false);
   const [balances, setBalances] = useState<LeaveBalance[]>([]);
   const [applications, setApplications] = useState<LeaveApplication[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
   const { data: canWrite } = useCan({ resource: 'leave-requests', action: 'create' });
   const { data: canApprove } = useCan({ resource: 'leave-requests', action: 'approve' });
+  const { data: canWriteTenants } = useCan({ resource: 'tenants', action: 'create' });
+  const tenantList = useList({
+    resource: 'tenants',
+    pagination: { mode: 'off' },
+    queryOptions: { enabled: tenantAdmin },
+  });
 
   useEffect(() => {
     let active = true;
@@ -24,6 +45,13 @@ export const DashboardPage = () => {
       try {
         const user = await getCurrentUser();
         if (!active) return;
+
+        if (user.authorities.includes('TENANT_READ')) {
+          setTenantAdmin(true);
+          setStaffId(user.staffId);
+          return;
+        }
+
         setStaffId(user.staffId);
         if (!user.staffId || !user.authorities.includes('LEAVE_APPLICATION_READ')) return;
         const [balanceData, leaveData] = await Promise.all([
@@ -34,13 +62,72 @@ export const DashboardPage = () => {
         setBalances(balanceData);
         setApplications(leaveData);
       } catch (cause) {
-        if (active) setError(cause instanceof Error ? cause.message : 'Unable to load leave dashboard.');
+        if (active) setError(cause instanceof Error ? cause.message : 'Unable to load dashboard.');
       } finally {
         if (active) setLoading(false);
       }
     })();
     return () => { active = false; };
   }, []);
+
+  const tenants = (tenantList.data?.data ?? []) as TenantSummary[];
+  const tenantCounts = useMemo(() => ({
+    total: tenants.length,
+    active: tenants.filter((tenant) => tenant.status === 'ACTIVE').length,
+    dormant: tenants.filter((tenant) => tenant.status === 'DORMANT').length,
+    terminated: tenants.filter((tenant) => tenant.status === 'TERMINATED').length,
+  }), [tenants]);
+
+  if (tenantAdmin) {
+    return (
+      <PageContainer>
+        <PageHeader
+          title="Tenant Administration"
+          subtitle="Manage LeaveMaster tenants and their lifecycle from one place."
+          extra={
+            <Space wrap>
+              <Button><Link to="/tenants">Manage all tenants</Link></Button>
+              {canWriteTenants?.can ? <Button type="primary"><Link to="/tenants/create">Create tenant</Link></Button> : null}
+            </Space>
+          }
+        />
+        {tenantList.isError ? <Alert type="error" showIcon message="Unable to load tenants." style={{ marginBottom: 16 }} /> : null}
+
+        <Row gutter={[16, 16]}>
+          <Col xs={12} lg={6}><Card loading={tenantList.isLoading}><Statistic title="Total tenants" value={tenantCounts.total} /></Card></Col>
+          <Col xs={12} lg={6}><Card loading={tenantList.isLoading}><Statistic title="Active" value={tenantCounts.active} /></Card></Col>
+          <Col xs={12} lg={6}><Card loading={tenantList.isLoading}><Statistic title="Dormant" value={tenantCounts.dormant} /></Card></Col>
+          <Col xs={12} lg={6}><Card loading={tenantList.isLoading}><Statistic title="Terminated" value={tenantCounts.terminated} /></Card></Col>
+        </Row>
+
+        <Card
+          title="Tenants"
+          style={{ marginTop: 16 }}
+          loading={tenantList.isLoading}
+          extra={<Link to="/tenants">View all</Link>}
+        >
+          <List
+            locale={{ emptyText: 'No tenants have been created yet.' }}
+            dataSource={tenants.slice(0, 10)}
+            renderItem={(tenant) => (
+              <List.Item
+                actions={[
+                  <Link key="view" to={`/tenants/show/${encodeURIComponent(tenant.id)}`}>View</Link>,
+                  ...(canWriteTenants?.can ? [<Link key="edit" to={`/tenants/edit/${encodeURIComponent(tenant.id)}`}>Edit</Link>] : []),
+                ]}
+              >
+                <List.Item.Meta
+                  title={tenant.name || tenant.id}
+                  description={`ID: ${tenant.id}${tenant.startDate ? ` · Starts ${tenant.startDate}` : ''}${tenant.endDate ? ` · Ends ${tenant.endDate}` : ''}`}
+                />
+                <Tag color={tenantStatusColor[tenant.status ?? '']}>{tenant.status ?? 'UNKNOWN'}</Tag>
+              </List.Item>
+            )}
+          />
+        </Card>
+      </PageContainer>
+    );
+  }
 
   const upcoming = sortByLeaveDate(applications.filter((application) => isUpcoming(application))).slice(0, 5);
   const pending = applications.filter((application) => application.status === 'PENDING').length;
