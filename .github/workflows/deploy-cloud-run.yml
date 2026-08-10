@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'backend/**'
+      - 'infra/terraform/**'
+      - 'Dockerfile'
+      - '.dockerignore'
+      - '.github/workflows/deploy-cloud-run.yml'
   workflow_dispatch:
 
 concurrency:
