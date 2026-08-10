@@ -16,6 +16,16 @@ output "attachments_bucket" {
   value       = google_storage_bucket.attachments.name
 }
 
+output "public_app_url" {
+  description = "Canonical public frontend origin used for OAuth return URLs and runtime configuration"
+  value       = local.public_app_url
+}
+
+output "cors_allowed_origins" {
+  description = "Exact browser origins allowed by backend CORS"
+  value       = local.cors_allowed_origins
+}
+
 output "firebase_project_id" {
   description = "Google/Firebase project ID used by frontend deployment tooling"
   value       = var.enable_firebase_hosting ? google_firebase_project.frontend[0].project : null
