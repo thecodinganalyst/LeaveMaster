@@ -219,6 +219,11 @@ resource "google_cloud_run_v2_service" "api" {
       }
 
       env {
+        name  = "OAUTH_REDIRECT_BASE_URL"
+        value = local.public_app_url
+      }
+
+      env {
         name  = "APP_CORS_ALLOWED_ORIGINS"
         value = join(",", local.cors_allowed_origins)
       }
