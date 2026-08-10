@@ -1,5 +1,6 @@
 package com.practical.leavemaster.config;
 
+import com.practical.leavemaster.rbac.AppPermission;
 import com.practical.leavemaster.rbac.AppPermissionRepository;
 import com.practical.leavemaster.rbac.AppRole;
 import com.practical.leavemaster.rbac.AppRoleRepository;
@@ -15,8 +16,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -25,6 +28,8 @@ public class PlatformAdminInitializer implements ApplicationRunner {
 
     static final String PLATFORM_ADMIN_ROLE_ID = "PLATFORM_ADMIN";
     static final String PLATFORM_ADMIN_LOGIN_NAME = "PlatformAdmin";
+    private static final Set<String> REQUIRED_TENANT_PERMISSIONS =
+            Set.of(RbacPermissions.TENANT_READ, RbacPermissions.TENANT_WRITE);
 
     private final AppRoleRepository appRoleRepository;
     private final AppPermissionRepository appPermissionRepository;
@@ -40,17 +45,9 @@ public class PlatformAdminInitializer implements ApplicationRunner {
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
-        AppRole role = appRoleRepository.findById(PLATFORM_ADMIN_ROLE_ID).orElseGet(() -> {
-            log.info("Creating {} role", PLATFORM_ADMIN_ROLE_ID);
-            AppRole newRole = AppRole.builder()
-                    .id(PLATFORM_ADMIN_ROLE_ID)
-                    .description("Platform administrator – manages tenants")
-                    .active(true)
-                    .permissions(Set.copyOf(appPermissionRepository.findAllById(
-                            Set.of(RbacPermissions.TENANT_READ, RbacPermissions.TENANT_WRITE))))
-                    .build();
-            return appRoleRepository.save(newRole);
-        });
+        AppRole role = appRoleRepository.findById(PLATFORM_ADMIN_ROLE_ID)
+                .map(this::reconcilePlatformAdminRole)
+                .orElseGet(this::createPlatformAdminRole);
 
         Optional<AppUser> defaultAdmin = appUserRepository.findById(PLATFORM_ADMIN_LOGIN_NAME);
         boolean hasUsers = appUserRepository.findAll().stream()
@@ -83,5 +80,46 @@ public class PlatformAdminInitializer implements ApplicationRunner {
                         "PlatformAdmin password reset requested, but the default {} user is missing or is not assigned to {}. No password was changed.",
                         PLATFORM_ADMIN_LOGIN_NAME,
                         PLATFORM_ADMIN_ROLE_ID));
+    }
+
+    private AppRole createPlatformAdminRole() {
+        log.info("Creating {} role", PLATFORM_ADMIN_ROLE_ID);
+        AppRole newRole = AppRole.builder()
+                .id(PLATFORM_ADMIN_ROLE_ID)
+                .description("Platform administrator – manages tenants")
+                .active(true)
+                .permissions(loadRequiredTenantPermissions())
+                .build();
+        return appRoleRepository.save(newRole);
+    }
+
+    private AppRole reconcilePlatformAdminRole(AppRole role) {
+        boolean changed = false;
+        if (!role.isActive()) {
+            role.setActive(true);
+            changed = true;
+        }
+
+        Set<AppPermission> permissions = new HashSet<>(Optional.ofNullable(role.getPermissions()).orElseGet(Set::of));
+        Set<String> existingCodes = permissions.stream()
+                .map(AppPermission::getCode)
+                .collect(Collectors.toSet());
+        for (AppPermission requiredPermission : loadRequiredTenantPermissions()) {
+            if (existingCodes.add(requiredPermission.getCode())) {
+                permissions.add(requiredPermission);
+                changed = true;
+            }
+        }
+
+        if (changed) {
+            role.setPermissions(permissions);
+            log.info("Reconciling {} role with required tenant-management permissions", PLATFORM_ADMIN_ROLE_ID);
+            appRoleRepository.save(role);
+        }
+        return role;
+    }
+
+    private Set<AppPermission> loadRequiredTenantPermissions() {
+        return Set.copyOf(appPermissionRepository.findAllById(REQUIRED_TENANT_PERMISSIONS));
     }
 }
