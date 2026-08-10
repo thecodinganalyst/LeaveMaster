@@ -133,6 +133,20 @@ resource "google_secret_manager_secret_iam_member" "cloud_run_database_password"
   member    = "serviceAccount:${google_service_account.cloud_run.email}"
 }
 
+resource "google_secret_manager_secret" "platform_admin_password" {
+  secret_id = "leavemaster-platform-admin-password"
+
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_iam_member" "cloud_run_platform_admin_password" {
+  secret_id = google_secret_manager_secret.platform_admin_password.id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.cloud_run.email}"
+}
+
 resource "google_storage_bucket_iam_member" "github_cloudbuild_source" {
   bucket = google_storage_bucket.cloudbuild_source.name
   role   = "roles/storage.admin"
@@ -198,6 +212,11 @@ resource "google_cloud_run_v2_service" "api" {
       }
 
       env {
+        name  = "PLATFORM_ADMIN_RESET_PASSWORD"
+        value = tostring(var.reset_platform_admin_password)
+      }
+
+      env {
         name = "DATABASE_PASSWORD"
 
         value_source {
@@ -207,12 +226,28 @@ resource "google_cloud_run_v2_service" "api" {
           }
         }
       }
+
+      dynamic "env" {
+        for_each = var.enable_platform_admin_password_secret ? [1] : []
+
+        content {
+          name = "PLATFORM_ADMIN_PASSWORD"
+
+          value_source {
+            secret_key_ref {
+              secret  = google_secret_manager_secret.platform_admin_password.secret_id
+              version = "latest"
+            }
+          }
+        }
+      }
     }
   }
 
   depends_on = [
     google_project_service.required["run.googleapis.com"],
-    google_secret_manager_secret_iam_member.cloud_run_database_password
+    google_secret_manager_secret_iam_member.cloud_run_database_password,
+    google_secret_manager_secret_iam_member.cloud_run_platform_admin_password
   ]
 }
 
