@@ -3,10 +3,39 @@
     "public": "dist",
     "ignore": [
       "firebase.json",
+      "firebase.ci.json",
       "**/.*",
       "**/node_modules/**"
     ],
     "rewrites": [
+      {
+        "source": "/api/**",
+        "run": {
+          "serviceId": "leavemaster-api",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/auth/**",
+        "run": {
+          "serviceId": "leavemaster-api",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/login",
+        "run": {
+          "serviceId": "leavemaster-api",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/logout",
+        "run": {
+          "serviceId": "leavemaster-api",
+          "region": "asia-southeast1"
+        }
+      },
       {
         "source": "**",
         "destination": "/index.html"
