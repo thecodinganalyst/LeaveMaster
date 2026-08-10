@@ -3,6 +3,8 @@ import type { BaseRecord, CrudFilter, CrudSorting, DataProvider } from '@refined
 import { apiFetch } from '../api/http.ts';
 import { env } from '../config/env.ts';
 
+type ProviderParams<K extends keyof DataProvider> = DataProvider[K] extends (...args: infer P) => unknown ? P[0] : never;
+
 const endpointByResource: Record<string, string> = {
   tenants: '/tenants',
   users: '/users',
@@ -73,7 +75,7 @@ const applySorting = (records: BaseRecord[], sorters: CrudSorting = []) => {
 const provider = {
   getApiUrl: () => env.apiUrl,
 
-  getList: async ({ resource, pagination, filters = [], sorters = [] }) => {
+  getList: async ({ resource, pagination, filters = [], sorters = [] }: ProviderParams<'getList'>) => {
     const records = await apiFetch<BaseRecord[]>(endpointFor(resource));
     const filtered = records.filter((record) => filters.every((filter) => matchesFilter(record, filter)));
     const sorted = applySorting(filtered, sorters);
@@ -92,32 +94,32 @@ const provider = {
     };
   },
 
-  getOne: async ({ resource, id }) => ({
+  getOne: async ({ resource, id }: ProviderParams<'getOne'>) => ({
     data: await apiFetch<BaseRecord>(`${endpointFor(resource)}/${encodeURIComponent(String(id))}`),
   }),
 
-  create: async ({ resource, variables }) => ({
+  create: async ({ resource, variables }: ProviderParams<'create'>) => ({
     data: await apiFetch<BaseRecord>(endpointFor(resource), {
       method: 'POST',
       body: JSON.stringify(variables),
     }),
   }),
 
-  update: async ({ resource, id, variables }) => ({
+  update: async ({ resource, id, variables }: ProviderParams<'update'>) => ({
     data: await apiFetch<BaseRecord>(`${endpointFor(resource)}/${encodeURIComponent(String(id))}`, {
       method: 'PUT',
       body: JSON.stringify(variables),
     }),
   }),
 
-  deleteOne: async ({ resource, id }) => {
+  deleteOne: async ({ resource, id }: ProviderParams<'deleteOne'>) => {
     await apiFetch<void>(`${endpointFor(resource)}/${encodeURIComponent(String(id))}`, {
       method: 'DELETE',
     });
     return { data: { id } };
   },
 
-  createMany: async ({ resource, variables }) => {
+  createMany: async ({ resource, variables }: ProviderParams<'createMany'>) => {
     const data = await Promise.all(
       variables.map((value) =>
         apiFetch<BaseRecord>(endpointFor(resource), {
@@ -129,7 +131,7 @@ const provider = {
     return { data };
   },
 
-  deleteMany: async ({ resource, ids }) => {
+  deleteMany: async ({ resource, ids }: ProviderParams<'deleteMany'>) => {
     await Promise.all(
       ids.map((id) =>
         apiFetch<void>(`${endpointFor(resource)}/${encodeURIComponent(String(id))}`, {
@@ -140,7 +142,7 @@ const provider = {
     return { data: ids };
   },
 
-  updateMany: async ({ resource, ids, variables }) => {
+  updateMany: async ({ resource, ids, variables }: ProviderParams<'updateMany'>) => {
     const data = await Promise.all(
       ids.map((id) =>
         apiFetch<BaseRecord>(`${endpointFor(resource)}/${encodeURIComponent(String(id))}`, {
@@ -152,7 +154,7 @@ const provider = {
     return { data };
   },
 
-  custom: async ({ url, method, payload, headers }) => {
+  custom: async ({ url, method, payload, headers }: ProviderParams<'custom'>) => {
     const init: RequestInit = {
       method: method.toUpperCase(),
       ...(headers ? { headers } : {}),
