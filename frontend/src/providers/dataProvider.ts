@@ -70,7 +70,7 @@ const applySorting = (records: BaseRecord[], sorters: CrudSorting = []) => {
   });
 };
 
-export const leaveMasterDataProvider: DataProvider = {
+const provider = {
   getApiUrl: () => env.apiUrl,
 
   getList: async ({ resource, pagination, filters = [], sorters = [] }) => {
@@ -152,11 +152,14 @@ export const leaveMasterDataProvider: DataProvider = {
     return { data };
   },
 
-  custom: async ({ url, method, payload, headers }) => ({
-    data: await apiFetch(url, {
+  custom: async ({ url, method, payload, headers }) => {
+    const init: RequestInit = {
       method: method.toUpperCase(),
-      headers,
-      body: payload === undefined ? undefined : JSON.stringify(payload),
-    }),
-  }),
+      ...(headers ? { headers } : {}),
+      ...(payload === undefined ? {} : { body: JSON.stringify(payload) }),
+    };
+    return { data: await apiFetch(url, init) };
+  },
 };
+
+export const leaveMasterDataProvider = provider as DataProvider;
