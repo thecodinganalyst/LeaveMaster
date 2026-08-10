@@ -51,6 +51,132 @@
         }
       },
       {
+        "source": "/tenants",
+        "run": {
+          "serviceId": "leavemaster-api",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/tenants/**",
+        "run": {
+          "serviceId": "leavemaster-api",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/users",
+        "run": {
+          "serviceId": "leavemaster-api",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/users/**",
+        "run": {
+          "serviceId": "leavemaster-api",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/roles",
+        "run": {
+          "serviceId": "leavemaster-api",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/roles/**",
+        "run": {
+          "serviceId": "leavemaster-api",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/staff",
+        "run": {
+          "serviceId": "leavemaster-api",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/staff/**",
+        "run": {
+          "serviceId": "leavemaster-api",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/locations",
+        "run": {
+          "serviceId": "leavemaster-api",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/locations/**",
+        "run": {
+          "serviceId": "leavemaster-api",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/leave-types",
+        "run": {
+          "serviceId": "leavemaster-api",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/leave-types/**",
+        "run": {
+          "serviceId": "leavemaster-api",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/leave-approvers",
+        "run": {
+          "serviceId": "leavemaster-api",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/leave-approvers/**",
+        "run": {
+          "serviceId": "leavemaster-api",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/leave-calendars",
+        "run": {
+          "serviceId": "leavemaster-api",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/leave-calendars/**",
+        "run": {
+          "serviceId": "leavemaster-api",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/leave-applications",
+        "run": {
+          "serviceId": "leavemaster-api",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/leave-applications/**",
+        "run": {
+          "serviceId": "leavemaster-api",
+          "region": "asia-southeast1"
+        }
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }
