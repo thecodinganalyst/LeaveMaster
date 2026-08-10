@@ -15,6 +15,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Optional;
 import java.util.Set;
 
 @Component
@@ -33,6 +34,9 @@ public class PlatformAdminInitializer implements ApplicationRunner {
     @Value("${platform.admin.password}")
     private String platformAdminPassword;
 
+    @Value("${platform.admin.reset-password:false}")
+    private boolean resetPlatformAdminPassword;
+
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
@@ -48,6 +52,7 @@ public class PlatformAdminInitializer implements ApplicationRunner {
             return appRoleRepository.save(newRole);
         });
 
+        Optional<AppUser> defaultAdmin = appUserRepository.findById(PLATFORM_ADMIN_LOGIN_NAME);
         boolean hasUsers = appUserRepository.findAll().stream()
                 .anyMatch(u -> u.getRoles().stream()
                         .anyMatch(r -> PLATFORM_ADMIN_ROLE_ID.equals(r.getId())));
@@ -61,6 +66,22 @@ public class PlatformAdminInitializer implements ApplicationRunner {
                     .roles(Set.of(role))
                     .build();
             appUserRepository.save(admin);
+            return;
         }
+
+        if (!resetPlatformAdminPassword) {
+            return;
+        }
+
+        defaultAdmin.filter(admin -> admin.getRoles().stream()
+                        .anyMatch(existingRole -> PLATFORM_ADMIN_ROLE_ID.equals(existingRole.getId())))
+                .ifPresentOrElse(admin -> {
+                    log.warn("Explicit PlatformAdmin password reset requested; replacing the stored password hash");
+                    admin.setPassword(passwordEncoder.encode(platformAdminPassword));
+                    appUserRepository.save(admin);
+                }, () -> log.warn(
+                        "PlatformAdmin password reset requested, but the default {} user is missing or is not assigned to {}. No password was changed.",
+                        PLATFORM_ADMIN_LOGIN_NAME,
+                        PLATFORM_ADMIN_ROLE_ID));
     }
 }
