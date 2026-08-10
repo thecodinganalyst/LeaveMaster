@@ -44,6 +44,18 @@ variable "github_actions_service_account" {
   type        = string
 }
 
+variable "enable_platform_admin_password_secret" {
+  description = "Whether Cloud Run should read PLATFORM_ADMIN_PASSWORD from Secret Manager"
+  type        = bool
+  default     = false
+}
+
+variable "reset_platform_admin_password" {
+  description = "Explicit one-deployment switch that resets the existing default PlatformAdmin password at application startup"
+  type        = bool
+  default     = false
+}
+
 variable "enable_firebase_hosting" {
   description = "Whether to enable Firebase services and provision the frontend Hosting site"
   type        = bool

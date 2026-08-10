@@ -82,6 +82,7 @@ spring:
 platform:
   admin:
     password: ${PLATFORM_ADMIN_PASSWORD:changeme}
+    reset-password: ${PLATFORM_ADMIN_RESET_PASSWORD:false}
 
 tenant:
   admin:
