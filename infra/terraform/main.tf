@@ -24,11 +24,24 @@ locals {
     "${var.project_id}-${var.frontend_environment}"
   )
 
+  default_public_app_url = "https://${local.frontend_hosting_site_id}.firebaseapp.com"
+  public_app_url         = trimsuffix(coalesce(var.public_app_url, local.default_public_app_url), "/")
+  cors_allowed_origins = length(var.allowed_frontend_origins) > 0 ? var.allowed_frontend_origins : [
+    local.public_app_url
+  ]
+
   attachment_bucket_name = "${var.project_id}-leavemaster-attachments-${data.google_project.current.number}"
 }
 
 data "google_project" "current" {
   project_id = var.project_id
+}
+
+data "google_secret_manager_secret" "openai_api_key" {
+  count = var.enable_openai_assistant ? 1 : 0
+
+  project   = var.project_id
+  secret_id = var.openai_api_key_secret_id
 }
 
 resource "google_project_service" "required" {
@@ -147,6 +160,15 @@ resource "google_secret_manager_secret_iam_member" "cloud_run_platform_admin_pas
   member    = "serviceAccount:${google_service_account.cloud_run.email}"
 }
 
+resource "google_secret_manager_secret_iam_member" "cloud_run_openai_api_key" {
+  count = var.enable_openai_assistant ? 1 : 0
+
+  project   = var.project_id
+  secret_id = data.google_secret_manager_secret.openai_api_key[0].secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.cloud_run.email}"
+}
+
 resource "google_storage_bucket_iam_member" "github_cloudbuild_source" {
   bucket = google_storage_bucket.cloudbuild_source.name
   role   = "roles/storage.admin"
@@ -192,6 +214,16 @@ resource "google_cloud_run_v2_service" "api" {
       }
 
       env {
+        name  = "APP_PUBLIC_URL"
+        value = local.public_app_url
+      }
+
+      env {
+        name  = "APP_CORS_ALLOWED_ORIGINS"
+        value = join(",", local.cors_allowed_origins)
+      }
+
+      env {
         name  = "GCS_ATTACHMENT_BUCKET"
         value = local.attachment_bucket_name
       }
@@ -212,6 +244,21 @@ resource "google_cloud_run_v2_service" "api" {
       }
 
       env {
+        name  = "ASSISTANT_ENABLED"
+        value = tostring(var.enable_openai_assistant)
+      }
+
+      env {
+        name  = "SPRING_AI_MODEL_CHAT"
+        value = var.enable_openai_assistant ? "openai" : "none"
+      }
+
+      env {
+        name  = "OPENAI_MODEL"
+        value = var.openai_model
+      }
+
+      env {
         name  = "PLATFORM_ADMIN_RESET_PASSWORD"
         value = tostring(var.reset_platform_admin_password)
       }
@@ -223,6 +270,21 @@ resource "google_cloud_run_v2_service" "api" {
           secret_key_ref {
             secret  = google_secret_manager_secret.database_password.secret_id
             version = "latest"
+          }
+        }
+      }
+
+      dynamic "env" {
+        for_each = var.enable_openai_assistant ? [1] : []
+
+        content {
+          name = "OPENAI_API_KEY"
+
+          value_source {
+            secret_key_ref {
+              secret  = data.google_secret_manager_secret.openai_api_key[0].secret_id
+              version = "latest"
+            }
           }
         }
       }
@@ -247,7 +309,8 @@ resource "google_cloud_run_v2_service" "api" {
   depends_on = [
     google_project_service.required["run.googleapis.com"],
     google_secret_manager_secret_iam_member.cloud_run_database_password,
-    google_secret_manager_secret_iam_member.cloud_run_platform_admin_password
+    google_secret_manager_secret_iam_member.cloud_run_platform_admin_password,
+    google_secret_manager_secret_iam_member.cloud_run_openai_api_key
   ]
 }
 
