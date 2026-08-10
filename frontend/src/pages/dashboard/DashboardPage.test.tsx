@@ -8,6 +8,16 @@ import { DashboardPage } from './DashboardPage.tsx';
 
 vi.mock('@refinedev/core', () => ({
   useCan: vi.fn(() => ({ data: { can: true } })),
+  useList: vi.fn(() => ({
+    data: {
+      data: [
+        { id: 'T1', name: 'Tenant One', status: 'ACTIVE', startDate: '2026-01-01' },
+        { id: 'T2', name: 'Tenant Two', status: 'DORMANT', startDate: '2026-02-01' },
+      ],
+    },
+    isLoading: false,
+    isError: false,
+  })),
 }));
 
 vi.mock('../../auth/session.ts', () => ({ getCurrentUser: vi.fn() }));
@@ -37,5 +47,24 @@ describe('DashboardPage', () => {
     expect(await screen.findByText('No upcoming leave.')).toBeInTheDocument();
     expect(getLeaveBalances).toHaveBeenCalledWith('S1');
     expect(getVisibleLeave).toHaveBeenCalledWith('S1');
+  });
+
+  it('renders tenant administration instead of personal leave for PlatformAdmin', async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({
+      loginName: 'PlatformAdmin', staffId: null, tenantId: null, active: true, authorities: ['TENANT_READ', 'TENANT_WRITE'],
+    });
+
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'Tenant Administration' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Create tenant' })).toHaveAttribute('href', '/tenants/create');
+    expect(screen.getByText('Tenant One')).toBeInTheDocument();
+    expect(screen.getByText('Tenant Two')).toBeInTheDocument();
+    expect(getLeaveBalances).not.toHaveBeenCalled();
+    expect(getVisibleLeave).not.toHaveBeenCalled();
   });
 });
