@@ -1,6 +1,6 @@
 import { useCan, useList } from '@refinedev/core';
 import { Alert, Button, Card, Col, List, Row, Space, Statistic, Tag, Typography } from 'antd';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { getCurrentUser } from '../../auth/session.ts';
@@ -8,14 +8,7 @@ import { PageContainer } from '../../components/common/PageContainer.tsx';
 import { PageHeader } from '../../components/common/PageHeader.tsx';
 import { getLeaveBalances, getVisibleLeave, type LeaveApplication, type LeaveBalance } from '../../features/leave/leaveApi.ts';
 import { isUpcoming, sortByLeaveDate, statusColor, statusLabel } from '../../features/leave/leaveView.ts';
-
-interface TenantSummary {
-  id: string;
-  name: string;
-  startDate?: string;
-  endDate?: string;
-  status?: 'ACTIVE' | 'DORMANT' | 'TERMINATED' | string;
-}
+import { summariseTenants, type TenantSummary } from './tenantDashboard.ts';
 
 const tenantStatusColor: Record<string, string> = {
   ACTIVE: 'green',
@@ -71,12 +64,7 @@ export const DashboardPage = () => {
   }, []);
 
   const tenants = (tenantList.data?.data ?? []) as TenantSummary[];
-  const tenantCounts = useMemo(() => ({
-    total: tenants.length,
-    active: tenants.filter((tenant) => tenant.status === 'ACTIVE').length,
-    dormant: tenants.filter((tenant) => tenant.status === 'DORMANT').length,
-    terminated: tenants.filter((tenant) => tenant.status === 'TERMINATED').length,
-  }), [tenants]);
+  const tenantCounts = summariseTenants(tenants);
 
   if (tenantAdmin) {
     return (
