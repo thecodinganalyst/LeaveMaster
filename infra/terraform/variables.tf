@@ -44,6 +44,53 @@ variable "github_actions_service_account" {
   type        = string
 }
 
+variable "public_app_url" {
+  description = "Optional public frontend URL. Defaults to the environment-specific Firebase Hosting URL."
+  type        = string
+  default     = null
+  nullable    = true
+
+  validation {
+    condition = (
+      var.public_app_url == null ||
+      can(regex("^https://[^/]+/?$", var.public_app_url))
+    )
+    error_message = "public_app_url must be an HTTPS origin without a path, query, or fragment."
+  }
+}
+
+variable "allowed_frontend_origins" {
+  description = "Exact browser origins allowed by backend CORS. Empty defaults to the public app URL only."
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for origin in var.allowed_frontend_origins :
+      can(regex("^https://[^/]+$", origin)) && !strcontains(origin, "*")
+    ])
+    error_message = "allowed_frontend_origins must contain exact HTTPS origins only; wildcards are not allowed."
+  }
+}
+
+variable "enable_openai_assistant" {
+  description = "Whether Cloud Run should enable the OpenAI assistant and read its API key from Secret Manager"
+  type        = bool
+  default     = false
+}
+
+variable "openai_api_key_secret_id" {
+  description = "Existing Secret Manager secret containing the OpenAI API key"
+  type        = string
+  default     = "leavemaster-openai-api-key"
+}
+
+variable "openai_model" {
+  description = "OpenAI model used by the optional assistant"
+  type        = string
+  default     = "gpt-5-mini"
+}
+
 variable "enable_platform_admin_password_secret" {
   description = "Whether Cloud Run should read PLATFORM_ADMIN_PASSWORD from Secret Manager"
   type        = bool
