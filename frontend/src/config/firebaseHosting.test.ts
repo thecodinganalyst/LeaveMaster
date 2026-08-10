@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 type HostingRewrite = { source: string; run?: { serviceId?: string } };
@@ -19,7 +20,7 @@ const restResources = [
 describe('Firebase Hosting configuration', () => {
   it('routes every REST resource to Cloud Run before the SPA fallback', () => {
     const config = JSON.parse(
-      readFileSync(new URL('../../firebase.json', import.meta.url), 'utf8'),
+      readFileSync(resolve(process.cwd(), 'firebase.json'), 'utf8'),
     ) as FirebaseConfig;
     const rewrites = config.hosting.rewrites;
     const spaFallbackIndex = rewrites.findIndex((rewrite) => rewrite.source === '**');
