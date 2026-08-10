@@ -1,6 +1,6 @@
 import { useCan } from '@refinedev/core';
 import { App, Alert, Button, Card, Descriptions, Popconfirm, Select, Space, Tag } from 'antd';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { getCurrentUser } from '../../auth/session.ts';
@@ -26,7 +26,7 @@ export const LeaveDetailsPage = () => {
   const { message } = App.useApp();
   const { data: canWrite } = useCan({ resource: 'leave-requests', action: 'edit' });
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     if (!id) return;
     try {
       const [data, user] = await Promise.all([getLeaveApplication(id), getCurrentUser()]);
@@ -38,9 +38,9 @@ export const LeaveDetailsPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
-  useEffect(() => { void refresh(); }, [id]);
+  useEffect(() => { void refresh(); }, [refresh]);
 
   const ownsApplication = Boolean(application && currentStaffId && application.staff.id === currentStaffId);
 
@@ -73,7 +73,7 @@ export const LeaveDetailsPage = () => {
 
   return (
     <PageContainer>
-      <PageHeader title="Leave request details" subtitle={id} extra={<Button><Link to="/leave-requests">Back to requests</Link></Button>} />
+      <PageHeader title="Leave request details" subtitle={id ?? ''} extra={<Button><Link to="/leave-requests">Back to requests</Link></Button>} />
       {error ? <Alert type="error" showIcon message={error} style={{ marginBottom: 16 }} /> : null}
       <Card loading={loading}>
         {application ? (

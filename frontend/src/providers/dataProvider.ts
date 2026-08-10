@@ -1,7 +1,13 @@
-import type { BaseRecord, CrudFilter, CrudSorting, DataProvider } from '@refinedev/core';
+import type { BaseKey, BaseRecord, CrudFilter, CrudSorting, DataProvider } from '@refinedev/core';
 
 import { apiFetch } from '../api/http.ts';
 import { env } from '../config/env.ts';
+
+type ProviderParams<K extends keyof DataProvider> = DataProvider[K] extends (...args: infer P) => unknown ? P[0] : never;
+type CreateManyInput = { resource: string; variables: unknown[] };
+type DeleteManyInput = { resource: string; ids: BaseKey[] };
+type UpdateManyInput = { resource: string; ids: BaseKey[]; variables: unknown };
+type CustomInput = { url: string; method: string; payload?: unknown; headers?: HeadersInit };
 
 const endpointByResource: Record<string, string> = {
   tenants: '/tenants',
@@ -70,10 +76,10 @@ const applySorting = (records: BaseRecord[], sorters: CrudSorting = []) => {
   });
 };
 
-export const leaveMasterDataProvider: DataProvider = {
+const provider = {
   getApiUrl: () => env.apiUrl,
 
-  getList: async ({ resource, pagination, filters = [], sorters = [] }) => {
+  getList: async ({ resource, pagination, filters = [], sorters = [] }: ProviderParams<'getList'>) => {
     const records = await apiFetch<BaseRecord[]>(endpointFor(resource));
     const filtered = records.filter((record) => filters.every((filter) => matchesFilter(record, filter)));
     const sorted = applySorting(filtered, sorters);
@@ -92,32 +98,32 @@ export const leaveMasterDataProvider: DataProvider = {
     };
   },
 
-  getOne: async ({ resource, id }) => ({
+  getOne: async ({ resource, id }: ProviderParams<'getOne'>) => ({
     data: await apiFetch<BaseRecord>(`${endpointFor(resource)}/${encodeURIComponent(String(id))}`),
   }),
 
-  create: async ({ resource, variables }) => ({
+  create: async ({ resource, variables }: ProviderParams<'create'>) => ({
     data: await apiFetch<BaseRecord>(endpointFor(resource), {
       method: 'POST',
       body: JSON.stringify(variables),
     }),
   }),
 
-  update: async ({ resource, id, variables }) => ({
+  update: async ({ resource, id, variables }: ProviderParams<'update'>) => ({
     data: await apiFetch<BaseRecord>(`${endpointFor(resource)}/${encodeURIComponent(String(id))}`, {
       method: 'PUT',
       body: JSON.stringify(variables),
     }),
   }),
 
-  deleteOne: async ({ resource, id }) => {
+  deleteOne: async ({ resource, id }: ProviderParams<'deleteOne'>) => {
     await apiFetch<void>(`${endpointFor(resource)}/${encodeURIComponent(String(id))}`, {
       method: 'DELETE',
     });
     return { data: { id } };
   },
 
-  createMany: async ({ resource, variables }) => {
+  createMany: async ({ resource, variables }: CreateManyInput) => {
     const data = await Promise.all(
       variables.map((value) =>
         apiFetch<BaseRecord>(endpointFor(resource), {
@@ -129,7 +135,7 @@ export const leaveMasterDataProvider: DataProvider = {
     return { data };
   },
 
-  deleteMany: async ({ resource, ids }) => {
+  deleteMany: async ({ resource, ids }: DeleteManyInput) => {
     await Promise.all(
       ids.map((id) =>
         apiFetch<void>(`${endpointFor(resource)}/${encodeURIComponent(String(id))}`, {
@@ -140,7 +146,7 @@ export const leaveMasterDataProvider: DataProvider = {
     return { data: ids };
   },
 
-  updateMany: async ({ resource, ids, variables }) => {
+  updateMany: async ({ resource, ids, variables }: UpdateManyInput) => {
     const data = await Promise.all(
       ids.map((id) =>
         apiFetch<BaseRecord>(`${endpointFor(resource)}/${encodeURIComponent(String(id))}`, {
@@ -152,11 +158,14 @@ export const leaveMasterDataProvider: DataProvider = {
     return { data };
   },
 
-  custom: async ({ url, method, payload, headers }) => ({
-    data: await apiFetch(url, {
+  custom: async ({ url, method, payload, headers }: CustomInput) => {
+    const init: RequestInit = {
       method: method.toUpperCase(),
-      headers,
-      body: payload === undefined ? undefined : JSON.stringify(payload),
-    }),
-  }),
+      ...(headers ? { headers } : {}),
+      ...(payload === undefined ? {} : { body: JSON.stringify(payload) }),
+    };
+    return { data: await apiFetch(url, init) };
+  },
 };
+
+export const leaveMasterDataProvider = provider as unknown as DataProvider;

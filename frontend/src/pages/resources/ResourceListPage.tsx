@@ -1,5 +1,5 @@
 import { useCan, useDelete, useList, useResource } from '@refinedev/core';
-import { App, Button, Input, Popconfirm, Space, Tag } from 'antd';
+import { App, Button, Input, Popconfirm, Space, Tag, type TableProps } from 'antd';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -48,14 +48,14 @@ export const ResourceListPage = () => {
     }
   };
 
-  const columns = config.fields.filter((field) => field.list).map((field) => ({
+  const columns: TableProps<Record<string, unknown>>['columns'] = config.fields.filter((field) => field.list).map((field) => ({
     title: field.label,
     dataIndex: field.name,
-    sorter: (a: Record<string, unknown>, b: Record<string, unknown>) => String(a[field.name] ?? '').localeCompare(String(b[field.name] ?? ''), undefined, { numeric: true }),
+    sorter: (a, b) => String(a[field.name] ?? '').localeCompare(String(b[field.name] ?? ''), undefined, { numeric: true }),
     render: (value: unknown) => displayValue(value),
   }));
 
-  columns.push({
+  columns?.push({
     title: 'Actions', dataIndex: '__actions', sorter: () => 0,
     render: (_: unknown, row: Record<string, unknown>) => {
       const id = String(row[config.idField] ?? '');
@@ -73,11 +73,15 @@ export const ResourceListPage = () => {
     },
   });
 
+  const createButton = canCreate?.can && config.creatable !== false
+    ? <Button type="primary" onClick={() => navigate(`/${config.name}/create`)}>Create</Button>
+    : null;
+
   return (
     <PageContainer>
-      <PageHeader title={config.label} subtitle={`Manage ${config.label.toLowerCase()}.`} extra={canCreate?.can && config.creatable !== false ? <Button type="primary" onClick={() => navigate(`/${config.name}/create`)}>Create</Button> : undefined} />
+      <PageHeader title={config.label} subtitle={`Manage ${config.label.toLowerCase()}.`} extra={createButton} />
       <Input.Search allowClear placeholder={`Search ${config.label.toLowerCase()}`} onChange={(event) => setSearch(event.target.value)} style={{ maxWidth: 360 }} />
-      <DataTable rowKey={(row) => String((row as Record<string, unknown>)[config.idField])} dataSource={rows} columns={columns} pagination={{ pageSize: 10, showSizeChanger: true }} />
+      <DataTable<Record<string, unknown>> rowKey={(row) => String(row[config.idField])} dataSource={rows} columns={columns} pagination={{ pageSize: 10, showSizeChanger: true }} />
     </PageContainer>
   );
 };

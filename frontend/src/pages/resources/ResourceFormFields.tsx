@@ -11,8 +11,8 @@ export const ResourceFormFields = ({ config, editing = false }: Props) => (
   <>
     {config.fields.filter((field) => !field.hidden).map((field) => {
       const required = field.required || (!editing && field.requiredOnCreate);
-      const rules = required ? [{ required: true, message: `${field.label} is required` }] : undefined;
-      const disabled = editing && field.readOnlyOnEdit;
+      const rules = required ? [{ required: true, message: `${field.label} is required` }] : [];
+      const disabled = Boolean(editing && field.readOnlyOnEdit);
 
       if (field.type === 'boolean') {
         return (
@@ -25,7 +25,7 @@ export const ResourceFormFields = ({ config, editing = false }: Props) => (
       if (field.type === 'select') {
         return (
           <Form.Item key={field.name} name={field.name} label={field.label} rules={rules}>
-            <Select options={field.options} disabled={disabled} />
+            <Select options={field.options ?? []} disabled={disabled} />
           </Form.Item>
         );
       }
@@ -38,7 +38,7 @@ export const ResourceFormFields = ({ config, editing = false }: Props) => (
         );
       }
 
-      const inputType = field.type === 'date' ? 'date' : field.type === 'email' ? 'email' : undefined;
+      const inputType = field.type === 'date' ? 'date' : field.type === 'email' ? 'email' : 'text';
       const input = field.type === 'password'
         ? <Input.Password disabled={disabled} autoComplete="new-password" />
         : <Input type={inputType} disabled={disabled} />;

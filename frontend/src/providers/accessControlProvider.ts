@@ -51,6 +51,10 @@ const requiredPermission = (resource: string, action: string) => {
 export const accessControlProvider: AccessControlProvider = {
   can: async ({ resource, action }) => {
     try {
+      if (!resource || !action) {
+        return { can: false, reason: 'Resource and action are required.' };
+      }
+
       const permission = requiredPermission(resource, action);
       if (permission === undefined) {
         await getCurrentUser();
@@ -61,10 +65,10 @@ export const accessControlProvider: AccessControlProvider = {
       }
 
       const user = await getCurrentUser();
-      return {
-        can: user.authorities.includes(permission),
-        reason: user.authorities.includes(permission) ? undefined : `Missing ${permission}`,
-      };
+      const allowed = user.authorities.includes(permission);
+      return allowed
+        ? { can: true }
+        : { can: false, reason: `Missing ${permission}` };
     } catch (error) {
       if (error instanceof ApiError && [401, 403].includes(error.statusCode)) {
         return { can: false, reason: 'Authentication required.' };
