@@ -16,6 +16,7 @@ protected_prefixes=(
   "google_storage_bucket.cloudbuild_source"
   "google_storage_bucket.attachments"
   "google_secret_manager_secret.database_password"
+  "google_secret_manager_secret.platform_admin_password"
 )
 
 plan_json="$(terraform show -json "$PLAN_FILE")"
