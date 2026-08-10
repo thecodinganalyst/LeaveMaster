@@ -8,7 +8,7 @@ The deployment pipeline:
 
 1. A push to the `main` branch (or a manual trigger) fires the **Deploy to Cloud Run** GitHub Actions workflow.
 2. GitHub Actions authenticates to Google Cloud via Workload Identity Federation (no long-lived service account keys).
-3. Terraform provisions all required GCP resources (Artifact Registry, Cloud Build source bucket, Secret Manager secret, Cloud Run service).
+3. Terraform provisions all required GCP resources (Artifact Registry, Cloud Build source bucket, Secret Manager secret, Cloud Run service, and optional Firebase Hosting infrastructure).
 4. Cloud Build builds the Docker image and pushes it to Artifact Registry.
 5. Cloud Run runs the image and reads the database password from Secret Manager at runtime.
 
@@ -22,6 +22,7 @@ The deployment pipeline:
 - [Terraform](https://developer.hashicorp.com/terraform/install) ≥ 1.8 installed locally for the one-time bootstrap steps.
 - [Google Cloud CLI (`gcloud`)](https://cloud.google.com/sdk/docs/install) installed and authenticated locally.
 - An OpenAI Platform API key if you want to enable the optional LeaveMaster AI assistant.
+- Access to the Firebase Console to accept Firebase terms once if Firebase has never been enabled for the Google account/project.
 
 ---
 
@@ -63,6 +64,8 @@ gcloud services enable \
   secretmanager.googleapis.com \
   storage.googleapis.com
 ```
+
+Firebase-specific APIs are enabled in step 2.8 when you are ready to provision the frontend hosting path.
 
 ### 2.3 Create a Terraform state bucket
 
@@ -116,6 +119,8 @@ gcloud storage buckets add-iam-policy-binding "gs://${PROJECT_ID}-tfstate" \
   --member="serviceAccount:${SA_EMAIL}" \
   --role="roles/storage.admin"
 ```
+
+Firebase-specific roles for this same GitHub Actions/Terraform service account are added in step 2.8. Do not add Firebase administration roles to the Cloud Run runtime service account.
 
 ### 2.5 Set up Workload Identity Federation
 
@@ -242,6 +247,67 @@ Expected backend variables are:
 
 > **Important:** The current Terraform Cloud Run resource does not yet manage these assistant-specific environment/secret bindings. A later Terraform deployment can therefore replace a manually updated Cloud Run revision. Until runtime secret/environment management is made declarative under the infrastructure work, re-run the `gcloud run services update` command above after a Terraform deployment if the assistant settings are removed.
 
+### 2.8 Enable Firebase for frontend hosting
+
+Firebase Hosting uses the same existing Google Cloud project. The Terraform added for frontend hosting can create the Firebase project association and Hosting site, but the Google/Firebase account may first need Firebase terms accepted once in the Firebase Console.
+
+Set the project and enable the required APIs:
+
+```bash
+PROJECT_ID=YOUR_PROJECT_ID
+gcloud config set project "${PROJECT_ID}"
+
+gcloud services enable \
+  firebase.googleapis.com \
+  firebasehosting.googleapis.com \
+  serviceusage.googleapis.com \
+  --project="${PROJECT_ID}"
+```
+
+The actual Firebase association can then be managed by Terraform (`google_firebase_project`). If you prefer to initialize it manually instead, install the Firebase CLI and run:
+
+```bash
+npm install -g firebase-tools
+firebase login
+firebase projects:addfirebase
+```
+
+Choose the same existing Google Cloud project when prompted. Do not create a second GCP project for the frontend.
+
+#### Grant Firebase permissions to the deployment service account
+
+The identity that runs Terraform and later deploys Firebase Hosting is the **GitHub Actions/WIF service account**, not the Cloud Run runtime service account.
+
+```bash
+PROJECT_ID=YOUR_PROJECT_ID
+SA_EMAIL="github-actions@${PROJECT_ID}.iam.gserviceaccount.com"
+
+gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+  --member="serviceAccount:${SA_EMAIL}" \
+  --role="roles/firebase.admin"
+
+gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+  --member="serviceAccount:${SA_EMAIL}" \
+  --role="roles/firebasehosting.admin"
+
+gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+  --member="serviceAccount:${SA_EMAIL}" \
+  --role="roles/serviceusage.serviceUsageAdmin"
+```
+
+These roles allow the deployment identity to associate the existing project with Firebase, enable/check required services, create/manage the Hosting site, and later deploy Hosting releases.
+
+> **Do not grant `roles/firebase.admin`, `roles/firebasehosting.admin`, or `roles/serviceusage.serviceUsageAdmin` to `leavemaster-cloud-run@...`.** The Cloud Run service account only runs the backend application and does not need Firebase Hosting administration permissions.
+
+After PR #117 is merged, enable the Terraform Firebase resources through GitHub production environment variables:
+
+```text
+ENABLE_FIREBASE_HOSTING=true
+FRONTEND_ENVIRONMENT=production
+```
+
+Terraform then manages the Firebase project association and Hosting site. The frontend build/deploy workflow is handled separately by the frontend CI/CD work.
+
 ---
 
 ## 3. GitHub — repository configuration
@@ -265,10 +331,12 @@ Go to **Settings → Environments → production → Environment variables** and
 | `TF_STATE_BUCKET` | Name of the Terraform state GCS bucket (e.g. `YOUR_PROJECT_ID-tfstate`) |
 | `WIF_PROVIDER` | Workload Identity provider resource name from step 2.5 |
 | `WIF_SERVICE_ACCOUNT` | `github-actions@YOUR_PROJECT_ID.iam.gserviceaccount.com` |
+| `ENABLE_FIREBASE_HOSTING` | Set to `true` when you want Terraform to provision Firebase Hosting |
+| `FRONTEND_ENVIRONMENT` | Frontend environment name, e.g. `production` |
 
-> All seven variables are required. The workflow will fail if any are missing.
+The original seven variables remain required for the Cloud Run workflow. Firebase variables are only required when enabling the frontend hosting infrastructure.
 
-Do **not** add `OPENAI_API_KEY` as a GitHub repository/environment variable for the running application. Store it in Google Secret Manager as described in step 2.7 so Cloud Run receives it directly at runtime.
+Do **not** add `OPENAI_API_KEY` as a GitHub repository/environment variable for the running application. Store it in Google Secret Manager as described in step 2.7 so Cloud Run receives it directly at runtime. Likewise, do not expose backend credentials through frontend `VITE_*` variables.
 
 ---
 
@@ -278,13 +346,16 @@ Push to `main` (or go to **Actions → Deploy to Cloud Run → Run workflow**) t
 
 1. Authenticate to GCP via Workload Identity Federation.
 2. Run `terraform init` with the remote GCS backend.
-3. Provision the Artifact Registry repository, Cloud Build source bucket, attachments bucket, Cloud Run service account, and Secret Manager secret (via `terraform apply`).
+3. Provision the prerequisite infrastructure without temporarily destroying the existing Cloud Run resources.
 4. Build the Docker image with Cloud Build and push it to Artifact Registry.
-5. Deploy the Cloud Run service.
+5. Generate the full Terraform plan with `deploy_service=true`.
+6. Reject the plan if it would delete or replace protected backend resources.
+7. Apply the safe plan and deploy/update the Cloud Run service.
+8. Provision the Firebase project/Hosting site as part of the same Terraform state when Firebase Hosting is enabled.
 
 After the workflow completes, the **Show service URL** step prints the public HTTPS URL of your Cloud Run service.
 
-If you want the AI assistant enabled, complete step 2.7 after the service exists.
+If you want the AI assistant enabled, complete step 2.7 after the service exists. If you want Firebase Hosting provisioned, complete step 2.8 and set the Firebase production variables before running the deployment.
 
 ---
 
@@ -325,6 +396,9 @@ The Terraform configuration lives in `infra/terraform/`. An example variable fil
 | `database_name` | `postgres` | Database name |
 | `deploy_service` | `false` | Set to `true` to deploy the Cloud Run service |
 | `github_actions_service_account` | *(required)* | Service account email used by GitHub Actions |
+| `enable_firebase_hosting` | `false` | Whether Terraform should associate the project with Firebase and create Hosting |
+| `frontend_environment` | `production` | Environment suffix used for the Hosting site |
+| `firebase_hosting_site_id` | `null` | Optional explicit globally unique Hosting site ID; otherwise Terraform derives one |
 
 ---
 
@@ -337,6 +411,8 @@ The Terraform configuration lives in `infra/terraform/`. An example variable fil
 | GCS bucket (attachments) | Stores leave-application file attachments |
 | Service account `leavemaster-cloud-run` | Identity under which Cloud Run runs |
 | Secret Manager secret `leavemaster-db-password` | Holds the Supabase database password; injected into Cloud Run at runtime |
+| Firebase project association *(optional)* | Enables Firebase services on the existing GCP project |
+| Firebase Hosting site *(optional)* | Hosts the static React/Vite frontend |
 
 The optional `leavemaster-openai-api-key` secret described in step 2.7 is currently created manually and is not yet part of the Terraform resource list.
 
@@ -347,7 +423,10 @@ The optional `leavemaster-openai-api-key` secret described in step 2.7 is curren
 | Symptom | Likely cause | Fix |
 |---------|-------------|-----|
 | Workflow fails at `Authenticate to Google Cloud` | WIF misconfiguration or wrong variable values | Double-check `WIF_PROVIDER` and `WIF_SERVICE_ACCOUNT`; verify the attribute condition matches your `GITHUB_ORG/GITHUB_REPO` |
-| Terraform apply fails with *permission denied* | Service account missing IAM roles | Re-run step 2.4 and ensure all roles are bound |
+| Terraform apply fails with *permission denied* | Service account missing IAM roles | Re-run step 2.4; for Firebase failures also apply the roles in step 2.8 |
+| Firebase Terraform resource fails with permission/API errors | Firebase APIs are disabled or GitHub Actions service account lacks Firebase roles | Enable `firebase.googleapis.com`, `firebasehosting.googleapis.com`, and `serviceusage.googleapis.com`; grant the deployment service account `roles/firebase.admin`, `roles/firebasehosting.admin`, and `roles/serviceusage.serviceUsageAdmin` |
+| Firebase project creation reports terms/setup required | Firebase terms have not yet been accepted for the account/project | Open the Firebase Console once, accept the required terms, then rerun Terraform |
+| Firebase Hosting site already exists | The project/site was previously initialized manually | Import the existing Firebase resources into Terraform as documented in `docs/firebase-hosting.md` rather than creating duplicates |
 | Cloud Run container crashes on startup | Database password secret has no version | Add the secret version (step 2.6) |
 | AI assistant returns unavailable | Assistant is disabled, OpenAI model is not activated, or secret binding is missing | Verify `ASSISTANT_ENABLED=true`, `SPRING_AI_MODEL_CHAT=openai`, and the `OPENAI_API_KEY` Secret Manager binding from step 2.7 |
 | OpenAI authentication fails | API key is invalid, revoked, or an old secret version is active | Add a fresh secret version, ensure `:latest` is used, then deploy a new Cloud Run revision |
