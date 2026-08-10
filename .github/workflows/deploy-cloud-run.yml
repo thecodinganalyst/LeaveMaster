@@ -19,6 +19,8 @@ env:
   TF_INPUT: "false"
   TF_VAR_project_id: ${{ vars.GCP_PROJECT_ID }}
   TF_VAR_region: ${{ vars.GCP_REGION }}
+  TF_VAR_service_name: leavemaster-api
+  TF_VAR_artifact_repository: leavemaster
   TF_VAR_database_host: ${{ vars.SUPABASE_DB_HOST }}
   TF_VAR_database_username: ${{ vars.SUPABASE_DB_USERNAME }}
   TF_VAR_database_name: postgres
@@ -93,12 +95,15 @@ jobs:
             -chdir=infra/terraform \
             output -raw cloudbuild_source_bucket)"
 
-          CONTAINER_IMAGE="$(terraform \
-            -chdir=infra/terraform \
-            output -raw container_image)"
+          # Do not read container_image from Terraform state here. The preceding
+          # targeted apply may leave state-backed outputs stale, while the full
+          # plan below evaluates TF_VAR_image_tag from the current GitHub SHA.
+          CONTAINER_IMAGE="${TF_VAR_region}-docker.pkg.dev/${TF_VAR_project_id}/${TF_VAR_artifact_repository}/${TF_VAR_service_name}:${TF_VAR_image_tag}"
+
+          echo "Building ${CONTAINER_IMAGE}"
 
           gcloud builds submit \
-            --project="${{ vars.GCP_PROJECT_ID }}" \
+            --project="${TF_VAR_project_id}" \
             --gcs-source-staging-dir="gs://${SOURCE_BUCKET}/source" \
             --default-buckets-behavior=regional-user-owned-bucket \
             --tag="${CONTAINER_IMAGE}" \
