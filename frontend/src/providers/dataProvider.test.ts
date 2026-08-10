@@ -3,9 +3,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { apiFetch } from '../api/http.ts';
 import { leaveMasterDataProvider } from './dataProvider.ts';
 
-vi.mock('../api/http.ts', () => ({
-  apiFetch: vi.fn(),
-}));
+vi.mock('../api/http.ts', async () => {
+  const actual = await vi.importActual<typeof import('../api/http.ts')>('../api/http.ts');
+  return { ...actual, apiFetch: vi.fn() };
+});
 
 describe('leaveMasterDataProvider', () => {
   beforeEach(() => {
@@ -46,5 +47,23 @@ describe('leaveMasterDataProvider', () => {
       body: JSON.stringify({ id: 'T1', name: 'Tenant One' }),
     });
     expect(result.data).toMatchObject({ id: 'T1' });
+  });
+
+  it('reports a clear routing error when a list endpoint returns the SPA instead of JSON', async () => {
+    vi.mocked(apiFetch).mockResolvedValue('<!doctype html><html></html>');
+
+    await expect(
+      leaveMasterDataProvider.getList({
+        resource: 'tenants',
+        pagination: { mode: 'off' },
+        sorters: [],
+        filters: [],
+        meta: {},
+      }),
+    ).rejects.toMatchObject({
+      name: 'ApiError',
+      statusCode: 502,
+      message: expect.stringContaining('/tenants'),
+    });
   });
 });
