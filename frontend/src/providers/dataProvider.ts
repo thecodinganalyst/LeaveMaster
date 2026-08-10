@@ -1,6 +1,6 @@
 import type { BaseKey, BaseRecord, CrudFilter, CrudSorting, DataProvider } from '@refinedev/core';
 
-import { apiFetch } from '../api/http.ts';
+import { ApiError, apiFetch } from '../api/http.ts';
 import { env } from '../config/env.ts';
 
 type ProviderParams<K extends keyof DataProvider> = DataProvider[K] extends (...args: infer P) => unknown ? P[0] : never;
@@ -80,7 +80,16 @@ const provider = {
   getApiUrl: () => env.apiUrl,
 
   getList: async ({ resource, pagination, filters = [], sorters = [] }: ProviderParams<'getList'>) => {
-    const records = await apiFetch<BaseRecord[]>(endpointFor(resource));
+    const endpoint = endpointFor(resource);
+    const response = await apiFetch<unknown>(endpoint);
+    if (!Array.isArray(response)) {
+      throw new ApiError(
+        `Expected a JSON array from ${endpoint}, but received an unexpected response. Check the frontend API routing configuration.`,
+        502,
+        response,
+      );
+    }
+    const records = response as BaseRecord[];
     const filtered = records.filter((record) => filters.every((filter) => matchesFilter(record, filter)));
     const sorted = applySorting(filtered, sorters);
 
