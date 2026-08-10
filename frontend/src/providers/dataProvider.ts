@@ -1,9 +1,13 @@
-import type { BaseRecord, CrudFilter, CrudSorting, DataProvider } from '@refinedev/core';
+import type { BaseKey, BaseRecord, CrudFilter, CrudSorting, DataProvider } from '@refinedev/core';
 
 import { apiFetch } from '../api/http.ts';
 import { env } from '../config/env.ts';
 
 type ProviderParams<K extends keyof DataProvider> = DataProvider[K] extends (...args: infer P) => unknown ? P[0] : never;
+type CreateManyInput = { resource: string; variables: unknown[] };
+type DeleteManyInput = { resource: string; ids: BaseKey[] };
+type UpdateManyInput = { resource: string; ids: BaseKey[]; variables: unknown };
+type CustomInput = { url: string; method: string; payload?: unknown; headers?: HeadersInit };
 
 const endpointByResource: Record<string, string> = {
   tenants: '/tenants',
@@ -119,7 +123,7 @@ const provider = {
     return { data: { id } };
   },
 
-  createMany: async ({ resource, variables }: ProviderParams<'createMany'>) => {
+  createMany: async ({ resource, variables }: CreateManyInput) => {
     const data = await Promise.all(
       variables.map((value) =>
         apiFetch<BaseRecord>(endpointFor(resource), {
@@ -131,7 +135,7 @@ const provider = {
     return { data };
   },
 
-  deleteMany: async ({ resource, ids }: ProviderParams<'deleteMany'>) => {
+  deleteMany: async ({ resource, ids }: DeleteManyInput) => {
     await Promise.all(
       ids.map((id) =>
         apiFetch<void>(`${endpointFor(resource)}/${encodeURIComponent(String(id))}`, {
@@ -142,7 +146,7 @@ const provider = {
     return { data: ids };
   },
 
-  updateMany: async ({ resource, ids, variables }: ProviderParams<'updateMany'>) => {
+  updateMany: async ({ resource, ids, variables }: UpdateManyInput) => {
     const data = await Promise.all(
       ids.map((id) =>
         apiFetch<BaseRecord>(`${endpointFor(resource)}/${encodeURIComponent(String(id))}`, {
@@ -154,7 +158,7 @@ const provider = {
     return { data };
   },
 
-  custom: async ({ url, method, payload, headers }: ProviderParams<'custom'>) => {
+  custom: async ({ url, method, payload, headers }: CustomInput) => {
     const init: RequestInit = {
       method: method.toUpperCase(),
       ...(headers ? { headers } : {}),
@@ -164,4 +168,4 @@ const provider = {
   },
 };
 
-export const leaveMasterDataProvider = provider as DataProvider;
+export const leaveMasterDataProvider = provider as unknown as DataProvider;
