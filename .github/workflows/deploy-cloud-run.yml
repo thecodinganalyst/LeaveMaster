@@ -32,6 +32,8 @@ env:
   TF_VAR_database_name: postgres
   TF_VAR_image_tag: ${{ github.sha }}
   TF_VAR_github_actions_service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
+  TF_VAR_enable_platform_admin_password_secret: ${{ vars.ENABLE_PLATFORM_ADMIN_PASSWORD_SECRET || 'false' }}
+  TF_VAR_reset_platform_admin_password: ${{ vars.RESET_PLATFORM_ADMIN_PASSWORD || 'false' }}
   TF_VAR_enable_firebase_hosting: ${{ vars.ENABLE_FIREBASE_HOSTING || 'false' }}
   TF_VAR_frontend_environment: ${{ vars.FRONTEND_ENVIRONMENT || 'production' }}
 
@@ -86,6 +88,8 @@ jobs:
             -target=google_service_account.cloud_run \
             -target=google_secret_manager_secret.database_password \
             -target=google_secret_manager_secret_iam_member.cloud_run_database_password \
+            -target=google_secret_manager_secret.platform_admin_password \
+            -target=google_secret_manager_secret_iam_member.cloud_run_platform_admin_password \
             -target=google_storage_bucket_iam_member.cloud_run_attachments \
             -target=google_storage_bucket_iam_member.github_cloudbuild_source \
             -target=google_project_service.firebase \
