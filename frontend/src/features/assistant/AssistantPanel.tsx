@@ -115,16 +115,19 @@ export const AssistantPanel = ({ onClose }: AssistantPanelProps) => {
 
   const updateAction = (id: string, update: Partial<AssistantActionItem>) => {
     setMessages((current) =>
-      current.map((message) => ({
-        ...message,
-        actions: message.actions?.map((action) => (action.id === id ? { ...action, ...update } : action)),
-      })),
+      current.map((message) => {
+        if (!message.actions) return message;
+        return {
+          ...message,
+          actions: message.actions.map((action) => (action.id === id ? { ...action, ...update } : action)),
+        };
+      }),
     );
   };
 
   const confirm = async (action: AssistantActionItem) => {
     if (!canConfirmAction(action) || !action.confirmationToken) return;
-    updateAction(action.id, { state: 'confirming', error: undefined });
+    updateAction(action.id, { state: 'confirming', error: '' });
     try {
       const response = await confirmAssistantAction(action.confirmationToken);
       updateAction(action.id, {
