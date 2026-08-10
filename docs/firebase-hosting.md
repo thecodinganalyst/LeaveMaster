@@ -15,14 +15,13 @@ Firebase resources use the `google-beta` provider because Firebase Hosting Terra
 
 ## Production variables
 
-Firebase Hosting is intentionally disabled by default so merging infrastructure code does not unexpectedly change an existing environment.
-
 For the GitHub `production` environment, configure:
 
 | Variable | Example | Purpose |
 | --- | --- | --- |
 | `ENABLE_FIREBASE_HOSTING` | `true` | Enables Firebase resources during the production Terraform deployment. |
 | `FRONTEND_ENVIRONMENT` | `production` | Used to derive an environment-specific site ID. |
+| `FIREBASE_HOSTING_SITE` | `leavemaster-production` | Optional explicit Hosting site for frontend deployment. If omitted, CI derives `<GCP_PROJECT_ID>-<FRONTEND_ENVIRONMENT>`. |
 
 By default the Hosting site ID is:
 
@@ -51,7 +50,9 @@ Do not put OpenAI keys, database passwords, OAuth secrets, or other credentials 
 
 ## One-time Firebase prerequisite
 
-The identity running Terraform must have sufficient IAM permissions to enable Firebase services and create Hosting resources. A human user may also need to have accepted the Firebase Terms of Service before Firebase can be added to an existing Google Cloud project.
+The identity running Terraform and the Hosting deployment must have sufficient Firebase/Service Usage IAM permissions. A human user may also need to accept the Firebase Terms of Service before Firebase can be added to an existing Google Cloud project.
+
+The production workflow authenticates with the existing GitHub Actions service account through Workload Identity Federation. It does not use a committed service-account key or legacy `FIREBASE_TOKEN`.
 
 If the Google Cloud project was already added to Firebase outside Terraform, import it before applying rather than attempting to recreate its Terraform state:
 
@@ -97,24 +98,58 @@ terraform output -raw firebase_hosting_default_url
 terraform output -raw frontend_environment
 ```
 
-Issue #118 can consume the project/site outputs when configuring the Firebase CLI deployment workflow.
+The CI workflow uses the equivalent GitHub production environment variables so it does not need Terraform state access just to publish static assets.
 
-## Firebase CLI SPA configuration
+## Frontend CI and production deployment
 
-`frontend/firebase.json` serves `frontend/dist`, rewrites unknown routes to `index.html` for React Router, gives hashed JS/CSS assets long-lived immutable caching, and keeps `index.html` uncached so new releases are discovered promptly.
+`.github/workflows/frontend-quality.yml` is the frontend quality and Firebase Hosting workflow.
 
-The Hosting site is environment-specific, so deployment automation should bind a target at runtime rather than committing a production project mapping. A CI job can run from `frontend/`:
+For pull requests that touch `frontend/**`, it runs:
 
-```bash
-firebase target:apply hosting leavemaster "$FIREBASE_HOSTING_SITE_ID" \
-  --project "$FIREBASE_PROJECT_ID"
-
-firebase deploy \
-  --only hosting:leavemaster \
-  --project "$FIREBASE_PROJECT_ID"
+```text
+npm ci
+npm run lint
+npm run typecheck
+npm test
+npm run coverage
+npm run build
 ```
 
-The broader build/deploy workflow is intentionally left to issue #118.
+Coverage and `frontend/dist` are uploaded as GitHub Actions artifacts. Pull requests do not deploy production.
+
+For a push to `main` that changes the frontend (or a manual workflow dispatch), the production deployment job runs only after the quality job succeeds. It:
+
+1. downloads the exact `frontend/dist` artifact produced by the successful quality job;
+2. authenticates to Google Cloud with the existing WIF service account;
+3. installs the pinned Firebase CLI;
+4. injects the environment-specific Hosting site ID into a temporary `firebase.ci.json`; and
+5. runs `firebase deploy --only hosting` against the production project/site.
+
+Firebase CLI uses Application Default Credentials exported by `google-github-actions/auth`, so no long-lived Firebase token or service-account JSON key is needed.
+
+Production deploys use the `production` GitHub environment and a dedicated concurrency group so overlapping live Hosting releases do not run at the same time.
+
+## Same-origin Cloud Run API
+
+`frontend/firebase.json` serves `frontend/dist` and sends backend routes to the existing `leavemaster-api` Cloud Run service in `asia-southeast1` before the React Router fallback:
+
+```text
+/api/**   -> Cloud Run
+/auth/**  -> Cloud Run
+/login    -> Cloud Run
+/logout   -> Cloud Run
+**        -> /index.html
+```
+
+This lets the production browser use the Firebase Hosting origin for application API/session requests. `frontend/src/config/env.ts` therefore defaults to an empty API base in production and continues to use `http://localhost:8080` during local development. `VITE_API_URL` remains available as an explicit non-secret override.
+
+The Cloud Run rewrite also avoids embedding the Cloud Run URL or any credentials in the static bundle. OpenAI credentials remain backend-only.
+
+## Path-aware monorepo workflows
+
+Frontend-only changes do not trigger Java CI or Cloud Run deployment. Backend Java CI is scoped to `backend/**`; Cloud Run deployment is scoped to backend/infrastructure/container workflow changes. Frontend CI/deployment is scoped to `frontend/**` and its workflow file.
+
+Infrastructure changes continue to be validated by the Terraform workflow and can still trigger Cloud Run/Terraform deployment when merged to `main`.
 
 ## Existing Cloud Run deployment safety
 
