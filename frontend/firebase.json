@@ -23,6 +23,20 @@
         }
       },
       {
+        "source": "/oauth2/**",
+        "run": {
+          "serviceId": "leavemaster-api",
+          "region": "asia-southeast1"
+        }
+      },
+      {
+        "source": "/login/oauth2/**",
+        "run": {
+          "serviceId": "leavemaster-api",
+          "region": "asia-southeast1"
+        }
+      },
+      {
         "source": "/login",
         "run": {
           "serviceId": "leavemaster-api",

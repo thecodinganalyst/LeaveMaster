@@ -4,9 +4,11 @@ import com.practical.leavemaster.rbac.RbacPermissions;
 import com.practical.leavemaster.user.AppUserRepository;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -18,6 +20,12 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.Arrays;
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -29,9 +37,13 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(
         HttpSecurity http,
         ObjectProvider<ClientRegistrationRepository> clientRegistrationRepositoryProvider,
-        AppUserRepository appUserRepository
+        AppUserRepository appUserRepository,
+        @Value("${app.public-url:http://localhost:5173}") String publicAppUrl
     ) throws Exception {
+        String normalizedPublicAppUrl = stripTrailingSlash(publicAppUrl);
+
         http
+            .cors(Customizer.withDefaults())
             .csrf(csrf -> csrf
                 .ignoringRequestMatchers("/mcp/**"))
             .sessionManagement(session -> session
@@ -113,13 +125,54 @@ public class SecurityConfig {
                 .userInfoEndpoint(userInfo -> userInfo
                     .userService(existingUserOnlyOAuth2UserService))
                 .successHandler((request, response, authentication) ->
-                    response.setStatus(HttpServletResponse.SC_OK))
+                    response.sendRedirect(normalizedPublicAppUrl + "/"))
                 .failureHandler((request, response, exception) ->
-                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED))
+                    response.sendRedirect(normalizedPublicAppUrl + "/login?oauthError=true"))
             );
         }
 
         return http.build();
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource(
+        @Value("${app.cors.allowed-origins:http://localhost:5173}") String configuredOrigins
+    ) {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(parseAllowedOrigins(configuredOrigins));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of(
+            HttpHeaders.ACCEPT,
+            HttpHeaders.CONTENT_TYPE,
+            HttpHeaders.AUTHORIZATION,
+            "X-XSRF-TOKEN",
+            "X-CSRF-TOKEN"
+        ));
+        configuration.setAllowCredentials(true);
+        configuration.setMaxAge(3600L);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
+
+    static List<String> parseAllowedOrigins(String configuredOrigins) {
+        if (configuredOrigins == null || configuredOrigins.isBlank()) {
+            return List.of();
+        }
+        return Arrays.stream(configuredOrigins.split(","))
+            .map(String::trim)
+            .filter(origin -> !origin.isBlank())
+            .distinct()
+            .toList();
+    }
+
+    private static String stripTrailingSlash(String value) {
+        String normalized = value.trim();
+        while (normalized.endsWith("/")) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+        return normalized;
     }
 
     @Bean
