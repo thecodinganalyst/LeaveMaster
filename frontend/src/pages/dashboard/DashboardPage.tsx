@@ -108,7 +108,7 @@ export const DashboardPage = () => {
                   title={tenant.name || tenant.id}
                   description={`ID: ${tenant.id}${tenant.startDate ? ` · Starts ${tenant.startDate}` : ''}${tenant.endDate ? ` · Ends ${tenant.endDate}` : ''}`}
                 />
-                <Tag color={tenantStatusColor[tenant.status ?? '']}>{tenant.status ?? 'UNKNOWN'}</Tag>
+                <Tag color={tenantStatusColor[tenant.status ?? ''] ?? 'default'}>{tenant.status ?? 'UNKNOWN'}</Tag>
               </List.Item>
             )}
           />
