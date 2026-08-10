@@ -48,10 +48,14 @@ class PlatformAdminInitializerTest {
                 .description("Platform administrator – manages tenants").active(true).build();
     }
 
+    private AppPermission permission(String code) {
+        return AppPermission.builder().code(code).description(code).build();
+    }
+
     @Test
     void shouldCreatePlatformAdminRoleWhenItDoesNotExist() throws Exception {
-        AppPermission tenantRead = AppPermission.builder().code(RbacPermissions.TENANT_READ).description("Read tenants").build();
-        AppPermission tenantWrite = AppPermission.builder().code(RbacPermissions.TENANT_WRITE).description("Write tenants").build();
+        AppPermission tenantRead = permission(RbacPermissions.TENANT_READ);
+        AppPermission tenantWrite = permission(RbacPermissions.TENANT_WRITE);
         AppRole savedRole = AppRole.builder().id(PlatformAdminInitializer.PLATFORM_ADMIN_ROLE_ID)
                 .description("Platform administrator – manages tenants").active(true)
                 .permissions(Set.of(tenantRead, tenantWrite)).build();
@@ -69,6 +73,38 @@ class PlatformAdminInitializerTest {
         verify(appRoleRepository).save(roleCaptor.capture());
         assertThat(roleCaptor.getValue().getId()).isEqualTo(PlatformAdminInitializer.PLATFORM_ADMIN_ROLE_ID);
         assertThat(roleCaptor.getValue().isActive()).isTrue();
+        assertThat(roleCaptor.getValue().getPermissions())
+                .extracting(AppPermission::getCode)
+                .containsExactlyInAnyOrder(RbacPermissions.TENANT_READ, RbacPermissions.TENANT_WRITE);
+    }
+
+    @Test
+    void shouldReconcileExistingPlatformAdminRoleWithoutRemovingExtraPermissions() throws Exception {
+        AppPermission tenantRead = permission(RbacPermissions.TENANT_READ);
+        AppPermission tenantWrite = permission(RbacPermissions.TENANT_WRITE);
+        AppPermission extra = permission(RbacPermissions.USER_READ);
+        AppRole staleRole = AppRole.builder()
+                .id(PlatformAdminInitializer.PLATFORM_ADMIN_ROLE_ID)
+                .description("Platform administrator – manages tenants")
+                .active(false)
+                .permissions(Set.of(extra))
+                .build();
+        AppUser admin = AppUser.builder().loginName(PlatformAdminInitializer.PLATFORM_ADMIN_LOGIN_NAME)
+                .password("old-hash").active(true).roles(Set.of(staleRole)).build();
+        when(appRoleRepository.findById(PlatformAdminInitializer.PLATFORM_ADMIN_ROLE_ID)).thenReturn(Optional.of(staleRole));
+        when(appPermissionRepository.findAllById(anyCollection())).thenReturn(List.of(tenantRead, tenantWrite));
+        when(appRoleRepository.save(staleRole)).thenReturn(staleRole);
+        when(appUserRepository.findById(PlatformAdminInitializer.PLATFORM_ADMIN_LOGIN_NAME)).thenReturn(Optional.of(admin));
+        when(appUserRepository.findAll()).thenReturn(List.of(admin));
+
+        initializer.run(applicationArguments);
+
+        assertThat(staleRole.isActive()).isTrue();
+        assertThat(staleRole.getPermissions())
+                .extracting(AppPermission::getCode)
+                .containsExactlyInAnyOrder(RbacPermissions.TENANT_READ, RbacPermissions.TENANT_WRITE, RbacPermissions.USER_READ);
+        verify(appRoleRepository).save(staleRole);
+        verify(passwordEncoder, never()).encode(anyString());
     }
 
     @Test
