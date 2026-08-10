@@ -24,6 +24,8 @@ env:
   TF_VAR_database_name: postgres
   TF_VAR_image_tag: ${{ github.sha }}
   TF_VAR_github_actions_service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
+  TF_VAR_enable_firebase_hosting: ${{ vars.ENABLE_FIREBASE_HOSTING || 'false' }}
+  TF_VAR_frontend_environment: ${{ vars.FRONTEND_ENVIRONMENT || 'production' }}
 
 jobs:
   deploy:
@@ -65,11 +67,22 @@ jobs:
         working-directory: infra/terraform
         run: terraform validate
 
-      - name: Provision build dependencies
+      - name: Provision build and hosting prerequisites
         working-directory: infra/terraform
         run: |
           terraform apply -auto-approve \
-            -var="deploy_service=false"
+            -target=google_project_service.required \
+            -target=google_storage_bucket.cloudbuild_source \
+            -target=google_storage_bucket.attachments \
+            -target=google_artifact_registry_repository.docker \
+            -target=google_service_account.cloud_run \
+            -target=google_secret_manager_secret.database_password \
+            -target=google_secret_manager_secret_iam_member.cloud_run_database_password \
+            -target=google_storage_bucket_iam_member.cloud_run_attachments \
+            -target=google_storage_bucket_iam_member.github_cloudbuild_source \
+            -target=google_project_service.firebase \
+            -target=google_firebase_project.frontend \
+            -target=google_firebase_hosting_site.frontend
 
       - name: Build backend artifact
         run: chmod +x ./backend/gradlew && ./backend/gradlew bootJar
@@ -97,6 +110,12 @@ jobs:
           terraform plan \
             -var="deploy_service=true" \
             -out=tfplan
+
+      - name: Protect existing backend infrastructure
+        working-directory: infra/terraform
+        run: |
+          chmod +x ./check-protected-plan.sh
+          ./check-protected-plan.sh tfplan
 
       - name: Terraform apply
         working-directory: infra/terraform

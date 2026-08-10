@@ -13,6 +13,17 @@ locals {
     "storage.googleapis.com"
   ])
 
+  firebase_required_apis = toset([
+    "firebase.googleapis.com",
+    "firebasehosting.googleapis.com",
+    "serviceusage.googleapis.com"
+  ])
+
+  frontend_hosting_site_id = coalesce(
+    var.firebase_hosting_site_id,
+    "${var.project_id}-${var.frontend_environment}"
+  )
+
   attachment_bucket_name = "${var.project_id}-leavemaster-attachments-${data.google_project.current.number}"
 }
 
@@ -26,6 +37,33 @@ resource "google_project_service" "required" {
   project            = var.project_id
   service            = each.value
   disable_on_destroy = false
+}
+
+resource "google_project_service" "firebase" {
+  for_each = var.enable_firebase_hosting ? local.firebase_required_apis : toset([])
+
+  project            = var.project_id
+  service            = each.value
+  disable_on_destroy = false
+}
+
+resource "google_firebase_project" "frontend" {
+  count = var.enable_firebase_hosting ? 1 : 0
+
+  provider = google-beta
+  project  = var.project_id
+
+  depends_on = [google_project_service.firebase]
+}
+
+resource "google_firebase_hosting_site" "frontend" {
+  count = var.enable_firebase_hosting ? 1 : 0
+
+  provider = google-beta
+  project  = google_firebase_project.frontend[0].project
+  site_id  = local.frontend_hosting_site_id
+
+  depends_on = [google_project_service.firebase]
 }
 
 resource "google_storage_bucket" "cloudbuild_source" {
@@ -187,4 +225,3 @@ resource "google_cloud_run_v2_service_iam_member" "public" {
   role     = "roles/run.invoker"
   member   = "allUsers"
 }
-
