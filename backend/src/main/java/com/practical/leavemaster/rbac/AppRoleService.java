@@ -46,7 +46,9 @@ public class AppRoleService {
         if (request.getId() == null || request.getId().isBlank()) {
             throw new IllegalArgumentException("Role id must not be blank");
         }
-        rejectPlatformAdmin(request.getId());
+        if (isPlatformAdmin(request.getId())) {
+            throw new IllegalArgumentException("Role id is reserved");
+        }
         if (request.getDescription() == null || request.getDescription().isBlank()) {
             throw new IllegalArgumentException("Role description must not be blank");
         }
