@@ -33,6 +33,46 @@ describe('leaveMasterDataProvider', () => {
     expect(result.data.map((record) => record.id)).toEqual(['1', '2']);
   });
 
+  it('hides PLATFORM_ADMIN from role lists', async () => {
+    vi.mocked(apiFetch).mockResolvedValue([
+      { id: 'PLATFORM_ADMIN', description: 'Internal platform role' },
+      { id: 'TENANT_ADMIN', description: 'Tenant admin' },
+    ]);
+
+    const result = await leaveMasterDataProvider.getList({
+      resource: 'roles',
+      pagination: { mode: 'off' },
+      sorters: [],
+      filters: [],
+      meta: {},
+    });
+
+    expect(result.total).toBe(1);
+    expect(result.data.map((record) => record.id)).toEqual(['TENANT_ADMIN']);
+  });
+
+  it('blocks direct PLATFORM_ADMIN role navigation without calling the API', async () => {
+    await expect(
+      leaveMasterDataProvider.getOne({ resource: 'roles', id: 'PLATFORM_ADMIN', meta: {} }),
+    ).rejects.toMatchObject({ statusCode: 404 });
+
+    expect(apiFetch).not.toHaveBeenCalled();
+  });
+
+  it('blocks PLATFORM_ADMIN role creation and mutation without calling the API', async () => {
+    await expect(
+      leaveMasterDataProvider.create({ resource: 'roles', variables: { id: 'PLATFORM_ADMIN' }, meta: {} }),
+    ).rejects.toMatchObject({ statusCode: 404 });
+    await expect(
+      leaveMasterDataProvider.update({ resource: 'roles', id: 'PLATFORM_ADMIN', variables: { active: false }, meta: {} }),
+    ).rejects.toMatchObject({ statusCode: 404 });
+    await expect(
+      leaveMasterDataProvider.deleteOne({ resource: 'roles', id: 'PLATFORM_ADMIN', meta: {} }),
+    ).rejects.toMatchObject({ statusCode: 404 });
+
+    expect(apiFetch).not.toHaveBeenCalled();
+  });
+
   it('uses JSON write requests for normal CRUD resources', async () => {
     vi.mocked(apiFetch).mockResolvedValue({ id: 'T1', name: 'Tenant One' });
 
