@@ -9,6 +9,8 @@ type DeleteManyInput = { resource: string; ids: BaseKey[] };
 type UpdateManyInput = { resource: string; ids: BaseKey[]; variables: unknown };
 type CustomInput = { url: string; method: string; payload?: unknown; headers?: HeadersInit };
 
+const PLATFORM_ADMIN_ROLE_ID = 'PLATFORM_ADMIN';
+
 const endpointByResource: Record<string, string> = {
   tenants: '/tenants',
   users: '/users',
@@ -24,6 +26,19 @@ const endpointByResource: Record<string, string> = {
 };
 
 const endpointFor = (resource: string) => endpointByResource[resource] ?? `/${resource}`;
+
+const isPlatformAdminRoleId = (id: unknown) => String(id ?? '').trim().toUpperCase() === PLATFORM_ADMIN_ROLE_ID;
+
+const assertManageableRole = (resource: string, id: unknown) => {
+  if (resource === 'roles' && isPlatformAdminRoleId(id)) {
+    throw new ApiError('Role not found', 404);
+  }
+};
+
+const roleIdFromVariables = (variables: unknown) => {
+  if (!variables || typeof variables !== 'object') return undefined;
+  return (variables as Record<string, unknown>).id;
+};
 
 const compare = (left: unknown, right: unknown) => String(left ?? '').localeCompare(String(right ?? ''), undefined, { numeric: true });
 
@@ -89,7 +104,9 @@ const provider = {
         response,
       );
     }
-    const records = response as BaseRecord[];
+    const records = (response as BaseRecord[]).filter(
+      (record) => resource !== 'roles' || !isPlatformAdminRoleId(record.id),
+    );
     const filtered = records.filter((record) => filters.every((filter) => matchesFilter(record, filter)));
     const sorted = applySorting(filtered, sorters);
 
@@ -107,25 +124,33 @@ const provider = {
     };
   },
 
-  getOne: async ({ resource, id }: ProviderParams<'getOne'>) => ({
-    data: await apiFetch<BaseRecord>(`${endpointFor(resource)}/${encodeURIComponent(String(id))}`),
-  }),
+  getOne: async ({ resource, id }: ProviderParams<'getOne'>) => {
+    assertManageableRole(resource, id);
+    return { data: await apiFetch<BaseRecord>(`${endpointFor(resource)}/${encodeURIComponent(String(id))}`) };
+  },
 
-  create: async ({ resource, variables }: ProviderParams<'create'>) => ({
-    data: await apiFetch<BaseRecord>(endpointFor(resource), {
-      method: 'POST',
-      body: JSON.stringify(variables),
-    }),
-  }),
+  create: async ({ resource, variables }: ProviderParams<'create'>) => {
+    assertManageableRole(resource, roleIdFromVariables(variables));
+    return {
+      data: await apiFetch<BaseRecord>(endpointFor(resource), {
+        method: 'POST',
+        body: JSON.stringify(variables),
+      }),
+    };
+  },
 
-  update: async ({ resource, id, variables }: ProviderParams<'update'>) => ({
-    data: await apiFetch<BaseRecord>(`${endpointFor(resource)}/${encodeURIComponent(String(id))}`, {
-      method: 'PUT',
-      body: JSON.stringify(variables),
-    }),
-  }),
+  update: async ({ resource, id, variables }: ProviderParams<'update'>) => {
+    assertManageableRole(resource, id);
+    return {
+      data: await apiFetch<BaseRecord>(`${endpointFor(resource)}/${encodeURIComponent(String(id))}`, {
+        method: 'PUT',
+        body: JSON.stringify(variables),
+      }),
+    };
+  },
 
   deleteOne: async ({ resource, id }: ProviderParams<'deleteOne'>) => {
+    assertManageableRole(resource, id);
     await apiFetch<void>(`${endpointFor(resource)}/${encodeURIComponent(String(id))}`, {
       method: 'DELETE',
     });
@@ -133,6 +158,7 @@ const provider = {
   },
 
   createMany: async ({ resource, variables }: CreateManyInput) => {
+    variables.forEach((value) => assertManageableRole(resource, roleIdFromVariables(value)));
     const data = await Promise.all(
       variables.map((value) =>
         apiFetch<BaseRecord>(endpointFor(resource), {
@@ -145,6 +171,7 @@ const provider = {
   },
 
   deleteMany: async ({ resource, ids }: DeleteManyInput) => {
+    ids.forEach((id) => assertManageableRole(resource, id));
     await Promise.all(
       ids.map((id) =>
         apiFetch<void>(`${endpointFor(resource)}/${encodeURIComponent(String(id))}`, {
@@ -156,6 +183,7 @@ const provider = {
   },
 
   updateMany: async ({ resource, ids, variables }: UpdateManyInput) => {
+    ids.forEach((id) => assertManageableRole(resource, id));
     const data = await Promise.all(
       ids.map((id) =>
         apiFetch<BaseRecord>(`${endpointFor(resource)}/${encodeURIComponent(String(id))}`, {

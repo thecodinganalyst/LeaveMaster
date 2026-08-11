@@ -16,16 +16,18 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class AppRoleService {
 
+    static final String PLATFORM_ADMIN_ROLE_ID = "PLATFORM_ADMIN";
+
     private final AppRoleRepository appRoleRepository;
     private final AppPermissionRepository appPermissionRepository;
     private final AppUserRepository appUserRepository;
 
     public List<AppRole> findAll() {
-        return appRoleRepository.findAll();
+        return hidePlatformAdmin(appRoleRepository.findAll());
     }
 
     public List<AppRole> findByTenantId(String tenantId) {
-        return appRoleRepository.findAllByTenantId(tenantId);
+        return hidePlatformAdmin(appRoleRepository.findAllByTenantId(tenantId));
     }
 
     public List<AppPermission> findAllPermissions() {
@@ -33,6 +35,9 @@ public class AppRoleService {
     }
 
     public Optional<AppRole> findById(String roleId) {
+        if (isPlatformAdmin(roleId)) {
+            return Optional.empty();
+        }
         return appRoleRepository.findById(roleId);
     }
 
@@ -40,6 +45,9 @@ public class AppRoleService {
     public AppRole create(RoleRequest request) {
         if (request.getId() == null || request.getId().isBlank()) {
             throw new IllegalArgumentException("Role id must not be blank");
+        }
+        if (isPlatformAdmin(request.getId())) {
+            throw new IllegalArgumentException("Role id is reserved");
         }
         if (request.getDescription() == null || request.getDescription().isBlank()) {
             throw new IllegalArgumentException("Role description must not be blank");
@@ -60,8 +68,7 @@ public class AppRoleService {
 
     @Transactional
     public AppRole update(String roleId, RoleRequest request) {
-        AppRole role = appRoleRepository.findById(roleId)
-                .orElseThrow(() -> new RoleNotFoundException(roleId));
+        AppRole role = findManageableRole(roleId);
 
         if (request.getDescription() == null || request.getDescription().isBlank()) {
             throw new IllegalArgumentException("Role description must not be blank");
@@ -75,24 +82,21 @@ public class AppRoleService {
 
     @Transactional
     public AppRole disable(String roleId) {
-        AppRole role = appRoleRepository.findById(roleId)
-                .orElseThrow(() -> new RoleNotFoundException(roleId));
+        AppRole role = findManageableRole(roleId);
         role.setActive(false);
         return appRoleRepository.save(role);
     }
 
     @Transactional
     public AppRole enable(String roleId) {
-        AppRole role = appRoleRepository.findById(roleId)
-                .orElseThrow(() -> new RoleNotFoundException(roleId));
+        AppRole role = findManageableRole(roleId);
         role.setActive(true);
         return appRoleRepository.save(role);
     }
 
     @Transactional
     public AppUser addUserToRole(String roleId, String loginName) {
-        AppRole role = appRoleRepository.findById(roleId)
-                .orElseThrow(() -> new RoleNotFoundException(roleId));
+        AppRole role = findManageableRole(roleId);
         if (!role.isActive()) {
             throw new RoleDisabledException(roleId);
         }
@@ -105,13 +109,34 @@ public class AppRoleService {
 
     @Transactional
     public AppUser removeUserFromRole(String roleId, String loginName) {
-        AppRole role = appRoleRepository.findById(roleId)
-                .orElseThrow(() -> new RoleNotFoundException(roleId));
+        AppRole role = findManageableRole(roleId);
 
         AppUser user = appUserRepository.findById(loginName)
                 .orElseThrow(() -> new AppUserNotFoundException(loginName));
         user.getRoles().removeIf(r -> r.getId().equals(role.getId()));
         return appUserRepository.save(user);
+    }
+
+    private AppRole findManageableRole(String roleId) {
+        rejectPlatformAdmin(roleId);
+        return appRoleRepository.findById(roleId)
+                .orElseThrow(() -> new RoleNotFoundException(roleId));
+    }
+
+    private List<AppRole> hidePlatformAdmin(List<AppRole> roles) {
+        return roles.stream()
+                .filter(role -> !isPlatformAdmin(role.getId()))
+                .toList();
+    }
+
+    private void rejectPlatformAdmin(String roleId) {
+        if (isPlatformAdmin(roleId)) {
+            throw new RoleNotFoundException(roleId);
+        }
+    }
+
+    private boolean isPlatformAdmin(String roleId) {
+        return roleId != null && PLATFORM_ADMIN_ROLE_ID.equalsIgnoreCase(roleId.trim());
     }
 
     private Set<AppPermission> resolvePermissions(Set<String> permissionCodes) {
