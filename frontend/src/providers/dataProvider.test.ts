@@ -49,6 +49,42 @@ describe('leaveMasterDataProvider', () => {
     expect(result.data).toMatchObject({ id: 'T1' });
   });
 
+  it('matches the backend tenant read, update and delete contracts', async () => {
+    vi.mocked(apiFetch)
+      .mockResolvedValueOnce({ id: 'Tenant A', name: 'Tenant A' })
+      .mockResolvedValueOnce({ id: 'Tenant A', name: 'Tenant A Updated' })
+      .mockResolvedValueOnce(undefined);
+
+    const read = await leaveMasterDataProvider.getOne({
+      resource: 'tenants',
+      id: 'Tenant A',
+      meta: {},
+    });
+    const updated = await leaveMasterDataProvider.update({
+      resource: 'tenants',
+      id: 'Tenant A',
+      variables: { name: 'Tenant A Updated' },
+      meta: {},
+    });
+    const deleted = await leaveMasterDataProvider.deleteOne({
+      resource: 'tenants',
+      id: 'Tenant A',
+      meta: {},
+    });
+
+    expect(apiFetch).toHaveBeenNthCalledWith(1, '/tenants/Tenant%20A');
+    expect(apiFetch).toHaveBeenNthCalledWith(2, '/tenants/Tenant%20A', {
+      method: 'PUT',
+      body: JSON.stringify({ name: 'Tenant A Updated' }),
+    });
+    expect(apiFetch).toHaveBeenNthCalledWith(3, '/tenants/Tenant%20A', {
+      method: 'DELETE',
+    });
+    expect(read.data).toMatchObject({ id: 'Tenant A' });
+    expect(updated.data).toMatchObject({ name: 'Tenant A Updated' });
+    expect(deleted.data).toEqual({ id: 'Tenant A' });
+  });
+
   it('reports a clear routing error when a list endpoint returns the SPA instead of JSON', async () => {
     vi.mocked(apiFetch).mockResolvedValue('<!doctype html><html></html>');
 
