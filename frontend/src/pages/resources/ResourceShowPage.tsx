@@ -33,7 +33,7 @@ export const ResourceShowPage = () => {
         extra={canEdit?.can && config.editable !== false ? <Button type="primary"><Link to={`/${config.name}/edit/${encodeURIComponent(id)}`}>Edit</Link></Button> : undefined}
       />
       <Card>
-        <Descriptions bordered column={{ xs: 1, sm: 1, md: 2 }}>
+        <Descriptions bordered column={1}>
           {config.fields.filter((field) => field.type !== 'password' && !field.hidden).map((field) => (
             <Descriptions.Item key={field.name} label={field.label}>
               <span style={{ whiteSpace: field.type === 'json' ? 'pre-wrap' : 'normal' }}>{displayValue(record[field.name])}</span>
