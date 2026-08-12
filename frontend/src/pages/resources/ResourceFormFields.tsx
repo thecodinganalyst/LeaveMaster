@@ -1,14 +1,16 @@
 import { Form, Input, Select, Switch } from 'antd';
 
 import type { AdminResourceConfig } from './adminResourceConfig.ts';
+import { getCountryOptions } from './countries.ts';
 import { RolePermissionCheckboxList } from './RolePermissionCheckboxList.tsx';
 
 interface Props {
   config: AdminResourceConfig;
   editing?: boolean;
+  preferredCountry?: string | null;
 }
 
-export const ResourceFormFields = ({ config, editing = false }: Props) => (
+export const ResourceFormFields = ({ config, editing = false, preferredCountry }: Props) => (
   <>
     {config.fields.filter((field) => !field.hidden).map((field) => {
       const required = field.required || (!editing && field.requiredOnCreate);
@@ -27,6 +29,20 @@ export const ResourceFormFields = ({ config, editing = false }: Props) => (
         return (
           <Form.Item key={field.name} name={field.name} label={field.label} rules={rules}>
             <Select options={field.options ?? []} disabled={disabled} />
+          </Form.Item>
+        );
+      }
+
+      if (field.type === 'country') {
+        return (
+          <Form.Item key={field.name} name={field.name} label={field.label} rules={rules}>
+            <Select
+              options={getCountryOptions(preferredCountry)}
+              disabled={disabled}
+              showSearch
+              optionFilterProp="label"
+              placeholder="Select a country"
+            />
           </Form.Item>
         );
       }
