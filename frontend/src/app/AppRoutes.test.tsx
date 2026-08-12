@@ -67,7 +67,7 @@ const LocationProbe = () => {
   );
 };
 
-const renderRoutes = (initialPath: string, authenticated: boolean) => {
+const renderRoutes = (initialPath: string, authenticated: boolean, checkOverride?: AuthBindings['check']) => {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false },
@@ -78,10 +78,12 @@ const renderRoutes = (initialPath: string, authenticated: boolean) => {
   const authProvider: AuthBindings = {
     login: async () => ({ success: true, redirectTo: '/' }),
     logout: async () => ({ success: true, redirectTo: '/login' }),
-    check: async () =>
-      authenticated
-        ? { authenticated: true }
-        : { authenticated: false, redirectTo: '/login' },
+    check:
+      checkOverride ??
+      (async () =>
+        authenticated
+          ? { authenticated: true }
+          : { authenticated: false, redirectTo: '/login' }),
     onError: async (error) => ({ error }),
     getIdentity: async () => null,
   };
@@ -103,6 +105,16 @@ const renderRoutes = (initialPath: string, authenticated: boolean) => {
 };
 
 describe('AppRoutes authentication guard', () => {
+  it('shows a visible loading state while direct-route authentication is being checked', async () => {
+    const pendingCheck: NonNullable<AuthBindings['check']> = () => new Promise<never>(() => {});
+
+    renderRoutes('/roles/show/TENANT_ADMIN_corpsys', false, pendingCheck);
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Checking your session…');
+    expect(screen.getByTestId('location-path')).toHaveTextContent('/roles/show/TENANT_ADMIN_corpsys');
+    expect(screen.queryByText('Login page')).not.toBeInTheDocument();
+  });
+
   it('redirects direct unauthenticated access to a protected screen to login', async () => {
     renderRoutes('/leave-requests/show/42', false);
 
