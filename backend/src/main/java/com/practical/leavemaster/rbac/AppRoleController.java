@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/roles")
+@RequestMapping({"/roles", "/api/roles"})
 @RequiredArgsConstructor
 public class AppRoleController {
 
