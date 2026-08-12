@@ -1,5 +1,6 @@
 import { useLogin } from '@refinedev/core';
 import { Button, Card, Form, Input, Space, Typography } from 'antd';
+import { useSearchParams } from 'react-router-dom';
 
 interface LoginFormValues {
   loginName: string;
@@ -8,6 +9,8 @@ interface LoginFormValues {
 
 export const LoginPage = () => {
   const { mutate: login, isPending } = useLogin();
+  const [searchParams] = useSearchParams();
+  const redirectPath = searchParams.get('to') ?? '/';
 
   return (
     <div className="login-page">
@@ -23,7 +26,7 @@ export const LoginPage = () => {
           <Form<LoginFormValues>
             layout="vertical"
             onFinish={({ loginName, password }) => {
-              login({ loginName, password });
+              login({ loginName, password, redirectPath });
             }}
           >
             <Form.Item label="Login name" name="loginName" rules={[{ required: true }]}> 
