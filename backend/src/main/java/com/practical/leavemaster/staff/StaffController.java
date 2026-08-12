@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/staff")
+@RequestMapping({"/staff", "/api/staff"})
 @RequiredArgsConstructor
 public class StaffController {
 

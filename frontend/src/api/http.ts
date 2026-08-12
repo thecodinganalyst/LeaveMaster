@@ -105,7 +105,7 @@ export const apiFetch = async <T>(path: string, init: RequestInit = {}): Promise
 export const loginWithSession = async (loginName: string, password: string) => {
   const csrf = await getCsrfToken();
   const form = new URLSearchParams({ username: loginName, password });
-  const response = await fetch(buildUrl('/login'), {
+  const response = await fetch(buildUrl('/auth/login'), {
     method: 'POST',
     credentials: 'include',
     headers: {

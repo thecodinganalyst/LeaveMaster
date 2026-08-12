@@ -12,20 +12,20 @@ type CustomInput = { url: string; method: string; payload?: unknown; headers?: H
 const PLATFORM_ADMIN_ROLE_ID = 'PLATFORM_ADMIN';
 
 const endpointByResource: Record<string, string> = {
-  tenants: '/tenants',
-  users: '/users',
-  roles: '/roles',
-  employees: '/staff',
-  staff: '/staff',
-  locations: '/locations',
-  'leave-types': '/leave-types',
-  'leave-approvers': '/leave-approvers',
-  'leave-calendars': '/leave-calendars',
+  tenants: '/api/tenants',
+  users: '/api/users',
+  roles: '/api/roles',
+  employees: '/api/staff',
+  staff: '/api/staff',
+  locations: '/api/locations',
+  'leave-types': '/api/leave-types',
+  'leave-approvers': '/api/leave-approvers',
+  'leave-calendars': '/api/leave-calendars',
   'leave-requests': '/leave-applications',
   'leave-applications': '/leave-applications',
 };
 
-const endpointFor = (resource: string) => endpointByResource[resource] ?? `/${resource}`;
+const endpointFor = (resource: string) => endpointByResource[resource] ?? `/api/${resource}`;
 
 const isPlatformAdminRoleId = (id: unknown) => String(id ?? '').trim().toUpperCase() === PLATFORM_ADMIN_ROLE_ID;
 

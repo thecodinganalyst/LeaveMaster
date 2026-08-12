@@ -42,7 +42,7 @@ describe('RolePermissionCheckboxList', () => {
     const staffRead = await screen.findByRole('checkbox', { name: /STAFF_READ/ });
     const approveLeave = screen.getByRole('checkbox', { name: /LEAVE_APPLICATION_APPROVE/ });
 
-    expect(mockedApiFetch).toHaveBeenCalledWith('/roles/permissions');
+    expect(mockedApiFetch).toHaveBeenCalledWith('/api/roles/permissions');
     expect(staffRead).toBeChecked();
     expect(approveLeave).not.toBeChecked();
   });

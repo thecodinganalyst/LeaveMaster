@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/leave-approvers")
+@RequestMapping({"/leave-approvers", "/api/leave-approvers"})
 @RequiredArgsConstructor
 public class LeaveApproverController {
 
