@@ -9,6 +9,7 @@ import {
   CalendarOutlined,
   CheckSquareOutlined,
   EnvironmentOutlined,
+  LockOutlined,
   MenuOutlined,
   MessageOutlined,
   SafetyCertificateOutlined,
@@ -94,6 +95,9 @@ export const AppLayout = ({ children }: PropsWithChildren) => {
           <Space>
             <Button icon={<MessageOutlined />} onClick={() => setAssistantOpen(true)} aria-label="Open Ask LeaveMaster assistant">
               {isDesktop ? 'Ask LeaveMaster' : null}
+            </Button>
+            <Button icon={<LockOutlined />} onClick={() => navigate('/account/change-password')} aria-label="Change password">
+              {isDesktop ? 'Change password' : null}
             </Button>
             <Button onClick={() => logout(undefined, { onSuccess: () => navigate('/login') })}>Sign out</Button>
           </Space>
