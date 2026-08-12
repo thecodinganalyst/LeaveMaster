@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Alert, Checkbox, Space, Spin, Typography } from 'antd';
 
 import { apiFetch } from '../../api/http.ts';
+import { getCurrentUser } from '../../auth/session.ts';
 
 interface AppPermission {
   code: string;
@@ -14,6 +15,7 @@ interface Props {
   disabled?: boolean;
 }
 
+const PLATFORM_ONLY_PERMISSIONS = new Set(['TENANT_READ', 'TENANT_WRITE']);
 const loadRolePermissions = () => apiFetch<AppPermission[]>('/roles/permissions');
 
 export const RolePermissionCheckboxList = ({ value = [], onChange, disabled = false }: Props) => {
@@ -22,16 +24,26 @@ export const RolePermissionCheckboxList = ({ value = [], onChange, disabled = fa
     queryFn: loadRolePermissions,
     staleTime: 5 * 60 * 1000,
   });
+  const currentUserQuery = useQuery({
+    queryKey: ['current-user'],
+    queryFn: () => getCurrentUser(),
+    staleTime: 5 * 60 * 1000,
+  });
 
-  if (permissionsQuery.isLoading) return <Spin size="small" />;
-  if (permissionsQuery.isError) return <Alert type="error" showIcon message="Unable to load permissions" />;
+  if (permissionsQuery.isLoading || currentUserQuery.isLoading) return <Spin size="small" />;
+  if (permissionsQuery.isError || currentUserQuery.isError) {
+    return <Alert type="error" showIcon message="Unable to load permissions" />;
+  }
 
-  const permissions = [...(permissionsQuery.data ?? [])].sort((left, right) => left.code.localeCompare(right.code));
+  const platformAdmin = currentUserQuery.data?.platformAdmin === true;
+  const permissions = [...(permissionsQuery.data ?? [])]
+    .filter((permission) => platformAdmin || !PLATFORM_ONLY_PERMISSIONS.has(permission.code))
+    .sort((left, right) => left.code.localeCompare(right.code));
   if (permissions.length === 0) return <Typography.Text type="secondary">No permissions available.</Typography.Text>;
 
   return (
     <Checkbox.Group
-      value={value}
+      value={value.filter((permission) => platformAdmin || !PLATFORM_ONLY_PERMISSIONS.has(permission))}
       disabled={disabled}
       onChange={(checkedValues) => onChange?.(checkedValues.map(String))}
       style={{ width: '100%' }}

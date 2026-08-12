@@ -4,6 +4,8 @@ import com.practical.leavemaster.user.AppUser;
 import com.practical.leavemaster.user.AppUserNotFoundException;
 import com.practical.leavemaster.user.AppUserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,6 +19,10 @@ import java.util.Set;
 public class AppRoleService {
 
     static final String PLATFORM_ADMIN_ROLE_ID = "PLATFORM_ADMIN";
+    private static final Set<String> PLATFORM_ONLY_PERMISSIONS = Set.of(
+            RbacPermissions.TENANT_READ,
+            RbacPermissions.TENANT_WRITE
+    );
 
     private final AppRoleRepository appRoleRepository;
     private final AppPermissionRepository appPermissionRepository;
@@ -31,7 +37,13 @@ public class AppRoleService {
     }
 
     public List<AppPermission> findAllPermissions() {
-        return appPermissionRepository.findAll();
+        List<AppPermission> permissions = appPermissionRepository.findAll();
+        if (isCurrentUserPlatformAdmin()) {
+            return permissions;
+        }
+        return permissions.stream()
+                .filter(permission -> !PLATFORM_ONLY_PERMISSIONS.contains(permission.getCode()))
+                .toList();
     }
 
     public Optional<AppRole> findById(String roleId) {
@@ -139,8 +151,29 @@ public class AppRoleService {
         return roleId != null && PLATFORM_ADMIN_ROLE_ID.equalsIgnoreCase(roleId.trim());
     }
 
+    private boolean isCurrentUserPlatformAdmin() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() || authentication.getName() == null) {
+            return false;
+        }
+
+        return appUserRepository.findById(authentication.getName())
+                .map(user -> user.getRoles().stream()
+                        .anyMatch(role -> role != null && role.isActive() && isPlatformAdmin(role.getId())))
+                .orElse(false);
+    }
+
     private Set<AppPermission> resolvePermissions(Set<String> permissionCodes) {
         Set<String> normalizedCodes = permissionCodes == null ? Set.of() : permissionCodes;
+        Set<String> requestedPlatformOnlyPermissions = normalizedCodes.stream()
+                .filter(PLATFORM_ONLY_PERMISSIONS::contains)
+                .collect(java.util.stream.Collectors.toSet());
+        if (!requestedPlatformOnlyPermissions.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Platform-only permission codes cannot be assigned to managed roles: " + requestedPlatformOnlyPermissions
+            );
+        }
+
         Set<AppPermission> permissions = new HashSet<>(appPermissionRepository.findAllById(normalizedCodes));
         if (permissions.size() != normalizedCodes.size()) {
             Set<String> foundCodes = permissions.stream().map(AppPermission::getCode).collect(java.util.stream.Collectors.toSet());
