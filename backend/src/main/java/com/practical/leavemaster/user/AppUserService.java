@@ -2,6 +2,8 @@ package com.practical.leavemaster.user;
 
 import com.practical.leavemaster.tenant.TenantActivityService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -14,17 +16,25 @@ import java.util.Optional;
 public class AppUserService {
 
     private static final int MIN_PASSWORD_LENGTH = 8;
+    private static final String PLATFORM_ADMIN_ROLE_ID = "PLATFORM_ADMIN";
 
     private final AppUserRepository appUserRepository;
     private final PasswordEncoder passwordEncoder;
     private final TenantActivityService tenantActivityService;
 
     public List<AppUser> findAll() {
-        return appUserRepository.findAll();
+        List<AppUser> users = appUserRepository.findAll();
+        if (isCurrentUserPlatformAdmin()) {
+            return users;
+        }
+        return users.stream()
+                .filter(user -> !isPlatformAdminUser(user))
+                .toList();
     }
 
     public Optional<AppUser> findByLoginName(String loginName) {
-        return appUserRepository.findById(loginName);
+        return appUserRepository.findById(loginName)
+                .filter(user -> !isPlatformAdminUser(user) || isCurrentUserPlatformAdmin());
     }
 
     public AppUser save(AppUser user) {
@@ -182,5 +192,30 @@ public class AppUserService {
 
         target.setOidcProvider(normalizedProvider);
         target.setOidcSubject(normalizedSubject);
+    }
+
+    private boolean isCurrentUserPlatformAdmin() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() || authentication.getName() == null) {
+            return false;
+        }
+
+        return appUserRepository.findById(authentication.getName())
+                .map(this::isActivePlatformAdminUser)
+                .orElse(false);
+    }
+
+    private boolean isActivePlatformAdminUser(AppUser user) {
+        return user != null && user.isActive() && user.getRoles() != null && user.getRoles().stream()
+                .anyMatch(role -> role != null && role.isActive() && isPlatformAdminRole(role.getId()));
+    }
+
+    private boolean isPlatformAdminUser(AppUser user) {
+        return user != null && user.getRoles() != null && user.getRoles().stream()
+                .anyMatch(role -> role != null && isPlatformAdminRole(role.getId()));
+    }
+
+    private boolean isPlatformAdminRole(String roleId) {
+        return roleId != null && PLATFORM_ADMIN_ROLE_ID.equalsIgnoreCase(roleId.trim());
     }
 }
