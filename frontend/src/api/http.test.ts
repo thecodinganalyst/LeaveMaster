@@ -31,7 +31,7 @@ describe('http client', () => {
       .mockResolvedValueOnce(jsonResponse({ token: 'csrf-2', headerName: 'X-CSRF-TOKEN', parameterName: '_csrf' }))
       .mockResolvedValueOnce(jsonResponse({ id: 'T1' }));
 
-    await expect(apiFetch('/tenants', { method: 'POST', body: JSON.stringify({ id: 'T1' }) })).resolves.toEqual({ id: 'T1' });
+    await expect(apiFetch('/api/tenants', { method: 'POST', body: JSON.stringify({ id: 'T1' }) })).resolves.toEqual({ id: 'T1' });
 
     const [, request] = fetchMock.mock.calls[1]!;
     const headers = request?.headers as Headers;
@@ -49,7 +49,7 @@ describe('http client', () => {
 
   it('maps structured backend errors into ApiError details', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({ error: 'Not allowed' }, { status: 403, statusText: 'Forbidden' }));
-    await expect(apiFetch('/staff')).rejects.toMatchObject({
+    await expect(apiFetch('/api/staff')).rejects.toMatchObject({
       name: 'ApiError', statusCode: 403, message: 'Not allowed', details: { error: 'Not allowed' },
     });
   });
@@ -59,13 +59,13 @@ describe('http client', () => {
       status: 503,
       headers: { 'content-type': 'text/plain' },
     }));
-    await expect(apiFetch('/staff')).rejects.toEqual(expect.objectContaining<ApiError>({
+    await expect(apiFetch('/api/staff')).rejects.toEqual(expect.objectContaining<ApiError>({
       statusCode: 503,
       message: 'Service unavailable',
     }));
   });
 
-  it('posts form credentials for session login then refreshes csrf', async () => {
+  it('posts form credentials under the auth namespace then refreshes csrf', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(jsonResponse({ token: 'csrf-login', headerName: 'X-CSRF-TOKEN', parameterName: '_csrf' }))
       .mockResolvedValueOnce(new Response(null, { status: 200 }))
@@ -74,7 +74,7 @@ describe('http client', () => {
     await loginWithSession('dennis', 'password');
 
     const [url, request] = fetchMock.mock.calls[1]!;
-    expect(url).toBe('http://localhost:8080/login');
+    expect(url).toBe('http://localhost:8080/auth/login');
     expect(request).toMatchObject({ method: 'POST', credentials: 'include' });
     expect(String(request?.body)).toContain('username=dennis');
     expect(fetchMock).toHaveBeenCalledTimes(3);
