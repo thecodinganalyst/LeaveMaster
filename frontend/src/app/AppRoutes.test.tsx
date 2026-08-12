@@ -106,7 +106,7 @@ const renderRoutes = (initialPath: string, authenticated: boolean, checkOverride
 
 describe('AppRoutes authentication guard', () => {
   it('shows a visible loading state while direct-route authentication is being checked', async () => {
-    const pendingCheck: NonNullable<AuthBindings['check']> = async () => new Promise(() => undefined);
+    const pendingCheck: NonNullable<AuthBindings['check']> = () => new Promise<never>(() => {});
 
     renderRoutes('/roles/show/TENANT_ADMIN_corpsys', false, pendingCheck);
 
