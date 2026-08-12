@@ -13,6 +13,8 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class AppUserService {
 
+    private static final int MIN_PASSWORD_LENGTH = 8;
+
     private final AppUserRepository appUserRepository;
     private final PasswordEncoder passwordEncoder;
     private final TenantActivityService tenantActivityService;
@@ -47,15 +49,34 @@ public class AppUserService {
     }
 
     public AppUser changePassword(String loginName, String newPassword) {
-        if (newPassword == null || newPassword.isBlank()) {
-            throw new IllegalArgumentException("New password must not be blank");
-        }
+        validateNewPassword(newPassword);
         AppUser existing = appUserRepository.findById(loginName)
                 .orElseThrow(() -> new AppUserNotFoundException(loginName));
         existing.setPassword(passwordEncoder.encode(newPassword));
         AppUser saved = appUserRepository.save(existing);
         tenantActivityService.touch(saved.getTenantId());
         return saved;
+    }
+
+    public void changeOwnPassword(String loginName, String currentPassword, String newPassword) {
+        if (currentPassword == null || currentPassword.isBlank()) {
+            throw new IllegalArgumentException("Current password must not be blank");
+        }
+        validateNewPassword(newPassword);
+
+        AppUser existing = appUserRepository.findById(loginName)
+                .orElseThrow(() -> new AppUserNotFoundException(loginName));
+
+        if (!passwordEncoder.matches(currentPassword, existing.getPassword())) {
+            throw new IllegalArgumentException("Current password is incorrect");
+        }
+        if (passwordEncoder.matches(newPassword, existing.getPassword())) {
+            throw new IllegalArgumentException("New password must be different from the current password");
+        }
+
+        existing.setPassword(passwordEncoder.encode(newPassword));
+        AppUser saved = appUserRepository.save(existing);
+        tenantActivityService.touch(saved.getTenantId());
     }
 
     public AppUser activate(String loginName) {
@@ -123,6 +144,15 @@ public class AppUserService {
             throw new IllegalArgumentException("Invalid credentials");
         }
         return user;
+    }
+
+    private void validateNewPassword(String newPassword) {
+        if (newPassword == null || newPassword.isBlank()) {
+            throw new IllegalArgumentException("New password must not be blank");
+        }
+        if (newPassword.length() < MIN_PASSWORD_LENGTH) {
+            throw new IllegalArgumentException("New password must be at least " + MIN_PASSWORD_LENGTH + " characters long");
+        }
     }
 
     private void applyOidcCredentials(AppUser target, String oidcProvider, String oidcSubject) {
