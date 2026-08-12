@@ -13,7 +13,7 @@ describe('leaveMasterDataProvider', () => {
     vi.mocked(apiFetch).mockReset();
   });
 
-  it('maps employee resources to the staff endpoint and paginates locally', async () => {
+  it('maps employee resources to the API-prefixed staff endpoint and paginates locally', async () => {
     vi.mocked(apiFetch).mockResolvedValue([
       { id: '2', name: 'Beta' },
       { id: '1', name: 'Alpha' },
@@ -28,7 +28,7 @@ describe('leaveMasterDataProvider', () => {
       meta: {},
     });
 
-    expect(apiFetch).toHaveBeenCalledWith('/staff');
+    expect(apiFetch).toHaveBeenCalledWith('/api/staff');
     expect(result.total).toBe(3);
     expect(result.data.map((record) => record.id)).toEqual(['1', '2']);
   });
@@ -73,7 +73,7 @@ describe('leaveMasterDataProvider', () => {
     expect(apiFetch).not.toHaveBeenCalled();
   });
 
-  it('uses JSON write requests for normal CRUD resources', async () => {
+  it('uses API-prefixed JSON write requests for normal CRUD resources', async () => {
     vi.mocked(apiFetch).mockResolvedValue({ id: 'T1', name: 'Tenant One' });
 
     const result = await leaveMasterDataProvider.create({
@@ -82,14 +82,14 @@ describe('leaveMasterDataProvider', () => {
       meta: {},
     });
 
-    expect(apiFetch).toHaveBeenCalledWith('/tenants', {
+    expect(apiFetch).toHaveBeenCalledWith('/api/tenants', {
       method: 'POST',
       body: JSON.stringify({ id: 'T1', name: 'Tenant One' }),
     });
     expect(result.data).toMatchObject({ id: 'T1' });
   });
 
-  it('matches the backend tenant read, update and delete contracts', async () => {
+  it('matches the backend tenant read, update and delete contracts through the API namespace', async () => {
     vi.mocked(apiFetch)
       .mockResolvedValueOnce({ id: 'Tenant A', name: 'Tenant A' })
       .mockResolvedValueOnce({ id: 'Tenant A', name: 'Tenant A Updated' })
@@ -112,12 +112,12 @@ describe('leaveMasterDataProvider', () => {
       meta: {},
     });
 
-    expect(apiFetch).toHaveBeenNthCalledWith(1, '/tenants/Tenant%20A');
-    expect(apiFetch).toHaveBeenNthCalledWith(2, '/tenants/Tenant%20A', {
+    expect(apiFetch).toHaveBeenNthCalledWith(1, '/api/tenants/Tenant%20A');
+    expect(apiFetch).toHaveBeenNthCalledWith(2, '/api/tenants/Tenant%20A', {
       method: 'PUT',
       body: JSON.stringify({ name: 'Tenant A Updated' }),
     });
-    expect(apiFetch).toHaveBeenNthCalledWith(3, '/tenants/Tenant%20A', {
+    expect(apiFetch).toHaveBeenNthCalledWith(3, '/api/tenants/Tenant%20A', {
       method: 'DELETE',
     });
     expect(read.data).toMatchObject({ id: 'Tenant A' });
@@ -139,7 +139,7 @@ describe('leaveMasterDataProvider', () => {
     ).rejects.toMatchObject({
       name: 'ApiError',
       statusCode: 502,
-      message: expect.stringContaining('/tenants'),
+      message: expect.stringContaining('/api/tenants'),
     });
   });
 });
