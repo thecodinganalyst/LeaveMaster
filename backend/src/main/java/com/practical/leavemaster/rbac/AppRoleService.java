@@ -168,9 +168,9 @@ public class AppRoleService {
         Set<String> requestedPlatformOnlyPermissions = normalizedCodes.stream()
                 .filter(PLATFORM_ONLY_PERMISSIONS::contains)
                 .collect(java.util.stream.Collectors.toSet());
-        if (!requestedPlatformOnlyPermissions.isEmpty() && !isCurrentUserPlatformAdmin()) {
+        if (!requestedPlatformOnlyPermissions.isEmpty()) {
             throw new IllegalArgumentException(
-                    "Platform-only permission codes cannot be assigned: " + requestedPlatformOnlyPermissions
+                    "Platform-only permission codes cannot be assigned to managed roles: " + requestedPlatformOnlyPermissions
             );
         }
 
