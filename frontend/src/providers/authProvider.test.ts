@@ -91,13 +91,19 @@ describe('authProvider', () => {
 
   it('returns only server-loaded identity fields', async () => {
     vi.mocked(getCurrentUser).mockResolvedValue({
-      loginName: 'manager', staffId: 'S2', tenantId: 'T2', active: true, authorities: ['LEAVE_APPLICATION_APPROVE'],
+      loginName: 'manager',
+      staffId: 'S2',
+      tenantId: 'T2',
+      country: 'Singapore',
+      active: true,
+      authorities: ['LEAVE_APPLICATION_APPROVE'],
     });
     await expect(authProvider.getIdentity?.()).resolves.toEqual({
       id: 'manager',
       name: 'manager',
       staffId: 'S2',
       tenantId: 'T2',
+      country: 'Singapore',
       authorities: ['LEAVE_APPLICATION_APPROVE'],
     });
   });
