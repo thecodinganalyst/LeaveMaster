@@ -2,6 +2,7 @@ package com.practical.leavemaster.config;
 
 import com.practical.leavemaster.user.AppUser;
 import com.practical.leavemaster.user.AppUserRepository;
+import com.practical.leavemaster.user.AppUserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -19,12 +20,14 @@ import static org.mockito.Mockito.when;
 class AuthSessionControllerTest {
 
     private AppUserRepository appUserRepository;
+    private AppUserService appUserService;
     private AuthSessionController controller;
 
     @BeforeEach
     void setUp() {
         appUserRepository = mock(AppUserRepository.class);
-        controller = new AuthSessionController(appUserRepository);
+        appUserService = mock(AppUserService.class);
+        controller = new AuthSessionController(appUserRepository, appUserService);
     }
 
     @Test
