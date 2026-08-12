@@ -49,7 +49,9 @@ public class AppUserService {
     }
 
     public AppUser changePassword(String loginName, String newPassword) {
-        validateNewPassword(newPassword);
+        if (newPassword == null || newPassword.isBlank()) {
+            throw new IllegalArgumentException("New password must not be blank");
+        }
         AppUser existing = appUserRepository.findById(loginName)
                 .orElseThrow(() -> new AppUserNotFoundException(loginName));
         existing.setPassword(passwordEncoder.encode(newPassword));
@@ -62,7 +64,7 @@ public class AppUserService {
         if (currentPassword == null || currentPassword.isBlank()) {
             throw new IllegalArgumentException("Current password must not be blank");
         }
-        validateNewPassword(newPassword);
+        validateSelfServicePassword(newPassword);
 
         AppUser existing = appUserRepository.findById(loginName)
                 .orElseThrow(() -> new AppUserNotFoundException(loginName));
@@ -146,7 +148,7 @@ public class AppUserService {
         return user;
     }
 
-    private void validateNewPassword(String newPassword) {
+    private void validateSelfServicePassword(String newPassword) {
         if (newPassword == null || newPassword.isBlank()) {
             throw new IllegalArgumentException("New password must not be blank");
         }
