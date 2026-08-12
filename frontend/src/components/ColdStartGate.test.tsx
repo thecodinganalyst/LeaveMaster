@@ -62,10 +62,11 @@ describe('ColdStartGate', () => {
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(2_000);
+      await Promise.resolve();
     });
 
     expect(mockedGetCsrfToken).toHaveBeenCalledTimes(2);
-    expect(await screen.findByText('Application ready')).toBeInTheDocument();
+    expect(screen.getByText('Application ready')).toBeInTheDocument();
     expect(screen.queryByText('LeaveMaster is waking up after sleeping')).not.toBeInTheDocument();
   });
 
