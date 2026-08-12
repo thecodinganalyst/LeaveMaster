@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -23,6 +24,7 @@ public class LeaveApplicationController {
     private final LeaveApplicationService leaveApplicationService;
 
     @GetMapping
+    @PreAuthorize("@leaveAuthorization.canAccessStaff(authentication, #staffId)")
     public ResponseEntity<?> getAll(@RequestParam String staffId) {
         try {
             return ResponseEntity.ok(leaveApplicationService.findVisibleForStaff(staffId));
@@ -32,6 +34,7 @@ public class LeaveApplicationController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("@leaveAuthorization.canReadApplication(authentication, #id)")
     public ResponseEntity<LeaveApplication> getById(@PathVariable String id) {
         return leaveApplicationService.findById(id)
                 .map(ResponseEntity::ok)
@@ -39,6 +42,7 @@ public class LeaveApplicationController {
     }
 
     @GetMapping("/approver/{approverId}")
+    @PreAuthorize("@leaveAuthorization.canActAsApprover(authentication, #approverId)")
     public ResponseEntity<?> getByApproverId(@PathVariable String approverId) {
         try {
             List<LeaveApplication> applications = leaveApplicationService.findPendingByApproverId(approverId);
@@ -49,6 +53,7 @@ public class LeaveApplicationController {
     }
 
     @GetMapping("/staff/{staffId}")
+    @PreAuthorize("@leaveAuthorization.canAccessStaff(authentication, #staffId)")
     public ResponseEntity<?> getByStaffId(
             @PathVariable String staffId,
             @RequestParam(required = false) LocalDate date) {
@@ -62,6 +67,7 @@ public class LeaveApplicationController {
     }
 
     @GetMapping("/staff/{staffId}/balance")
+    @PreAuthorize("@leaveAuthorization.canAccessStaff(authentication, #staffId)")
     public ResponseEntity<List<LeaveBalance>> getLeaveBalances(@PathVariable String staffId) {
         try {
             return ResponseEntity.ok(leaveApplicationService.getLeaveBalances(staffId));
@@ -71,6 +77,7 @@ public class LeaveApplicationController {
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("@leaveAuthorization.canApplyForStaff(authentication, #request.staffId)")
     public ResponseEntity<?> apply(
             @RequestPart("request") LeaveApplicationRequest request,
             @RequestPart(value = "file", required = false) MultipartFile file) {
@@ -85,6 +92,7 @@ public class LeaveApplicationController {
     }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("@leaveAuthorization.canApplyForStaff(authentication, #request.staffId)")
     public ResponseEntity<?> applyJson(@RequestBody LeaveApplicationRequest request) {
         try {
             List<LeaveApplication> applications = leaveApplicationService.apply(request, null);
@@ -97,6 +105,7 @@ public class LeaveApplicationController {
     }
 
     @PostMapping(value = "/{id}/attachment", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("@leaveAuthorization.canWriteApplication(authentication, #id)")
     public ResponseEntity<?> uploadAttachment(
             @PathVariable String id,
             @RequestPart("file") MultipartFile file) {
@@ -109,6 +118,7 @@ public class LeaveApplicationController {
     }
 
     @GetMapping("/{id}/attachment")
+    @PreAuthorize("@leaveAuthorization.canReadApplication(authentication, #id)")
     public void getAttachment(@PathVariable String id, HttpServletResponse response) throws IOException {
         try {
             leaveApplicationService.serveAttachment(id, response);
@@ -118,6 +128,7 @@ public class LeaveApplicationController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("@leaveAuthorization.canWriteApplication(authentication, #id)")
     public ResponseEntity<?> update(@PathVariable String id, @RequestBody LeaveApplication leaveApplication) {
         try {
             LeaveApplication updated = leaveApplicationService.update(id, leaveApplication);
@@ -128,6 +139,7 @@ public class LeaveApplicationController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("@leaveAuthorization.canWriteApplication(authentication, #id)")
     public ResponseEntity<?> delete(@PathVariable String id) {
         try {
             leaveApplicationService.delete(id);
@@ -140,6 +152,7 @@ public class LeaveApplicationController {
     }
 
     @PutMapping("/{id}/approve")
+    @PreAuthorize("@leaveAuthorization.canApproveAs(authentication, #id, #approverId)")
     public ResponseEntity<?> approve(@PathVariable String id, @RequestParam String approverId) {
         try {
             LeaveApplication updated = leaveApplicationService.approve(id, approverId);
@@ -152,6 +165,7 @@ public class LeaveApplicationController {
     }
 
     @PutMapping("/{id}/reject")
+    @PreAuthorize("@leaveAuthorization.canApproveAs(authentication, #id, #approverId)")
     public ResponseEntity<?> reject(@PathVariable String id, @RequestParam String approverId) {
         try {
             LeaveApplication updated = leaveApplicationService.reject(id, approverId);
@@ -164,6 +178,7 @@ public class LeaveApplicationController {
     }
 
     @PutMapping("/{id}/approve-cancellation")
+    @PreAuthorize("@leaveAuthorization.canApproveApplication(authentication, #id)")
     public ResponseEntity<?> approveCancellation(@PathVariable String id) {
         try {
             LeaveApplication updated = leaveApplicationService.approveCancellation(id);
@@ -176,6 +191,7 @@ public class LeaveApplicationController {
     }
 
     @PutMapping("/{id}/reject-cancellation")
+    @PreAuthorize("@leaveAuthorization.canApproveApplication(authentication, #id)")
     public ResponseEntity<?> rejectCancellation(@PathVariable String id) {
         try {
             LeaveApplication updated = leaveApplicationService.rejectCancellation(id);
