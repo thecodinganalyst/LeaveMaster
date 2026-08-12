@@ -13,7 +13,7 @@ export const RoleMembershipCard = ({ roleId }: { roleId: string }) => {
     if (!user) return;
     setPending(true);
     try {
-      await apiFetch(`/roles/${encodeURIComponent(roleId)}/users/${encodeURIComponent(user)}`, { method });
+      await apiFetch(`/api/roles/${encodeURIComponent(roleId)}/users/${encodeURIComponent(user)}`, { method });
       message.success(method === 'PUT' ? 'User added to role' : 'User removed from role');
       setLoginName('');
     } catch {
