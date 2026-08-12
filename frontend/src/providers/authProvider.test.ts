@@ -44,6 +44,23 @@ describe('authProvider', () => {
     expect(getCurrentUser).toHaveBeenCalledWith(true);
   });
 
+  it('redirects to the originally requested protected route after login', async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({
+      loginName: 'dennis', staffId: 'S1', tenantId: 'T1', active: true, authorities: ['STAFF_READ'],
+    });
+
+    await expect(
+      authProvider.login?.({
+        loginName: 'dennis',
+        password: 'secret',
+        redirectPath: '/leave-requests/show/42',
+      }),
+    ).resolves.toEqual({
+      success: true,
+      redirectTo: '/leave-requests/show/42',
+    });
+  });
+
   it('surfaces backend authentication failures safely', async () => {
     vi.mocked(loginWithSession).mockRejectedValue(new ApiError('Invalid login', 401));
     await expect(authProvider.login?.({ loginName: 'dennis', password: 'bad' })).resolves.toMatchObject({
