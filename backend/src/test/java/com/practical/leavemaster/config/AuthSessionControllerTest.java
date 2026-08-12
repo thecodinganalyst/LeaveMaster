@@ -1,5 +1,6 @@
 package com.practical.leavemaster.config;
 
+import com.practical.leavemaster.rbac.AppRole;
 import com.practical.leavemaster.user.AppUser;
 import com.practical.leavemaster.user.AppUserRepository;
 import com.practical.leavemaster.user.AppUserService;
@@ -12,6 +13,7 @@ import org.springframework.security.web.csrf.DefaultCsrfToken;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -68,7 +70,32 @@ class AuthSessionControllerTest {
         assertThat(response.getBody().staffId()).isEqualTo("S001");
         assertThat(response.getBody().tenantId()).isEqualTo("tenant-1");
         assertThat(response.getBody().active()).isTrue();
+        assertThat(response.getBody().platformAdmin()).isFalse();
         assertThat(response.getBody().authorities()).containsExactly("STAFF_READ", "STAFF_WRITE");
+    }
+
+    @Test
+    void shouldIdentifyPlatformAdminFromActiveRole() {
+        AppRole platformAdminRole = AppRole.builder()
+            .id("PLATFORM_ADMIN")
+            .description("Platform administrator")
+            .active(true)
+            .build();
+        AppUser user = AppUser.builder()
+            .loginName("PlatformAdmin")
+            .active(true)
+            .roles(Set.of(platformAdminRole))
+            .build();
+        when(appUserRepository.findById("PlatformAdmin")).thenReturn(Optional.of(user));
+
+        UsernamePasswordAuthenticationToken authentication =
+            new UsernamePasswordAuthenticationToken("PlatformAdmin", "n/a", List.of());
+
+        var response = controller.currentUser(authentication);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().platformAdmin()).isTrue();
     }
 
     @Test
