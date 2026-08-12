@@ -89,7 +89,14 @@ export const AppLayout = ({ children }: PropsWithChildren) => {
       <Layout>
         <Header className="app-header">
           <Space size="middle">
-            {!isDesktop ? <Button type="text" icon={<MenuOutlined />} onClick={() => setMenuOpen(true)} aria-label="Open menu" /> : null}
+            {!isDesktop ? (
+              <Button
+                className="mobile-menu-button"
+                icon={<MenuOutlined />}
+                onClick={() => setMenuOpen(true)}
+                aria-label="Open menu"
+              />
+            ) : null}
             <Typography.Title level={4} style={{ color: '#eaf2ff', margin: 0 }}>LeaveMaster</Typography.Title>
           </Space>
           <Space>
