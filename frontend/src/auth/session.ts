@@ -5,7 +5,7 @@ export interface CurrentUser {
   staffId: string | null;
   tenantId: string | null;
   active: boolean;
-  platformAdmin: boolean;
+  platformAdmin?: boolean;
   authorities: string[];
 }
 
