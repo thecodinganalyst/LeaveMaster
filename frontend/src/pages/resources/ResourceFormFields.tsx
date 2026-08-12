@@ -1,6 +1,7 @@
 import { Form, Input, Select, Switch } from 'antd';
 
 import type { AdminResourceConfig } from './adminResourceConfig.ts';
+import { RolePermissionCheckboxList } from './RolePermissionCheckboxList.tsx';
 
 interface Props {
   config: AdminResourceConfig;
@@ -26,6 +27,14 @@ export const ResourceFormFields = ({ config, editing = false }: Props) => (
         return (
           <Form.Item key={field.name} name={field.name} label={field.label} rules={rules}>
             <Select options={field.options ?? []} disabled={disabled} />
+          </Form.Item>
+        );
+      }
+
+      if (field.type === 'permissions') {
+        return (
+          <Form.Item key={field.name} name={field.name} label={field.label} rules={rules}>
+            <RolePermissionCheckboxList disabled={disabled} />
           </Form.Item>
         );
       }

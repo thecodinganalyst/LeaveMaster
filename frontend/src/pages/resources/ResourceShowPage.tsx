@@ -7,6 +7,7 @@ import { PageContainer } from '../../components/common/PageContainer.tsx';
 import { PageHeader } from '../../components/common/PageHeader.tsx';
 import { getAdminResourceConfig, toFormValues } from './adminResourceConfig.ts';
 import { RoleMembershipCard } from './RoleMembershipCard.tsx';
+import { RolePermissionCheckboxList } from './RolePermissionCheckboxList.tsx';
 
 const displayValue = (value: unknown) => {
   if (typeof value === 'boolean') return value ? 'Yes' : 'No';
@@ -36,7 +37,11 @@ export const ResourceShowPage = () => {
         <Descriptions bordered column={1}>
           {config.fields.filter((field) => field.type !== 'password' && !field.hidden).map((field) => (
             <Descriptions.Item key={field.name} label={field.label}>
-              <span style={{ whiteSpace: field.type === 'json' ? 'pre-wrap' : 'normal' }}>{displayValue(record[field.name])}</span>
+              {field.type === 'permissions' ? (
+                <RolePermissionCheckboxList value={(record[field.name] as string[] | undefined) ?? []} disabled />
+              ) : (
+                <span style={{ whiteSpace: field.type === 'json' ? 'pre-wrap' : 'normal' }}>{displayValue(record[field.name])}</span>
+              )}
             </Descriptions.Item>
           ))}
         </Descriptions>

@@ -23,24 +23,32 @@ describe('adminResourceConfigs', () => {
     expect(adminResourceConfigs['leave-calendars'].deletable).toBe(false);
   });
 
-  it('converts JSON form inputs into API payload values', () => {
+  it('configures role permissions as a checkbox-backed permission field', () => {
+    expect(adminResourceConfigs.roles.fields.find((field) => field.name === 'permissionCodes')).toMatchObject({
+      label: 'Permissions',
+      type: 'permissions',
+      required: true,
+    });
+  });
+
+  it('keeps selected permission codes as the API payload representation', () => {
     const values = normaliseFormValues(adminResourceConfigs.roles, {
       id: 'MANAGER',
       description: 'Manager',
-      permissionCodes: '["STAFF_READ", "LEAVE_APPLICATION_APPROVE"]',
+      permissionCodes: ['STAFF_READ', 'LEAVE_APPLICATION_APPROVE'],
     });
 
     expect(values.permissionCodes).toEqual(['STAFF_READ', 'LEAVE_APPLICATION_APPROVE']);
   });
 
-  it('maps role permissions into editable permission codes', () => {
+  it('maps role permissions into selected permission codes', () => {
     const values = toFormValues(adminResourceConfigs.roles, {
       id: 'MANAGER',
       description: 'Manager',
       permissions: [{ code: 'STAFF_READ' }, { code: 'LEAVE_APPLICATION_READ' }],
     });
 
-    expect(JSON.parse(String(values.permissionCodes))).toEqual(['STAFF_READ', 'LEAVE_APPLICATION_READ']);
+    expect(values.permissionCodes).toEqual(['STAFF_READ', 'LEAVE_APPLICATION_READ']);
   });
 
   it('flattens leave approver relationships for administration forms and lists', () => {
