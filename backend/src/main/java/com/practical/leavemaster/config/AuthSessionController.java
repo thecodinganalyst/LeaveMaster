@@ -23,6 +23,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AuthSessionController {
 
+    private static final String PLATFORM_ADMIN_ROLE_ID = "PLATFORM_ADMIN";
+
     private final AppUserRepository appUserRepository;
     private final AppUserService appUserService;
 
@@ -66,11 +68,17 @@ public class AuthSessionController {
             .sorted(Comparator.naturalOrder())
             .toList();
 
+        boolean platformAdmin = user.getRoles().stream()
+            .anyMatch(role -> role != null
+                && role.isActive()
+                && PLATFORM_ADMIN_ROLE_ID.equalsIgnoreCase(role.getId()));
+
         return new CurrentUserResponse(
             user.getLoginName(),
             user.getStaffId(),
             user.getTenantId(),
             user.isActive(),
+            platformAdmin,
             authorities
         );
     }
@@ -90,6 +98,7 @@ public class AuthSessionController {
         String staffId,
         String tenantId,
         boolean active,
+        boolean platformAdmin,
         List<String> authorities
     ) {
     }
