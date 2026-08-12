@@ -57,6 +57,18 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+.auth-loading-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px;
+  background: radial-gradient(circle at top right, rgba(45, 156, 143, 0.12), transparent 45%),
+    linear-gradient(180deg, #f8fbff 0%, #edf3fa 100%);
+}
+
 .app-header {
   padding-inline: 16px;
   display: flex;
@@ -82,7 +94,8 @@ body {
 }
 
 @media (max-width: 600px) {
-  .cold-start-page {
+  .cold-start-page,
+  .auth-loading-page {
     padding: 16px;
   }
 
