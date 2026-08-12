@@ -16,7 +16,7 @@ interface Props {
 }
 
 const PLATFORM_ONLY_PERMISSIONS = new Set(['TENANT_READ', 'TENANT_WRITE']);
-const loadRolePermissions = () => apiFetch<AppPermission[]>('/roles/permissions');
+const loadRolePermissions = () => apiFetch<AppPermission[]>('/api/roles/permissions');
 
 export const RolePermissionCheckboxList = ({ value = [], onChange, disabled = false }: Props) => {
   const permissionsQuery = useQuery({
