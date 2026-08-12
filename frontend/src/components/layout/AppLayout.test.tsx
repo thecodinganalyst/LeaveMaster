@@ -7,6 +7,7 @@ import { AppLayout } from './AppLayout.tsx';
 const mocks = vi.hoisted(() => ({
   useCan: vi.fn(),
   logout: vi.fn(),
+  breakpoint: { lg: true },
 }));
 
 vi.mock('@refinedev/core', () => ({
@@ -20,15 +21,16 @@ vi.mock('antd', async () => {
     ...actual,
     Grid: {
       ...actual.Grid,
-      useBreakpoint: () => ({ lg: true }),
+      useBreakpoint: () => mocks.breakpoint,
     },
   };
 });
 
-describe('AppLayout tenant navigation', () => {
+describe('AppLayout navigation', () => {
   beforeEach(() => {
     mocks.useCan.mockReset();
     mocks.logout.mockReset();
+    mocks.breakpoint.lg = true;
   });
 
   it('shows Tenants navigation when TENANT_READ access is available', () => {
@@ -56,5 +58,30 @@ describe('AppLayout tenant navigation', () => {
     );
 
     expect(screen.queryByRole('link', { name: 'Tenants' })).not.toBeInTheDocument();
+  });
+
+  it('renders a high-contrast mobile menu button hook on small screens', () => {
+    mocks.breakpoint.lg = false;
+    mocks.useCan.mockReturnValue({ data: { can: false } });
+
+    render(
+      <MemoryRouter>
+        <AppLayout><div>Page content</div></AppLayout>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('button', { name: 'Open menu' })).toHaveClass('mobile-menu-button');
+  });
+
+  it('does not render the mobile menu button on desktop', () => {
+    mocks.useCan.mockReturnValue({ data: { can: false } });
+
+    render(
+      <MemoryRouter>
+        <AppLayout><div>Page content</div></AppLayout>
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByRole('button', { name: 'Open menu' })).not.toBeInTheDocument();
   });
 });
