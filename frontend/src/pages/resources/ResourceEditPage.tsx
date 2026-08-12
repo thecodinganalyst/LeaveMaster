@@ -1,4 +1,4 @@
-import { useOne, useResource, useUpdate } from '@refinedev/core';
+import { useGetIdentity, useOne, useResource, useUpdate } from '@refinedev/core';
 import { App, Button, Form, Space, Spin } from 'antd';
 import { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -9,12 +9,19 @@ import { PageHeader } from '../../components/common/PageHeader.tsx';
 import { getAdminResourceConfig, normaliseFormValues, toFormValues } from './adminResourceConfig.ts';
 import { ResourceFormFields } from './ResourceFormFields.tsx';
 
+interface LeaveMasterIdentity {
+  id: string;
+  name: string;
+  country?: string | null;
+}
+
 export const ResourceEditPage = () => {
   const { resource } = useResource();
   const { id } = useParams();
   const config = getAdminResourceConfig(resource?.name);
   const recordQuery = useOne({ resource: config?.name ?? '', id: id ?? '', queryOptions: { enabled: Boolean(config && id) } });
   const { mutateAsync, isLoading: isUpdating } = useUpdate();
+  const { data: identity } = useGetIdentity<LeaveMasterIdentity>();
   const [form] = Form.useForm();
   const navigate = useNavigate();
   const { message } = App.useApp();
@@ -43,7 +50,7 @@ export const ResourceEditPage = () => {
       <PageHeader title={`Edit ${config.singular}`} subtitle={`Update ${id}.`} />
       <FormSection title="Details">
         <Form form={form} layout="vertical" onFinish={submit}>
-          <ResourceFormFields config={config} editing />
+          <ResourceFormFields config={config} editing preferredCountry={identity?.country} />
           <Space>
             <Button type="primary" htmlType="submit" loading={isUpdating}>Save changes</Button>
             <Button htmlType="button" onClick={() => navigate(`/${config.name}/show/${encodeURIComponent(id)}`)}>Cancel</Button>
