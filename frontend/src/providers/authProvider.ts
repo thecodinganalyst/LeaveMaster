@@ -6,11 +6,12 @@ import { clearCurrentUser, getCurrentUser } from '../auth/session.ts';
 interface LoginParams {
   loginName?: string;
   password?: string;
+  redirectPath?: string;
 }
 
 export const authProvider: AuthBindings = {
   login: async (params) => {
-    const { loginName, password } = (params ?? {}) as LoginParams;
+    const { loginName, password, redirectPath } = (params ?? {}) as LoginParams;
 
     if (!loginName || !password) {
       return {
@@ -26,7 +27,7 @@ export const authProvider: AuthBindings = {
       await loginWithSession(loginName, password);
       clearCurrentUser();
       await getCurrentUser(true);
-      return { success: true, redirectTo: '/' };
+      return { success: true, redirectTo: redirectPath ?? '/' };
     } catch (error) {
       const message = error instanceof ApiError ? error.message : 'Unable to sign in.';
       return {
