@@ -1,5 +1,5 @@
 import { Authenticated } from '@refinedev/core';
-import { CatchAllNavigate, NavigateToResource } from '@refinedev/react-router-v6';
+import { NavigateToResource } from '@refinedev/react-router-v6';
 import { Outlet, Route, Routes } from 'react-router-dom';
 
 import { AppLayout } from '../components/layout/AppLayout.tsx';
@@ -20,7 +20,11 @@ export const AppRoutes = () => {
     <Routes>
       <Route
         element={
-          <Authenticated key="authenticated" fallback={<CatchAllNavigate to="/login" />}>
+          <Authenticated
+            key="authenticated"
+            redirectOnFail="/login"
+            appendCurrentPathToQuery
+          >
             <AppLayout>
               <Outlet />
             </AppLayout>
@@ -40,6 +44,11 @@ export const AppRoutes = () => {
           <Route path="edit/:id" element={<ResourceEditPage />} />
           <Route path="show/:id" element={<ResourceShowPage />} />
         </Route>
+        <Route
+          path="/error"
+          element={<ErrorState title="Something went wrong" description="An unexpected application error occurred. Please try again." />}
+        />
+        <Route path="*" element={<ErrorState title="Page not found" description="The page you requested does not exist." />} />
       </Route>
 
       <Route
@@ -51,12 +60,6 @@ export const AppRoutes = () => {
       >
         <Route path="/login" element={<LoginPage />} />
       </Route>
-
-      <Route
-        path="/error"
-        element={<ErrorState title="Something went wrong" description="An unexpected application error occurred. Please try again." />}
-      />
-      <Route path="*" element={<ErrorState title="Page not found" description="The page you requested does not exist." />} />
     </Routes>
   );
 };
