@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/leave-calendars")
+@RequestMapping({"/leave-calendars", "/api/leave-calendars"})
 @RequiredArgsConstructor
 public class LeaveCalendarController {
 
