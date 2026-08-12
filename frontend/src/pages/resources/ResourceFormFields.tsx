@@ -7,7 +7,7 @@ import { RolePermissionCheckboxList } from './RolePermissionCheckboxList.tsx';
 interface Props {
   config: AdminResourceConfig;
   editing?: boolean;
-  preferredCountry?: string | null;
+  preferredCountry?: string | null | undefined;
 }
 
 export const ResourceFormFields = ({ config, editing = false, preferredCountry }: Props) => (
