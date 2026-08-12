@@ -44,7 +44,7 @@ class PlatformOnlyTenantPermissionTest {
 
     @Test
     void tenantAdminCannotSeeTenantManagementPermissions() {
-        authenticateAs("tenant-admin", "TENANT_ADMIN");
+        authenticateAsRole("tenant-admin", "TENANT_ADMIN");
         when(appPermissionRepository.findAll()).thenReturn(List.of(
                 permission(RbacPermissions.TENANT_READ),
                 permission(RbacPermissions.TENANT_WRITE),
@@ -59,7 +59,7 @@ class PlatformOnlyTenantPermissionTest {
 
     @Test
     void regularTenantUserCannotSeeTenantManagementPermissions() {
-        authenticateAs("employee", "EMPLOYEE");
+        authenticateAsRole("employee", "EMPLOYEE");
         when(appPermissionRepository.findAll()).thenReturn(List.of(
                 permission(RbacPermissions.TENANT_READ),
                 permission(RbacPermissions.USER_READ)
@@ -73,7 +73,7 @@ class PlatformOnlyTenantPermissionTest {
 
     @Test
     void platformAdminCanSeeTenantManagementPermissions() {
-        authenticateAs("platformadmin", AppRoleService.PLATFORM_ADMIN_ROLE_ID);
+        authenticateAsRole("platformadmin", AppRoleService.PLATFORM_ADMIN_ROLE_ID);
         List<AppPermission> permissions = List.of(
                 permission(RbacPermissions.TENANT_READ),
                 permission(RbacPermissions.TENANT_WRITE),
@@ -86,7 +86,7 @@ class PlatformOnlyTenantPermissionTest {
 
     @Test
     void tenantAdminCannotCreateRoleWithTenantManagementPermission() {
-        authenticateAs("tenant-admin", "TENANT_ADMIN");
+        authenticate("tenant-admin");
         RoleRequest request = request("tenant-role", Set.of(RbacPermissions.TENANT_READ));
         when(appRoleRepository.existsById("tenant-role")).thenReturn(false);
 
@@ -101,7 +101,7 @@ class PlatformOnlyTenantPermissionTest {
 
     @Test
     void tenantAdminCannotUpdateRoleWithTenantManagementPermission() {
-        authenticateAs("tenant-admin", "TENANT_ADMIN");
+        authenticate("tenant-admin");
         AppRole existing = role("tenant-role");
         when(appRoleRepository.findById("tenant-role")).thenReturn(java.util.Optional.of(existing));
 
@@ -116,26 +116,30 @@ class PlatformOnlyTenantPermissionTest {
     }
 
     @Test
-    void platformAdminCanCreateRoleWithTenantManagementPermission() {
-        authenticateAs("platformadmin", AppRoleService.PLATFORM_ADMIN_ROLE_ID);
+    void platformAdminCannotAssignTenantManagementPermissionToAnotherRole() {
+        authenticate("platformadmin");
         RoleRequest request = request("platform-operator", Set.of(RbacPermissions.TENANT_READ));
-        AppPermission tenantRead = permission(RbacPermissions.TENANT_READ);
         when(appRoleRepository.existsById("platform-operator")).thenReturn(false);
-        when(appPermissionRepository.findAllById(Set.of(RbacPermissions.TENANT_READ)))
-                .thenReturn(List.of(tenantRead));
-        when(appRoleRepository.save(any(AppRole.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        AppRole created = appRoleService.create(request);
+        assertThatThrownBy(() -> appRoleService.create(request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Platform-only permission codes cannot be assigned to managed roles")
+                .hasMessageContaining(RbacPermissions.TENANT_READ);
 
-        assertThat(created.getPermissions()).containsExactly(tenantRead);
+        verify(appPermissionRepository, never()).findAllById(any());
+        verify(appRoleRepository, never()).save(any());
     }
 
-    private void authenticateAs(String loginName, String roleId) {
+    private void authenticateAsRole(String loginName, String roleId) {
+        authenticate(loginName);
+        when(appUserRepository.findById(loginName))
+                .thenReturn(java.util.Optional.of(user(loginName, role(roleId))));
+    }
+
+    private void authenticate(String loginName) {
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(loginName, "n/a", List.of())
         );
-        when(appUserRepository.findById(loginName))
-                .thenReturn(java.util.Optional.of(user(loginName, role(roleId))));
     }
 
     private static RoleRequest request(String id, Set<String> permissionCodes) {
