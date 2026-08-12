@@ -1,0 +1,1 @@
+Issue 168 routing regression is covered by firebaseHosting.test.ts and coldStartRouting.test.ts.
