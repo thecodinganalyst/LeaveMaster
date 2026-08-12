@@ -76,6 +76,31 @@ body {
   justify-content: space-between;
 }
 
+.mobile-menu-button.ant-btn {
+  color: #16253a;
+  background: #ffffff;
+  border-color: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.24);
+}
+
+.mobile-menu-button.ant-btn:hover,
+.mobile-menu-button.ant-btn:focus-visible {
+  color: #0b1f33;
+  background: #eaf2ff;
+  border-color: #eaf2ff;
+}
+
+.mobile-menu-button.ant-btn:active {
+  color: #0b1f33;
+  background: #d7e6f7;
+  border-color: #d7e6f7;
+}
+
+.mobile-menu-button.ant-btn:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
 .page-header {
   display: flex;
   justify-content: space-between;
