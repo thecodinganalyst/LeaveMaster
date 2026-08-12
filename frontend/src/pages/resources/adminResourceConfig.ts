@@ -1,4 +1,4 @@
-export type AdminFieldType = 'text' | 'email' | 'date' | 'boolean' | 'select' | 'json' | 'password';
+export type AdminFieldType = 'text' | 'email' | 'date' | 'boolean' | 'select' | 'json' | 'password' | 'permissions';
 
 export interface AdminField {
   name: string;
@@ -71,7 +71,7 @@ export const adminResourceConfigs: Record<string, AdminResourceConfig> = {
       { name: 'id', label: 'Role ID', required: true, readOnlyOnEdit: true, list: true },
       { name: 'description', label: 'Description', required: true, list: true },
       { name: 'active', label: 'Active', type: 'boolean', list: true },
-      { name: 'permissionCodes', label: 'Permission codes (JSON array)', type: 'json', required: true },
+      { name: 'permissionCodes', label: 'Permissions', type: 'permissions', required: true },
     ],
   },
   locations: {
@@ -133,7 +133,7 @@ export const toFormValues = (config: AdminResourceConfig, record: Record<string,
     if (field.type === 'json' && result[field.name] !== undefined) result[field.name] = JSON.stringify(result[field.name], null, 2);
   }
   if (config.name === 'roles' && Array.isArray(record.permissions)) {
-    result.permissionCodes = JSON.stringify((record.permissions as Array<{ code?: string }>).map((permission) => permission.code).filter(Boolean), null, 2);
+    result.permissionCodes = (record.permissions as Array<{ code?: string }>).map((permission) => permission.code).filter(Boolean);
   }
   if (config.name === 'leave-approvers') {
     const staff = record.staff as { id?: string } | undefined;
