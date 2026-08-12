@@ -1,5 +1,6 @@
 import { Authenticated } from '@refinedev/core';
 import { NavigateToResource } from '@refinedev/react-router-v6';
+import { Spin, Typography } from 'antd';
 import { Outlet, Route, Routes } from 'react-router-dom';
 
 import { AppLayout } from '../components/layout/AppLayout.tsx';
@@ -15,6 +16,13 @@ import { ResourceEditPage } from '../pages/resources/ResourceEditPage.tsx';
 import { ResourceListPage } from '../pages/resources/ResourceListPage.tsx';
 import { ResourceShowPage } from '../pages/resources/ResourceShowPage.tsx';
 
+const AuthenticationLoadingState = () => (
+  <main className="auth-loading-page" role="status" aria-live="polite" aria-busy="true">
+    <Spin size="large" />
+    <Typography.Text>Checking your session…</Typography.Text>
+  </main>
+);
+
 export const AppRoutes = () => {
   return (
     <Routes>
@@ -24,6 +32,7 @@ export const AppRoutes = () => {
             key="authenticated"
             redirectOnFail="/login"
             appendCurrentPathToQuery
+            loading={<AuthenticationLoadingState />}
           >
             <AppLayout>
               <Outlet />
@@ -53,7 +62,7 @@ export const AppRoutes = () => {
 
       <Route
         element={
-          <Authenticated key="public" fallback={<Outlet />}>
+          <Authenticated key="public" fallback={<Outlet />} loading={<AuthenticationLoadingState />}>
             <NavigateToResource resource="dashboard" />
           </Authenticated>
         }
