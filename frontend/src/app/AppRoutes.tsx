@@ -5,6 +5,7 @@ import { Outlet, Route, Routes } from 'react-router-dom';
 
 import { AppLayout } from '../components/layout/AppLayout.tsx';
 import { ErrorState } from '../components/common/ErrorState.tsx';
+import { ChangePasswordPage } from '../pages/auth/ChangePasswordPage.tsx';
 import { LoginPage } from '../pages/auth/LoginPage.tsx';
 import { DashboardPage } from '../pages/dashboard/DashboardPage.tsx';
 import { ApplyLeavePage } from '../pages/leave/ApplyLeavePage.tsx';
@@ -41,6 +42,7 @@ export const AppRoutes = () => {
         }
       >
         <Route path="/" element={<DashboardPage />} />
+        <Route path="/account/change-password" element={<ChangePasswordPage />} />
         <Route path="/leave-requests" element={<MyLeavePage />} />
         <Route path="/leave-requests/apply" element={<ApplyLeavePage />} />
         <Route path="/leave-requests/create" element={<ApplyLeavePage />} />
