@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
@@ -29,10 +30,22 @@ public class AppRoleService {
     private final AppUserRepository appUserRepository;
 
     public List<AppRole> findAll() {
+        Optional<AppUser> currentUser = currentUser();
+        if (currentUser.isPresent() && !isPlatformAdmin(currentUser.get())) {
+            String tenantId = currentUser.get().getTenantId();
+            if (tenantId != null && !tenantId.isBlank()) {
+                return hidePlatformAdmin(appRoleRepository.findAllByTenantId(tenantId));
+            }
+        }
         return hidePlatformAdmin(appRoleRepository.findAll());
     }
 
     public List<AppRole> findByTenantId(String tenantId) {
+        Optional<AppUser> currentUser = currentUser();
+        if (currentUser.isPresent() && !isPlatformAdmin(currentUser.get())
+                && !Objects.equals(currentUser.get().getTenantId(), tenantId)) {
+            return List.of();
+        }
         return hidePlatformAdmin(appRoleRepository.findAllByTenantId(tenantId));
     }
 
@@ -50,7 +63,13 @@ public class AppRoleService {
         if (isPlatformAdmin(roleId)) {
             return Optional.empty();
         }
-        return appRoleRepository.findById(roleId);
+        Optional<AppRole> role = appRoleRepository.findById(roleId);
+        Optional<AppUser> currentUser = currentUser();
+        if (role.isPresent() && currentUser.isPresent() && !isPlatformAdmin(currentUser.get())
+                && !Objects.equals(role.get().getTenantId(), currentUser.get().getTenantId())) {
+            return Optional.empty();
+        }
+        return role;
     }
 
     @Transactional
@@ -72,6 +91,7 @@ public class AppRoleService {
                 .id(request.getId())
                 .description(request.getDescription())
                 .active(request.isActive())
+                .tenantId(currentUserTenantId())
                 .permissions(resolvePermissions(request.getPermissionCodes()))
                 .build();
 
@@ -115,6 +135,7 @@ public class AppRoleService {
 
         AppUser user = appUserRepository.findById(loginName)
                 .orElseThrow(() -> new AppUserNotFoundException(loginName));
+        enforceSameTenant(role, user);
         user.getRoles().add(role);
         return appUserRepository.save(user);
     }
@@ -125,13 +146,14 @@ public class AppRoleService {
 
         AppUser user = appUserRepository.findById(loginName)
                 .orElseThrow(() -> new AppUserNotFoundException(loginName));
+        enforceSameTenant(role, user);
         user.getRoles().removeIf(r -> r.getId().equals(role.getId()));
         return appUserRepository.save(user);
     }
 
     private AppRole findManageableRole(String roleId) {
         rejectPlatformAdmin(roleId);
-        return appRoleRepository.findById(roleId)
+        return findById(roleId)
                 .orElseThrow(() -> new RoleNotFoundException(roleId));
     }
 
@@ -151,16 +173,34 @@ public class AppRoleService {
         return roleId != null && PLATFORM_ADMIN_ROLE_ID.equalsIgnoreCase(roleId.trim());
     }
 
+    private boolean isPlatformAdmin(AppUser user) {
+        return user.getRoles().stream()
+                .anyMatch(role -> role != null && role.isActive() && isPlatformAdmin(role.getId()));
+    }
+
     private boolean isCurrentUserPlatformAdmin() {
+        return currentUser().map(this::isPlatformAdmin).orElse(false);
+    }
+
+    private Optional<AppUser> currentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated() || authentication.getName() == null) {
-            return false;
+            return Optional.empty();
         }
+        return appUserRepository.findById(authentication.getName());
+    }
 
-        return appUserRepository.findById(authentication.getName())
-                .map(user -> user.getRoles().stream()
-                        .anyMatch(role -> role != null && role.isActive() && isPlatformAdmin(role.getId())))
-                .orElse(false);
+    private String currentUserTenantId() {
+        return currentUser()
+                .filter(user -> !isPlatformAdmin(user))
+                .map(AppUser::getTenantId)
+                .orElse(null);
+    }
+
+    private void enforceSameTenant(AppRole role, AppUser user) {
+        if (role.getTenantId() != null && !Objects.equals(role.getTenantId(), user.getTenantId())) {
+            throw new RoleNotFoundException(role.getId());
+        }
     }
 
     private Set<AppPermission> resolvePermissions(Set<String> permissionCodes) {
