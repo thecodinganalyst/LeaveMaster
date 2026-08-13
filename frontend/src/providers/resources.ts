@@ -14,6 +14,8 @@ export const resources: IResourceItem[] = [
   crud('leave-requests', 'Leave Requests', 'calendar'),
   crud('employees', 'Staff', 'team'),
   crud('tenants', 'Tenants', 'bank'),
+  crud('jurisdictions', 'Jurisdictions', 'global'),
+  crud('jurisdiction-leave-types', 'Jurisdiction Leave Types', 'tags'),
   crud('users', 'App Users', 'user'),
   crud('roles', 'Roles', 'safety'),
   crud('locations', 'Locations', 'environment'),

@@ -20,6 +20,10 @@ public final class RbacPermissions {
     public static final String LEAVE_APPLICATION_READ = "LEAVE_APPLICATION_READ";
     public static final String LEAVE_APPLICATION_WRITE = "LEAVE_APPLICATION_WRITE";
     public static final String LEAVE_APPLICATION_APPROVE = "LEAVE_APPLICATION_APPROVE";
+    public static final String JURISDICTION_READ = "JURISDICTION_READ";
+    public static final String JURISDICTION_WRITE = "JURISDICTION_WRITE";
+    public static final String JURISDICTION_LEAVE_TYPE_READ = "JURISDICTION_LEAVE_TYPE_READ";
+    public static final String JURISDICTION_LEAVE_TYPE_WRITE = "JURISDICTION_LEAVE_TYPE_WRITE";
 
     private RbacPermissions() {
     }
