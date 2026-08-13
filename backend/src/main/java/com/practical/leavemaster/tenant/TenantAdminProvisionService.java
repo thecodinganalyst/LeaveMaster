@@ -20,7 +20,7 @@ import java.util.Set;
 @Slf4j
 public class TenantAdminProvisionService {
 
-    static final String TENANT_ADMIN_ROLE_ID = "TENANT_ADMIN";
+    static final String ADMIN_ROLE_SUFFIX = "Admin";
     static final String STAFF_ROLE_SUFFIX = "Staff";
     static final String MANAGER_ROLE_SUFFIX = "Manager";
     static final String HR_ROLE_SUFFIX = "HR";
@@ -85,8 +85,9 @@ public class TenantAdminProvisionService {
 
     @Transactional
     public void provision(String tenantId) {
+        String tenantAdminId = tenantRoleId(tenantId, ADMIN_ROLE_SUFFIX);
         AppRole tenantAdminRole = provisionRole(
-                TENANT_ADMIN_ROLE_ID + "_" + tenantId,
+                tenantAdminId,
                 "Tenant administrator for tenant " + tenantId,
                 tenantId,
                 TENANT_ADMIN_PERMISSION_CODES
@@ -111,11 +112,10 @@ public class TenantAdminProvisionService {
                 HR_PERMISSION_CODES
         );
 
-        String loginName = TENANT_ADMIN_ROLE_ID + "_" + tenantId;
-        if (!appUserRepository.existsById(loginName)) {
-            log.info("Creating tenant admin user {} for tenant {}", loginName, tenantId);
+        if (!appUserRepository.existsById(tenantAdminId)) {
+            log.info("Creating tenant admin user {} for tenant {}", tenantAdminId, tenantId);
             AppUser admin = AppUser.builder()
-                    .loginName(loginName)
+                    .loginName(tenantAdminId)
                     .password(passwordEncoder.encode(tenantAdminDefaultPassword))
                     .active(true)
                     .tenantId(tenantId)
