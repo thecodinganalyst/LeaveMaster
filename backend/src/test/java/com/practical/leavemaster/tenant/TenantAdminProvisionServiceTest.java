@@ -64,7 +64,7 @@ class TenantAdminProvisionServiceTest {
             return permissions;
         });
         when(appRoleRepository.save(any(AppRole.class))).thenAnswer(i -> i.getArgument(0));
-        when(appUserRepository.existsById("TENANT_ADMIN_ACME")).thenReturn(false);
+        when(appUserRepository.existsById("ACME_Admin")).thenReturn(false);
         when(passwordEncoder.encode("test-password")).thenReturn("$2a$encoded");
         when(appUserRepository.save(any(AppUser.class))).thenAnswer(i -> i.getArgument(0));
 
@@ -78,17 +78,17 @@ class TenantAdminProvisionServiceTest {
         assertRole(rolesById.get("ACME_Staff"), tenantId, TenantAdminProvisionService.STAFF_PERMISSION_CODES);
         assertRole(rolesById.get("ACME_Manager"), tenantId, TenantAdminProvisionService.MANAGER_PERMISSION_CODES);
         assertRole(rolesById.get("ACME_HR"), tenantId, TenantAdminProvisionService.HR_PERMISSION_CODES);
-        assertRole(rolesById.get("TENANT_ADMIN_ACME"), tenantId, TenantAdminProvisionService.TENANT_ADMIN_PERMISSION_CODES);
+        assertRole(rolesById.get("ACME_Admin"), tenantId, TenantAdminProvisionService.TENANT_ADMIN_PERMISSION_CODES);
 
         ArgumentCaptor<AppUser> userCaptor = ArgumentCaptor.forClass(AppUser.class);
         verify(appUserRepository).save(userCaptor.capture());
         AppUser createdUser = userCaptor.getValue();
-        assertThat(createdUser.getLoginName()).isEqualTo("TENANT_ADMIN_ACME");
+        assertThat(createdUser.getLoginName()).isEqualTo("ACME_Admin");
         assertThat(createdUser.getTenantId()).isEqualTo(tenantId);
         assertThat(createdUser.isActive()).isTrue();
         assertThat(createdUser.getRoles())
                 .extracting(AppRole::getId)
-                .containsExactly("TENANT_ADMIN_ACME");
+                .containsExactly("ACME_Admin");
     }
 
     @Test
@@ -151,7 +151,7 @@ class TenantAdminProvisionServiceTest {
                     .tenantId(tenantId)
                     .build());
         });
-        when(appUserRepository.existsById("TENANT_ADMIN_ACME")).thenReturn(true);
+        when(appUserRepository.existsById("ACME_Admin")).thenReturn(true);
 
         service.provision(tenantId);
 
