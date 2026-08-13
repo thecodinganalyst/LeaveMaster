@@ -58,6 +58,33 @@ class LocationRepositoryTest {
     }
 
     @Test
+    void shouldFindOnlyLocationsForRequestedTenant() {
+        Location tenantA = Location.builder()
+                .id("tenant-a-sg")
+                .locationName("Tenant A Singapore")
+                .country("Singapore")
+                .tenantId("tenant-a")
+                .build();
+        Location tenantB = Location.builder()
+                .id("tenant-b-sg")
+                .locationName("Tenant B Singapore")
+                .country("Singapore")
+                .tenantId("tenant-b")
+                .build();
+        Location unassigned = Location.builder()
+                .id("unassigned")
+                .locationName("Unassigned")
+                .country("Singapore")
+                .tenantId(null)
+                .build();
+        locationRepository.saveAll(List.of(tenantA, tenantB, unassigned));
+
+        List<Location> result = locationRepository.findAllByTenantId("tenant-a");
+
+        assertThat(result).extracting(Location::getId).containsExactly("tenant-a-sg");
+    }
+
+    @Test
     void shouldDeleteLocation() {
         locationRepository.save(Location.builder().id("sg").locationName("Singapore").country("Singapore").build());
         locationRepository.deleteById("sg");
