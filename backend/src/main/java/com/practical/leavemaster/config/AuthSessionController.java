@@ -1,5 +1,8 @@
 package com.practical.leavemaster.config;
 
+import com.practical.leavemaster.location.Location;
+import com.practical.leavemaster.staff.Staff;
+import com.practical.leavemaster.staff.StaffRepository;
 import com.practical.leavemaster.user.AppUser;
 import com.practical.leavemaster.user.AppUserNotFoundException;
 import com.practical.leavemaster.user.AppUserRepository;
@@ -17,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/auth")
@@ -27,6 +31,7 @@ public class AuthSessionController {
 
     private final AppUserRepository appUserRepository;
     private final AppUserService appUserService;
+    private final StaffRepository staffRepository;
 
     @GetMapping("/csrf")
     public CsrfResponse csrf(CsrfToken csrfToken) {
@@ -73,10 +78,17 @@ public class AuthSessionController {
                 && role.isActive()
                 && PLATFORM_ADMIN_ROLE_ID.equalsIgnoreCase(role.getId()));
 
+        String country = Optional.ofNullable(user.getStaffId())
+            .flatMap(staffRepository::findById)
+            .map(Staff::getLocation)
+            .map(Location::getCountry)
+            .orElse(null);
+
         return new CurrentUserResponse(
             user.getLoginName(),
             user.getStaffId(),
             user.getTenantId(),
+            country,
             user.isActive(),
             platformAdmin,
             authorities
@@ -97,6 +109,7 @@ public class AuthSessionController {
         String loginName,
         String staffId,
         String tenantId,
+        String country,
         boolean active,
         boolean platformAdmin,
         List<String> authorities

@@ -4,6 +4,7 @@ export interface CurrentUser {
   loginName: string;
   staffId: string | null;
   tenantId: string | null;
+  country?: string | null;
   active: boolean;
   platformAdmin?: boolean;
   authorities: string[];

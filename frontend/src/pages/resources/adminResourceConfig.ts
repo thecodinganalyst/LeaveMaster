@@ -1,4 +1,4 @@
-export type AdminFieldType = 'text' | 'email' | 'date' | 'boolean' | 'select' | 'json' | 'password' | 'permissions';
+export type AdminFieldType = 'text' | 'email' | 'date' | 'boolean' | 'select' | 'country' | 'json' | 'password' | 'permissions';
 
 export interface AdminField {
   name: string;
@@ -79,7 +79,7 @@ export const adminResourceConfigs: Record<string, AdminResourceConfig> = {
     fields: [
       { name: 'id', label: 'ID', required: true, readOnlyOnEdit: true, list: true },
       { name: 'locationName', label: 'Location name', required: true, list: true },
-      { name: 'country', label: 'Country', required: true, list: true },
+      { name: 'country', label: 'Country', type: 'country', required: true, list: true },
       { name: 'state', label: 'State / province', list: true },
     ],
   },
