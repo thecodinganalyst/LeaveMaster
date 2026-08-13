@@ -29,6 +29,8 @@ const tenantStatus = [
   { label: 'Terminated', value: 'TERMINATED' },
 ];
 
+const jurisdictionTypes = ['COUNTRY', 'STATE', 'PROVINCE', 'TERRITORY', 'REGION', 'DISTRICT', 'OTHER'].map((value) => ({ label: value, value }));
+
 export const adminResourceConfigs: Record<string, AdminResourceConfig> = {
   tenants: {
     name: 'tenants', label: 'Tenants', singular: 'Tenant', idField: 'id',
@@ -38,6 +40,36 @@ export const adminResourceConfigs: Record<string, AdminResourceConfig> = {
       { name: 'startDate', label: 'Start date', type: 'date', required: true, list: true },
       { name: 'endDate', label: 'End date', type: 'date', list: true },
       { name: 'status', label: 'Status', type: 'select', required: true, options: tenantStatus, list: true },
+    ],
+  },
+  jurisdictions: {
+    name: 'jurisdictions', label: 'Jurisdictions', singular: 'Jurisdiction', idField: 'id',
+    fields: [
+      { name: 'id', label: 'ID', readOnlyOnEdit: true, list: true },
+      { name: 'code', label: 'Code', required: true, readOnlyOnEdit: true, list: true },
+      { name: 'name', label: 'Name', required: true, list: true },
+      { name: 'jurisdictionType', label: 'Type', type: 'select', required: true, options: jurisdictionTypes, list: true },
+      { name: 'parentId', label: 'Parent jurisdiction', list: true },
+      { name: 'countryCode', label: 'Country code', required: true, list: true },
+      { name: 'subdivisionCode', label: 'Subdivision code', list: true },
+      { name: 'active', label: 'Active', type: 'boolean', list: true },
+    ],
+  },
+  'jurisdiction-leave-types': {
+    name: 'jurisdiction-leave-types', label: 'Jurisdiction Leave Types', singular: 'Jurisdiction leave type', idField: 'id',
+    fields: [
+      { name: 'id', label: 'ID', readOnlyOnEdit: true, list: true },
+      { name: 'jurisdictionId', label: 'Jurisdiction', required: true, list: true },
+      { name: 'code', label: 'Code', required: true, list: true },
+      { name: 'name', label: 'Name', required: true, list: true },
+      { name: 'description', label: 'Description' },
+      { name: 'statutory', label: 'Statutory', type: 'boolean', list: true },
+      { name: 'paid', label: 'Paid', type: 'boolean', list: true },
+      { name: 'active', label: 'Active', type: 'boolean', list: true },
+      { name: 'sourceName', label: 'Source name' },
+      { name: 'sourceUrl', label: 'Source URL' },
+      { name: 'effectiveFrom', label: 'Effective from', type: 'date' },
+      { name: 'effectiveTo', label: 'Effective to', type: 'date' },
     ],
   },
   employees: {
