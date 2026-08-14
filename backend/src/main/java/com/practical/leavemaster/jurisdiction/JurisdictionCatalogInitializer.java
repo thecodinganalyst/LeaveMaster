@@ -8,11 +8,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
 public class JurisdictionCatalogInitializer implements ApplicationRunner {
+    private static final String SINGAPORE = "SG";
+
     private final JurisdictionRepository jurisdictionRepository;
     private final JurisdictionLeaveTypeRepository leaveTypeRepository;
 
@@ -78,16 +79,25 @@ public class JurisdictionCatalogInitializer implements ApplicationRunner {
         }
     }
 
-    private void seedLeaveTypes() {
+    void seedLeaveTypes() {
+        migrateLegacySingaporeCode("OUTPATIENT_SICK_LEAVE", "SICK_LEAVE");
+        migrateLegacySingaporeCode("INFANT_CARE_LEAVE", "UNPAID_INFANT_CARE_LEAVE");
+
         List<LeaveSeed> seeds = List.of(
-                new LeaveSeed("SG", "ANNUAL_LEAVE", "Annual Leave", true, true, "Ministry of Manpower Singapore", "https://www.mom.gov.sg/employment-practices/leave/annual-leave"),
-                new LeaveSeed("SG", "OUTPATIENT_SICK_LEAVE", "Outpatient Sick Leave", true, true, "Ministry of Manpower Singapore", "https://www.mom.gov.sg/employment-practices/leave/sick-leave"),
-                new LeaveSeed("SG", "HOSPITALISATION_LEAVE", "Hospitalisation Leave", true, true, "Ministry of Manpower Singapore", "https://www.mom.gov.sg/employment-practices/leave/sick-leave"),
-                new LeaveSeed("SG", "MATERNITY_LEAVE", "Maternity Leave", true, true, "Ministry of Manpower Singapore", "https://www.mom.gov.sg/employment-practices/leave/maternity-leave"),
-                new LeaveSeed("SG", "PATERNITY_LEAVE", "Paternity Leave", true, true, "Ministry of Manpower Singapore", "https://www.mom.gov.sg/employment-practices/leave/paternity-leave"),
-                new LeaveSeed("SG", "SHARED_PARENTAL_LEAVE", "Shared Parental Leave", true, true, "Ministry of Manpower Singapore", "https://www.mom.gov.sg/employment-practices/leave/shared-parental-leave"),
-                new LeaveSeed("SG", "CHILDCARE_LEAVE", "Childcare Leave", true, true, "Ministry of Manpower Singapore", "https://www.mom.gov.sg/employment-practices/leave/childcare-leave"),
-                new LeaveSeed("SG", "INFANT_CARE_LEAVE", "Infant Care Leave", true, true, "Ministry of Manpower Singapore", "https://www.mom.gov.sg/employment-practices/leave/childcare-leave"),
+                new LeaveSeed(SINGAPORE, "ANNUAL_LEAVE", "Annual Leave", true, true, "Ministry of Manpower Singapore", "https://www.mom.gov.sg/employment-practices/leave/annual-leave"),
+                new LeaveSeed(SINGAPORE, "SICK_LEAVE", "Sick Leave", true, true, "Ministry of Manpower Singapore", "https://www.mom.gov.sg/employment-practices/leave/sick-leave"),
+                new LeaveSeed(SINGAPORE, "HOSPITALISATION_LEAVE", "Hospitalisation Leave", true, true, "Ministry of Manpower Singapore", "https://www.mom.gov.sg/employment-practices/leave/sick-leave"),
+                new LeaveSeed(SINGAPORE, "MATERNITY_LEAVE", "Maternity Leave", true, true, "Ministry of Manpower Singapore", "https://www.mom.gov.sg/employment-practices/leave/maternity-leave"),
+                new LeaveSeed(SINGAPORE, "PATERNITY_LEAVE", "Paternity Leave", true, true, "Ministry of Manpower Singapore", "https://www.mom.gov.sg/employment-practices/leave/paternity-leave"),
+                new LeaveSeed(SINGAPORE, "SHARED_PARENTAL_LEAVE", "Shared Parental Leave", true, true, "Ministry of Manpower Singapore", "https://www.mom.gov.sg/employment-practices/leave/shared-parental-leave"),
+                new LeaveSeed(SINGAPORE, "CHILDCARE_LEAVE", "Childcare Leave", true, true, "Ministry of Manpower Singapore", "https://www.mom.gov.sg/employment-practices/leave/childcare-leave"),
+                new LeaveSeed(SINGAPORE, "EXTENDED_CHILDCARE_LEAVE", "Extended Childcare Leave", true, true, "Ministry of Manpower Singapore", "https://www.mom.gov.sg/employment-practices/leave/childcare-leave"),
+                new LeaveSeed(SINGAPORE, "UNPAID_INFANT_CARE_LEAVE", "Unpaid Infant Care Leave", true, false, "Ministry of Manpower Singapore", "https://www.mom.gov.sg/employment-practices/leave/unpaid-infant-care-leave"),
+                new LeaveSeed(SINGAPORE, "UNPAID_LEAVE", "Unpaid Leave", false, false, null, null),
+                new LeaveSeed(SINGAPORE, "COMPASSIONATE_LEAVE", "Compassionate Leave", false, null, null, null),
+                new LeaveSeed(SINGAPORE, "MARRIAGE_LEAVE", "Marriage Leave", false, null, null, null),
+                new LeaveSeed(SINGAPORE, "NS_LEAVE", "National Service Leave", true, null, "MINDEF Singapore", "https://www.ns.gov.sg/web/portal/nsmen/home/nstopics/make-up-pay"),
+                new LeaveSeed(SINGAPORE, "OFF_IN_LIEU", "Off in Lieu", false, null, null, null),
                 new LeaveSeed("AU", "ANNUAL_LEAVE", "Annual Leave", true, true, "Fair Work Ombudsman", "https://www.fairwork.gov.au/leave/annual-leave"),
                 new LeaveSeed("AU", "PERSONAL_CARERS_LEAVE", "Personal and Carer's Leave", true, true, "Fair Work Ombudsman", "https://www.fairwork.gov.au/leave/sick-and-carers-leave"),
                 new LeaveSeed("AU", "COMPASSIONATE_LEAVE", "Compassionate Leave", true, true, "Fair Work Ombudsman", "https://www.fairwork.gov.au/leave/compassionate-and-bereavement-leave"),
@@ -97,19 +107,65 @@ public class JurisdictionCatalogInitializer implements ApplicationRunner {
                 new LeaveSeed("CA", "PARENTAL_LEAVE", "Parental Leave", true, false, "Government of Canada", "https://www.canada.ca/en/services/jobs/workplace/federal-labour-standards/leaves.html"),
                 new LeaveSeed("US", "FMLA_LEAVE", "Family and Medical Leave", true, false, "U.S. Department of Labor", "https://www.dol.gov/agencies/whd/fmla")
         );
-        for (LeaveSeed seed : seeds) {
-            String id = seed.jurisdiction() + ":" + seed.code();
-            leaveTypeRepository.findById(id).orElseGet(() -> leaveTypeRepository.save(JurisdictionLeaveType.builder()
-                    .id(id)
-                    .jurisdictionId(seed.jurisdiction())
-                    .code(seed.code())
-                    .name(seed.name())
-                    .statutory(seed.statutory())
-                    .paid(seed.paid())
-                    .active(true)
-                    .sourceName(seed.sourceName())
-                    .sourceUrl(seed.sourceUrl())
-                    .build()));
-        }
+        seeds.forEach(this::reconcileSeed);
+    }
+
+    private void migrateLegacySingaporeCode(String legacyCode, String replacementCode) {
+        String legacyId = leaveTypeId(SINGAPORE, legacyCode);
+        leaveTypeRepository.findById(legacyId).ifPresent(legacy -> {
+            String replacementId = leaveTypeId(SINGAPORE, replacementCode);
+            JurisdictionLeaveType replacement = leaveTypeRepository.findById(replacementId)
+                    .orElseGet(() -> JurisdictionLeaveType.builder()
+                            .id(replacementId)
+                            .jurisdictionId(SINGAPORE)
+                            .code(replacementCode)
+                            .name(legacy.getName())
+                            .description(legacy.getDescription())
+                            .statutory(legacy.isStatutory())
+                            .paid(legacy.getPaid())
+                            .active(legacy.isActive())
+                            .sourceUrl(legacy.getSourceUrl())
+                            .sourceName(legacy.getSourceName())
+                            .effectiveFrom(legacy.getEffectiveFrom())
+                            .effectiveTo(legacy.getEffectiveTo())
+                            .build());
+
+            copyMissingMetadata(legacy, replacement);
+            leaveTypeRepository.save(replacement);
+            leaveTypeRepository.delete(legacy);
+        });
+    }
+
+    private void reconcileSeed(LeaveSeed seed) {
+        String id = leaveTypeId(seed.jurisdiction(), seed.code());
+        JurisdictionLeaveType leaveType = leaveTypeRepository.findById(id)
+                .orElseGet(() -> JurisdictionLeaveType.builder()
+                        .id(id)
+                        .jurisdictionId(seed.jurisdiction())
+                        .code(seed.code())
+                        .active(true)
+                        .build());
+
+        leaveType.setJurisdictionId(seed.jurisdiction());
+        leaveType.setCode(seed.code());
+        leaveType.setName(seed.name());
+        leaveType.setStatutory(seed.statutory());
+        leaveType.setPaid(seed.paid());
+        leaveType.setActive(true);
+        leaveType.setSourceName(seed.sourceName());
+        leaveType.setSourceUrl(seed.sourceUrl());
+        leaveTypeRepository.save(leaveType);
+    }
+
+    private void copyMissingMetadata(JurisdictionLeaveType source, JurisdictionLeaveType target) {
+        if (target.getDescription() == null) target.setDescription(source.getDescription());
+        if (target.getEffectiveFrom() == null) target.setEffectiveFrom(source.getEffectiveFrom());
+        if (target.getEffectiveTo() == null) target.setEffectiveTo(source.getEffectiveTo());
+        if (target.getSourceName() == null) target.setSourceName(source.getSourceName());
+        if (target.getSourceUrl() == null) target.setSourceUrl(source.getSourceUrl());
+    }
+
+    private String leaveTypeId(String jurisdiction, String code) {
+        return jurisdiction + ":" + code;
     }
 }
