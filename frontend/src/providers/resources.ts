@@ -21,6 +21,7 @@ export const resources: IResourceItem[] = [
   crud('locations', 'Locations', 'environment'),
   crud('leave-types', 'Leave Types', 'tags'),
   crud('leave-entitlement-policies', 'Entitlement Policies', 'solution'),
+  crud('leave-entitlement-policy-eligibility-rules', 'Eligibility Rules', 'filter'),
   {
     name: 'leave-calendars',
     list: '/leave-calendars',

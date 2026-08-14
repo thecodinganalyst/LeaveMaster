@@ -33,6 +33,8 @@ const jurisdictionTypes = ['COUNTRY', 'STATE', 'PROVINCE', 'TERRITORY', 'REGION'
 const entitlementUnits = ['DAYS', 'HOURS'].map((value) => ({ label: value, value }));
 const accrualMethods = ['NONE', 'ANNUAL', 'MONTHLY', 'PER_PAY_PERIOD'].map((value) => ({ label: value, value }));
 const prorationMethods = ['NONE', 'CALENDAR_DAYS', 'MONTHS'].map((value) => ({ label: value, value }));
+const eligibilityCriterionTypes = ['LOCATION_ID', 'JURISDICTION_CODE', 'SERVICE_MONTHS'].map((value) => ({ label: value, value }));
+const eligibilityOperators = ['EQUALS', 'NOT_EQUALS', 'IN', 'NOT_IN', 'GREATER_THAN', 'GREATER_THAN_OR_EQUAL', 'LESS_THAN', 'LESS_THAN_OR_EQUAL'].map((value) => ({ label: value, value }));
 
 export const adminResourceConfigs: Record<string, AdminResourceConfig> = {
   tenants: {
@@ -145,6 +147,18 @@ export const adminResourceConfigs: Record<string, AdminResourceConfig> = {
       { name: 'carryForwardExpiryMonths', label: 'Carry forward expiry (months)' },
       { name: 'effectiveFrom', label: 'Effective from', type: 'date', required: true, list: true },
       { name: 'effectiveTo', label: 'Effective to', type: 'date', list: true },
+    ],
+  },
+  'leave-entitlement-policy-eligibility-rules': {
+    name: 'leave-entitlement-policy-eligibility-rules', label: 'Eligibility Rules', singular: 'Eligibility rule', idField: 'id',
+    fields: [
+      { name: 'id', label: 'ID', readOnlyOnEdit: true, hidden: true },
+      { name: 'policyId', label: 'Policy ID', required: true, readOnlyOnEdit: true, list: true },
+      { name: 'criterionType', label: 'Criterion', type: 'select', required: true, options: eligibilityCriterionTypes, list: true },
+      { name: 'operator', label: 'Operator', type: 'select', required: true, options: eligibilityOperators, list: true },
+      { name: 'value', label: 'Value', required: true, list: true },
+      { name: 'active', label: 'Active', type: 'boolean', list: true },
+      { name: 'sortOrder', label: 'Sort order', required: true, list: true },
     ],
   },
   'leave-calendars': {
