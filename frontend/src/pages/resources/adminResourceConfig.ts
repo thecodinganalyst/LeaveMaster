@@ -30,6 +30,9 @@ const tenantStatus = [
 ];
 
 const jurisdictionTypes = ['COUNTRY', 'STATE', 'PROVINCE', 'TERRITORY', 'REGION', 'DISTRICT', 'OTHER'].map((value) => ({ label: value, value }));
+const entitlementUnits = ['DAYS', 'HOURS'].map((value) => ({ label: value, value }));
+const accrualMethods = ['NONE', 'ANNUAL', 'MONTHLY', 'PER_PAY_PERIOD'].map((value) => ({ label: value, value }));
+const prorationMethods = ['NONE', 'CALENDAR_DAYS', 'MONTHS'].map((value) => ({ label: value, value }));
 
 export const adminResourceConfigs: Record<string, AdminResourceConfig> = {
   tenants: {
@@ -121,6 +124,27 @@ export const adminResourceConfigs: Record<string, AdminResourceConfig> = {
       { name: 'id', label: 'ID', required: true, readOnlyOnEdit: true, list: true },
       { name: 'name', label: 'Name', required: true, list: true },
       { name: 'used', label: 'In use', type: 'boolean', list: true },
+    ],
+  },
+  'leave-entitlement-policies': {
+    name: 'leave-entitlement-policies', label: 'Entitlement Policies', singular: 'Entitlement policy', idField: 'id',
+    fields: [
+      { name: 'id', label: 'ID', readOnlyOnEdit: true, list: true, hidden: true },
+      { name: 'tenantId', label: 'Tenant ID', list: true },
+      { name: 'leaveTypeId', label: 'Leave type ID', required: true, list: true },
+      { name: 'name', label: 'Name', required: true, list: true },
+      { name: 'active', label: 'Active', type: 'boolean', list: true },
+      { name: 'priority', label: 'Priority', required: true, list: true },
+      { name: 'entitlementUnit', label: 'Unit', type: 'select', required: true, options: entitlementUnits, list: true },
+      { name: 'entitlementAmount', label: 'Entitlement amount', required: true, list: true },
+      { name: 'accrualMethod', label: 'Accrual method', type: 'select', required: true, options: accrualMethods, list: true },
+      { name: 'accrualRate', label: 'Accrual rate' },
+      { name: 'prorationMethod', label: 'Proration method', type: 'select', required: true, options: prorationMethods, list: true },
+      { name: 'carryForwardAllowed', label: 'Carry forward allowed', type: 'boolean', list: true },
+      { name: 'carryForwardLimit', label: 'Carry forward limit' },
+      { name: 'carryForwardExpiryMonths', label: 'Carry forward expiry (months)' },
+      { name: 'effectiveFrom', label: 'Effective from', type: 'date', required: true, list: true },
+      { name: 'effectiveTo', label: 'Effective to', type: 'date', list: true },
     ],
   },
   'leave-calendars': {
