@@ -5,7 +5,11 @@ import com.practical.leavemaster.jurisdiction.JurisdictionRepository;
 import com.practical.leavemaster.location.Location;
 import com.practical.leavemaster.staff.Staff;
 import com.practical.leavemaster.staff.StaffRepository;
+import com.practical.leavemaster.user.AppUser;
+import com.practical.leavemaster.user.AppUserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -14,15 +18,19 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class LeaveEntitlementPolicyResolutionService {
+    private static final String PLATFORM_ADMIN_ROLE_ID = "PLATFORM_ADMIN";
+
     private final StaffRepository staffRepository;
     private final LeaveEntitlementPolicyRepository policyRepository;
     private final LeaveEntitlementPolicyEligibilityRepository ruleRepository;
     private final JurisdictionRepository jurisdictionRepository;
+    private final AppUserRepository appUserRepository;
 
     public PolicyResolutionResult resolve(String staffId, String leaveTypeId, LocalDate effectiveDate) {
         Staff staff = staffRepository.findById(staffId)
@@ -30,6 +38,7 @@ public class LeaveEntitlementPolicyResolutionService {
         if (staff.getTenantId() == null || staff.getTenantId().isBlank()) {
             throw new IllegalStateException("Staff does not have a tenant id");
         }
+        assertTenantAccess(staff.getTenantId());
         LocalDate date = effectiveDate == null ? LocalDate.now() : effectiveDate;
         List<LeaveEntitlementPolicy> policies = policyRepository
                 .findAllByTenantIdAndLeaveTypeIdAndActiveTrue(staff.getTenantId(), leaveTypeId);
@@ -144,6 +153,29 @@ public class LeaveEntitlementPolicyResolutionService {
             }
         }
         return matches;
+    }
+
+    private void assertTenantAccess(String tenantId) {
+        Optional<AppUser> user = currentUser();
+        if (user.isEmpty() || isPlatformAdmin(user.get())) {
+            return;
+        }
+        if (!tenantId.equals(user.get().getTenantId())) {
+            throw new org.springframework.security.access.AccessDeniedException("Cannot resolve policies for another tenant");
+        }
+    }
+
+    private Optional<AppUser> currentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() || authentication.getName() == null) {
+            return Optional.empty();
+        }
+        return appUserRepository.findById(authentication.getName());
+    }
+
+    private boolean isPlatformAdmin(AppUser user) {
+        return user != null && user.isActive() && user.getRoles() != null && user.getRoles().stream()
+                .anyMatch(role -> role != null && role.isActive() && PLATFORM_ADMIN_ROLE_ID.equalsIgnoreCase(role.getId()));
     }
 
     private String normalized(String value) {
