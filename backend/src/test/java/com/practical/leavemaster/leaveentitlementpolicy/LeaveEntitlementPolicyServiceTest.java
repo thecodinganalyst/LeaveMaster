@@ -95,19 +95,19 @@ class LeaveEntitlementPolicyServiceTest {
 
     @Test
     void rejectsMissingRequiredFieldsAndUnknownLeaveType() {
-        LeaveEntitlementPolicy policy = validPolicy(null, "annual");
-        assertThatThrownBy(() -> service.create(policy))
+        LeaveEntitlementPolicy missingTenant = validPolicy(null, "annual");
+        assertThatThrownBy(() -> service.create(missingTenant))
                 .isInstanceOf(LeaveEntitlementPolicyValidationException.class)
                 .hasMessageContaining("tenantId");
 
-        policy = validPolicy("tenant-a", null);
-        assertThatThrownBy(() -> service.create(policy))
+        LeaveEntitlementPolicy missingLeaveType = validPolicy("tenant-a", null);
+        assertThatThrownBy(() -> service.create(missingLeaveType))
                 .isInstanceOf(LeaveEntitlementPolicyValidationException.class)
                 .hasMessageContaining("leaveTypeId");
 
-        policy = validPolicy("tenant-a", "missing");
+        LeaveEntitlementPolicy unknownLeaveType = validPolicy("tenant-a", "missing");
         when(leaveTypeRepository.findById("missing")).thenReturn(Optional.empty());
-        assertThatThrownBy(() -> service.create(policy))
+        assertThatThrownBy(() -> service.create(unknownLeaveType))
                 .isInstanceOf(LeaveEntitlementPolicyValidationException.class)
                 .hasMessageContaining("Unknown leaveTypeId");
     }
@@ -124,46 +124,46 @@ class LeaveEntitlementPolicyServiceTest {
 
     @Test
     void rejectsMissingNameEnumsEntitlementAndEffectiveDate() {
-        LeaveEntitlementPolicy policy = validPolicy("tenant-a", "annual");
         when(leaveTypeRepository.findById("annual")).thenReturn(Optional.of(leaveType("annual", "tenant-a")));
 
-        policy.setName(" ");
-        assertThatThrownBy(() -> service.create(policy)).hasMessageContaining("name is required");
+        LeaveEntitlementPolicy missingName = validPolicy("tenant-a", "annual");
+        missingName.setName(" ");
+        assertThatThrownBy(() -> service.create(missingName)).hasMessageContaining("name is required");
 
-        policy = validPolicy("tenant-a", "annual");
-        policy.setEntitlementUnit(null);
-        assertThatThrownBy(() -> service.create(policy)).hasMessageContaining("entitlementUnit");
+        LeaveEntitlementPolicy missingUnit = validPolicy("tenant-a", "annual");
+        missingUnit.setEntitlementUnit(null);
+        assertThatThrownBy(() -> service.create(missingUnit)).hasMessageContaining("entitlementUnit");
 
-        policy = validPolicy("tenant-a", "annual");
-        policy.setEntitlementAmount(null);
-        assertThatThrownBy(() -> service.create(policy)).hasMessageContaining("entitlementAmount is required");
+        LeaveEntitlementPolicy missingAmount = validPolicy("tenant-a", "annual");
+        missingAmount.setEntitlementAmount(null);
+        assertThatThrownBy(() -> service.create(missingAmount)).hasMessageContaining("entitlementAmount is required");
 
-        policy = validPolicy("tenant-a", "annual");
-        policy.setEffectiveFrom(null);
-        assertThatThrownBy(() -> service.create(policy)).hasMessageContaining("effectiveFrom is required");
+        LeaveEntitlementPolicy missingEffectiveFrom = validPolicy("tenant-a", "annual");
+        missingEffectiveFrom.setEffectiveFrom(null);
+        assertThatThrownBy(() -> service.create(missingEffectiveFrom)).hasMessageContaining("effectiveFrom is required");
     }
 
     @Test
     void rejectsNegativeEntitlementAccrualCarryForwardAndExpiry() {
-        LeaveEntitlementPolicy policy = validPolicy("tenant-a", "annual");
         when(leaveTypeRepository.findById("annual")).thenReturn(Optional.of(leaveType("annual", "tenant-a")));
 
-        policy.setEntitlementAmount(new BigDecimal("-1"));
-        assertThatThrownBy(() -> service.create(policy)).hasMessageContaining("entitlementAmount");
+        LeaveEntitlementPolicy negativeEntitlement = validPolicy("tenant-a", "annual");
+        negativeEntitlement.setEntitlementAmount(new BigDecimal("-1"));
+        assertThatThrownBy(() -> service.create(negativeEntitlement)).hasMessageContaining("entitlementAmount");
 
-        policy = validPolicy("tenant-a", "annual");
-        policy.setAccrualRate(new BigDecimal("-0.5"));
-        assertThatThrownBy(() -> service.create(policy)).hasMessageContaining("accrualRate");
+        LeaveEntitlementPolicy negativeAccrual = validPolicy("tenant-a", "annual");
+        negativeAccrual.setAccrualRate(new BigDecimal("-0.5"));
+        assertThatThrownBy(() -> service.create(negativeAccrual)).hasMessageContaining("accrualRate");
 
-        policy = validPolicy("tenant-a", "annual");
-        policy.setCarryForwardAllowed(true);
-        policy.setCarryForwardLimit(new BigDecimal("-1"));
-        assertThatThrownBy(() -> service.create(policy)).hasMessageContaining("carryForwardLimit");
+        LeaveEntitlementPolicy negativeCarryForward = validPolicy("tenant-a", "annual");
+        negativeCarryForward.setCarryForwardAllowed(true);
+        negativeCarryForward.setCarryForwardLimit(new BigDecimal("-1"));
+        assertThatThrownBy(() -> service.create(negativeCarryForward)).hasMessageContaining("carryForwardLimit");
 
-        policy = validPolicy("tenant-a", "annual");
-        policy.setCarryForwardAllowed(true);
-        policy.setCarryForwardExpiryMonths(-1);
-        assertThatThrownBy(() -> service.create(policy)).hasMessageContaining("carryForwardExpiryMonths");
+        LeaveEntitlementPolicy negativeExpiry = validPolicy("tenant-a", "annual");
+        negativeExpiry.setCarryForwardAllowed(true);
+        negativeExpiry.setCarryForwardExpiryMonths(-1);
+        assertThatThrownBy(() -> service.create(negativeExpiry)).hasMessageContaining("carryForwardExpiryMonths");
     }
 
     @Test
@@ -179,18 +179,18 @@ class LeaveEntitlementPolicyServiceTest {
 
     @Test
     void rejectsCarryForwardConfigurationWhenDisabled() {
-        LeaveEntitlementPolicy policy = validPolicy("tenant-a", "annual");
-        policy.setCarryForwardAllowed(false);
-        policy.setCarryForwardLimit(new BigDecimal("5"));
         when(leaveTypeRepository.findById("annual")).thenReturn(Optional.of(leaveType("annual", "tenant-a")));
 
-        assertThatThrownBy(() -> service.create(policy))
+        LeaveEntitlementPolicy carryForwardLimit = validPolicy("tenant-a", "annual");
+        carryForwardLimit.setCarryForwardAllowed(false);
+        carryForwardLimit.setCarryForwardLimit(new BigDecimal("5"));
+        assertThatThrownBy(() -> service.create(carryForwardLimit))
                 .isInstanceOf(LeaveEntitlementPolicyValidationException.class)
                 .hasMessageContaining("carryForwardAllowed");
 
-        policy = validPolicy("tenant-a", "annual");
-        policy.setCarryForwardExpiryMonths(12);
-        assertThatThrownBy(() -> service.create(policy))
+        LeaveEntitlementPolicy carryForwardExpiry = validPolicy("tenant-a", "annual");
+        carryForwardExpiry.setCarryForwardExpiryMonths(12);
+        assertThatThrownBy(() -> service.create(carryForwardExpiry))
                 .isInstanceOf(LeaveEntitlementPolicyValidationException.class)
                 .hasMessageContaining("carryForwardAllowed");
     }
