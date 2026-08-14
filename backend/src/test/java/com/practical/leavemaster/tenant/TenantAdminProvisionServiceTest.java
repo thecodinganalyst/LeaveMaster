@@ -130,7 +130,9 @@ class TenantAdminProvisionServiceTest {
                         RbacPermissions.LOCATION_WRITE,
                         RbacPermissions.LEAVE_APPLICATION_READ,
                         RbacPermissions.LEAVE_APPLICATION_WRITE,
-                        RbacPermissions.LEAVE_APPLICATION_APPROVE
+                        RbacPermissions.LEAVE_APPLICATION_APPROVE,
+                        RbacPermissions.LEAVE_ENTITLEMENT_POLICY_READ,
+                        RbacPermissions.LEAVE_ENTITLEMENT_POLICY_WRITE
                 )
                 .doesNotContain(
                         RbacPermissions.ROLE_MANAGE,

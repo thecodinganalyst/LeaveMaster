@@ -14,6 +14,7 @@ import {
   MenuOutlined,
   MessageOutlined,
   SafetyCertificateOutlined,
+  SolutionOutlined,
   TagsOutlined,
   TeamOutlined,
   UserOutlined,
@@ -42,6 +43,7 @@ export const AppLayout = ({ children }: PropsWithChildren) => {
   const { data: roleAccess } = useCan({ resource: 'roles', action: 'list' });
   const { data: locationAccess } = useCan({ resource: 'locations', action: 'list' });
   const { data: leaveTypeAccess } = useCan({ resource: 'leave-types', action: 'list' });
+  const { data: entitlementPolicyAccess } = useCan({ resource: 'leave-entitlement-policies', action: 'list' });
   const { data: calendarAccess } = useCan({ resource: 'leave-calendars', action: 'list' });
   const { data: approverAccess } = useCan({ resource: 'leave-approvers', action: 'list' });
 
@@ -58,10 +60,11 @@ export const AppLayout = ({ children }: PropsWithChildren) => {
       ...(roleAccess?.can ? [{ key: '/roles', icon: <SafetyCertificateOutlined />, label: <Link to="/roles">Roles</Link> }] : []),
       ...(locationAccess?.can ? [{ key: '/locations', icon: <EnvironmentOutlined />, label: <Link to="/locations">Locations</Link> }] : []),
       ...(leaveTypeAccess?.can ? [{ key: '/leave-types', icon: <TagsOutlined />, label: <Link to="/leave-types">Leave Types</Link> }] : []),
+      ...(entitlementPolicyAccess?.can ? [{ key: '/leave-entitlement-policies', icon: <SolutionOutlined />, label: <Link to="/leave-entitlement-policies">Entitlement Policies</Link> }] : []),
       ...(calendarAccess?.can ? [{ key: '/leave-calendars', icon: <CalendarOutlined />, label: <Link to="/leave-calendars">Leave Calendars</Link> }] : []),
       ...(approverAccess?.can ? [{ key: '/leave-approvers', icon: <AuditOutlined />, label: <Link to="/leave-approvers">Leave Approvers</Link> }] : []),
     ],
-    [approvalAccess?.can, approverAccess?.can, calendarAccess?.can, employeeAccess?.can, jurisdictionAccess?.can, jurisdictionLeaveTypeAccess?.can, leaveAccess?.can, leaveTypeAccess?.can, locationAccess?.can, roleAccess?.can, tenantAccess?.can, userAccess?.can],
+    [approvalAccess?.can, approverAccess?.can, calendarAccess?.can, employeeAccess?.can, entitlementPolicyAccess?.can, jurisdictionAccess?.can, jurisdictionLeaveTypeAccess?.can, leaveAccess?.can, leaveTypeAccess?.can, locationAccess?.can, roleAccess?.can, tenantAccess?.can, userAccess?.can],
   );
 
   const selectedKeys = useMemo(() => {
