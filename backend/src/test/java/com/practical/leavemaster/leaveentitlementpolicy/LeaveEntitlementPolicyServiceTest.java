@@ -2,6 +2,7 @@ package com.practical.leavemaster.leaveentitlementpolicy;
 
 import com.practical.leavemaster.leavetype.LeaveType;
 import com.practical.leavemaster.leavetype.LeaveTypeRepository;
+import com.practical.leavemaster.rbac.AppRole;
 import com.practical.leavemaster.tenant.TenantActivityService;
 import com.practical.leavemaster.user.AppUser;
 import com.practical.leavemaster.user.AppUserRepository;
@@ -50,6 +51,36 @@ class LeaveEntitlementPolicyServiceTest {
     }
 
     @Test
+    void platformAdminSeesAllPolicies() {
+        authenticatePlatformAdmin("platform");
+        when(policyRepository.findAll()).thenReturn(List.of(
+                validPolicy("tenant-a", "annual"),
+                validPolicy("tenant-b", "annual-b")));
+
+        assertThat(service.findAll()).hasSize(2);
+        verify(policyRepository).findAll();
+        verify(policyRepository, never()).findAllByTenantId(any());
+    }
+
+    @Test
+    void tenantUserCannotReadAnotherTenantsPolicy() {
+        authenticateTenantUser("hr", "tenant-a");
+        when(policyRepository.findById("policy-b"))
+                .thenReturn(Optional.of(validPolicy("tenant-b", "annual-b")));
+
+        assertThat(service.findById("policy-b")).isEmpty();
+    }
+
+    @Test
+    void tenantUserWithoutTenantIdIsRejected() {
+        authenticateTenantUser("hr", null);
+
+        assertThatThrownBy(() -> service.findAll())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("tenant id");
+    }
+
+    @Test
     void tenantUserCannotOverrideTenantOnCreate() {
         authenticateTenantUser("hr", "tenant-a");
         LeaveEntitlementPolicy policy = validPolicy("tenant-b", "annual");
@@ -63,6 +94,25 @@ class LeaveEntitlementPolicyServiceTest {
     }
 
     @Test
+    void rejectsMissingRequiredFieldsAndUnknownLeaveType() {
+        LeaveEntitlementPolicy policy = validPolicy(null, "annual");
+        assertThatThrownBy(() -> service.create(policy))
+                .isInstanceOf(LeaveEntitlementPolicyValidationException.class)
+                .hasMessageContaining("tenantId");
+
+        policy = validPolicy("tenant-a", null);
+        assertThatThrownBy(() -> service.create(policy))
+                .isInstanceOf(LeaveEntitlementPolicyValidationException.class)
+                .hasMessageContaining("leaveTypeId");
+
+        policy = validPolicy("tenant-a", "missing");
+        when(leaveTypeRepository.findById("missing")).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service.create(policy))
+                .isInstanceOf(LeaveEntitlementPolicyValidationException.class)
+                .hasMessageContaining("Unknown leaveTypeId");
+    }
+
+    @Test
     void rejectsLeaveTypeFromAnotherTenant() {
         LeaveEntitlementPolicy policy = validPolicy("tenant-a", "annual");
         when(leaveTypeRepository.findById("annual")).thenReturn(Optional.of(leaveType("annual", "tenant-b")));
@@ -73,17 +123,55 @@ class LeaveEntitlementPolicyServiceTest {
     }
 
     @Test
-    void rejectsNegativeEntitlementAndInvalidEffectiveRange() {
+    void rejectsMissingNameEnumsEntitlementAndEffectiveDate() {
         LeaveEntitlementPolicy policy = validPolicy("tenant-a", "annual");
-        policy.setEntitlementAmount(new BigDecimal("-1"));
         when(leaveTypeRepository.findById("annual")).thenReturn(Optional.of(leaveType("annual", "tenant-a")));
 
-        assertThatThrownBy(() -> service.create(policy))
-                .isInstanceOf(LeaveEntitlementPolicyValidationException.class)
-                .hasMessageContaining("entitlementAmount");
+        policy.setName(" ");
+        assertThatThrownBy(() -> service.create(policy)).hasMessageContaining("name is required");
 
-        policy.setEntitlementAmount(new BigDecimal("14"));
+        policy = validPolicy("tenant-a", "annual");
+        policy.setEntitlementUnit(null);
+        assertThatThrownBy(() -> service.create(policy)).hasMessageContaining("entitlementUnit");
+
+        policy = validPolicy("tenant-a", "annual");
+        policy.setEntitlementAmount(null);
+        assertThatThrownBy(() -> service.create(policy)).hasMessageContaining("entitlementAmount is required");
+
+        policy = validPolicy("tenant-a", "annual");
+        policy.setEffectiveFrom(null);
+        assertThatThrownBy(() -> service.create(policy)).hasMessageContaining("effectiveFrom is required");
+    }
+
+    @Test
+    void rejectsNegativeEntitlementAccrualCarryForwardAndExpiry() {
+        LeaveEntitlementPolicy policy = validPolicy("tenant-a", "annual");
+        when(leaveTypeRepository.findById("annual")).thenReturn(Optional.of(leaveType("annual", "tenant-a")));
+
+        policy.setEntitlementAmount(new BigDecimal("-1"));
+        assertThatThrownBy(() -> service.create(policy)).hasMessageContaining("entitlementAmount");
+
+        policy = validPolicy("tenant-a", "annual");
+        policy.setAccrualRate(new BigDecimal("-0.5"));
+        assertThatThrownBy(() -> service.create(policy)).hasMessageContaining("accrualRate");
+
+        policy = validPolicy("tenant-a", "annual");
+        policy.setCarryForwardAllowed(true);
+        policy.setCarryForwardLimit(new BigDecimal("-1"));
+        assertThatThrownBy(() -> service.create(policy)).hasMessageContaining("carryForwardLimit");
+
+        policy = validPolicy("tenant-a", "annual");
+        policy.setCarryForwardAllowed(true);
+        policy.setCarryForwardExpiryMonths(-1);
+        assertThatThrownBy(() -> service.create(policy)).hasMessageContaining("carryForwardExpiryMonths");
+    }
+
+    @Test
+    void rejectsInvalidEffectiveRange() {
+        LeaveEntitlementPolicy policy = validPolicy("tenant-a", "annual");
         policy.setEffectiveTo(policy.getEffectiveFrom().minusDays(1));
+        when(leaveTypeRepository.findById("annual")).thenReturn(Optional.of(leaveType("annual", "tenant-a")));
+
         assertThatThrownBy(() -> service.create(policy))
                 .isInstanceOf(LeaveEntitlementPolicyValidationException.class)
                 .hasMessageContaining("effectiveTo");
@@ -96,6 +184,12 @@ class LeaveEntitlementPolicyServiceTest {
         policy.setCarryForwardLimit(new BigDecimal("5"));
         when(leaveTypeRepository.findById("annual")).thenReturn(Optional.of(leaveType("annual", "tenant-a")));
 
+        assertThatThrownBy(() -> service.create(policy))
+                .isInstanceOf(LeaveEntitlementPolicyValidationException.class)
+                .hasMessageContaining("carryForwardAllowed");
+
+        policy = validPolicy("tenant-a", "annual");
+        policy.setCarryForwardExpiryMonths(12);
         assertThatThrownBy(() -> service.create(policy))
                 .isInstanceOf(LeaveEntitlementPolicyValidationException.class)
                 .hasMessageContaining("carryForwardAllowed");
@@ -120,6 +214,16 @@ class LeaveEntitlementPolicyServiceTest {
     }
 
     @Test
+    void updateAndDeleteThrowWhenPolicyIsMissing() {
+        when(policyRepository.findById("missing")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.update("missing", validPolicy("tenant-a", "annual")))
+                .isInstanceOf(LeaveEntitlementPolicyNotFoundException.class);
+        assertThatThrownBy(() -> service.delete("missing"))
+                .isInstanceOf(LeaveEntitlementPolicyNotFoundException.class);
+    }
+
+    @Test
     void deletesAccessiblePolicy() {
         LeaveEntitlementPolicy existing = validPolicy("tenant-a", "annual");
         existing.setId("policy-1");
@@ -138,6 +242,15 @@ class LeaveEntitlementPolicyServiceTest {
                 .active(true)
                 .tenantId(tenantId)
                 .roles(Set.of())
+                .build()));
+    }
+
+    private void authenticatePlatformAdmin(String login) {
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(login, "n/a", List.of()));
+        when(appUserRepository.findById(login)).thenReturn(Optional.of(AppUser.builder()
+                .loginName(login)
+                .active(true)
+                .roles(Set.of(AppRole.builder().id("PLATFORM_ADMIN").active(true).description("Platform admin").build()))
                 .build()));
     }
 
