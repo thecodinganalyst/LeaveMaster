@@ -20,6 +20,7 @@ export const resources: IResourceItem[] = [
   crud('roles', 'Roles', 'safety'),
   crud('locations', 'Locations', 'environment'),
   crud('leave-types', 'Leave Types', 'tags'),
+  crud('leave-entitlement-policies', 'Entitlement Policies', 'solution'),
   {
     name: 'leave-calendars',
     list: '/leave-calendars',
