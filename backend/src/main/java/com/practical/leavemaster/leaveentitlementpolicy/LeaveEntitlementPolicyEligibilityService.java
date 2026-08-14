@@ -7,8 +7,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -18,9 +20,30 @@ public class LeaveEntitlementPolicyEligibilityService {
     private final LocationRepository locationRepository;
     private final JurisdictionRepository jurisdictionRepository;
 
+    public List<LeaveEntitlementPolicyEligibilityRule> findAllAccessible() {
+        List<LeaveEntitlementPolicyEligibilityRule> result = new ArrayList<>();
+        for (LeaveEntitlementPolicy policy : policyService.findAll()) {
+            result.addAll(ruleRepository.findAllByPolicyIdOrderBySortOrderAsc(policy.getId()));
+        }
+        return result;
+    }
+
+    public Optional<LeaveEntitlementPolicyEligibilityRule> findById(String ruleId) {
+        return ruleRepository.findById(ruleId)
+                .filter(rule -> policyService.findById(rule.getPolicyId()).isPresent());
+    }
+
     public List<LeaveEntitlementPolicyEligibilityRule> findAll(String policyId) {
         requirePolicy(policyId);
         return ruleRepository.findAllByPolicyIdOrderBySortOrderAsc(policyId);
+    }
+
+    @Transactional
+    public LeaveEntitlementPolicyEligibilityRule create(LeaveEntitlementPolicyEligibilityRule rule) {
+        if (rule.getPolicyId() == null || rule.getPolicyId().isBlank()) {
+            throw new LeaveEntitlementPolicyValidationException("policyId is required");
+        }
+        return create(rule.getPolicyId(), rule);
     }
 
     @Transactional
@@ -30,6 +53,13 @@ public class LeaveEntitlementPolicyEligibilityService {
         rule.setPolicyId(policyId);
         validate(policy, rule);
         return ruleRepository.save(rule);
+    }
+
+    @Transactional
+    public LeaveEntitlementPolicyEligibilityRule update(String ruleId, LeaveEntitlementPolicyEligibilityRule requested) {
+        LeaveEntitlementPolicyEligibilityRule existing = findById(ruleId)
+                .orElseThrow(() -> new LeaveEntitlementPolicyNotFoundException(ruleId));
+        return update(existing.getPolicyId(), ruleId, requested);
     }
 
     @Transactional
@@ -45,6 +75,13 @@ public class LeaveEntitlementPolicyEligibilityService {
         existing.setSortOrder(requested.getSortOrder());
         validate(policy, existing);
         return ruleRepository.save(existing);
+    }
+
+    @Transactional
+    public void delete(String ruleId) {
+        LeaveEntitlementPolicyEligibilityRule existing = findById(ruleId)
+                .orElseThrow(() -> new LeaveEntitlementPolicyNotFoundException(ruleId));
+        delete(existing.getPolicyId(), ruleId);
     }
 
     @Transactional
