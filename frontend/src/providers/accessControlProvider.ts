@@ -13,6 +13,7 @@ const permissionByResource: Record<string, { read?: string; write?: string; appr
   staff: { read: 'STAFF_READ', write: 'STAFF_WRITE' },
   locations: { read: 'LOCATION_READ', write: 'LOCATION_WRITE' },
   'leave-types': { read: 'LEAVE_TYPE_READ', write: 'LEAVE_TYPE_WRITE' },
+  'leave-entitlement-policies': { read: 'LEAVE_ENTITLEMENT_POLICY_READ', write: 'LEAVE_ENTITLEMENT_POLICY_WRITE' },
   'leave-approvers': { read: 'LEAVE_APPROVER_READ', write: 'LEAVE_APPROVER_WRITE' },
   'leave-calendars': { read: 'LEAVE_CALENDAR_READ', write: 'LEAVE_CALENDAR_WRITE' },
   'leave-requests': {
