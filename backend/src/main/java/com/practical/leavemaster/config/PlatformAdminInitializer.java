@@ -28,8 +28,12 @@ public class PlatformAdminInitializer implements ApplicationRunner {
 
     static final String PLATFORM_ADMIN_ROLE_ID = "PLATFORM_ADMIN";
     static final String PLATFORM_ADMIN_LOGIN_NAME = "PlatformAdmin";
-    private static final Set<String> REQUIRED_TENANT_PERMISSIONS =
-            Set.of(RbacPermissions.TENANT_READ, RbacPermissions.TENANT_WRITE);
+    private static final Set<String> REQUIRED_TENANT_PERMISSIONS = Set.of(
+            RbacPermissions.TENANT_READ,
+            RbacPermissions.TENANT_WRITE,
+            RbacPermissions.LEAVE_ENTITLEMENT_POLICY_READ,
+            RbacPermissions.LEAVE_ENTITLEMENT_POLICY_WRITE
+    );
 
     private final AppRoleRepository appRoleRepository;
     private final AppPermissionRepository appPermissionRepository;
