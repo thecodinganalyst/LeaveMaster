@@ -50,8 +50,7 @@ public class TenantLeaveConfigurationProvisionService {
 
     private Map<String, LeaveType> seedLeaveTypes(Tenant tenant) {
         Map<String, LeaveType> byCode = new LinkedHashMap<>();
-        List<LeaveType> existing = leaveTypeRepository.findAllByTenantId(tenant.getId());
-        for (LeaveType leaveType : existing) {
+        for (LeaveType leaveType : leaveTypeRepository.findAllByTenantId(tenant.getId())) {
             if (leaveType.getSourceJurisdictionLeaveTypeId() == null) continue;
             jurisdictionLeaveTypeRepository.findById(leaveType.getSourceJurisdictionLeaveTypeId())
                     .ifPresent(source -> byCode.put(source.getCode(), leaveType));
@@ -105,15 +104,14 @@ public class TenantLeaveConfigurationProvisionService {
             copied = policyRepository.save(copied);
 
             for (LeaveEntitlementPolicyEligibilityRule rule : eligibilityRepository.findAllByPolicyIdOrderBySortOrderAsc(template.getId())) {
-                LeaveEntitlementPolicyEligibilityRule copiedRule = LeaveEntitlementPolicyEligibilityRule.builder()
+                eligibilityRepository.save(LeaveEntitlementPolicyEligibilityRule.builder()
                         .policyId(copied.getId())
                         .criterionType(rule.getCriterionType())
                         .operator(rule.getOperator())
                         .value(rule.getValue())
                         .active(rule.isActive())
                         .sortOrder(rule.getSortOrder())
-                        .build();
-                eligibilityRepository.save(copiedRule);
+                        .build());
             }
         }
     }
@@ -122,15 +120,15 @@ public class TenantLeaveConfigurationProvisionService {
         Map<String, LeaveEntitlementPolicy> effective = new LinkedHashMap<>();
         String current = jurisdictionId;
         while (current != null && !current.isBlank()) {
-            for (LeaveEntitlementPolicy template : policyRepository.findAllByScopeAndJurisdictionIdAndActiveTrue(ConfigurationScope.PLATFORM_TEMPLATE, current)) {
-                JurisdictionLeaveType leaveType = jurisdictionLeaveTypeRepository.findById(template.getJurisdictionLeaveTypeId())
-                        .orElse(null);
+            String currentId = current;
+            for (LeaveEntitlementPolicy template : policyRepository.findAllByScopeAndJurisdictionIdAndActiveTrue(ConfigurationScope.PLATFORM_TEMPLATE, currentId)) {
+                JurisdictionLeaveType leaveType = jurisdictionLeaveTypeRepository.findById(template.getJurisdictionLeaveTypeId()).orElse(null);
                 if (leaveType != null) {
                     effective.putIfAbsent(leaveType.getCode() + "|" + template.getName(), template);
                 }
             }
-            Jurisdiction jurisdiction = jurisdictionRepository.findById(current)
-                    .orElseThrow(() -> new IllegalArgumentException("Jurisdiction not found: " + current));
+            Jurisdiction jurisdiction = jurisdictionRepository.findById(currentId)
+                    .orElseThrow(() -> new IllegalArgumentException("Jurisdiction not found: " + currentId));
             current = jurisdiction.getParentId();
         }
         return effective;
@@ -140,11 +138,12 @@ public class TenantLeaveConfigurationProvisionService {
         Map<String, LeaveCalendar> effective = new LinkedHashMap<>();
         String current = tenant.getJurisdictionId();
         while (current != null && !current.isBlank()) {
-            for (LeaveCalendar template : leaveCalendarRepository.findAllByScopeAndJurisdictionId(ConfigurationScope.PLATFORM_TEMPLATE, current)) {
+            String currentId = current;
+            for (LeaveCalendar template : leaveCalendarRepository.findAllByScopeAndJurisdictionId(ConfigurationScope.PLATFORM_TEMPLATE, currentId)) {
                 effective.putIfAbsent(template.getStart() + "|" + template.getEnd(), template);
             }
-            Jurisdiction jurisdiction = jurisdictionRepository.findById(current)
-                    .orElseThrow(() -> new IllegalArgumentException("Jurisdiction not found: " + current));
+            Jurisdiction jurisdiction = jurisdictionRepository.findById(currentId)
+                    .orElseThrow(() -> new IllegalArgumentException("Jurisdiction not found: " + currentId));
             current = jurisdiction.getParentId();
         }
 
