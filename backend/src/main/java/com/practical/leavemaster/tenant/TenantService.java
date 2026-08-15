@@ -4,6 +4,7 @@ import com.practical.leavemaster.jurisdiction.JurisdictionRepository;
 import com.practical.leavemaster.leaveapplication.LeaveApplicationRepository;
 import com.practical.leavemaster.leaveapprover.LeaveApproverRepository;
 import com.practical.leavemaster.leavecalendar.LeaveCalendarRepository;
+import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicyRepository;
 import com.practical.leavemaster.leavetype.LeaveTypeRepository;
 import com.practical.leavemaster.location.LocationRepository;
 import com.practical.leavemaster.staff.StaffRepository;
@@ -24,6 +25,7 @@ public class TenantService {
     private final LeaveApplicationRepository leaveApplicationRepository;
     private final LeaveApproverRepository leaveApproverRepository;
     private final StaffRepository staffRepository;
+    private final LeaveEntitlementPolicyRepository leaveEntitlementPolicyRepository;
     private final LeaveTypeRepository leaveTypeRepository;
     private final LeaveCalendarRepository leaveCalendarRepository;
     private final LocationRepository locationRepository;
@@ -84,6 +86,7 @@ public class TenantService {
         leaveApplicationRepository.deleteAllByTenantId(id);
         leaveApproverRepository.deleteAllByTenantId(id);
         staffRepository.deleteAll(staffRepository.findAllByTenantId(id));
+        leaveEntitlementPolicyRepository.deleteAllByTenantId(id);
         leaveTypeRepository.deleteAllByTenantId(id);
         leaveCalendarRepository.deleteAllByTenantId(id);
         locationRepository.deleteAllByTenantId(id);
