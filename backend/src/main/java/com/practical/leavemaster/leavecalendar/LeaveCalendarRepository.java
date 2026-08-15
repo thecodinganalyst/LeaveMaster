@@ -1,5 +1,6 @@
 package com.practical.leavemaster.leavecalendar;
 
+import com.practical.leavemaster.config.ConfigurationScope;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -12,11 +13,15 @@ public interface LeaveCalendarRepository extends JpaRepository<LeaveCalendar, St
 
     List<LeaveCalendar> findAllByOrderByStartAsc();
 
+    List<LeaveCalendar> findAllByScopeAndJurisdictionId(ConfigurationScope scope, String jurisdictionId);
+
     Optional<LeaveCalendar> findByStartLessThanEqualAndEndGreaterThanEqual(LocalDate start, LocalDate end);
 
     Optional<LeaveCalendar> findTopByOrderByEndDesc();
 
     boolean existsByStartLessThanEqualAndEndGreaterThanEqual(LocalDate end, LocalDate start);
+
+    boolean existsByTenantIdAndSourceTemplateId(String tenantId, String sourceTemplateId);
 
     void deleteAllByTenantId(String tenantId);
 }
