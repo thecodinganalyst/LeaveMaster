@@ -45,7 +45,7 @@ public class SecurityConfig {
         http
             .cors(Customizer.withDefaults())
             .csrf(csrf -> csrf
-                .ignoringRequestMatchers("/mcp/**"))
+                .ignoringRequestMatchers("/mcp/**", "/api/public/contact"))
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
             .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
@@ -63,6 +63,7 @@ public class SecurityConfig {
                     "/v3/api-docs/**",
                     "/h2-console/**"
                 ).permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/public/contact").permitAll()
                 .requestMatchers(HttpMethod.GET, "/users/**", "/api/users/**").hasAuthority(RbacPermissions.USER_READ)
                 .requestMatchers(HttpMethod.POST, "/users/**", "/api/users/**").hasAuthority(RbacPermissions.USER_WRITE)
                 .requestMatchers(HttpMethod.PUT, "/users/**", "/api/users/**").hasAuthority(RbacPermissions.USER_WRITE)
@@ -138,7 +139,7 @@ public class SecurityConfig {
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource(
-        @Value("${app.cors.allowed-origins:http://localhost:5173}") String configuredOrigins
+        @Value("${app.cors.allowed-origins:http://localhost:5173,http://localhost:3000}") String configuredOrigins
     ) {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(parseAllowedOrigins(configuredOrigins));
