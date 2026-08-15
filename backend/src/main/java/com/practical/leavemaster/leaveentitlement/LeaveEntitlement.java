@@ -19,6 +19,7 @@ import lombok.NoArgsConstructor;
 import lombok.ToString;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 
 @Entity
@@ -55,4 +56,21 @@ public class LeaveEntitlement {
 
     @Column(name = "tenant_id")
     private String tenantId;
+
+    @Column(name = "policy_id")
+    private String policyId;
+
+    @Column(name = "base_entitlement_amount", precision = 10, scale = 2)
+    private BigDecimal baseEntitlementAmount;
+
+    @Builder.Default
+    @Column(name = "carried_forward_amount", nullable = false, precision = 10, scale = 2)
+    private BigDecimal carriedForwardAmount = BigDecimal.ZERO;
+
+    @Builder.Default
+    @Column(name = "adjustment_amount", nullable = false, precision = 10, scale = 2)
+    private BigDecimal adjustmentAmount = BigDecimal.ZERO;
+
+    @Column(name = "generated_at")
+    private Instant generatedAt;
 }
