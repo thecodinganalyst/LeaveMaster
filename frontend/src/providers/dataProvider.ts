@@ -205,4 +205,4 @@ const provider = {
   },
 };
 
-export const leaveMasterDataProvider = provider as unknown as DataProvider;
+export const leaveMaestroDataProvider = provider as unknown as DataProvider;

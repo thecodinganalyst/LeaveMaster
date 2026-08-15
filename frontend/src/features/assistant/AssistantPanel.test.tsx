@@ -33,11 +33,11 @@ describe('AssistantPanel', () => {
     });
 
     render(<AssistantPanel />);
-    fireEvent.change(screen.getByLabelText('Message Ask LeaveMaster'), { target: { value: 'How much annual leave do I have?' } });
+    fireEvent.change(screen.getByLabelText('Message Ask LeaveMaestro'), { target: { value: 'How much annual leave do I have?' } });
     fireEvent.click(screen.getByLabelText('Send message'));
 
     expect(await screen.findByText('You have 12.5 days of annual leave remaining.')).toBeInTheDocument();
-    expect(screen.getByText('Authoritative LeaveMaster data')).toBeInTheDocument();
+    expect(screen.getByText('Authoritative LeaveMaestro data')).toBeInTheDocument();
     expect(screen.getByText('Annual Leave')).toBeInTheDocument();
     expect(screen.getByText('12.5')).toBeInTheDocument();
   });
@@ -52,10 +52,10 @@ describe('AssistantPanel', () => {
           toolName: 'applyForLeave',
           arguments: { leaveTypeId: 'ANNUAL', fromDate: '2026-08-13', toDate: '2026-08-14' },
           requiredAuthority: 'LEAVE_APPLICATION_WRITE',
-          actorLoginName: 'dennis',
+          actorLoginName: 'test-user',
           actorStaffId: 'S1',
           tenantId: 'T1',
-          confirmationToken: 'opaque-token',
+          confirmationToken: 'test-confirmation-token',
           expiresAt: '2026-08-09T12:15:00Z',
         },
       ],
@@ -68,14 +68,14 @@ describe('AssistantPanel', () => {
     });
 
     render(<AssistantPanel />);
-    fireEvent.change(screen.getByLabelText('Message Ask LeaveMaster'), { target: { value: 'Apply annual leave' } });
+    fireEvent.change(screen.getByLabelText('Message Ask LeaveMaestro'), { target: { value: 'Apply annual leave' } });
     fireEvent.click(screen.getByLabelText('Send message'));
 
     const confirm = await screen.findByLabelText('Confirm Apply For Leave');
     fireEvent.click(confirm);
 
     await waitFor(() => expect(confirmAssistantAction).toHaveBeenCalledTimes(1));
-    expect(confirmAssistantAction).toHaveBeenCalledWith('opaque-token');
+    expect(confirmAssistantAction).toHaveBeenCalledWith('test-confirmation-token');
     expect(await screen.findByText('Authoritative server result')).toBeInTheDocument();
     expect(screen.getByText('{"id":"L1","status":"PENDING"}')).toBeInTheDocument();
     expect(screen.queryByLabelText('Confirm Apply For Leave')).not.toBeInTheDocument();
@@ -91,17 +91,17 @@ describe('AssistantPanel', () => {
           toolName: 'approveLeaveApplication',
           arguments: { leaveApplicationId: 'L1' },
           requiredAuthority: 'LEAVE_APPLICATION_APPROVE',
-          actorLoginName: 'manager',
+          actorLoginName: 'test-manager',
           actorStaffId: 'M1',
           tenantId: 'T1',
-          confirmationToken: 'opaque-token-2',
+          confirmationToken: 'test-confirmation-token-2',
           expiresAt: '2026-08-09T12:15:00Z',
         },
       ],
     });
 
     render(<AssistantPanel />);
-    fireEvent.change(screen.getByLabelText('Message Ask LeaveMaster'), { target: { value: 'Approve request L1' } });
+    fireEvent.change(screen.getByLabelText('Message Ask LeaveMaestro'), { target: { value: 'Approve request L1' } });
     fireEvent.click(screen.getByLabelText('Send message'));
 
     fireEvent.click(await screen.findByLabelText('Cancel Approve Leave Application'));

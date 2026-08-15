@@ -1,6 +1,6 @@
 # Environments, domains, CORS and runtime secrets
 
-LeaveMaster uses a same-origin production architecture: the React/Vite application is hosted by Firebase Hosting and browser-facing backend paths are rewritten by Firebase Hosting to the Spring Boot service on Cloud Run. This keeps session cookies and CSRF on one browser origin and avoids embedding the Cloud Run URL in the production bundle.
+LeaveMaestro uses a same-origin production architecture: the React/Vite application is hosted by Firebase Hosting and browser-facing backend paths are rewritten by Firebase Hosting to the Spring Boot service on Cloud Run. This keeps session cookies and CSRF on one browser origin and avoids embedding the Cloud Run URL in the production bundle.
 
 ## Environment matrix
 
@@ -104,7 +104,7 @@ DNS ownership remains with the domain/DNS provider. TLS for a Firebase Hosting c
 
 ## OAuth provider callbacks
 
-LeaveMaster now uses an explicit callback base rather than deriving production callbacks from whichever proxy hostname reached the backend.
+LeaveMaestro now uses an explicit callback base rather than deriving production callbacks from whichever proxy hostname reached the backend.
 
 Local callback URLs:
 

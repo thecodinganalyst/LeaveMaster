@@ -76,9 +76,9 @@ spring:
       throw-exception-on-error: true
     mcp:
       server:
-        name: LeaveMaster MCP Server
+        name: LeaveMaestro MCP Server
         version: 1.0.0
-        description: MCP server providing access to all LeaveMaster APIs
+        description: MCP server providing access to all LeaveMaestro APIs
         type: SYNC
         protocol: STREAMABLE
 

@@ -17,10 +17,10 @@ export const LoginPage = () => {
       <Card style={{ width: '100%', maxWidth: 420 }}>
         <Space direction="vertical" size={18} style={{ width: '100%' }}>
           <Typography.Title level={3} style={{ marginBottom: 0 }}>
-            LeaveMaster
+            LeaveMaestro
           </Typography.Title>
           <Typography.Text type="secondary">
-            Sign in with your LeaveMaster account to continue.
+            Sign in with your LeaveMaestro account to continue.
           </Typography.Text>
 
           <Form<LoginFormValues>

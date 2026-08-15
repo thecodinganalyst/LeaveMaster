@@ -37,7 +37,7 @@ const StructuredData = ({ result }: { result: StructuredResult }) => {
   return (
     <Card size="small" title={resultTitle(result.toolName)} style={{ marginTop: 8 }}>
       <Space direction="vertical" size="small" style={{ width: '100%' }}>
-        <Typography.Text type="secondary">Authoritative LeaveMaster data</Typography.Text>
+        <Typography.Text type="secondary">Authoritative LeaveMaestro data</Typography.Text>
         {items.length === 0 ? <Typography.Text>No records found.</Typography.Text> : null}
         {items.map((item, index) => {
           const entries = dataEntries(item);
@@ -141,7 +141,7 @@ export const AssistantPanel = ({ onClose }: AssistantPanelProps) => {
           id: newId(),
           role: 'system',
           text: response.replayed
-            ? `${actionTitle(response.toolName)} was already completed. LeaveMaster returned the original result.`
+            ? `${actionTitle(response.toolName)} was already completed. LeaveMaestro returned the original result.`
             : `${actionTitle(response.toolName)} completed successfully.`,
         },
       ]);
@@ -156,11 +156,11 @@ export const AssistantPanel = ({ onClose }: AssistantPanelProps) => {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }} aria-label="Ask LeaveMaster assistant">
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }} aria-label="Ask LeaveMaestro assistant">
       <Space style={{ justifyContent: 'space-between', width: '100%' }}>
         <Space>
           <RobotOutlined />
-          <Typography.Title level={4} style={{ margin: 0 }}>Ask LeaveMaster</Typography.Title>
+          <Typography.Title level={4} style={{ margin: 0 }}>Ask LeaveMaestro</Typography.Title>
         </Space>
         {onClose ? <Button type="text" onClick={onClose} aria-label="Close assistant">Close</Button> : null}
       </Space>
@@ -178,7 +178,7 @@ export const AssistantPanel = ({ onClose }: AssistantPanelProps) => {
           {messages.map((message) => (
             <div key={message.id} style={{ alignSelf: message.role === 'user' ? 'flex-end' : 'stretch', width: '100%' }}>
               <Card size="small" bordered={message.role !== 'user'} style={{ marginLeft: message.role === 'user' ? 48 : 0, marginRight: message.role === 'user' ? 0 : 24 }}>
-                <Typography.Text strong>{message.role === 'user' ? 'You' : message.role === 'assistant' ? 'LeaveMaster' : 'Status'}</Typography.Text>
+                <Typography.Text strong>{message.role === 'user' ? 'You' : message.role === 'assistant' ? 'LeaveMaestro' : 'Status'}</Typography.Text>
                 <Typography.Paragraph style={{ margin: '6px 0 0', whiteSpace: 'pre-wrap' }}>{message.text}</Typography.Paragraph>
               </Card>
 
@@ -213,7 +213,7 @@ export const AssistantPanel = ({ onClose }: AssistantPanelProps) => {
                       </Space>
                     ) : null}
                     {action.state === 'cancelled' ? <Tag>Cancelled</Tag> : null}
-                    {action.error ? <Alert type="error" showIcon message={action.error} description="The action was not confirmed. Ask LeaveMaster to propose it again if needed." /> : null}
+                    {action.error ? <Alert type="error" showIcon message={action.error} description="The action was not confirmed. Ask LeaveMaestro to propose it again if needed." /> : null}
 
                     {action.state === 'pending' ? (
                       <Space wrap>
@@ -227,7 +227,7 @@ export const AssistantPanel = ({ onClose }: AssistantPanelProps) => {
                         </Button>
                         <Button onClick={() => cancel(action)} aria-label={`Cancel ${actionTitle(action.toolName)}`}>Cancel</Button>
                         {!action.confirmationToken ? (
-                          <Typography.Text type="secondary">Secure confirmation is unavailable for this proposal. Ask LeaveMaster to generate it again.</Typography.Text>
+                          <Typography.Text type="secondary">Secure confirmation is unavailable for this proposal. Ask LeaveMaestro to generate it again.</Typography.Text>
                         ) : null}
                       </Space>
                     ) : null}
@@ -237,7 +237,7 @@ export const AssistantPanel = ({ onClose }: AssistantPanelProps) => {
               ))}
             </div>
           ))}
-          {sending ? <Spin tip="LeaveMaster is thinking..." /> : null}
+          {sending ? <Spin tip="LeaveMaestro is thinking..." /> : null}
           <div ref={endRef} />
         </Space>
       </div>
@@ -249,8 +249,8 @@ export const AssistantPanel = ({ onClose }: AssistantPanelProps) => {
           value={input}
           onChange={(event) => setInput(event.target.value)}
           autoSize={{ minRows: 1, maxRows: 4 }}
-          placeholder="Ask LeaveMaster..."
-          aria-label="Message Ask LeaveMaster"
+          placeholder="Ask LeaveMaestro..."
+          aria-label="Message Ask LeaveMaestro"
           onKeyDown={(event) => {
             if (event.key === 'Enter' && !event.shiftKey) {
               event.preventDefault();

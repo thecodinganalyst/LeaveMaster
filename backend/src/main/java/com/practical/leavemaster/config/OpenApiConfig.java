@@ -12,7 +12,7 @@ public class OpenApiConfig {
     public OpenAPI leaveApiDoc() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("LeaveMaster API")
+                        .title("LeaveMaestro API")
                         .description("REST API for managing employee leave applications, approvals, and entitlements")
                         .version("1.0.0"));
     }
