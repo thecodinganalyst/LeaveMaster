@@ -2,6 +2,7 @@ import { Form, Input, Select, Switch } from 'antd';
 
 import type { AdminResourceConfig } from './adminResourceConfig.ts';
 import { getCountryOptions } from './countries.ts';
+import { JurisdictionSelect } from './JurisdictionSelect.tsx';
 import { RolePermissionCheckboxList } from './RolePermissionCheckboxList.tsx';
 
 interface Props {
@@ -21,6 +22,14 @@ export const ResourceFormFields = ({ config, editing = false, preferredCountry }
         return (
           <Form.Item key={field.name} name={field.name} label={field.label} valuePropName="checked">
             <Switch disabled={disabled} />
+          </Form.Item>
+        );
+      }
+
+      if (config.name === 'jurisdiction-leave-types' && field.name === 'jurisdictionId') {
+        return (
+          <Form.Item key={field.name} name={field.name} label={field.label} rules={rules}>
+            <JurisdictionSelect disabled={disabled} />
           </Form.Item>
         );
       }
