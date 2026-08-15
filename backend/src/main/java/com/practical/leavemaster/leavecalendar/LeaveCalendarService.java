@@ -52,7 +52,14 @@ public class LeaveCalendarService {
         if (leaveCalendarRepository.existsById(normalized.getId())) {
             throw new LeaveCalendarConflictException("Leave calendar already exists: " + normalized.getId());
         }
-        ensureNoOverlap(normalized, null);
+        if (normalized.getScope() == ConfigurationScope.TENANT) {
+            if (leaveCalendarRepository.existsByTenantIdAndStartLessThanEqualAndEndGreaterThanEqual(
+                    normalized.getTenantId(), normalized.getEnd(), normalized.getStart())) {
+                throw new LeaveCalendarConflictException("Leave calendar overlaps an existing tenant calendar");
+            }
+        } else {
+            ensureNoOverlap(normalized, null);
+        }
 
         LeaveCalendar saved = leaveCalendarRepository.save(normalized);
         touchTenant(saved);
@@ -67,9 +74,7 @@ public class LeaveCalendarService {
         normalized.setScope(existing.getScope());
         normalized.setTenantId(existing.getTenantId());
         normalized.setSourceTemplateId(existing.getSourceTemplateId());
-        if (existing.getScope() == ConfigurationScope.TENANT) {
-            normalized.setJurisdictionId(null);
-        }
+        if (existing.getScope() == ConfigurationScope.TENANT) normalized.setJurisdictionId(null);
         validate(normalized);
         ensureNoOverlap(normalized, id);
         LeaveCalendar saved = leaveCalendarRepository.save(normalized);
