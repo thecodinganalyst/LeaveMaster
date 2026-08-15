@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { apiFetch } from '../api/http.ts';
-import { leaveMasterDataProvider } from './dataProvider.ts';
+import { leaveMaestroDataProvider } from './dataProvider.ts';
 
 vi.mock('../api/http.ts', async () => {
   const actual = await vi.importActual<typeof import('../api/http.ts')>('../api/http.ts');
   return { ...actual, apiFetch: vi.fn() };
 });
 
-describe('leaveMasterDataProvider', () => {
+describe('leaveMaestroDataProvider', () => {
   beforeEach(() => {
     vi.mocked(apiFetch).mockReset();
   });
@@ -20,7 +20,7 @@ describe('leaveMasterDataProvider', () => {
       { id: '3', name: 'Gamma' },
     ]);
 
-    const result = await leaveMasterDataProvider.getList({
+    const result = await leaveMaestroDataProvider.getList({
       resource: 'employees',
       pagination: { current: 1, pageSize: 2, mode: 'server' },
       sorters: [{ field: 'name', order: 'asc' }],
@@ -39,7 +39,7 @@ describe('leaveMasterDataProvider', () => {
       { id: 'TENANT_ADMIN', description: 'Tenant admin' },
     ]);
 
-    const result = await leaveMasterDataProvider.getList({
+    const result = await leaveMaestroDataProvider.getList({
       resource: 'roles',
       pagination: { mode: 'off' },
       sorters: [],
@@ -53,7 +53,7 @@ describe('leaveMasterDataProvider', () => {
 
   it('blocks direct PLATFORM_ADMIN role navigation without calling the API', async () => {
     await expect(
-      leaveMasterDataProvider.getOne({ resource: 'roles', id: 'PLATFORM_ADMIN', meta: {} }),
+      leaveMaestroDataProvider.getOne({ resource: 'roles', id: 'PLATFORM_ADMIN', meta: {} }),
     ).rejects.toMatchObject({ statusCode: 404 });
 
     expect(apiFetch).not.toHaveBeenCalled();
@@ -61,13 +61,13 @@ describe('leaveMasterDataProvider', () => {
 
   it('blocks PLATFORM_ADMIN role creation and mutation without calling the API', async () => {
     await expect(
-      leaveMasterDataProvider.create({ resource: 'roles', variables: { id: 'PLATFORM_ADMIN' }, meta: {} }),
+      leaveMaestroDataProvider.create({ resource: 'roles', variables: { id: 'PLATFORM_ADMIN' }, meta: {} }),
     ).rejects.toMatchObject({ statusCode: 404 });
     await expect(
-      leaveMasterDataProvider.update({ resource: 'roles', id: 'PLATFORM_ADMIN', variables: { active: false }, meta: {} }),
+      leaveMaestroDataProvider.update({ resource: 'roles', id: 'PLATFORM_ADMIN', variables: { active: false }, meta: {} }),
     ).rejects.toMatchObject({ statusCode: 404 });
     await expect(
-      leaveMasterDataProvider.deleteOne({ resource: 'roles', id: 'PLATFORM_ADMIN', meta: {} }),
+      leaveMaestroDataProvider.deleteOne({ resource: 'roles', id: 'PLATFORM_ADMIN', meta: {} }),
     ).rejects.toMatchObject({ statusCode: 404 });
 
     expect(apiFetch).not.toHaveBeenCalled();
@@ -76,7 +76,7 @@ describe('leaveMasterDataProvider', () => {
   it('uses API-prefixed JSON write requests for normal CRUD resources', async () => {
     vi.mocked(apiFetch).mockResolvedValue({ id: 'T1', name: 'Tenant One' });
 
-    const result = await leaveMasterDataProvider.create({
+    const result = await leaveMaestroDataProvider.create({
       resource: 'tenants',
       variables: { id: 'T1', name: 'Tenant One' },
       meta: {},
@@ -95,18 +95,18 @@ describe('leaveMasterDataProvider', () => {
       .mockResolvedValueOnce({ id: 'Tenant A', name: 'Tenant A Updated' })
       .mockResolvedValueOnce(undefined);
 
-    const read = await leaveMasterDataProvider.getOne({
+    const read = await leaveMaestroDataProvider.getOne({
       resource: 'tenants',
       id: 'Tenant A',
       meta: {},
     });
-    const updated = await leaveMasterDataProvider.update({
+    const updated = await leaveMaestroDataProvider.update({
       resource: 'tenants',
       id: 'Tenant A',
       variables: { name: 'Tenant A Updated' },
       meta: {},
     });
-    const deleted = await leaveMasterDataProvider.deleteOne({
+    const deleted = await leaveMaestroDataProvider.deleteOne({
       resource: 'tenants',
       id: 'Tenant A',
       meta: {},
@@ -129,7 +129,7 @@ describe('leaveMasterDataProvider', () => {
     vi.mocked(apiFetch).mockResolvedValue('<!doctype html><html></html>');
 
     await expect(
-      leaveMasterDataProvider.getList({
+      leaveMaestroDataProvider.getList({
         resource: 'tenants',
         pagination: { mode: 'off' },
         sorters: [],
