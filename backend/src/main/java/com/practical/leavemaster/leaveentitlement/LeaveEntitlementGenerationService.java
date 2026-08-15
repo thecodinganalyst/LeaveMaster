@@ -80,12 +80,12 @@ public class LeaveEntitlementGenerationService {
         PolicyResolutionResult resolution = resolutionService.resolve(staff.getId(), leaveType.getId(), periodStart);
         if (resolution.ambiguous()) {
             return result(staff, leaveType, null, null, EntitlementGenerationResult.Status.AMBIGUOUS_POLICY,
-                    BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                    BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
                     "Multiple matching policies have the same highest priority");
         }
         if (resolution.selectedPolicyId() == null) {
             return result(staff, leaveType, null, null, EntitlementGenerationResult.Status.NO_MATCHING_POLICY,
-                    BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                    BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
                     "No matching entitlement policy");
         }
 
