@@ -91,7 +91,7 @@ export const AppLayout = ({ children }: PropsWithChildren) => {
       {isDesktop ? (
         <Sider width={250}>{menu}</Sider>
       ) : (
-        <Drawer placement="left" title="LeaveMaster" open={menuOpen} onClose={() => setMenuOpen(false)} styles={{ body: { padding: 0 } }}>
+        <Drawer placement="left" title="LeaveMaestro" open={menuOpen} onClose={() => setMenuOpen(false)} styles={{ body: { padding: 0 } }}>
           {menu}
         </Drawer>
       )}
@@ -107,11 +107,11 @@ export const AppLayout = ({ children }: PropsWithChildren) => {
                 aria-label="Open menu"
               />
             ) : null}
-            <Typography.Title level={4} style={{ color: '#eaf2ff', margin: 0 }}>LeaveMaster</Typography.Title>
+            <Typography.Title level={4} style={{ color: '#eaf2ff', margin: 0 }}>LeaveMaestro</Typography.Title>
           </Space>
           <Space>
-            <Button icon={<MessageOutlined />} onClick={() => setAssistantOpen(true)} aria-label="Open Ask LeaveMaster assistant">
-              {isDesktop ? 'Ask LeaveMaster' : null}
+            <Button icon={<MessageOutlined />} onClick={() => setAssistantOpen(true)} aria-label="Open Ask LeaveMaestro assistant">
+              {isDesktop ? 'Ask LeaveMaestro' : null}
             </Button>
             <Button icon={<LockOutlined />} onClick={() => navigate('/account/change-password')} aria-label="Change password">
               {isDesktop ? 'Change password' : null}
@@ -130,7 +130,7 @@ export const AppLayout = ({ children }: PropsWithChildren) => {
         closable={false}
         destroyOnHidden={false}
         styles={{ body: { padding: 20 } }}
-        aria-label="Ask LeaveMaster"
+        aria-label="Ask LeaveMaestro"
       >
         <AssistantPanel onClose={() => setAssistantOpen(false)} />
       </Drawer>
