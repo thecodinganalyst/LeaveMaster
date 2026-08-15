@@ -32,7 +32,8 @@ public class PlatformAdminInitializer implements ApplicationRunner {
             RbacPermissions.TENANT_READ,
             RbacPermissions.TENANT_WRITE,
             RbacPermissions.LEAVE_ENTITLEMENT_POLICY_READ,
-            RbacPermissions.LEAVE_ENTITLEMENT_POLICY_WRITE
+            RbacPermissions.LEAVE_ENTITLEMENT_POLICY_WRITE,
+            RbacPermissions.LEAVE_ENTITLEMENT_GENERATE
     );
 
     private final AppRoleRepository appRoleRepository;

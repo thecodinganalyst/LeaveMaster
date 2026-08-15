@@ -13,6 +13,7 @@ public final class RbacPermissions {
     public static final String LEAVE_TYPE_WRITE = "LEAVE_TYPE_WRITE";
     public static final String LEAVE_ENTITLEMENT_POLICY_READ = "LEAVE_ENTITLEMENT_POLICY_READ";
     public static final String LEAVE_ENTITLEMENT_POLICY_WRITE = "LEAVE_ENTITLEMENT_POLICY_WRITE";
+    public static final String LEAVE_ENTITLEMENT_GENERATE = "LEAVE_ENTITLEMENT_GENERATE";
     public static final String LEAVE_APPROVER_READ = "LEAVE_APPROVER_READ";
     public static final String LEAVE_APPROVER_WRITE = "LEAVE_APPROVER_WRITE";
     public static final String LEAVE_CALENDAR_READ = "LEAVE_CALENDAR_READ";
