@@ -1,21 +1,29 @@
 package com.practical.leavemaster.leavecalendar;
 
 import com.practical.leavemaster.config.ConfigurationScope;
+import com.practical.leavemaster.rbac.AppRole;
 import com.practical.leavemaster.tenant.TenantActivityService;
+import com.practical.leavemaster.user.AppUser;
 import com.practical.leavemaster.user.AppUserRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -25,6 +33,109 @@ class LeaveCalendarServiceTest {
     @Mock private TenantActivityService tenantActivityService;
     @Mock private AppUserRepository appUserRepository;
     @InjectMocks private LeaveCalendarService leaveCalendarService;
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    void tenantUserOnlySeesOwnTenantCalendars() {
+        authenticateTenantUser("hr", "tenant-1");
+        LeaveCalendar tenantCalendar = tenantCalendar("fy2026", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31));
+        when(leaveCalendarRepository.findAllByTenantIdOrderByStartAsc("tenant-1")).thenReturn(List.of(tenantCalendar));
+
+        assertThat(leaveCalendarService.findAll()).containsExactly(tenantCalendar);
+        verify(leaveCalendarRepository, never()).findAll();
+    }
+
+    @Test
+    void platformAdminOnlySeesPlatformTemplates() {
+        authenticatePlatformAdmin("platform");
+        LeaveCalendar template = platformTemplate("template-sg-2026");
+        LeaveCalendar tenantCalendar = tenantCalendar("fy2026", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31));
+        when(leaveCalendarRepository.findAll()).thenReturn(List.of(tenantCalendar, template));
+
+        assertThat(leaveCalendarService.findAll()).containsExactly(template);
+    }
+
+    @Test
+    void tenantUserCannotReadAnotherTenantCalendar() {
+        authenticateTenantUser("hr", "tenant-1");
+        LeaveCalendar other = tenantCalendar("other", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31));
+        other.setTenantId("tenant-2");
+        when(leaveCalendarRepository.findById("other")).thenReturn(Optional.of(other));
+
+        assertThat(leaveCalendarService.findById("other")).isEmpty();
+    }
+
+    @Test
+    void platformAdminCannotReadTenantCalendar() {
+        authenticatePlatformAdmin("platform");
+        LeaveCalendar tenantCalendar = tenantCalendar("fy2026", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31));
+        when(leaveCalendarRepository.findById("fy2026")).thenReturn(Optional.of(tenantCalendar));
+
+        assertThat(leaveCalendarService.findById("fy2026")).isEmpty();
+    }
+
+    @Test
+    void tenantUserCreateForcesTenantScopeAndTenantId() {
+        authenticateTenantUser("hr", "tenant-1");
+        LeaveCalendar requested = platformTemplate(null);
+        when(leaveCalendarRepository.existsById("tenant-1:2026-01-01_2026-12-31")).thenReturn(false);
+        when(leaveCalendarRepository.existsByTenantIdAndStartLessThanEqualAndEndGreaterThanEqual(
+                "tenant-1", LocalDate.of(2026, 12, 31), LocalDate.of(2026, 1, 1))).thenReturn(false);
+        when(leaveCalendarRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        LeaveCalendar saved = leaveCalendarService.create(requested);
+
+        assertThat(saved.getScope()).isEqualTo(ConfigurationScope.TENANT);
+        assertThat(saved.getTenantId()).isEqualTo("tenant-1");
+        assertThat(saved.getJurisdictionId()).isNull();
+        verify(tenantActivityService).touch("tenant-1");
+    }
+
+    @Test
+    void platformAdminCreateForcesTemplateScopeAndNullTenant() {
+        authenticatePlatformAdmin("platform");
+        LeaveCalendar requested = tenantCalendar(null, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31));
+        requested.setJurisdictionId("SG");
+        when(leaveCalendarRepository.existsById("template:SG:2026-01-01_2026-12-31")).thenReturn(false);
+        when(leaveCalendarRepository.findAllByScopeAndJurisdictionId(ConfigurationScope.PLATFORM_TEMPLATE, "SG")).thenReturn(List.of());
+        when(leaveCalendarRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        LeaveCalendar saved = leaveCalendarService.create(requested);
+
+        assertThat(saved.getScope()).isEqualTo(ConfigurationScope.PLATFORM_TEMPLATE);
+        assertThat(saved.getTenantId()).isNull();
+        assertThat(saved.getJurisdictionId()).isEqualTo("SG");
+        verify(tenantActivityService, never()).touch(any());
+    }
+
+    @Test
+    void tenantUserUsesTenantScopedCalendarLookupAndGeneration() {
+        authenticateTenantUser("hr", "tenant-1");
+        LocalDate requestedDate = LocalDate.of(2027, 6, 1);
+        LeaveCalendar existing = tenantCalendar("fy2026", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31));
+        when(leaveCalendarRepository.findByTenantIdAndStartLessThanEqualAndEndGreaterThanEqual("tenant-1", requestedDate, requestedDate))
+                .thenReturn(Optional.empty());
+        when(leaveCalendarRepository.findTopByTenantIdOrderByEndDesc("tenant-1")).thenReturn(Optional.of(existing));
+        when(leaveCalendarRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Optional<LeaveCalendar> result = leaveCalendarService.getCalendarFor(requestedDate);
+
+        assertThat(result).isPresent();
+        assertThat(result.get().getTenantId()).isEqualTo("tenant-1");
+        assertThat(result.get().getStart()).isEqualTo(LocalDate.of(2027, 1, 1));
+    }
+
+    @Test
+    void tenantUserWithoutTenantIdIsRejected() {
+        authenticateTenantUser("hr", null);
+        assertThatThrownBy(() -> leaveCalendarService.findAll())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("tenant id");
+    }
 
     @Test
     void shouldCreateLeaveCalendar() {
@@ -155,8 +266,7 @@ class LeaveCalendarServiceTest {
 
     @Test
     void shouldCreatePlatformCalendarTemplate() {
-        LeaveCalendar template = LeaveCalendar.builder().scope(ConfigurationScope.PLATFORM_TEMPLATE).jurisdictionId("SG")
-                .start(LocalDate.of(2026, 1, 1)).end(LocalDate.of(2026, 12, 31)).publicHolidays(List.of()).build();
+        LeaveCalendar template = platformTemplate(null);
         when(leaveCalendarRepository.existsById("template:SG:2026-01-01_2026-12-31")).thenReturn(false);
         when(leaveCalendarRepository.findAllByScopeAndJurisdictionId(ConfigurationScope.PLATFORM_TEMPLATE, "SG")).thenReturn(List.of());
         when(leaveCalendarRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -168,5 +278,24 @@ class LeaveCalendarServiceTest {
     private LeaveCalendar tenantCalendar(String id, LocalDate start, LocalDate end) {
         return LeaveCalendar.builder().id(id).start(start).end(end).tenantId("tenant-1")
                 .scope(ConfigurationScope.TENANT).publicHolidays(List.of()).build();
+    }
+
+    private LeaveCalendar platformTemplate(String id) {
+        return LeaveCalendar.builder().id(id).scope(ConfigurationScope.PLATFORM_TEMPLATE).jurisdictionId("SG")
+                .start(LocalDate.of(2026, 1, 1)).end(LocalDate.of(2026, 12, 31)).publicHolidays(List.of()).build();
+    }
+
+    private void authenticateTenantUser(String login, String tenantId) {
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(login, "n/a", List.of()));
+        when(appUserRepository.findById(login)).thenReturn(Optional.of(AppUser.builder()
+                .loginName(login).active(true).tenantId(tenantId).roles(Set.of()).build()));
+    }
+
+    private void authenticatePlatformAdmin(String login) {
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(login, "n/a", List.of()));
+        when(appUserRepository.findById(login)).thenReturn(Optional.of(AppUser.builder()
+                .loginName(login).active(true)
+                .roles(Set.of(AppRole.builder().id("PLATFORM_ADMIN").description("Platform admin").active(true).build()))
+                .build()));
     }
 }
