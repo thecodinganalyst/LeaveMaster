@@ -21,8 +21,8 @@ export const JurisdictionSelect = ({ value, onChange, disabled = false }: Props)
 
   return (
     <Select
-      value={value}
-      onChange={onChange}
+      {...(value === undefined ? {} : { value })}
+      {...(onChange === undefined ? {} : { onChange })}
       disabled={disabled || jurisdictionsQuery.isError}
       loading={jurisdictionsQuery.isLoading}
       options={getJurisdictionOptions(jurisdictionsQuery.data ?? [])}
