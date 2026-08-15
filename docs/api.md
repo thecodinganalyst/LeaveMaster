@@ -136,6 +136,114 @@ Required permissions: `LOCATION_READ` for `GET`, `LOCATION_WRITE` for `POST`/`PU
 
 ---
 
+## Leave Entitlement Generation (`/leave-entitlement-generation`)
+
+The generation controller is exposed under both `/leave-entitlement-generation` and `/api/leave-entitlement-generation`. The `/api` form is recommended for frontend and external API usage.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/leave-entitlement-generation/staff` | Generate or reconcile entitlements for every leave type belonging to one staff member's tenant for the requested entitlement period. |
+| `POST` | `/api/leave-entitlement-generation/tenant` | Generate or reconcile entitlements for every staff/leave-type combination in a tenant for the requested entitlement period. |
+
+Required permission: `LEAVE_ENTITLEMENT_GENERATE` for both endpoints.
+
+The default tenant HR and tenant Admin roles receive this permission. Platform Admin also receives it. Tenant-scoped users are rejected if they attempt to generate entitlements for a different tenant.
+
+### Generate for one staff member
+
+Request:
+
+```json
+{
+  "staffId": "staff-123",
+  "periodStart": "2027-01-01",
+  "periodEnd": "2027-12-31"
+}
+```
+
+A valid period requires both dates and `periodStart <= periodEnd`. An unknown staff ID or an invalid period is rejected.
+
+### Generate for a tenant
+
+Request:
+
+```json
+{
+  "tenantId": "ACME",
+  "periodStart": "2027-01-01",
+  "periodEnd": "2027-12-31"
+}
+```
+
+The tenant operation evaluates all tenant staff against all tenant leave types and returns one result per staff/leave-type combination.
+
+### Generation response
+
+Both endpoints return a JSON array of generation results. Example:
+
+```json
+[
+  {
+    "staffId": "staff-123",
+    "leaveTypeId": "annual",
+    "entitlementId": "entitlement-uuid",
+    "policyId": "policy-uuid",
+    "status": "CREATED",
+    "baseAmount": 14.00,
+    "carriedForwardAmount": 3.00,
+    "adjustmentAmount": 1.00,
+    "usedAmount": 2.00,
+    "reservedAmount": 0.50,
+    "entitlementAmount": 18.00,
+    "reason": "Entitlement generated from policy"
+  }
+]
+```
+
+Result fields:
+
+| Field | Meaning |
+|---|---|
+| `staffId` | Staff member evaluated. |
+| `leaveTypeId` | Leave type evaluated. |
+| `entitlementId` | Existing/new entitlement ID when an entitlement record is involved; otherwise `null`. |
+| `policyId` | Winning/source policy ID when applicable. |
+| `status` | Outcome for this staff/leave-type combination. |
+| `baseAmount` | Calculated policy entitlement before carry-forward and adjustment. |
+| `carriedForwardAmount` | Balance brought from a previous entitlement period. |
+| `adjustmentAmount` | Preserved manual adjustment on an existing generated entitlement. |
+| `usedAmount` | Approved leave derived from leave applications in the requested period. |
+| `reservedAmount` | Pending leave derived from leave applications in the requested period. |
+| `entitlementAmount` | Total generated entitlement: base + carry-forward + adjustment. |
+| `reason` | Human-readable explanation of the result. |
+
+Possible `status` values:
+
+| Status | Meaning |
+|---|---|
+| `CREATED` | A new policy-generated entitlement was created. |
+| `UPDATED` | An existing policy-generated entitlement for the same staff/type/period was reconciled. |
+| `NO_MATCHING_POLICY` | No effective eligible policy was found. |
+| `AMBIGUOUS_POLICY` | Multiple matching policies have the same highest priority; no policy is selected. |
+| `LEGACY_PROTECTED` | An existing entitlement with no source policy is treated as legacy/manual and left unchanged. |
+| `HISTORICAL_PROTECTED` | An existing policy-generated entitlement for a completed historical period is left unchanged. |
+
+### Calculation and safety behaviour
+
+- Policy resolution is performed at `periodStart`.
+- Annual entitlement and join-date proration support `NONE`, `CALENDAR_DAYS`, and `MONTHS` proration.
+- Monthly accrual uses `accrualRate` and is capped by the policy's configured entitlement amount.
+- Carry-forward uses the most recent earlier entitlement for the same staff/leave type, deducts approved and pending leave from the source period, applies any carry-forward limit and respects configured expiry months.
+- Existing manual `adjustmentAmount` is preserved when reconciling an already generated entitlement.
+- `APPROVED` leave is counted as used and `PENDING` leave as reserved; recalculation is rejected if the new entitlement would be below used + reserved leave.
+- Re-running the same staff + leave type + period reconciles the same entitlement rather than creating a duplicate.
+- `HOURS` policies are currently rejected because LeaveMaestro's leave consumption model is day/half-day based.
+- `PER_PAY_PERIOD` accrual is currently rejected because LeaveMaestro does not yet have an authoritative payroll-period schedule.
+
+For the full policy → eligibility → resolution → generation workflow and operational examples, see [Policy-driven leave entitlement generation](leave-entitlement-generation.md).
+
+---
+
 ## Leave Applications (`/leave-applications`)
 
 | Method | Path | Description |
