@@ -229,7 +229,7 @@ class LeaveEntitlementGenerationServiceTest {
         when(entitlementRepository.findByStaffAndLeaveTypeAndFromAndTo(staff, leaveType, start, end)).thenReturn(Optional.of(existing));
         when(applicationRepository.findByStaffAndLeaveTypeAndLeaveDateBetweenAndStatusIn(any(), any(), any(), any(), any()))
                 .thenReturn(List.of(application(LeaveStatus.APPROVED, LeaveDuration.FULL),
-                        application(LeaveStatus.PENDING, LeaveDuration.HALF)));
+                        application(LeaveStatus.PENDING, LeaveDuration.AM)));
 
         assertThatThrownBy(() -> service.generateForStaff("staff-1", start, end))
                 .isInstanceOf(LeaveEntitlementPolicyValidationException.class)
