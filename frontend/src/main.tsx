@@ -11,7 +11,7 @@ import { AppRoutes } from './app/AppRoutes.tsx';
 import { ColdStartGate } from './components/ColdStartGate.tsx';
 import { accessControlProvider } from './providers/accessControlProvider.ts';
 import { authProvider } from './providers/authProvider.ts';
-import { leaveMasterDataProvider } from './providers/dataProvider.ts';
+import { leaveMaestroDataProvider } from './providers/dataProvider.ts';
 import { resources } from './providers/resources.ts';
 import { appTheme } from './theme/tokens.ts';
 import './styles/app.css';
@@ -28,7 +28,7 @@ createRoot(document.getElementById('root')!).render(
               <Refine
                 authProvider={authProvider}
                 accessControlProvider={accessControlProvider}
-                dataProvider={leaveMasterDataProvider}
+                dataProvider={leaveMaestroDataProvider}
                 routerProvider={routerBindings}
                 notificationProvider={notificationProvider}
                 resources={resources}
@@ -36,11 +36,11 @@ createRoot(document.getElementById('root')!).render(
                   syncWithLocation: true,
                   warnWhenUnsavedChanges: true,
                   useNewQueryKeys: true,
-                  projectId: 'LeaveMaster',
+                  projectId: 'LeaveMaestro',
                 }}
               >
                 <AppRoutes />
-                <DocumentTitleHandler handler={() => 'LeaveMaster'} />
+                <DocumentTitleHandler handler={() => 'LeaveMaestro'} />
                 <UnsavedChangesNotifier />
               </Refine>
             </ColdStartGate>
