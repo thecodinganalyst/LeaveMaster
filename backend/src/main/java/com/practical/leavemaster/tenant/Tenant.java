@@ -31,6 +31,9 @@ public class Tenant {
     @Column(nullable = false)
     private String name;
 
+    @Column(name = "jurisdiction_id", nullable = false, length = 32)
+    private String jurisdictionId;
+
     @Column(name = "start_date", nullable = false)
     private LocalDate startDate;
 
