@@ -47,6 +47,7 @@ public class TenantAdminProvisionService {
             RbacPermissions.LEAVE_TYPE_WRITE,
             RbacPermissions.LEAVE_ENTITLEMENT_POLICY_READ,
             RbacPermissions.LEAVE_ENTITLEMENT_POLICY_WRITE,
+            RbacPermissions.LEAVE_ENTITLEMENT_GENERATE,
             RbacPermissions.LEAVE_APPROVER_READ,
             RbacPermissions.LEAVE_APPROVER_WRITE,
             RbacPermissions.LEAVE_CALENDAR_READ,
@@ -68,6 +69,7 @@ public class TenantAdminProvisionService {
             RbacPermissions.LEAVE_TYPE_WRITE,
             RbacPermissions.LEAVE_ENTITLEMENT_POLICY_READ,
             RbacPermissions.LEAVE_ENTITLEMENT_POLICY_WRITE,
+            RbacPermissions.LEAVE_ENTITLEMENT_GENERATE,
             RbacPermissions.LEAVE_APPROVER_READ,
             RbacPermissions.LEAVE_APPROVER_WRITE,
             RbacPermissions.LEAVE_CALENDAR_READ,
@@ -97,24 +99,12 @@ public class TenantAdminProvisionService {
                 TENANT_ADMIN_PERMISSION_CODES
         );
 
-        provisionRole(
-                tenantRoleId(tenantId, STAFF_ROLE_SUFFIX),
-                "Standard staff role for tenant " + tenantId,
-                tenantId,
-                STAFF_PERMISSION_CODES
-        );
-        provisionRole(
-                tenantRoleId(tenantId, MANAGER_ROLE_SUFFIX),
-                "Manager and leave approver role for tenant " + tenantId,
-                tenantId,
-                MANAGER_PERMISSION_CODES
-        );
-        provisionRole(
-                tenantRoleId(tenantId, HR_ROLE_SUFFIX),
-                "HR operations role for tenant " + tenantId,
-                tenantId,
-                HR_PERMISSION_CODES
-        );
+        provisionRole(tenantRoleId(tenantId, STAFF_ROLE_SUFFIX), "Standard staff role for tenant " + tenantId,
+                tenantId, STAFF_PERMISSION_CODES);
+        provisionRole(tenantRoleId(tenantId, MANAGER_ROLE_SUFFIX), "Manager and leave approver role for tenant " + tenantId,
+                tenantId, MANAGER_PERMISSION_CODES);
+        provisionRole(tenantRoleId(tenantId, HR_ROLE_SUFFIX), "HR operations role for tenant " + tenantId,
+                tenantId, HR_PERMISSION_CODES);
 
         if (!appUserRepository.existsById(tenantAdminId)) {
             log.info("Creating tenant admin user {} for tenant {}", tenantAdminId, tenantId);
