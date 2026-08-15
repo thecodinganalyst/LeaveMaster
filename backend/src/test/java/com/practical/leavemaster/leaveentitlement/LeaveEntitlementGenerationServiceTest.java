@@ -206,11 +206,12 @@ class LeaveEntitlementGenerationServiceTest {
         LeaveEntitlement previous = entitlement("prev", "p1", new BigDecimal("10"));
         previous.setFrom(LocalDate.of(2026, 1, 1));
         previous.setTo(LocalDate.of(2026, 12, 31));
+        LeaveApplication approved = application(LeaveStatus.APPROVED, LeaveDuration.FULL);
         when(entitlementRepository.findAllByStaffAndLeaveTypeAndToBeforeOrderByToDesc(staff, leaveType, start))
                 .thenReturn(List.of(previous));
         when(entitlementRepository.findByStaffAndLeaveTypeAndFromAndTo(staff, leaveType, start, end)).thenReturn(Optional.empty());
         when(applicationRepository.findByStaffAndLeaveTypeAndLeaveDateBetweenAndStatusIn(staff, leaveType, previous.getFrom(), previous.getTo(),
-                List.of(LeaveStatus.APPROVED, LeaveStatus.PENDING))).thenReturn(List.of(application(LeaveStatus.APPROVED, LeaveDuration.FULL)));
+                List.of(LeaveStatus.APPROVED, LeaveStatus.PENDING))).thenReturn(List.of(approved));
         when(applicationRepository.findByStaffAndLeaveTypeAndLeaveDateBetweenAndStatusIn(staff, leaveType, start, end,
                 List.of(LeaveStatus.APPROVED, LeaveStatus.PENDING))).thenReturn(List.of());
         when(entitlementRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -226,10 +227,11 @@ class LeaveEntitlementGenerationServiceTest {
         LeaveEntitlementPolicy policy = policy("p1", BigDecimal.ONE, ProrationMethod.NONE);
         select(policy);
         LeaveEntitlement existing = entitlement("e1", "p1", new BigDecimal("5"));
+        LeaveApplication approved = application(LeaveStatus.APPROVED, LeaveDuration.FULL);
+        LeaveApplication pendingHalf = application(LeaveStatus.PENDING, LeaveDuration.AM);
         when(entitlementRepository.findByStaffAndLeaveTypeAndFromAndTo(staff, leaveType, start, end)).thenReturn(Optional.of(existing));
         when(applicationRepository.findByStaffAndLeaveTypeAndLeaveDateBetweenAndStatusIn(any(), any(), any(), any(), any()))
-                .thenReturn(List.of(application(LeaveStatus.APPROVED, LeaveDuration.FULL),
-                        application(LeaveStatus.PENDING, LeaveDuration.AM)));
+                .thenReturn(List.of(approved, pendingHalf));
 
         assertThatThrownBy(() -> service.generateForStaff("staff-1", start, end))
                 .isInstanceOf(LeaveEntitlementPolicyValidationException.class)
@@ -256,7 +258,6 @@ class LeaveEntitlementGenerationServiceTest {
     void tenantBatchEnforcesTenantBoundary() {
         authenticateTenantUser("hr", "tenant-a");
         when(staffRepository.findAllByTenantId("tenant-a")).thenReturn(List.of());
-        when(leaveTypeRepository.findAllByTenantId("tenant-a")).thenReturn(List.of());
         assertThat(service.generateForTenant("tenant-a", start, end)).isEmpty();
 
         assertThatThrownBy(() -> service.generateForTenant("tenant-b", start, end))
