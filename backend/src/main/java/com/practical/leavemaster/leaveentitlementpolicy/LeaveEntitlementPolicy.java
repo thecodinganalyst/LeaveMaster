@@ -1,5 +1,6 @@
 package com.practical.leavemaster.leaveentitlementpolicy;
 
+import com.practical.leavemaster.config.ConfigurationScope;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -30,11 +31,25 @@ public class LeaveEntitlementPolicy {
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
-    @Column(name = "tenant_id", nullable = false, length = 255)
+    @Column(name = "tenant_id", length = 255)
     private String tenantId;
 
-    @Column(name = "leave_type_id", nullable = false, length = 255)
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 32)
+    @Builder.Default
+    private ConfigurationScope scope = ConfigurationScope.TENANT;
+
+    @Column(name = "jurisdiction_id", length = 32)
+    private String jurisdictionId;
+
+    @Column(name = "leave_type_id", length = 255)
     private String leaveTypeId;
+
+    @Column(name = "jurisdiction_leave_type_id", length = 128)
+    private String jurisdictionLeaveTypeId;
+
+    @Column(name = "source_template_id", length = 255)
+    private String sourceTemplateId;
 
     @Column(nullable = false)
     private String name;
