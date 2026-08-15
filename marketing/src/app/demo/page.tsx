@@ -5,7 +5,7 @@ const demoUrl = process.env.NEXT_PUBLIC_DEMO_URL ?? 'https://demo.leavemaestro.c
 
 export const metadata: Metadata = {
   title: 'Demo',
-  description: 'Preview the LeaveMaestro leave management experience and explore the end-to-end request and approval workflow.',
+  description: 'Learn what the LeaveMaestro demo is designed to show across employee, manager, and HR leave-management workflows.',
 };
 
 export default function DemoPage() {
@@ -13,46 +13,46 @@ export default function DemoPage() {
     <section className="section">
       <div className="grid gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-start">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-600">Interactive demo</p>
-          <h1 className="mt-3 text-4xl font-bold tracking-tight">Preview the LeaveMaestro workflow before your team adopts it</h1>
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-600">Product demo</p>
+          <h1 className="mt-3 text-4xl font-bold tracking-tight">Explore LeaveMaestro from the perspective of each role</h1>
           <p className="mt-5 text-lg">
-            Explore how employees submit requests, how managers review team coverage, and how HR keeps policies aligned across the business.
+            The public demo experience is intended to let prospective customers explore representative employee, manager, and HR workflows without creating a tenant.
           </p>
           <div className="mt-8 space-y-4">
             {[
-              'Employee request intake with policy-aware forms',
-              'Approver review views with conflict visibility',
-              'Live calendar and reporting snapshots for HR teams',
-            ].map((item) => (
-              <div key={item} className="flex gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-soft">
-                <span className="text-brand-600">✓</span>
-                <p>{item}</p>
+              ['Employee', 'Submit leave requests, review personal applications, and check leave balances.'],
+              ['Manager', 'Review requests for assigned staff and make approval decisions.'],
+              ['HR', 'Explore leave types, entitlement policies, staff, locations, approvers, and administration.'],
+            ].map(([role, description]) => (
+              <div key={role} className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-soft">
+                <p className="font-semibold text-slate-900">{role}</p>
+                <p className="mt-1 text-sm text-slate-600">{description}</p>
               </div>
             ))}
           </div>
           <div className="mt-8 flex flex-col gap-4 sm:flex-row">
-            <CTAButton href={demoUrl}>Launch Demo</CTAButton>
-            <CTAButton href="/contact" variant="secondary">
-              Request Guided Walkthrough
-            </CTAButton>
+            <CTAButton href={demoUrl}>Open Demo</CTAButton>
+            <CTAButton href="/contact" variant="secondary">Request a Walkthrough</CTAButton>
           </div>
+          <p className="mt-4 text-sm text-slate-500">
+            Demo availability and persona-based access depend on the configured public demo environment.
+          </p>
         </div>
 
-        <div className="card overflow-hidden p-3">
-          <div className="rounded-3xl border border-slate-200 bg-slate-950 p-4">
-            <div className="mb-4 flex items-center gap-2">
-              <span className="h-3 w-3 rounded-full bg-rose-400" />
-              <span className="h-3 w-3 rounded-full bg-amber-400" />
-              <span className="h-3 w-3 rounded-full bg-emerald-400" />
+        <div className="card bg-slate-950 text-white">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-200">What the demo is for</p>
+          <h2 className="mt-3 text-3xl font-bold text-white">See the workflow, not just screenshots</h2>
+          <p className="mt-4 text-slate-300">
+            LeaveMaestro is designed around tenant-aware permissions. A public demo can showcase the same role boundaries so you can understand what employees, approvers, and HR teams each see.
+          </p>
+          <div className="mt-8 grid gap-4 sm:grid-cols-2">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <p className="font-semibold text-white">No tenant setup</p>
+              <p className="mt-2 text-sm text-slate-300">The planned public sandbox uses prepared demo data instead of asking visitors to configure a company first.</p>
             </div>
-            <div className="overflow-hidden rounded-2xl border border-white/10 bg-white">
-              <iframe
-                title="LeaveMaestro demo preview"
-                src={demoUrl}
-                className="h-[420px] w-full"
-                loading="lazy"
-                sandbox="allow-scripts allow-same-origin allow-forms"
-              />
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <p className="font-semibold text-white">Representative data</p>
+              <p className="mt-2 text-sm text-slate-300">The demo is intended to use fictional staff, leave balances, applications, and policies suitable for product evaluation.</p>
             </div>
           </div>
         </div>
