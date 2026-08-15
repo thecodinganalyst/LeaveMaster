@@ -168,7 +168,7 @@ export const adminResourceConfigs: Record<string, AdminResourceConfig> = {
     ],
   },
   'leave-calendars': {
-    name: 'leave-calendars', label: 'Leave Calendars', singular: 'Leave calendar', idField: 'id', editable: false, deletable: false,
+    name: 'leave-calendars', label: 'Leave Calendars', singular: 'Leave calendar', idField: 'id',
     fields: [
       { name: 'id', label: 'ID', readOnlyOnEdit: true, list: true },
       { name: 'scope', label: 'Scope', list: true, readOnlyOnEdit: true },
