@@ -7,6 +7,7 @@ The repository is a monorepo. Backend, frontend, infrastructure, deployment work
 ## What LeaveMaster provides
 
 - Staff, tenants, locations, leave types, entitlements, calendars, approvers, applications and leave balances.
+- Policy-driven leave entitlement generation with eligibility rules, deterministic policy resolution, proration, accrual, carry-forward and safe reconciliation.
 - Configurable RBAC enforced on the backend for every protected operation.
 - Session-based authentication plus optional Google, Microsoft, GitHub and Facebook OAuth/OIDC login for pre-provisioned users.
 - A React 18 frontend built with Refine, Ant Design and Vite.
@@ -314,7 +315,7 @@ Swagger UI: http://localhost:8080/swagger-ui.html
 OpenAPI:    http://localhost:8080/api-docs
 ```
 
-For resource-level API notes, see [API documentation](docs/api.md).
+For resource-level API notes, see [API documentation](docs/api.md). For the entitlement policy, eligibility, resolution and generation workflow, see [Policy-driven leave entitlement generation](docs/leave-entitlement-generation.md).
 
 ## Documentation map
 
@@ -322,6 +323,7 @@ For resource-level API notes, see [API documentation](docs/api.md).
 |---|---|
 | [Architecture](docs/architecture.md) | Components, request flows, RBAC, MCP/AI and production diagrams |
 | [Development and CI](docs/development-and-ci.md) | Local setup, scripts, test gates, GitHub Actions and deployments |
+| [Policy-driven leave entitlement generation](docs/leave-entitlement-generation.md) | Policies, eligibility, resolution, proration, accrual, carry-forward, reconciliation and generation API examples |
 | [Troubleshooting](docs/troubleshooting.md) | Build, authentication, Firebase, Cloud Run, Terraform and AI failures |
 | [AI assistant security](docs/assistant-security.md) | Confirmation, audit, redaction, rate/provider limits and AI trust boundaries |
 | [Environments and domains](docs/environments-and-domains.md) | CORS, cookies, OAuth callbacks, custom domains and secrets |
