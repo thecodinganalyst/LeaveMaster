@@ -26,7 +26,7 @@ export const ResourceFormFields = ({ config, editing = false, preferredCountry }
         );
       }
 
-      if (config.name === 'jurisdiction-leave-types' && field.name === 'jurisdictionId') {
+      if (field.name === 'jurisdictionId') {
         return (
           <Form.Item key={field.name} name={field.name} label={field.label} rules={rules}>
             <JurisdictionSelect disabled={disabled} />
