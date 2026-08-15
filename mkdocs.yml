@@ -1,0 +1,66 @@
+site_name: LeaveMaestro Documentation
+site_description: Developer and operator documentation for LeaveMaestro
+site_url: https://thecodinganalyst.github.io/LeaveMaster/
+repo_url: https://github.com/thecodinganalyst/LeaveMaster
+repo_name: thecodinganalyst/LeaveMaster
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.tracking
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+nav:
+  - Home: index.md
+  - Architecture: architecture.md
+  - Leave Management:
+      - Entitlement generation: leave-entitlement-generation.md
+      - Entitlement proration: leave-entitlement-proration.md
+      - Staff change lifecycle: staff-change-lifecycle.md
+  - Security and Access:
+      - RBAC: rbac.md
+      - AI assistant security: assistant-security.md
+      - Platform Admin password: platform-admin-password.md
+      - Platform Admin tenant smoke test: platform-admin-tenant-smoke-test.md
+      - Identity providers:
+          - Google: idp/google.md
+          - Microsoft: idp/microsoft.md
+          - GitHub: idp/github.md
+          - Facebook: idp/facebook.md
+  - API: api.md
+  - Development and Testing:
+      - Development and CI: development-and-ci.md
+      - Frontend testing: frontend-testing.md
+      - Troubleshooting: troubleshooting.md
+      - Routing notes: issue-168-routing-notes.md
+  - Deployment and Operations:
+      - Cloud Run deployment: cloudrun-deployment.md
+      - Firebase Hosting: firebase-hosting.md
+      - Environments and domains: environments-and-domains.md
+  - Customer Enquiries: customer-enquiries.md
+
+plugins:
+  - search
