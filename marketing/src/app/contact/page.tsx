@@ -3,7 +3,7 @@ import { ContactForm } from '@/components/ContactForm';
 
 export const metadata: Metadata = {
   title: 'Contact',
-  description: 'Contact LeaveMaestro to discuss demos, pricing, implementation, or support for your leave management process.',
+  description: 'Contact LeaveMaestro about product demos, pricing, leave-management requirements, or implementation questions.',
 };
 
 export default function ContactPage() {
@@ -11,9 +11,9 @@ export default function ContactPage() {
     <section className="section">
       <div className="max-w-3xl">
         <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-600">Contact</p>
-        <h1 className="mt-3 text-4xl font-bold tracking-tight">Talk to the LeaveMaestro team</h1>
+        <h1 className="mt-3 text-4xl font-bold tracking-tight">Tell us how your organization manages leave today</h1>
         <p className="mt-5 text-lg">
-          Whether you want a demo, pricing information, or migration help, we&apos;re here to support your rollout.
+          Ask about LeaveMaestro, request a product walkthrough, or tell us about the leave policies and approval workflows you need to support.
         </p>
       </div>
 
@@ -22,36 +22,23 @@ export default function ContactPage() {
 
         <aside className="space-y-6">
           <div className="card">
-            <h2 className="text-xl font-semibold">Contact information</h2>
-            <dl className="mt-5 space-y-4 text-sm">
-              <div>
-                <dt className="font-medium text-slate-900">Email</dt>
-                <dd>
-                  <a href="mailto:hello@leavemaestro.com" className="text-brand-600 hover:text-brand-700">
-                    hello@leavemaestro.com
-                  </a>
-                </dd>
-              </div>
-              <div>
-                <dt className="font-medium text-slate-900">Sales</dt>
-                <dd>
-                  <a href="tel:+1-800-555-0184" className="text-brand-600 hover:text-brand-700">
-                    +1 (800) 555-0184
-                  </a>
-                </dd>
-              </div>
-              <div>
-                <dt className="font-medium text-slate-900">Office hours</dt>
-                <dd>Monday–Friday, 9:00 AM–6:00 PM UTC</dd>
-              </div>
-            </dl>
+            <h2 className="text-xl font-semibold">What we can discuss</h2>
+            <ul className="mt-5 space-y-4 text-sm text-slate-600">
+              <li><strong className="text-slate-900">Product demo:</strong> employee, manager, and HR workflows.</li>
+              <li><strong className="text-slate-900">Leave setup:</strong> leave types, entitlement policies, locations, balances, and approvers.</li>
+              <li><strong className="text-slate-900">Access model:</strong> tenant-scoped roles and permissions for staff, managers, HR, and administrators.</li>
+              <li><strong className="text-slate-900">Commercial questions:</strong> pricing and rollout options as they become available.</li>
+            </ul>
           </div>
 
           <div className="card bg-slate-950 text-white">
-            <h2 className="text-xl font-semibold text-white">Implementation support</h2>
+            <h2 className="text-xl font-semibold text-white">Still evaluating?</h2>
             <p className="mt-3 text-slate-300">
-              Need help mapping leave policies, approval chains, or rollout plans? Our onboarding team can guide the process.
+              You can review the feature overview first, then use this form when you are ready to discuss your requirements.
             </p>
+            <a href="/features" className="mt-5 inline-block font-semibold text-brand-200 hover:text-white">
+              Explore features →
+            </a>
           </div>
         </aside>
       </div>
