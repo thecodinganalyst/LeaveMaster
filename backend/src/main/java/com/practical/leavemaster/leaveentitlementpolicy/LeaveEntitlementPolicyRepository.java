@@ -12,4 +12,5 @@ public interface LeaveEntitlementPolicyRepository extends JpaRepository<LeaveEnt
     List<LeaveEntitlementPolicy> findAllByTenantIdAndLeaveTypeIdAndActiveTrue(String tenantId, String leaveTypeId);
     boolean existsByLeaveTypeId(String leaveTypeId);
     boolean existsByTenantIdAndSourceTemplateId(String tenantId, String sourceTemplateId);
+    void deleteAllByTenantId(String tenantId);
 }
