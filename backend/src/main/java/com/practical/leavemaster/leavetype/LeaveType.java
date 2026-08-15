@@ -29,4 +29,7 @@ public class LeaveType {
 
     @Column(name = "tenant_id")
     private String tenantId;
+
+    @Column(name = "source_jurisdiction_leave_type_id", length = 128)
+    private String sourceJurisdictionLeaveTypeId;
 }
