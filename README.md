@@ -1,16 +1,16 @@
-# LeaveMaster
+# LeaveMaestro
 
-LeaveMaster is a multi-tenant employee leave management application with a Spring Boot backend, a React/Refine frontend, an embedded AI assistant, and infrastructure-as-code for Google Cloud Run and Firebase Hosting.
+LeaveMaestro is a multi-tenant employee leave management application with a Spring Boot backend, a React/Refine frontend, an embedded AI assistant, and infrastructure-as-code for Google Cloud Run and Firebase Hosting.
 
 The repository is a monorepo. Backend, frontend, infrastructure, deployment workflows, and operational documentation evolve together.
 
-## What LeaveMaster provides
+## What LeaveMaestro provides
 
 - Staff, tenants, locations, leave types, entitlements, calendars, approvers, applications and leave balances.
 - Configurable RBAC enforced on the backend for every protected operation.
 - Session-based authentication plus optional Google, Microsoft, GitHub and Facebook OAuth/OIDC login for pre-provisioned users.
 - A React 18 frontend built with Refine, Ant Design and Vite.
-- An embedded **Ask LeaveMaster** assistant backed by Spring AI/OpenAI and the same authorized MCP tool contract used by the backend.
+- An embedded **Ask LeaveMaestro** assistant backed by Spring AI/OpenAI and the same authorized MCP tool contract used by the backend.
 - Explicit confirmation, authorization re-checks, idempotency and audit logging for AI-proposed writes.
 - PostgreSQL/Supabase production persistence, H2 local/test persistence and Flyway migrations.
 - Google Cloud Run backend deployment, Firebase Hosting frontend deployment and Terraform-managed infrastructure.
@@ -19,7 +19,7 @@ The repository is a monorepo. Backend, frontend, infrastructure, deployment work
 ## Repository layout
 
 ```text
-LeaveMaster/
+LeaveMaestro/
 ├── backend/                    # Spring Boot API, security, MCP and AI assistant
 ├── frontend/                   # React + Refine + Ant Design SPA
 ├── infra/terraform/            # GCP/Firebase infrastructure as code
@@ -156,7 +156,7 @@ See [Development and CI](docs/development-and-ci.md) for the complete local/test
 
 ## Authentication and authorization
 
-LeaveMaster uses Spring Security as the security authority. The frontend can hide or show navigation/actions based on the current user's permissions, but frontend access control is only a usability layer; every protected backend endpoint and MCP tool is still authorized server-side.
+LeaveMaestro uses Spring Security as the security authority. The frontend can hide or show navigation/actions based on the current user's permissions, but frontend access control is only a usability layer; every protected backend endpoint and MCP tool is still authorized server-side.
 
 Authentication options:
 
@@ -166,7 +166,7 @@ Authentication options:
 - GitHub OAuth.
 - Facebook Login.
 
-OAuth login is restricted to existing active LeaveMaster users whose provider identity has been mapped in the application. Provider-specific setup is documented under [`docs/idp/`](docs/idp/).
+OAuth login is restricted to existing active LeaveMaestro users whose provider identity has been mapped in the application. Provider-specific setup is documented under [`docs/idp/`](docs/idp/).
 
 Production sessions use a `Secure`, `HttpOnly`, `SameSite=Lax` cookie named `__session` because Firebase Hosting forwards this special cookie name to Cloud Run rewrites.
 
@@ -174,9 +174,9 @@ See [Environments, domains, CORS and runtime secrets](docs/environments-and-doma
 
 ## MCP and the embedded AI assistant
 
-The backend exposes a Spring AI MCP server that wraps LeaveMaster business capabilities as tools. Tool authorization is not delegated to the model: authenticated identity, tenant and authorities come from Spring Security, and existing service/method authorization remains authoritative.
+The backend exposes a Spring AI MCP server that wraps LeaveMaestro business capabilities as tools. Tool authorization is not delegated to the model: authenticated identity, tenant and authorities come from Spring Security, and existing service/method authorization remains authoritative.
 
-The embedded **Ask LeaveMaster** experience calls:
+The embedded **Ask LeaveMaestro** experience calls:
 
 ```text
 POST /api/assistant/chat
@@ -220,7 +220,7 @@ See [AI assistant security and privacy](docs/assistant-security.md).
 
 ### Direct ChatGPT-to-MCP integration
 
-Direct external ChatGPT access to LeaveMaster MCP is **not required** for the embedded assistant. It remains a separate optional/future integration tracked by issue **#104**. The embedded assistant runs entirely through the LeaveMaster backend and does not depend on #104.
+Direct external ChatGPT access to LeaveMaestro MCP is **not required** for the embedded assistant. It remains a separate optional/future integration tracked by issue **#104**. The embedded assistant runs entirely through the LeaveMaestro backend and does not depend on #104.
 
 ## Production deployment
 
