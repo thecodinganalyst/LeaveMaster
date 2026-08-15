@@ -1,5 +1,6 @@
 package com.practical.leavemaster.customerenquiry;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -16,6 +17,7 @@ public class CustomerEnquiryRateLimiter {
     private final Clock clock;
     private final ConcurrentHashMap<String, WindowCounter> counters = new ConcurrentHashMap<>();
 
+    @Autowired
     public CustomerEnquiryRateLimiter(
             @Value("${app.customer-enquiry.rate-limit.max-requests:5}") int maxRequests,
             @Value("${app.customer-enquiry.rate-limit.window-seconds:900}") long windowSeconds) {
