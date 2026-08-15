@@ -1,9 +1,12 @@
 package com.practical.leavemaster.leavecalendar;
 
+import com.practical.leavemaster.config.ConfigurationScope;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
@@ -41,4 +44,15 @@ public class LeaveCalendar {
 
     @Column(name = "tenant_id")
     private String tenantId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 32)
+    @Builder.Default
+    private ConfigurationScope scope = ConfigurationScope.TENANT;
+
+    @Column(name = "jurisdiction_id", length = 32)
+    private String jurisdictionId;
+
+    @Column(name = "source_template_id", length = 255)
+    private String sourceTemplateId;
 }
