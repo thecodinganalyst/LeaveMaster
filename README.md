@@ -4,6 +4,8 @@ LeaveMaestro is a multi-tenant employee leave management application with a Spri
 
 The repository is a monorepo. Backend, frontend, infrastructure, deployment workflows, and operational documentation evolve together.
 
+> **Documentation:** Browse the full developer and operator documentation at [thecodinganalyst.github.io/LeaveMaster](https://thecodinganalyst.github.io/LeaveMaster/).
+
 ## What LeaveMaestro provides
 
 - Staff, tenants, locations, leave types, entitlements, calendars, approvers, applications and leave balances.
