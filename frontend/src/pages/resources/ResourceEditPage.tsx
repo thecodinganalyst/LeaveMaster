@@ -13,6 +13,7 @@ interface LeaveMasterIdentity {
   id: string;
   name: string;
   country?: string | null;
+  platformAdmin?: boolean;
 }
 
 export const ResourceEditPage = () => {
@@ -36,7 +37,7 @@ export const ResourceEditPage = () => {
   const submit = async (values: Record<string, unknown>) => {
     try {
       const payload = normaliseFormValues(config, values);
-      for (const field of config.fields.filter((item) => item.readOnlyOnEdit)) delete payload[field.name];
+      for (const field of config.fields.filter((item) => item.readOnlyOnEdit || item.formHidden || item.hidden)) delete payload[field.name];
       await mutateAsync({ resource: config.name, id, values: payload });
       message.success(`${config.singular} updated`);
       navigate(`/${config.name}/show/${encodeURIComponent(id)}`);
@@ -50,7 +51,7 @@ export const ResourceEditPage = () => {
       <PageHeader title={`Edit ${config.singular}`} subtitle={`Update ${id}.`} />
       <FormSection title="Details">
         <Form form={form} layout="vertical" onFinish={submit}>
-          <ResourceFormFields config={config} editing preferredCountry={identity?.country} />
+          <ResourceFormFields config={config} editing preferredCountry={identity?.country} platformAdmin={Boolean(identity?.platformAdmin)} />
           <Space>
             <Button type="primary" htmlType="submit" loading={isUpdating}>Save changes</Button>
             <Button htmlType="button" onClick={() => navigate(`/${config.name}/show/${encodeURIComponent(id)}`)}>Cancel</Button>
