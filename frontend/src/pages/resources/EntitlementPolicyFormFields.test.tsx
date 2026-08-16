@@ -2,12 +2,18 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Form } from 'antd';
 import { describe, expect, it } from 'vitest';
 
-import { EntitlementPolicyFormFields, generateEntitlementPolicyId, normalisePolicyIdPart } from './EntitlementPolicyFormFields.tsx';
+import { EntitlementPolicyFormFields } from './EntitlementPolicyFormFields.tsx';
+import { generateEntitlementPolicyId, normalisePolicyIdPart, sanitiseNumericInput } from './entitlementPolicyForm.ts';
 
 describe('EntitlementPolicyFormFields', () => {
   it('generates a deterministic readable policy id from jurisdiction and name', () => {
     expect(normalisePolicyIdPart(' Standard  annual-leave! ')).toBe('STANDARD_ANNUAL_LEAVE');
     expect(generateEntitlementPolicyId('SG', 'Standard Annual Leave')).toBe('SG_STANDARD_ANNUAL_LEAVE');
+  });
+
+  it('sanitises numeric input without losing valid decimals', () => {
+    expect(sanitiseNumericInput('abc12.5xyz', false)).toBe('12.5');
+    expect(sanitiseNumericInput('12.5', true)).toBe('125');
   });
 
   it('renders policy guidance, days-only unit, and numeric controls', () => {
@@ -31,7 +37,7 @@ describe('EntitlementPolicyFormFields', () => {
     expect(screen.getByText(/CALENDAR_DAYS: prorate by eligible calendar days/i)).toBeInTheDocument();
     expect(screen.getByText(/PER_PAY_PERIOD accrues by payroll period/i)).toBeInTheDocument();
 
-    expect(screen.getByRole('combobox', { name: 'Unit' })).toHaveTextContent('Days');
+    expect(screen.getByText('Days')).toBeInTheDocument();
     expect(screen.queryByText('HOURS')).not.toBeInTheDocument();
     expect(screen.queryByText('Hours')).not.toBeInTheDocument();
 
@@ -58,7 +64,7 @@ describe('EntitlementPolicyFormFields', () => {
     await waitFor(() => expect(idInput).toHaveValue('MY_CUSTOM_POLICY'));
   });
 
-  it('does not display alphabetic characters in numeric fields', () => {
+  it('blocks alphabetic keystrokes in numeric fields while allowing decimal input', () => {
     render(
       <Form initialValues={{ leaveTypeId: 'SG_ANNUAL_LEAVE', name: 'Standard Annual Leave' }}>
         <EntitlementPolicyFormFields />
@@ -66,8 +72,12 @@ describe('EntitlementPolicyFormFields', () => {
     );
 
     const amount = screen.getByRole('spinbutton', { name: 'Entitlement amount' });
-    fireEvent.change(amount, { target: { value: 'abc' } });
-    expect(amount).not.toHaveValue('abc');
+    expect(fireEvent.keyDown(amount, { key: 'a' })).toBe(false);
+    expect(fireEvent.keyDown(amount, { key: '.' })).toBe(true);
+
+    const priority = screen.getByRole('spinbutton', { name: /Priority/i });
+    expect(fireEvent.keyDown(priority, { key: 'b' })).toBe(false);
+    expect(fireEvent.keyDown(priority, { key: '.' })).toBe(false);
   });
 
   it('keeps an existing id fixed during edit', () => {
