@@ -1,9 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { Form, InputNumber, Select, Switch } from 'antd';
 import { useEffect, useMemo, useRef } from 'react';
+import type { KeyboardEvent } from 'react';
 
 import { apiFetch } from '../../api/http.ts';
-import { blockInvalidNumericKey, sanitiseNumericInput } from './entitlementPolicyForm.ts';
+import { blockInvalidNumericKey } from './entitlementPolicyForm.ts';
 import { getJurisdictionOptions, type JurisdictionOptionSource } from './jurisdictions.ts';
 
 type CriterionType = 'LOCATION_ID' | 'JURISDICTION_CODE' | 'SERVICE_MONTHS';
@@ -55,6 +56,13 @@ const splitValues = (value: unknown) => {
 };
 
 const joinValues = (value: unknown) => Array.isArray(value) ? value.map(String).join(',') : value;
+
+const blockInvalidTagKey = (event: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  if (event.ctrlKey || event.metaKey || event.altKey) return;
+  if (event.key.length !== 1) return;
+  if (/^[0-9]$/.test(event.key) || event.key === ',') return;
+  event.preventDefault();
+};
 
 const loadPolicies = () => apiFetch<PolicyOptionSource[]>('/api/leave-entitlement-policies');
 const loadLocations = () => apiFetch<LocationOptionSource[]>('/api/locations');
@@ -129,7 +137,7 @@ export const EligibilityRuleFormFields = ({ editing = false }: Props) => {
             mode="tags"
             tokenSeparators={[',']}
             placeholder="Enter one or more whole numbers"
-            onInputKeyDown={(event) => blockInvalidNumericKey(event, true)}
+            onInputKeyDown={blockInvalidTagKey}
             options={[]}
           />
         );
@@ -140,7 +148,6 @@ export const EligibilityRuleFormFields = ({ editing = false }: Props) => {
           step={1}
           precision={0}
           inputMode="numeric"
-          parser={(value) => sanitiseNumericInput(value, true)}
           onKeyDown={(event) => blockInvalidNumericKey(event, true)}
           style={{ width: '100%' }}
           placeholder="Enter completed months of service"
@@ -151,7 +158,7 @@ export const EligibilityRuleFormFields = ({ editing = false }: Props) => {
     if (criterionType === 'LOCATION_ID') {
       return (
         <Select
-          mode={isMulti ? 'multiple' : undefined}
+          {...(isMulti ? { mode: 'multiple' as const } : {})}
           loading={locationsQuery.isLoading}
           disabled={locationsQuery.isError}
           options={locationOptions}
@@ -165,7 +172,7 @@ export const EligibilityRuleFormFields = ({ editing = false }: Props) => {
     if (criterionType === 'JURISDICTION_CODE') {
       return (
         <Select
-          mode={isMulti ? 'multiple' : undefined}
+          {...(isMulti ? { mode: 'multiple' as const } : {})}
           loading={jurisdictionsQuery.isLoading}
           disabled={jurisdictionsQuery.isError}
           options={jurisdictionOptions}
@@ -178,6 +185,14 @@ export const EligibilityRuleFormFields = ({ editing = false }: Props) => {
 
     return <Select disabled placeholder="Select a criterion first" />;
   })();
+
+  const valueExtra = criterionType === 'SERVICE_MONTHS'
+    ? isMulti ? 'Enter one or more non-negative whole numbers.' : 'Enter a non-negative whole number of completed service months.'
+    : criterionType === 'LOCATION_ID'
+      ? 'Select the employee location value used by this rule.'
+      : criterionType === 'JURISDICTION_CODE'
+        ? 'Select the jurisdiction value used by this rule.'
+        : 'Choose a criterion and operator before entering a value.';
 
   return (
     <>
@@ -227,15 +242,11 @@ export const EligibilityRuleFormFields = ({ editing = false }: Props) => {
       <Form.Item
         name="value"
         label="Value"
-        extra={criterionType === 'SERVICE_MONTHS'
-          ? isMulti ? 'Enter one or more non-negative whole numbers.' : 'Enter a non-negative whole number of completed service months.'
-          : criterionType === 'LOCATION_ID'
-            ? 'Select the employee location value used by this rule.'
-            : criterionType === 'JURISDICTION_CODE'
-              ? 'Select the jurisdiction value used by this rule.'
-              : undefined}
-        getValueProps={isMulti ? (value) => ({ value: splitValues(value) }) : undefined}
-        normalize={isMulti ? joinValues : undefined}
+        extra={valueExtra}
+        {...(isMulti ? {
+          getValueProps: (value: unknown) => ({ value: splitValues(value) }),
+          normalize: joinValues,
+        } : {})}
         rules={[{ required: true, message: 'Value is required' }]}
       >
         {valueField}
@@ -256,7 +267,6 @@ export const EligibilityRuleFormFields = ({ editing = false }: Props) => {
           step={1}
           precision={0}
           inputMode="numeric"
-          parser={(value) => sanitiseNumericInput(value, true)}
           onKeyDown={(event) => blockInvalidNumericKey(event, true)}
           style={{ width: '100%' }}
         />
