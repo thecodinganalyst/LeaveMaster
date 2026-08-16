@@ -1,5 +1,6 @@
 package com.practical.leavemaster.leaveentitlementpolicy;
 
+import com.practical.leavemaster.config.ConfigurationScope;
 import com.practical.leavemaster.jurisdiction.Jurisdiction;
 import com.practical.leavemaster.jurisdiction.JurisdictionRepository;
 import com.practical.leavemaster.location.Location;
@@ -72,6 +73,21 @@ class LeaveEntitlementPolicyEligibilityServiceTest {
     }
 
     @Test
+    void rejectsLocationEligibilityForPlatformTemplates() {
+        LeaveEntitlementPolicy template = policy("template-1", null);
+        template.setScope(ConfigurationScope.PLATFORM_TEMPLATE);
+        template.setLeaveTypeId(null);
+        template.setJurisdictionId("SG");
+        template.setJurisdictionLeaveTypeId("SG:ANNUAL_LEAVE");
+        when(policyService.findById("template-1")).thenReturn(Optional.of(template));
+
+        assertThatThrownBy(() -> service.create("template-1",
+                rule(EligibilityCriterionType.LOCATION_ID, EligibilityOperator.EQUALS, "loc-1")))
+                .isInstanceOf(LeaveEntitlementPolicyValidationException.class)
+                .hasMessageContaining("tenant-specific");
+    }
+
+    @Test
     void validatesJurisdictionCodesAndServiceMonthValues() {
         LeaveEntitlementPolicy policy = policy("p1", "tenant-a");
         when(policyService.findById("p1")).thenReturn(Optional.of(policy));
@@ -110,7 +126,7 @@ class LeaveEntitlementPolicyEligibilityServiceTest {
     }
 
     private LeaveEntitlementPolicy policy(String id, String tenantId) {
-        return LeaveEntitlementPolicy.builder().id(id).tenantId(tenantId).leaveTypeId("annual").name("Policy")
+        return LeaveEntitlementPolicy.builder().id(id).tenantId(tenantId).scope(ConfigurationScope.TENANT).leaveTypeId("annual").name("Policy")
                 .active(true).priority(1).entitlementUnit(EntitlementUnit.DAYS).entitlementAmount(BigDecimal.TEN)
                 .accrualMethod(AccrualMethod.ANNUAL).prorationMethod(ProrationMethod.MONTHS)
                 .effectiveFrom(LocalDate.of(2026, 1, 1)).build();

@@ -1,5 +1,6 @@
 package com.practical.leavemaster.leaveentitlementpolicy;
 
+import com.practical.leavemaster.config.ConfigurationScope;
 import com.practical.leavemaster.leavetype.LeaveType;
 import com.practical.leavemaster.leavetype.LeaveTypeRepository;
 import com.practical.leavemaster.tenant.TenantActivityService;
@@ -28,11 +29,15 @@ public class LeaveEntitlementPolicyService {
 
     public List<LeaveEntitlementPolicy> findAll() {
         Optional<AppUser> user = currentUser();
-        if (user.isPresent() && !isPlatformAdmin(user.get())) {
-            String tenantId = requiredTenantId(user.get());
-            return policyRepository.findAllByTenantId(tenantId);
+        if (user.isEmpty()) {
+            return policyRepository.findAll();
         }
-        return policyRepository.findAll();
+        if (isPlatformAdmin(user.get())) {
+            return policyRepository.findAllByScope(ConfigurationScope.PLATFORM_TEMPLATE);
+        }
+        return policyRepository.findAllByTenantId(requiredTenantId(user.get())).stream()
+                .filter(policy -> policy.getScope() == ConfigurationScope.TENANT)
+                .toList();
     }
 
     public Optional<LeaveEntitlementPolicy> findById(String id) {
@@ -41,10 +46,10 @@ public class LeaveEntitlementPolicyService {
 
     @Transactional
     public LeaveEntitlementPolicy create(LeaveEntitlementPolicy policy) {
-        applyCurrentUsersTenant(policy);
+        applyCurrentUsersScope(policy);
         validate(policy);
         LeaveEntitlementPolicy saved = policyRepository.save(policy);
-        tenantActivityService.touch(saved.getTenantId());
+        touchTenant(saved);
         return saved;
     }
 
@@ -53,6 +58,8 @@ public class LeaveEntitlementPolicyService {
         LeaveEntitlementPolicy existing = findById(id)
                 .orElseThrow(() -> new LeaveEntitlementPolicyNotFoundException(id));
         existing.setLeaveTypeId(requested.getLeaveTypeId());
+        existing.setJurisdictionLeaveTypeId(requested.getJurisdictionLeaveTypeId());
+        existing.setJurisdictionId(requested.getJurisdictionId());
         existing.setName(requested.getName());
         existing.setActive(requested.isActive());
         existing.setPriority(requested.getPriority());
@@ -68,7 +75,7 @@ public class LeaveEntitlementPolicyService {
         existing.setEffectiveTo(requested.getEffectiveTo());
         validate(existing);
         LeaveEntitlementPolicy saved = policyRepository.save(existing);
-        tenantActivityService.touch(saved.getTenantId());
+        touchTenant(saved);
         return saved;
     }
 
@@ -77,20 +84,17 @@ public class LeaveEntitlementPolicyService {
         LeaveEntitlementPolicy existing = findById(id)
                 .orElseThrow(() -> new LeaveEntitlementPolicyNotFoundException(id));
         policyRepository.delete(existing);
-        tenantActivityService.touch(existing.getTenantId());
+        touchTenant(existing);
     }
 
     private void validate(LeaveEntitlementPolicy policy) {
-        if (policy.getTenantId() == null || policy.getTenantId().isBlank()) {
-            throw new LeaveEntitlementPolicyValidationException("tenantId is required");
+        if (policy.getScope() == null) {
+            throw new LeaveEntitlementPolicyValidationException("scope is required");
         }
-        if (policy.getLeaveTypeId() == null || policy.getLeaveTypeId().isBlank()) {
-            throw new LeaveEntitlementPolicyValidationException("leaveTypeId is required");
-        }
-        LeaveType leaveType = leaveTypeRepository.findById(policy.getLeaveTypeId())
-                .orElseThrow(() -> new LeaveEntitlementPolicyValidationException("Unknown leaveTypeId: " + policy.getLeaveTypeId()));
-        if (!Objects.equals(policy.getTenantId(), leaveType.getTenantId())) {
-            throw new LeaveEntitlementPolicyValidationException("Policy tenant must match leave type tenant");
+        if (policy.getScope() == ConfigurationScope.PLATFORM_TEMPLATE) {
+            validateTemplateScope(policy);
+        } else {
+            validateTenantScope(policy);
         }
         if (policy.getName() == null || policy.getName().isBlank()) {
             throw new LeaveEntitlementPolicyValidationException("name is required");
@@ -115,6 +119,38 @@ public class LeaveEntitlementPolicyService {
         }
     }
 
+    private void validateTemplateScope(LeaveEntitlementPolicy policy) {
+        if (policy.getTenantId() != null) {
+            throw new LeaveEntitlementPolicyValidationException("Platform templates must not have a tenantId");
+        }
+        if (policy.getJurisdictionId() == null || policy.getJurisdictionId().isBlank()) {
+            throw new LeaveEntitlementPolicyValidationException("jurisdictionId is required for platform templates");
+        }
+        if (policy.getJurisdictionLeaveTypeId() == null || policy.getJurisdictionLeaveTypeId().isBlank()) {
+            throw new LeaveEntitlementPolicyValidationException("jurisdictionLeaveTypeId is required for platform templates");
+        }
+        if (policy.getLeaveTypeId() != null) {
+            throw new LeaveEntitlementPolicyValidationException("Platform templates must not reference a tenant leaveTypeId");
+        }
+    }
+
+    private void validateTenantScope(LeaveEntitlementPolicy policy) {
+        if (policy.getTenantId() == null || policy.getTenantId().isBlank()) {
+            throw new LeaveEntitlementPolicyValidationException("tenantId is required");
+        }
+        if (policy.getLeaveTypeId() == null || policy.getLeaveTypeId().isBlank()) {
+            throw new LeaveEntitlementPolicyValidationException("leaveTypeId is required");
+        }
+        if (policy.getJurisdictionId() != null || policy.getJurisdictionLeaveTypeId() != null) {
+            throw new LeaveEntitlementPolicyValidationException("Tenant policies must not contain platform template jurisdiction references");
+        }
+        LeaveType leaveType = leaveTypeRepository.findById(policy.getLeaveTypeId())
+                .orElseThrow(() -> new LeaveEntitlementPolicyValidationException("Unknown leaveTypeId: " + policy.getLeaveTypeId()));
+        if (!Objects.equals(policy.getTenantId(), leaveType.getTenantId())) {
+            throw new LeaveEntitlementPolicyValidationException("Policy tenant must match leave type tenant");
+        }
+    }
+
     private void requireNonNegative(BigDecimal value, String field, boolean required) {
         if (required && value == null) {
             throw new LeaveEntitlementPolicyValidationException(field + " is required");
@@ -130,13 +166,38 @@ public class LeaveEntitlementPolicyService {
 
     private boolean isAccessibleToCurrentUser(LeaveEntitlementPolicy policy) {
         Optional<AppUser> user = currentUser();
-        return user.isEmpty() || isPlatformAdmin(user.get()) || Objects.equals(requiredTenantId(user.get()), policy.getTenantId());
+        if (user.isEmpty()) {
+            return true;
+        }
+        if (isPlatformAdmin(user.get())) {
+            return policy.getScope() == ConfigurationScope.PLATFORM_TEMPLATE && policy.getTenantId() == null;
+        }
+        return policy.getScope() == ConfigurationScope.TENANT
+                && Objects.equals(requiredTenantId(user.get()), policy.getTenantId());
     }
 
-    private void applyCurrentUsersTenant(LeaveEntitlementPolicy policy) {
+    private void applyCurrentUsersScope(LeaveEntitlementPolicy policy) {
         Optional<AppUser> user = currentUser();
-        if (user.isPresent() && !isPlatformAdmin(user.get())) {
+        if (user.isEmpty()) {
+            return;
+        }
+        if (isPlatformAdmin(user.get())) {
+            policy.setScope(ConfigurationScope.PLATFORM_TEMPLATE);
+            policy.setTenantId(null);
+            policy.setLeaveTypeId(null);
+            policy.setSourceTemplateId(null);
+        } else {
+            policy.setScope(ConfigurationScope.TENANT);
             policy.setTenantId(requiredTenantId(user.get()));
+            policy.setJurisdictionId(null);
+            policy.setJurisdictionLeaveTypeId(null);
+            policy.setSourceTemplateId(null);
+        }
+    }
+
+    private void touchTenant(LeaveEntitlementPolicy policy) {
+        if (policy.getScope() == ConfigurationScope.TENANT && policy.getTenantId() != null) {
+            tenantActivityService.touch(policy.getTenantId());
         }
     }
 

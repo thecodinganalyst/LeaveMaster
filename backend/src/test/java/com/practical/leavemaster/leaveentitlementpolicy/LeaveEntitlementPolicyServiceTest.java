@@ -1,5 +1,6 @@
 package com.practical.leavemaster.leaveentitlementpolicy;
 
+import com.practical.leavemaster.config.ConfigurationScope;
 import com.practical.leavemaster.leavetype.LeaveType;
 import com.practical.leavemaster.leavetype.LeaveTypeRepository;
 import com.practical.leavemaster.rbac.AppRole;
@@ -51,15 +52,32 @@ class LeaveEntitlementPolicyServiceTest {
     }
 
     @Test
-    void platformAdminSeesAllPolicies() {
+    void platformAdminOnlySeesPlatformTemplates() {
         authenticatePlatformAdmin("platform");
-        when(policyRepository.findAll()).thenReturn(List.of(
-                validPolicy("tenant-a", "annual"),
-                validPolicy("tenant-b", "annual-b")));
+        LeaveEntitlementPolicy template = validTemplate("SG", "SG:ANNUAL_LEAVE");
+        when(policyRepository.findAllByScope(ConfigurationScope.PLATFORM_TEMPLATE)).thenReturn(List.of(template));
 
-        assertThat(service.findAll()).hasSize(2);
-        verify(policyRepository).findAll();
+        assertThat(service.findAll()).containsExactly(template);
+        verify(policyRepository).findAllByScope(ConfigurationScope.PLATFORM_TEMPLATE);
+        verify(policyRepository, never()).findAll();
         verify(policyRepository, never()).findAllByTenantId(any());
+    }
+
+    @Test
+    void platformAdminCreatesOnlyPlatformTemplate() {
+        authenticatePlatformAdmin("platform");
+        LeaveEntitlementPolicy requested = validTemplate("SG", "SG:ANNUAL_LEAVE");
+        requested.setTenantId("tenant-a");
+        requested.setLeaveTypeId("annual");
+        when(policyRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        LeaveEntitlementPolicy saved = service.create(requested);
+
+        assertThat(saved.getScope()).isEqualTo(ConfigurationScope.PLATFORM_TEMPLATE);
+        assertThat(saved.getTenantId()).isNull();
+        assertThat(saved.getLeaveTypeId()).isNull();
+        assertThat(saved.getJurisdictionId()).isEqualTo("SG");
+        verify(tenantActivityService, never()).touch(any());
     }
 
     @Test
@@ -72,9 +90,15 @@ class LeaveEntitlementPolicyServiceTest {
     }
 
     @Test
+    void platformAdminCannotReadTenantPolicy() {
+        authenticatePlatformAdmin("platform");
+        when(policyRepository.findById("policy-a")).thenReturn(Optional.of(validPolicy("tenant-a", "annual")));
+        assertThat(service.findById("policy-a")).isEmpty();
+    }
+
+    @Test
     void tenantUserWithoutTenantIdIsRejected() {
         authenticateTenantUser("hr", null);
-
         assertThatThrownBy(() -> service.findAll())
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("tenant id");
@@ -90,54 +114,51 @@ class LeaveEntitlementPolicyServiceTest {
         LeaveEntitlementPolicy saved = service.create(policy);
 
         assertThat(saved.getTenantId()).isEqualTo("tenant-a");
+        assertThat(saved.getScope()).isEqualTo(ConfigurationScope.TENANT);
         verify(tenantActivityService).touch("tenant-a");
     }
 
     @Test
     void rejectsMissingRequiredFieldsAndUnknownLeaveType() {
         LeaveEntitlementPolicy missingTenant = validPolicy(null, "annual");
-        assertThatThrownBy(() -> service.create(missingTenant))
-                .isInstanceOf(LeaveEntitlementPolicyValidationException.class)
-                .hasMessageContaining("tenantId");
+        assertThatThrownBy(() -> service.create(missingTenant)).isInstanceOf(LeaveEntitlementPolicyValidationException.class).hasMessageContaining("tenantId");
 
         LeaveEntitlementPolicy missingLeaveType = validPolicy("tenant-a", null);
-        assertThatThrownBy(() -> service.create(missingLeaveType))
-                .isInstanceOf(LeaveEntitlementPolicyValidationException.class)
-                .hasMessageContaining("leaveTypeId");
+        assertThatThrownBy(() -> service.create(missingLeaveType)).isInstanceOf(LeaveEntitlementPolicyValidationException.class).hasMessageContaining("leaveTypeId");
 
         LeaveEntitlementPolicy unknownLeaveType = validPolicy("tenant-a", "missing");
         when(leaveTypeRepository.findById("missing")).thenReturn(Optional.empty());
-        assertThatThrownBy(() -> service.create(unknownLeaveType))
-                .isInstanceOf(LeaveEntitlementPolicyValidationException.class)
-                .hasMessageContaining("Unknown leaveTypeId");
+        assertThatThrownBy(() -> service.create(unknownLeaveType)).isInstanceOf(LeaveEntitlementPolicyValidationException.class).hasMessageContaining("Unknown leaveTypeId");
+    }
+
+    @Test
+    void rejectsInvalidPlatformTemplateShape() {
+        LeaveEntitlementPolicy missingJurisdiction = validTemplate(null, "SG:ANNUAL_LEAVE");
+        assertThatThrownBy(() -> service.create(missingJurisdiction)).hasMessageContaining("jurisdictionId");
+
+        LeaveEntitlementPolicy missingJurisdictionLeaveType = validTemplate("SG", null);
+        assertThatThrownBy(() -> service.create(missingJurisdictionLeaveType)).hasMessageContaining("jurisdictionLeaveTypeId");
     }
 
     @Test
     void rejectsLeaveTypeFromAnotherTenant() {
         LeaveEntitlementPolicy policy = validPolicy("tenant-a", "annual");
         when(leaveTypeRepository.findById("annual")).thenReturn(Optional.of(leaveType("annual", "tenant-b")));
-
-        assertThatThrownBy(() -> service.create(policy))
-                .isInstanceOf(LeaveEntitlementPolicyValidationException.class)
-                .hasMessageContaining("tenant must match");
+        assertThatThrownBy(() -> service.create(policy)).isInstanceOf(LeaveEntitlementPolicyValidationException.class).hasMessageContaining("tenant must match");
     }
 
     @Test
     void rejectsMissingNameEnumsEntitlementAndEffectiveDate() {
         when(leaveTypeRepository.findById("annual")).thenReturn(Optional.of(leaveType("annual", "tenant-a")));
-
         LeaveEntitlementPolicy missingName = validPolicy("tenant-a", "annual");
         missingName.setName(" ");
         assertThatThrownBy(() -> service.create(missingName)).hasMessageContaining("name is required");
-
         LeaveEntitlementPolicy missingUnit = validPolicy("tenant-a", "annual");
         missingUnit.setEntitlementUnit(null);
         assertThatThrownBy(() -> service.create(missingUnit)).hasMessageContaining("entitlementUnit");
-
         LeaveEntitlementPolicy missingAmount = validPolicy("tenant-a", "annual");
         missingAmount.setEntitlementAmount(null);
         assertThatThrownBy(() -> service.create(missingAmount)).hasMessageContaining("entitlementAmount is required");
-
         LeaveEntitlementPolicy missingEffectiveFrom = validPolicy("tenant-a", "annual");
         missingEffectiveFrom.setEffectiveFrom(null);
         assertThatThrownBy(() -> service.create(missingEffectiveFrom)).hasMessageContaining("effectiveFrom is required");
@@ -146,20 +167,16 @@ class LeaveEntitlementPolicyServiceTest {
     @Test
     void rejectsNegativeEntitlementAccrualCarryForwardAndExpiry() {
         when(leaveTypeRepository.findById("annual")).thenReturn(Optional.of(leaveType("annual", "tenant-a")));
-
         LeaveEntitlementPolicy negativeEntitlement = validPolicy("tenant-a", "annual");
         negativeEntitlement.setEntitlementAmount(new BigDecimal("-1"));
         assertThatThrownBy(() -> service.create(negativeEntitlement)).hasMessageContaining("entitlementAmount");
-
         LeaveEntitlementPolicy negativeAccrual = validPolicy("tenant-a", "annual");
         negativeAccrual.setAccrualRate(new BigDecimal("-0.5"));
         assertThatThrownBy(() -> service.create(negativeAccrual)).hasMessageContaining("accrualRate");
-
         LeaveEntitlementPolicy negativeCarryForward = validPolicy("tenant-a", "annual");
         negativeCarryForward.setCarryForwardAllowed(true);
         negativeCarryForward.setCarryForwardLimit(new BigDecimal("-1"));
         assertThatThrownBy(() -> service.create(negativeCarryForward)).hasMessageContaining("carryForwardLimit");
-
         LeaveEntitlementPolicy negativeExpiry = validPolicy("tenant-a", "annual");
         negativeExpiry.setCarryForwardAllowed(true);
         negativeExpiry.setCarryForwardExpiryMonths(-1);
@@ -171,28 +188,19 @@ class LeaveEntitlementPolicyServiceTest {
         LeaveEntitlementPolicy policy = validPolicy("tenant-a", "annual");
         policy.setEffectiveTo(policy.getEffectiveFrom().minusDays(1));
         when(leaveTypeRepository.findById("annual")).thenReturn(Optional.of(leaveType("annual", "tenant-a")));
-
-        assertThatThrownBy(() -> service.create(policy))
-                .isInstanceOf(LeaveEntitlementPolicyValidationException.class)
-                .hasMessageContaining("effectiveTo");
+        assertThatThrownBy(() -> service.create(policy)).isInstanceOf(LeaveEntitlementPolicyValidationException.class).hasMessageContaining("effectiveTo");
     }
 
     @Test
     void rejectsCarryForwardConfigurationWhenDisabled() {
         when(leaveTypeRepository.findById("annual")).thenReturn(Optional.of(leaveType("annual", "tenant-a")));
-
         LeaveEntitlementPolicy carryForwardLimit = validPolicy("tenant-a", "annual");
         carryForwardLimit.setCarryForwardAllowed(false);
         carryForwardLimit.setCarryForwardLimit(new BigDecimal("5"));
-        assertThatThrownBy(() -> service.create(carryForwardLimit))
-                .isInstanceOf(LeaveEntitlementPolicyValidationException.class)
-                .hasMessageContaining("carryForwardAllowed");
-
+        assertThatThrownBy(() -> service.create(carryForwardLimit)).isInstanceOf(LeaveEntitlementPolicyValidationException.class).hasMessageContaining("carryForwardAllowed");
         LeaveEntitlementPolicy carryForwardExpiry = validPolicy("tenant-a", "annual");
         carryForwardExpiry.setCarryForwardExpiryMonths(12);
-        assertThatThrownBy(() -> service.create(carryForwardExpiry))
-                .isInstanceOf(LeaveEntitlementPolicyValidationException.class)
-                .hasMessageContaining("carryForwardAllowed");
+        assertThatThrownBy(() -> service.create(carryForwardExpiry)).isInstanceOf(LeaveEntitlementPolicyValidationException.class).hasMessageContaining("carryForwardAllowed");
     }
 
     @Test
@@ -205,9 +213,7 @@ class LeaveEntitlementPolicyServiceTest {
         when(policyRepository.findById("policy-1")).thenReturn(Optional.of(existing));
         when(leaveTypeRepository.findById("annual")).thenReturn(Optional.of(leaveType("annual", "tenant-a")));
         when(policyRepository.save(existing)).thenReturn(existing);
-
         LeaveEntitlementPolicy saved = service.update("policy-1", update);
-
         assertThat(saved.getTenantId()).isEqualTo("tenant-a");
         assertThat(saved.getName()).isEqualTo("Senior annual leave");
         assertThat(saved.getEntitlementAmount()).isEqualByComparingTo("18");
@@ -216,11 +222,8 @@ class LeaveEntitlementPolicyServiceTest {
     @Test
     void updateAndDeleteThrowWhenPolicyIsMissing() {
         when(policyRepository.findById("missing")).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> service.update("missing", validPolicy("tenant-a", "annual")))
-                .isInstanceOf(LeaveEntitlementPolicyNotFoundException.class);
-        assertThatThrownBy(() -> service.delete("missing"))
-                .isInstanceOf(LeaveEntitlementPolicyNotFoundException.class);
+        assertThatThrownBy(() -> service.update("missing", validPolicy("tenant-a", "annual"))).isInstanceOf(LeaveEntitlementPolicyNotFoundException.class);
+        assertThatThrownBy(() -> service.delete("missing")).isInstanceOf(LeaveEntitlementPolicyNotFoundException.class);
     }
 
     @Test
@@ -228,30 +231,20 @@ class LeaveEntitlementPolicyServiceTest {
         LeaveEntitlementPolicy existing = validPolicy("tenant-a", "annual");
         existing.setId("policy-1");
         when(policyRepository.findById("policy-1")).thenReturn(Optional.of(existing));
-
         service.delete("policy-1");
-
         verify(policyRepository).delete(existing);
         verify(tenantActivityService).touch("tenant-a");
     }
 
     private void authenticateTenantUser(String login, String tenantId) {
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(login, "n/a", List.of()));
-        when(appUserRepository.findById(login)).thenReturn(Optional.of(AppUser.builder()
-                .loginName(login)
-                .active(true)
-                .tenantId(tenantId)
-                .roles(Set.of())
-                .build()));
+        when(appUserRepository.findById(login)).thenReturn(Optional.of(AppUser.builder().loginName(login).active(true).tenantId(tenantId).roles(Set.of()).build()));
     }
 
     private void authenticatePlatformAdmin(String login) {
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(login, "n/a", List.of()));
-        when(appUserRepository.findById(login)).thenReturn(Optional.of(AppUser.builder()
-                .loginName(login)
-                .active(true)
-                .roles(Set.of(AppRole.builder().id("PLATFORM_ADMIN").active(true).description("Platform admin").build()))
-                .build()));
+        when(appUserRepository.findById(login)).thenReturn(Optional.of(AppUser.builder().loginName(login).active(true)
+                .roles(Set.of(AppRole.builder().id("PLATFORM_ADMIN").active(true).description("Platform admin").build())).build()));
     }
 
     private LeaveType leaveType(String id, String tenantId) {
@@ -259,18 +252,16 @@ class LeaveEntitlementPolicyServiceTest {
     }
 
     private LeaveEntitlementPolicy validPolicy(String tenantId, String leaveTypeId) {
-        return LeaveEntitlementPolicy.builder()
-                .tenantId(tenantId)
-                .leaveTypeId(leaveTypeId)
-                .name("Annual leave policy")
-                .active(true)
-                .priority(10)
-                .entitlementUnit(EntitlementUnit.DAYS)
-                .entitlementAmount(new BigDecimal("14"))
-                .accrualMethod(AccrualMethod.ANNUAL)
-                .prorationMethod(ProrationMethod.MONTHS)
-                .carryForwardAllowed(false)
-                .effectiveFrom(LocalDate.of(2026, 1, 1))
-                .build();
+        return LeaveEntitlementPolicy.builder().tenantId(tenantId).scope(ConfigurationScope.TENANT).leaveTypeId(leaveTypeId)
+                .name("Annual leave policy").active(true).priority(10).entitlementUnit(EntitlementUnit.DAYS)
+                .entitlementAmount(new BigDecimal("14")).accrualMethod(AccrualMethod.ANNUAL).prorationMethod(ProrationMethod.MONTHS)
+                .carryForwardAllowed(false).effectiveFrom(LocalDate.of(2026, 1, 1)).build();
+    }
+
+    private LeaveEntitlementPolicy validTemplate(String jurisdictionId, String jurisdictionLeaveTypeId) {
+        return LeaveEntitlementPolicy.builder().scope(ConfigurationScope.PLATFORM_TEMPLATE).jurisdictionId(jurisdictionId)
+                .jurisdictionLeaveTypeId(jurisdictionLeaveTypeId).name("Annual leave policy").active(true).priority(10)
+                .entitlementUnit(EntitlementUnit.DAYS).entitlementAmount(new BigDecimal("14")).accrualMethod(AccrualMethod.ANNUAL)
+                .prorationMethod(ProrationMethod.MONTHS).carryForwardAllowed(false).effectiveFrom(LocalDate.of(2026, 1, 1)).build();
     }
 }

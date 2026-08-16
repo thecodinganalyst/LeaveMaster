@@ -18,9 +18,9 @@ describe('adminResourceConfigs', () => {
     );
   });
 
-  it('marks leave calendars read/create only because the backend has no update or delete endpoints', () => {
-    expect(adminResourceConfigs['leave-calendars'].editable).toBe(false);
-    expect(adminResourceConfigs['leave-calendars'].deletable).toBe(false);
+  it('allows leave calendar templates to be edited and deleted now that the backend supports CRUD', () => {
+    expect(adminResourceConfigs['leave-calendars'].editable).not.toBe(false);
+    expect(adminResourceConfigs['leave-calendars'].deletable).not.toBe(false);
   });
 
   it('configures role permissions as a checkbox-backed permission field', () => {

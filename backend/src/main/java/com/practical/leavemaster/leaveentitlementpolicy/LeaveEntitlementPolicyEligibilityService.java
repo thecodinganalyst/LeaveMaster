@@ -1,5 +1,6 @@
 package com.practical.leavemaster.leaveentitlementpolicy;
 
+import com.practical.leavemaster.config.ConfigurationScope;
 import com.practical.leavemaster.jurisdiction.JurisdictionRepository;
 import com.practical.leavemaster.location.Location;
 import com.practical.leavemaster.location.LocationRepository;
@@ -114,6 +115,9 @@ public class LeaveEntitlementPolicyEligibilityService {
     }
 
     private void validateLocationRule(LeaveEntitlementPolicy policy, LeaveEntitlementPolicyEligibilityRule rule) {
+        if (policy.getScope() == ConfigurationScope.PLATFORM_TEMPLATE || policy.getTenantId() == null) {
+            throw new LeaveEntitlementPolicyValidationException("LOCATION_ID eligibility is tenant-specific and cannot be used in platform templates");
+        }
         requireSetOperator(rule.getOperator(), "LOCATION_ID");
         for (String locationId : values(rule.getValue())) {
             Location location = locationRepository.findById(locationId)
