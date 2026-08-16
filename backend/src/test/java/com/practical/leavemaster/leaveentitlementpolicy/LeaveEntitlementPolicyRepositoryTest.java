@@ -43,9 +43,9 @@ class LeaveEntitlementPolicyRepositoryTest {
     @Test
     void generatesIdWhenPolicyIdIsOmitted() {
         LeaveEntitlementPolicy policy = LeaveEntitlementPolicy.builder()
-                .scope(ConfigurationScope.TENANT)
-                .tenantId("tenant-a")
-                .leaveTypeId("annual")
+                .scope(ConfigurationScope.PLATFORM_TEMPLATE)
+                .jurisdictionId("SG")
+                .jurisdictionLeaveTypeId("SG:ANNUAL_LEAVE")
                 .name("Generated ID Policy")
                 .active(true)
                 .priority(10)
