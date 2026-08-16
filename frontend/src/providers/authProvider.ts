@@ -76,6 +76,7 @@ export const authProvider: AuthBindings = {
       staffId: user.staffId,
       tenantId: user.tenantId,
       country: user.country,
+      platformAdmin: user.platformAdmin,
       authorities: user.authorities,
     };
   },
