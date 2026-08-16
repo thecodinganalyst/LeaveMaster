@@ -19,7 +19,6 @@ interface PolicyOptionSource {
 interface LocationOptionSource {
   id: string;
   locationName?: string | null;
-  tenantId?: string | null;
 }
 
 interface Props {
@@ -101,7 +100,10 @@ export const EligibilityRuleFormFields = ({ editing = false }: Props) => {
   })), [policiesQuery.data]);
 
   const selectedPolicy = (policiesQuery.data ?? []).find((policy) => policy.id === policyId);
-  const platformTemplate = selectedPolicy?.scope === 'PLATFORM_TEMPLATE' || (!selectedPolicy?.tenantId && selectedPolicy?.scope !== 'TENANT');
+  const platformTemplate = Boolean(selectedPolicy && (
+    selectedPolicy.scope === 'PLATFORM_TEMPLATE'
+    || (!selectedPolicy.tenantId && selectedPolicy.scope !== 'TENANT')
+  ));
 
   useEffect(() => {
     if (platformTemplate && criterionType === 'LOCATION_ID') {
