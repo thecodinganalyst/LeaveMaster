@@ -51,6 +51,9 @@ public class LeaveEntitlementPolicyService {
         applyCurrentUsersScope(policy);
         normaliseAccrualConfiguration(policy, false);
         validate(policy);
+        if (policy.getId() != null && !policy.getId().isBlank() && policyRepository.existsById(policy.getId())) {
+            throw new LeaveEntitlementPolicyValidationException("Entitlement policy ID already exists: " + policy.getId());
+        }
         LeaveEntitlementPolicy saved = policyRepository.save(policy);
         touchTenant(saved);
         return saved;
