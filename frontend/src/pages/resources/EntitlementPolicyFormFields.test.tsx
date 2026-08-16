@@ -111,14 +111,16 @@ describe('EntitlementPolicyFormFields', () => {
 
   it('updates leave type options with jurisdiction and clears the previous selection', async () => {
     render(
-      <Form initialValues={{ jurisdictionId: 'SG', jurisdictionLeaveTypeId: 'SG:ANNUAL_LEAVE', name: 'Policy' }}>
+      <Form initialValues={{ jurisdictionId: 'SG', name: 'Policy' }}>
         <EntitlementPolicyFormFields platformAdmin />
       </Form>,
     );
 
     const leaveType = screen.getByRole('combobox', { name: 'Jurisdiction leave type' });
     expect(leaveType).toHaveAttribute('data-jurisdiction', 'SG');
-    expect(leaveType).toHaveValue('SG:ANNUAL_LEAVE');
+
+    fireEvent.change(leaveType, { target: { value: 'SG:ANNUAL_LEAVE' } });
+    await waitFor(() => expect(leaveType).toHaveValue('SG:ANNUAL_LEAVE'));
 
     fireEvent.change(screen.getByRole('combobox', { name: 'Jurisdiction' }), { target: { value: 'AU' } });
 
@@ -129,13 +131,28 @@ describe('EntitlementPolicyFormFields', () => {
   it('submits the jurisdiction leave type id selected from the dropdown', async () => {
     const onFinish = vi.fn();
     render(
-      <Form initialValues={{ jurisdictionId: 'SG', name: 'Policy' }} onFinish={onFinish}>
+      <Form
+        initialValues={{
+          id: 'SG_POLICY',
+          jurisdictionId: 'SG',
+          name: 'Policy',
+          priority: 10,
+          entitlementAmount: 14,
+          entitlementUnit: 'DAYS',
+          accrualMethod: 'NONE',
+          prorationMethod: 'NONE',
+          effectiveFrom: '2026-01-01',
+        }}
+        onFinish={onFinish}
+      >
         <EntitlementPolicyFormFields platformAdmin />
         <Button htmlType="submit">Save</Button>
       </Form>,
     );
 
-    fireEvent.change(screen.getByRole('combobox', { name: 'Jurisdiction leave type' }), { target: { value: 'SG:ANNUAL_LEAVE' } });
+    const leaveType = screen.getByRole('combobox', { name: 'Jurisdiction leave type' });
+    fireEvent.change(leaveType, { target: { value: 'SG:ANNUAL_LEAVE' } });
+    await waitFor(() => expect(leaveType).toHaveValue('SG:ANNUAL_LEAVE'));
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => expect(onFinish).toHaveBeenCalled());
