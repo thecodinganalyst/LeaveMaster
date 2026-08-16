@@ -83,6 +83,7 @@ describe('EntitlementPolicyFormFields', () => {
     expect(screen.queryByText('Annual')).not.toBeInTheDocument();
     expect(screen.queryByText('Per pay period')).not.toBeInTheDocument();
     expect(screen.queryByRole('spinbutton', { name: 'Accrual rate' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'ID' })).not.toBeInTheDocument();
     expect(screen.getByText('Days')).toBeInTheDocument();
     expect(screen.queryByText('Hours')).not.toBeInTheDocument();
   });
@@ -109,22 +110,6 @@ describe('EntitlementPolicyFormFields', () => {
     await waitFor(() => expect(calculated).toHaveValue('2 days per month'));
   });
 
-  it('auto-generates an id and keeps a user override', async () => {
-    render(
-      <Form initialValues={{ leaveTypeId: 'SG_ANNUAL_LEAVE', name: 'Standard Annual Leave' }}>
-        <EntitlementPolicyFormFields />
-      </Form>,
-    );
-
-    const idInput = screen.getByRole('textbox', { name: 'ID' });
-    await waitFor(() => expect(idInput).toHaveValue('SG_ANNUAL_LEAVE_STANDARD_ANNUAL_LEAVE'));
-
-    fireEvent.change(idInput, { target: { value: 'MY_CUSTOM_POLICY' } });
-    fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), { target: { value: 'Updated Name' } });
-
-    await waitFor(() => expect(idInput).toHaveValue('MY_CUSTOM_POLICY'));
-  });
-
   it('updates leave type options with jurisdiction and clears the previous selection', async () => {
     render(
       <Form initialValues={{ jurisdictionId: 'SG', name: 'Policy' }}>
@@ -144,12 +129,11 @@ describe('EntitlementPolicyFormFields', () => {
     await waitFor(() => expect(leaveType).toHaveValue(''));
   });
 
-  it('submits the derived monthly accrual rate rather than a manual value', async () => {
+  it('submits generated technical id and derived monthly accrual without exposing the id field', async () => {
     const onFinish = vi.fn();
     render(
       <Form
         initialValues={{
-          id: 'SG_POLICY',
           jurisdictionId: 'SG',
           name: 'Policy',
           priority: 10,
@@ -166,6 +150,7 @@ describe('EntitlementPolicyFormFields', () => {
       </Form>,
     );
 
+    expect(screen.queryByRole('textbox', { name: 'ID' })).not.toBeInTheDocument();
     const leaveType = screen.getByRole('combobox', { name: 'Jurisdiction leave type' });
     fireEvent.change(leaveType, { target: { value: 'SG:ANNUAL_LEAVE' } });
     await waitFor(() => expect(leaveType).toHaveValue('SG:ANNUAL_LEAVE'));
@@ -173,6 +158,7 @@ describe('EntitlementPolicyFormFields', () => {
 
     await waitFor(() => expect(onFinish).toHaveBeenCalled());
     expect(onFinish.mock.calls[0]?.[0]).toMatchObject({
+      id: 'SG_POLICY',
       jurisdictionId: 'SG',
       jurisdictionLeaveTypeId: 'SG:ANNUAL_LEAVE',
       accrualMethod: 'MONTHLY',
@@ -180,7 +166,7 @@ describe('EntitlementPolicyFormFields', () => {
     });
   });
 
-  it('migrates legacy annual selection to front-loaded on edit', async () => {
+  it('migrates legacy annual selection to front-loaded on edit without exposing technical id', async () => {
     render(
       <Form initialValues={{
         id: 'SG_POLICY',
@@ -198,7 +184,7 @@ describe('EntitlementPolicyFormFields', () => {
     await waitFor(() => expect(accrualSelect.closest('.ant-select-selector')).toHaveTextContent('Front-loaded'));
     expect(screen.getByRole('combobox', { name: 'Jurisdiction' })).toBeDisabled();
     expect(screen.getByRole('combobox', { name: 'Jurisdiction leave type' })).toBeDisabled();
-    expect(screen.getByRole('textbox', { name: 'ID' })).toBeDisabled();
+    expect(screen.queryByRole('textbox', { name: 'ID' })).not.toBeInTheDocument();
   });
 
   it('blocks alphabetic keystrokes in numeric fields while allowing decimal input', () => {
@@ -217,14 +203,14 @@ describe('EntitlementPolicyFormFields', () => {
     expect(fireEvent.keyDown(priority, { key: '.' })).toBe(false);
   });
 
-  it('keeps an existing id fixed during edit', () => {
+  it('does not expose an existing technical id during edit', () => {
     render(
       <Form initialValues={{ id: 'EXISTING_POLICY', leaveTypeId: 'SG_ANNUAL_LEAVE', name: 'Existing policy' }}>
         <EntitlementPolicyFormFields editing />
       </Form>,
     );
 
-    expect(screen.getByRole('textbox', { name: 'ID' })).toBeDisabled();
-    expect(screen.getByRole('textbox', { name: 'ID' })).toHaveValue('EXISTING_POLICY');
+    expect(screen.queryByRole('textbox', { name: 'ID' })).not.toBeInTheDocument();
+    expect(screen.queryByText('EXISTING_POLICY')).not.toBeInTheDocument();
   });
 });
