@@ -22,7 +22,7 @@ export const ResourceFormFields = ({ config, editing = false, preferredCountry, 
       if (field.type === 'number') {
         rules.push({
           type: 'integer',
-          min: field.min,
+          ...(field.min !== undefined ? { min: field.min } : {}),
           message: `${field.label} must be a whole number${field.min !== undefined ? ` of at least ${field.min}` : ''}`,
         });
       }
@@ -88,7 +88,7 @@ export const ResourceFormFields = ({ config, editing = false, preferredCountry, 
           <Form.Item {...itemProps}>
             <InputNumber
               disabled={disabled}
-              min={field.min}
+              {...(field.min !== undefined ? { min: field.min } : {})}
               step={field.step ?? 1}
               precision={0}
               style={{ width: '100%' }}
