@@ -180,19 +180,33 @@ class LeaveEntitlementGenerationServiceTest {
     }
 
     @Test
-    void monthlyAccrualUsesRateAndAnnualCap() {
+    void monthlyAccrualDerivesRateAndDoesNotDoubleProrate() {
         staff.setJoinDate(LocalDate.of(2027, 3, 15));
         stubStaffAndTypes();
-        LeaveEntitlementPolicy policy = policy("p1", new BigDecimal("12"), ProrationMethod.NONE);
+        LeaveEntitlementPolicy policy = policy("p1", new BigDecimal("12"), ProrationMethod.CALENDAR_DAYS);
         policy.setAccrualMethod(AccrualMethod.MONTHLY);
-        policy.setAccrualRate(new BigDecimal("1.5"));
+        policy.setAccrualRate(new BigDecimal("99"));
         select(policy);
         when(entitlementRepository.findByStaffAndLeaveTypeAndFromAndTo(staff, leaveType, start, end)).thenReturn(Optional.empty());
         when(applicationRepository.findByStaffAndLeaveTypeAndLeaveDateBetweenAndStatusIn(any(), any(), any(), any(), any()))
                 .thenReturn(List.of());
         when(entitlementRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        assertThat(service.generateForStaff("staff-1", start, end).getFirst().baseAmount()).isEqualByComparingTo("12.00");
+        assertThat(service.generateForStaff("staff-1", start, end).getFirst().baseAmount()).isEqualByComparingTo("10.00");
+    }
+
+    @Test
+    void monthlyAccrualCapsAtEntitlementAmountForFullYear() {
+        stubStaffAndTypes();
+        LeaveEntitlementPolicy policy = policy("p1", new BigDecimal("14"), ProrationMethod.NONE);
+        policy.setAccrualMethod(AccrualMethod.MONTHLY);
+        select(policy);
+        when(entitlementRepository.findByStaffAndLeaveTypeAndFromAndTo(staff, leaveType, start, end)).thenReturn(Optional.empty());
+        when(applicationRepository.findByStaffAndLeaveTypeAndLeaveDateBetweenAndStatusIn(any(), any(), any(), any(), any()))
+                .thenReturn(List.of());
+        when(entitlementRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        assertThat(service.generateForStaff("staff-1", start, end).getFirst().baseAmount()).isEqualByComparingTo("14.00");
     }
 
     @Test
