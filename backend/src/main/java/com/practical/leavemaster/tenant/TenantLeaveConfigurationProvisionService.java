@@ -9,6 +9,7 @@ import com.practical.leavemaster.jurisdiction.JurisdictionRepository;
 import com.practical.leavemaster.leavecalendar.LeaveCalendar;
 import com.practical.leavemaster.leavecalendar.LeaveCalendarRepository;
 import com.practical.leavemaster.leavecalendar.PublicHoliday;
+import com.practical.leavemaster.leaveentitlementpolicy.AccrualMethod;
 import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicy;
 import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicyEligibilityRepository;
 import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicyEligibilityRule;
@@ -19,6 +20,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +30,8 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class TenantLeaveConfigurationProvisionService {
+    private static final BigDecimal MONTHS_PER_YEAR = BigDecimal.valueOf(12);
+
     private final JurisdictionRepository jurisdictionRepository;
     private final JurisdictionLeaveTypeService jurisdictionLeaveTypeService;
     private final JurisdictionLeaveTypeRepository jurisdictionLeaveTypeRepository;
@@ -82,6 +87,11 @@ public class TenantLeaveConfigurationProvisionService {
             LeaveType tenantLeaveType = tenantLeaveTypesByCode.get(sourceLeaveType.getCode());
             if (tenantLeaveType == null) continue;
 
+            AccrualMethod accrualMethod = template.getAccrualMethod() == AccrualMethod.ANNUAL
+                    ? AccrualMethod.NONE
+                    : template.getAccrualMethod();
+            BigDecimal accrualRate = derivedAccrualRate(accrualMethod, template.getEntitlementAmount());
+
             LeaveEntitlementPolicy copied = LeaveEntitlementPolicy.builder()
                     .tenantId(tenant.getId())
                     .scope(ConfigurationScope.TENANT)
@@ -92,8 +102,8 @@ public class TenantLeaveConfigurationProvisionService {
                     .priority(template.getPriority())
                     .entitlementUnit(template.getEntitlementUnit())
                     .entitlementAmount(template.getEntitlementAmount())
-                    .accrualMethod(template.getAccrualMethod())
-                    .accrualRate(template.getAccrualRate())
+                    .accrualMethod(accrualMethod)
+                    .accrualRate(accrualRate)
                     .prorationMethod(template.getProrationMethod())
                     .carryForwardAllowed(template.isCarryForwardAllowed())
                     .carryForwardLimit(template.getCarryForwardLimit())
@@ -114,6 +124,13 @@ public class TenantLeaveConfigurationProvisionService {
                         .build());
             }
         }
+    }
+
+    private BigDecimal derivedAccrualRate(AccrualMethod method, BigDecimal entitlementAmount) {
+        if (method != AccrualMethod.MONTHLY || entitlementAmount == null) {
+            return null;
+        }
+        return entitlementAmount.divide(MONTHS_PER_YEAR, 8, RoundingMode.HALF_UP);
     }
 
     private Map<String, LeaveEntitlementPolicy> effectivePolicyTemplates(String jurisdictionId) {
