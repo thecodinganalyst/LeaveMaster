@@ -34,7 +34,7 @@ describe('ResourceFormFields numeric fields', () => {
 
     const priority = screen.getByRole('spinbutton', { name: /Priority \(higher number wins\)/i });
     expect(priority).toHaveValue('10');
-    expect(priority).toHaveAttribute('min', '0');
+    expect(priority).toHaveAttribute('aria-valuemin', '0');
     expect(priority).toHaveAttribute('step', '1');
     expect(screen.getByText(/Equal highest priorities are ambiguous/)).toBeInTheDocument();
   });
@@ -42,13 +42,12 @@ describe('ResourceFormFields numeric fields', () => {
   it('rejects negative priority values at form validation', async () => {
     const onFinish = vi.fn();
     render(
-      <Form onFinish={onFinish}>
+      <Form initialValues={{ priority: -1 }} onFinish={onFinish}>
         <ResourceFormFields config={priorityConfig} />
         <Button htmlType="submit">Save</Button>
       </Form>,
     );
 
-    fireEvent.change(screen.getByRole('spinbutton', { name: /Priority \(higher number wins\)/i }), { target: { value: '-1' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => expect(screen.getByText(/must be a whole number of at least 0/)).toBeInTheDocument());
