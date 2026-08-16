@@ -2,6 +2,7 @@ import { Alert, Form, Input, InputNumber, Select, Space, Switch } from 'antd';
 import { useEffect, useRef } from 'react';
 
 import { blockInvalidNumericKey, generateEntitlementPolicyId } from './entitlementPolicyForm.ts';
+import { JurisdictionLeaveTypeSelect } from './JurisdictionLeaveTypeSelect.tsx';
 import { JurisdictionSelect } from './JurisdictionSelect.tsx';
 
 interface Props {
@@ -29,12 +30,23 @@ export const EntitlementPolicyFormFields = ({ editing = false, platformAdmin = f
   const name = Form.useWatch('name', form);
   const accrualMethod = Form.useWatch('accrualMethod', form);
   const previousGeneratedId = useRef('');
+  const previousJurisdictionId = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     if (editing) return;
     if (!form.getFieldValue('entitlementUnit')) form.setFieldValue('entitlementUnit', 'DAYS');
     if (!form.getFieldValue('priority')) form.setFieldValue('priority', 10);
   }, [editing, form]);
+
+  useEffect(() => {
+    if (!platformAdmin || editing) return;
+
+    const currentJurisdictionId = jurisdictionId ? String(jurisdictionId) : '';
+    if (previousJurisdictionId.current !== undefined && previousJurisdictionId.current !== currentJurisdictionId) {
+      form.setFieldValue('jurisdictionLeaveTypeId', undefined);
+    }
+    previousJurisdictionId.current = currentJurisdictionId;
+  }, [editing, form, jurisdictionId, platformAdmin]);
 
   useEffect(() => {
     if (editing) return;
@@ -62,10 +74,10 @@ export const EntitlementPolicyFormFields = ({ editing = false, platformAdmin = f
       {platformAdmin ? (
         <>
           <Form.Item name="jurisdictionId" label="Jurisdiction" rules={[{ required: true, message: 'Jurisdiction is required' }]}>
-            <JurisdictionSelect />
+            <JurisdictionSelect disabled={editing} />
           </Form.Item>
-          <Form.Item name="jurisdictionLeaveTypeId" label="Jurisdiction leave type ID" rules={[{ required: true, message: 'Jurisdiction leave type ID is required' }]}>
-            <Input />
+          <Form.Item name="jurisdictionLeaveTypeId" label="Jurisdiction leave type" rules={[{ required: true, message: 'Jurisdiction leave type is required' }]}>
+            <JurisdictionLeaveTypeSelect jurisdictionId={jurisdictionId ? String(jurisdictionId) : undefined} disabled={editing} />
           </Form.Item>
         </>
       ) : (
