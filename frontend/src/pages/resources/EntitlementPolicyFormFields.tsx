@@ -1,6 +1,7 @@
 import { Alert, Form, Input, InputNumber, Select, Space, Switch } from 'antd';
 import { useEffect, useRef } from 'react';
 
+import { blockInvalidNumericKey, generateEntitlementPolicyId } from './entitlementPolicyForm.ts';
 import { JurisdictionSelect } from './JurisdictionSelect.tsx';
 
 interface Props {
@@ -20,19 +21,6 @@ const prorationMethods = [
   { label: 'Calendar days', value: 'CALENDAR_DAYS' },
   { label: 'Months', value: 'MONTHS' },
 ];
-
-export const normalisePolicyIdPart = (value: string) => value
-  .trim()
-  .toUpperCase()
-  .replace(/[^A-Z0-9]+/g, '_')
-  .replace(/_+/g, '_')
-  .replace(/^_|_$/g, '');
-
-export const generateEntitlementPolicyId = (jurisdiction: string, name: string) => {
-  const jurisdictionPart = normalisePolicyIdPart(jurisdiction);
-  const namePart = normalisePolicyIdPart(name);
-  return [jurisdictionPart, namePart].filter(Boolean).join('_');
-};
 
 export const EntitlementPolicyFormFields = ({ editing = false, platformAdmin = false }: Props) => {
   const form = Form.useFormInstance();
@@ -109,7 +97,7 @@ export const EntitlementPolicyFormFields = ({ editing = false, platformAdmin = f
         extra="Determines which policy wins when more than one policy matches. Start with 10 for the default policy and use 20 or 30 for more specific rules. Avoid equal highest priorities for overlapping policies."
         rules={[{ required: true, message: 'Priority is required' }, { type: 'integer', min: 0, message: 'Priority must be a whole number of at least 0' }]}
       >
-        <InputNumber min={0} step={1} precision={0} style={{ width: '100%' }} />
+        <InputNumber min={0} step={1} precision={0} inputMode="numeric" onKeyDown={(event) => blockInvalidNumericKey(event, true)} style={{ width: '100%' }} />
       </Form.Item>
 
       <Space.Compact block style={{ alignItems: 'flex-start', marginBottom: 0 }}>
@@ -120,7 +108,7 @@ export const EntitlementPolicyFormFields = ({ editing = false, platformAdmin = f
             extra="The amount of leave granted by this policy. For example, enter 14 with unit DAYS for 14 days of annual leave."
             rules={[{ required: true, message: 'Entitlement amount is required' }, { type: 'number', min: 0, message: 'Entitlement amount must be 0 or greater' }]}
           >
-            <InputNumber min={0} step={0.5} style={{ width: '100%' }} />
+            <InputNumber min={0} step={0.5} inputMode="decimal" onKeyDown={(event) => blockInvalidNumericKey(event, false)} style={{ width: '100%' }} />
           </Form.Item>
         </div>
         <div style={{ flex: '0 0 118px' }}>
@@ -150,7 +138,7 @@ export const EntitlementPolicyFormFields = ({ editing = false, platformAdmin = f
         extra="Amount accrued during each accrual interval. This is only relevant when an accrual method other than NONE is used."
         rules={[{ type: 'number', min: 0, message: 'Accrual rate must be 0 or greater' }]}
       >
-        <InputNumber min={0} step={0.01} disabled={accrualMethod === 'NONE'} style={{ width: '100%' }} />
+        <InputNumber min={0} step={0.01} inputMode="decimal" onKeyDown={(event) => blockInvalidNumericKey(event, false)} disabled={accrualMethod === 'NONE'} style={{ width: '100%' }} />
       </Form.Item>
 
       <Form.Item
@@ -171,7 +159,7 @@ export const EntitlementPolicyFormFields = ({ editing = false, platformAdmin = f
         label="Carry forward limit"
         rules={[{ type: 'number', min: 0, message: 'Carry forward limit must be 0 or greater' }]}
       >
-        <InputNumber min={0} step={0.5} style={{ width: '100%' }} />
+        <InputNumber min={0} step={0.5} inputMode="decimal" onKeyDown={(event) => blockInvalidNumericKey(event, false)} style={{ width: '100%' }} />
       </Form.Item>
 
       <Form.Item
@@ -179,7 +167,7 @@ export const EntitlementPolicyFormFields = ({ editing = false, platformAdmin = f
         label="Carry forward expiry (months)"
         rules={[{ type: 'integer', min: 0, message: 'Carry forward expiry must be a whole number of at least 0' }]}
       >
-        <InputNumber min={0} step={1} precision={0} style={{ width: '100%' }} />
+        <InputNumber min={0} step={1} precision={0} inputMode="numeric" onKeyDown={(event) => blockInvalidNumericKey(event, true)} style={{ width: '100%' }} />
       </Form.Item>
 
       <Form.Item name="effectiveFrom" label="Effective from" rules={[{ required: true, message: 'Effective from is required' }]}>
