@@ -1,16 +1,25 @@
-import { useCan, useOne, useResource } from '@refinedev/core';
+import { useCan, useGetIdentity, useOne, useResource } from '@refinedev/core';
 import { Button, Card, Descriptions, Space } from 'antd';
 import { Link, useParams } from 'react-router-dom';
 
 import { LoadingState } from '../../components/common/LoadingState.tsx';
 import { PageContainer } from '../../components/common/PageContainer.tsx';
 import { PageHeader } from '../../components/common/PageHeader.tsx';
-import { getAdminResourceConfig, toFormValues } from './adminResourceConfig.ts';
+import type { AdminField } from './adminResourceConfig.ts';
+import { getAdminResourceConfig, isAdminFieldVisible, toFormValues } from './adminResourceConfig.ts';
 import { RoleMembershipCard } from './RoleMembershipCard.tsx';
 import { RolePermissionCheckboxList } from './RolePermissionCheckboxList.tsx';
 
-const displayValue = (value: unknown) => {
+interface LeaveMasterIdentity {
+  platformAdmin?: boolean;
+}
+
+const displayValue = (field: AdminField, value: unknown) => {
   if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+  if (field.options) {
+    const option = field.options.find((item) => item.value === value);
+    if (option) return option.label;
+  }
   if (value && typeof value === 'object') return JSON.stringify(value, null, 2);
   return String(value ?? '—');
 };
@@ -19,6 +28,8 @@ export const ResourceShowPage = () => {
   const { resource } = useResource();
   const { id } = useParams();
   const config = getAdminResourceConfig(resource?.name);
+  const { data: identity } = useGetIdentity<LeaveMasterIdentity>();
+  const platformAdmin = Boolean(identity?.platformAdmin);
   const recordQuery = useOne({ resource: config?.name ?? '', id: id ?? '', queryOptions: { enabled: Boolean(config && id) } });
   const { data: canEdit } = useCan({ resource: config?.name ?? '', action: 'edit' });
 
@@ -35,12 +46,12 @@ export const ResourceShowPage = () => {
       />
       <Card>
         <Descriptions bordered column={1}>
-          {config.fields.filter((field) => field.type !== 'password' && !field.hidden).map((field) => (
+          {config.fields.filter((field) => field.type !== 'password' && !field.hidden && isAdminFieldVisible(field, platformAdmin)).map((field) => (
             <Descriptions.Item key={field.name} label={field.label}>
               {field.type === 'permissions' ? (
                 <RolePermissionCheckboxList value={(record[field.name] as string[] | undefined) ?? []} disabled />
               ) : (
-                <span style={{ whiteSpace: field.type === 'json' ? 'pre-wrap' : 'normal' }}>{displayValue(record[field.name])}</span>
+                <span style={{ whiteSpace: field.type === 'json' ? 'pre-wrap' : 'normal' }}>{displayValue(field, record[field.name])}</span>
               )}
             </Descriptions.Item>
           ))}
