@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { FormSection } from '../../components/common/FormSection.tsx';
 import { PageContainer } from '../../components/common/PageContainer.tsx';
 import { PageHeader } from '../../components/common/PageHeader.tsx';
-import { getAdminResourceConfig, normaliseFormValues } from './adminResourceConfig.ts';
+import { getAdminResourceConfig, getAdminResourceInitialValues, normaliseFormValues } from './adminResourceConfig.ts';
 import { ResourceFormFields } from './ResourceFormFields.tsx';
 
 interface LeaveMasterIdentity {
@@ -46,7 +46,12 @@ export const ResourceCreatePage = () => {
     <PageContainer>
       <PageHeader title={`Create ${config.singular}`} subtitle={`Add a new ${config.singular.toLowerCase()} record.`} />
       <FormSection title="Details">
-        <Form form={form} layout="vertical" onFinish={submit} initialValues={{ active: true, used: false, status: 'ACTIVE' }}>
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={submit}
+          initialValues={{ active: true, used: false, status: 'ACTIVE', ...getAdminResourceInitialValues(config) }}
+        >
           <ResourceFormFields config={config} preferredCountry={identity?.country} platformAdmin={Boolean(identity?.platformAdmin)} />
           <Space>
             <Button type="primary" htmlType="submit" loading={isLoading}>Save</Button>
