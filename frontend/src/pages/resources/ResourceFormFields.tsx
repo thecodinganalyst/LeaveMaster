@@ -27,11 +27,11 @@ export const ResourceFormFields = ({ config, editing = false, preferredCountry, 
         });
       }
       const disabled = Boolean(editing && field.readOnlyOnEdit);
-      const itemProps = { key: field.name, name: field.name, label: field.label, rules, extra: field.description };
+      const itemProps = { name: field.name, label: field.label, rules, extra: field.description };
 
       if (field.type === 'boolean') {
         return (
-          <Form.Item {...itemProps} valuePropName="checked">
+          <Form.Item key={field.name} {...itemProps} valuePropName="checked">
             <Switch disabled={disabled} />
           </Form.Item>
         );
@@ -39,7 +39,7 @@ export const ResourceFormFields = ({ config, editing = false, preferredCountry, 
 
       if (field.name === 'jurisdictionId') {
         return (
-          <Form.Item {...itemProps}>
+          <Form.Item key={field.name} {...itemProps}>
             <JurisdictionSelect disabled={disabled} />
           </Form.Item>
         );
@@ -47,7 +47,7 @@ export const ResourceFormFields = ({ config, editing = false, preferredCountry, 
 
       if (field.type === 'select') {
         return (
-          <Form.Item {...itemProps}>
+          <Form.Item key={field.name} {...itemProps}>
             <Select options={field.options ?? []} disabled={disabled} />
           </Form.Item>
         );
@@ -55,7 +55,7 @@ export const ResourceFormFields = ({ config, editing = false, preferredCountry, 
 
       if (field.type === 'country') {
         return (
-          <Form.Item {...itemProps}>
+          <Form.Item key={field.name} {...itemProps}>
             <Select
               options={getCountryOptions(preferredCountry)}
               disabled={disabled}
@@ -69,7 +69,7 @@ export const ResourceFormFields = ({ config, editing = false, preferredCountry, 
 
       if (field.type === 'permissions') {
         return (
-          <Form.Item {...itemProps}>
+          <Form.Item key={field.name} {...itemProps}>
             <RolePermissionCheckboxList disabled={disabled} />
           </Form.Item>
         );
@@ -77,7 +77,7 @@ export const ResourceFormFields = ({ config, editing = false, preferredCountry, 
 
       if (field.type === 'json') {
         return (
-          <Form.Item {...itemProps}>
+          <Form.Item key={field.name} {...itemProps}>
             <Input.TextArea rows={5} disabled={disabled} placeholder="[]" />
           </Form.Item>
         );
@@ -85,7 +85,7 @@ export const ResourceFormFields = ({ config, editing = false, preferredCountry, 
 
       if (field.type === 'number') {
         return (
-          <Form.Item {...itemProps}>
+          <Form.Item key={field.name} {...itemProps}>
             <InputNumber
               disabled={disabled}
               {...(field.min !== undefined ? { min: field.min } : {})}
@@ -103,7 +103,7 @@ export const ResourceFormFields = ({ config, editing = false, preferredCountry, 
         : <Input type={inputType} disabled={disabled} />;
 
       return (
-        <Form.Item {...itemProps}>
+        <Form.Item key={field.name} {...itemProps}>
           {input}
         </Form.Item>
       );
