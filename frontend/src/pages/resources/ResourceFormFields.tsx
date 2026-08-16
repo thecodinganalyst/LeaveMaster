@@ -4,6 +4,7 @@ import type { Rule } from 'antd/es/form';
 import type { AdminResourceConfig } from './adminResourceConfig.ts';
 import { isAdminFieldVisible } from './adminResourceConfig.ts';
 import { getCountryOptions } from './countries.ts';
+import { EligibilityRuleFormFields } from './EligibilityRuleFormFields.tsx';
 import { EntitlementPolicyFormFields } from './EntitlementPolicyFormFields.tsx';
 import { JurisdictionSelect } from './JurisdictionSelect.tsx';
 import { RolePermissionCheckboxList } from './RolePermissionCheckboxList.tsx';
@@ -18,6 +19,10 @@ interface Props {
 export const ResourceFormFields = ({ config, editing = false, preferredCountry, platformAdmin = false }: Props) => {
   if (config.name === 'leave-entitlement-policies') {
     return <EntitlementPolicyFormFields editing={editing} platformAdmin={platformAdmin} />;
+  }
+
+  if (config.name === 'leave-entitlement-policy-eligibility-rules') {
+    return <EligibilityRuleFormFields editing={editing} />;
   }
 
   return (
