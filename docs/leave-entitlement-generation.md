@@ -31,7 +31,7 @@ Pending leave  = reserved
 Displayed leave balance
 ```
 
-Generation is explicit. Administrators call the generation API for either one staff member or an entire tenant and supply the entitlement period to generate or reconcile.
+Generation is explicit. Administrators call the generation API for either one staff member or an entire tenant and supply the entitlement period to generate or reconcile. LeaveMaestro does not currently post leave automatically every month in a background scheduler.
 
 ## 1. Configure leave entitlement policies
 
@@ -45,9 +45,9 @@ Important policy fields include:
 | `leaveTypeId` | Tenant leave type to which the policy applies. |
 | `priority` | Higher priority wins when more than one policy matches. |
 | `entitlementUnit` | Currently `DAYS` is supported for generation. |
-| `entitlementAmount` | Maximum/base entitlement amount defined by the policy. |
-| `accrualMethod` | Annual or monthly calculation mode used by generation. |
-| `accrualRate` | Rate used by monthly accrual when configured. |
+| `entitlementAmount` | Total entitlement amount defined by the policy for the entitlement period. |
+| `accrualMethod` | Supported user-facing behaviours are **Front-loaded** (`NONE`) and **Monthly accrual** (`MONTHLY`). |
+| `accrualRate` | Derived implementation value for monthly accrual. It is not manually configurable. |
 | `prorationMethod` | `NONE`, `CALENDAR_DAYS`, or `MONTHS`. |
 | `carryForwardAllowed` | Whether unused balance from the previous period may be brought forward. |
 | `carryForwardLimit` | Optional maximum amount that may be carried forward. |
@@ -55,6 +55,17 @@ Important policy fields include:
 | `effectiveFrom` / `effectiveTo` | Policy effective period. |
 
 Policy administration is protected by `LEAVE_ENTITLEMENT_POLICY_READ` and `LEAVE_ENTITLEMENT_POLICY_WRITE`.
+
+### Accrual versus proration
+
+Accrual and proration solve different problems:
+
+- **Accrual** controls when entitlement becomes available during the entitlement period.
+- **Proration** adjusts entitlement because an employee is eligible for only part of the entitlement period.
+
+For a front-loaded policy, proration can reduce the configured entitlement for a joiner who becomes eligible part-way through the period.
+
+For monthly accrual, the generation calculation already counts only eligible months. LeaveMaestro therefore does not apply an additional proration reduction after the monthly accrual calculation; this avoids reducing the same partial period twice.
 
 ## 2. Add eligibility rules
 
@@ -139,11 +150,13 @@ entitlementAmount = baseAmount + carriedForwardAmount + adjustmentAmount
 
 The existing `entitlement` value remains the total balance basis used by the rest of LeaveMaestro.
 
-### Annual entitlement
+### Front-loaded entitlement
 
-For annual policies without proration, `baseAmount` is the policy's configured entitlement amount.
+The user-facing **Front-loaded** option is stored as `accrualMethod = NONE` for backward compatibility. It means entitlement is not earned progressively each month.
 
-### Join-date proration
+For a front-loaded policy without proration, `baseAmount` is the full configured `entitlementAmount` for the period. A periodic `accrualRate` is not applicable and is cleared by the backend.
+
+### Join-date proration for front-loaded policies
 
 Proration is applied when the employee joins after the requested period starts.
 
@@ -155,8 +168,6 @@ The employee receives the full configured amount.
 
 The amount is proportional to eligible calendar days remaining in the requested period.
 
-Conceptually:
-
 ```text
 base = entitlementAmount × eligibleCalendarDays / totalCalendarDays
 ```
@@ -167,31 +178,49 @@ The generated amount is rounded to two decimal places using half-up rounding.
 
 The amount is proportional to eligible calendar months in the requested period.
 
-Conceptually:
-
 ```text
 base = entitlementAmount × eligibleMonths / totalMonths
 ```
 
-The employee's join month counts as an eligible month.
-
-If the employee joins after `periodEnd`, the base amount is zero.
+The employee's join month counts as an eligible month. If the employee joins after `periodEnd`, the base amount is zero.
 
 ## 6. Monthly accrual
 
-When a policy uses monthly accrual and has an `accrualRate`, LeaveMaestro counts eligible calendar months from the later of the employee's join date or the requested period start through the requested period end.
-
-Conceptually:
+For `accrualMethod = MONTHLY`, LeaveMaestro derives the rate automatically from the entitlement amount:
 
 ```text
-base = accrualRate × eligibleMonths
+monthlyAccrualRate = entitlementAmount / 12
 ```
 
-The result is capped at the policy's `entitlementAmount`.
+For example, a 14-day entitlement produces a calculated rate of approximately `1.1667 days per month`.
+
+The backend is authoritative: client-supplied manual accrual rates are ignored and replaced with the derived value. The persisted rate uses additional precision so intermediate rounding does not materially reduce a full-year entitlement.
+
+During entitlement generation, LeaveMaestro counts eligible calendar months from the later of the employee's join date or the requested period start through the requested period end:
+
+```text
+base = monthlyAccrualRate × eligibleMonths
+```
+
+The result is capped at the policy's `entitlementAmount` and rounded to the generated entitlement precision.
+
+Because eligible months are already part of this calculation, the normal join-date proration branch is not applied again for monthly accrual. This prevents double-proration.
 
 This generation model calculates the entitlement represented by the supplied period. It does not currently schedule automatic month-by-month postings.
 
-## 7. Carry-forward
+## 7. Legacy and unsupported accrual methods
+
+The persisted enum still contains older values for backward compatibility, but they are not available for new configuration.
+
+### Legacy `ANNUAL`
+
+Historically, `ANNUAL` behaved effectively like a front-loaded policy. New policies cannot select it. When a legacy annual policy is edited it is normalized to `NONE`/Front-loaded, and legacy annual templates copied into newly provisioned tenants are also normalized to Front-loaded.
+
+### `PER_PAY_PERIOD`
+
+`PER_PAY_PERIOD` cannot be newly configured because LeaveMaestro does not yet have an authoritative payroll/pay-period schedule. Existing historical data is not silently converted to another accrual model because that could change its meaning. Entitlement generation continues to reject `PER_PAY_PERIOD` until payroll schedules are implemented.
+
+## 8. Carry-forward
 
 If `carryForwardAllowed` is false, the carried-forward amount is zero.
 
@@ -214,7 +243,7 @@ Then:
 
 Pending leave is deducted as well as approved leave so a staff member cannot reserve leave in the previous period and then also carry the same amount into the next period.
 
-## 8. Manual adjustments
+## 9. Manual adjustments
 
 Generated entitlements contain an `adjustmentAmount` field.
 
@@ -228,7 +257,7 @@ recalculated base
 + existing manual adjustment
 ```
 
-## 9. Used and reserved leave protection
+## 10. Used and reserved leave protection
 
 LeaveMaestro does not persist a separate mutable "used balance" on `leave_entitlement`. Usage is derived from leave applications.
 
@@ -247,7 +276,7 @@ new entitlement >= used + reserved
 
 If the new amount would be smaller than leave already used or reserved, generation fails rather than silently creating an invalid negative available balance.
 
-## 10. Idempotent reconciliation
+## 11. Idempotent reconciliation
 
 The database enforces one entitlement per:
 
@@ -264,7 +293,7 @@ A successful result reports:
 
 The generated record also stores its source `policyId` and a `generatedAt` timestamp for traceability.
 
-## 11. Protected records
+## 12. Protected records
 
 Generation deliberately avoids rewriting records that could represent historical or manually maintained state.
 
@@ -272,34 +301,13 @@ Generation deliberately avoids rewriting records that could represent historical
 
 If an entitlement already exists for the same employee, leave type and period but has no source `policyId`, LeaveMaestro treats it as a legacy/manual entitlement and leaves it unchanged.
 
-It is not silently converted to a policy-generated entitlement.
-
 ### `HISTORICAL_PROTECTED`
 
 If an existing policy-generated entitlement's requested period has already ended, LeaveMaestro leaves that historical entitlement unchanged.
 
-This prevents a later policy edit from retroactively rewriting historical leave balances through a normal generation run.
+## 13. Generation result
 
-## 12. Generation result
-
-Each staff/leave-type evaluation returns an `EntitlementGenerationResult` containing:
-
-```json
-{
-  "staffId": "staff-123",
-  "leaveTypeId": "annual",
-  "entitlementId": "entitlement-uuid",
-  "policyId": "policy-uuid",
-  "status": "CREATED",
-  "baseAmount": 14.00,
-  "carriedForwardAmount": 3.00,
-  "adjustmentAmount": 1.00,
-  "usedAmount": 2.00,
-  "reservedAmount": 0.50,
-  "entitlementAmount": 18.00,
-  "reason": "Entitlement generated from policy"
-}
-```
+Each staff/leave-type evaluation returns an `EntitlementGenerationResult` containing the generated components, usage/reservation amounts, total entitlement, source policy, status and reason.
 
 Possible statuses are:
 
@@ -312,31 +320,31 @@ Possible statuses are:
 | `LEGACY_PROTECTED` | An existing entitlement without a source policy was left unchanged. |
 | `HISTORICAL_PROTECTED` | An existing generated historical entitlement was left unchanged. |
 
-A batch request can therefore complete with a mixture of statuses. Administrators should review non-`CREATED`/`UPDATED` statuses instead of assuming every staff/leave-type combination generated a balance.
-
-## 13. Current limitations
+## 14. Current limitations
 
 ### Hour-based policies
 
 `HOURS` entitlement policies cannot currently generate employee balances. LeaveMaestro's leave applications and balance calculations are based on full days and half days (`FULL`, `AM`, `PM`), so converting hour-based policy values without a work-hours model would be inaccurate.
 
-Generation rejects these policies instead of performing an implicit conversion.
-
 ### Per-pay-period accrual
 
-`PER_PAY_PERIOD` generation is not currently supported because LeaveMaestro does not yet have an authoritative payroll-period schedule. Generation rejects these policies rather than assuming a pay frequency.
+`PER_PAY_PERIOD` generation is not currently supported because LeaveMaestro does not yet have an authoritative payroll-period schedule.
 
-## 14. Recommended operating procedure
+### Automatic accrual scheduling
+
+Monthly accrual is evaluated when entitlement generation/reconciliation is invoked. There is no automatic monthly scheduler yet. If automatic reconciliation is required, it should be implemented as a separate scheduling capability rather than changing the policy semantics described here.
+
+## 15. Recommended operating procedure
 
 For a normal annual entitlement cycle:
 
 1. Configure leave types and entitlement policies.
-2. Configure eligibility rules where required.
-3. Resolve or review policy matching for representative staff before running a tenant-wide batch.
-4. Generate the upcoming entitlement period.
-5. Review any `NO_MATCHING_POLICY`, `AMBIGUOUS_POLICY`, `LEGACY_PROTECTED`, or `HISTORICAL_PROTECTED` results.
-6. Correct policy/rule configuration where necessary.
-7. Re-run the same period; matching generated records will reconcile instead of duplicating.
+2. Choose **Front-loaded** or **Monthly accrual**.
+3. Configure eligibility rules where required.
+4. Resolve or review policy matching for representative staff before running a tenant-wide batch.
+5. Generate or reconcile the entitlement period.
+6. Review any `NO_MATCHING_POLICY`, `AMBIGUOUS_POLICY`, `LEGACY_PROTECTED`, or `HISTORICAL_PROTECTED` results.
+7. Correct policy/rule configuration where necessary and rerun the same period.
 8. Avoid changing historical periods unless a separate controlled correction process is intended.
 
 ## Related documentation
