@@ -40,6 +40,7 @@ import java.util.Optional;
 public class LeaveEntitlementGenerationService {
     private static final String PLATFORM_ADMIN_ROLE_ID = "PLATFORM_ADMIN";
     private static final BigDecimal HALF_DAY = new BigDecimal("0.5");
+    private static final BigDecimal MONTHS_PER_YEAR = BigDecimal.valueOf(12);
 
     private final StaffRepository staffRepository;
     private final LeaveTypeRepository leaveTypeRepository;
@@ -155,13 +156,14 @@ public class LeaveEntitlementGenerationService {
     }
 
     private BigDecimal calculateBase(LeaveEntitlementPolicy policy, Staff staff, LocalDate periodStart, LocalDate periodEnd) {
-        if (policy.getAccrualMethod() == AccrualMethod.MONTHLY && policy.getAccrualRate() != null) {
+        if (policy.getAccrualMethod() == AccrualMethod.MONTHLY) {
             LocalDate eligibleStart = staff.getJoinDate() != null && staff.getJoinDate().isAfter(periodStart) ? staff.getJoinDate() : periodStart;
             if (eligibleStart.isAfter(periodEnd)) {
                 return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
             }
             long months = ChronoUnit.MONTHS.between(YearMonth.from(eligibleStart), YearMonth.from(periodEnd)) + 1;
-            BigDecimal accrued = policy.getAccrualRate().multiply(BigDecimal.valueOf(months));
+            BigDecimal monthlyRate = policy.getEntitlementAmount().divide(MONTHS_PER_YEAR, 8, RoundingMode.HALF_UP);
+            BigDecimal accrued = monthlyRate.multiply(BigDecimal.valueOf(months));
             return accrued.min(policy.getEntitlementAmount()).setScale(2, RoundingMode.HALF_UP);
         }
 
