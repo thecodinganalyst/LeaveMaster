@@ -1,6 +1,7 @@
 import { Form, Input, Select, Switch } from 'antd';
 
 import type { AdminResourceConfig } from './adminResourceConfig.ts';
+import { isAdminFieldVisible } from './adminResourceConfig.ts';
 import { getCountryOptions } from './countries.ts';
 import { JurisdictionSelect } from './JurisdictionSelect.tsx';
 import { RolePermissionCheckboxList } from './RolePermissionCheckboxList.tsx';
@@ -9,11 +10,12 @@ interface Props {
   config: AdminResourceConfig;
   editing?: boolean;
   preferredCountry?: string | null | undefined;
+  platformAdmin?: boolean;
 }
 
-export const ResourceFormFields = ({ config, editing = false, preferredCountry }: Props) => (
+export const ResourceFormFields = ({ config, editing = false, preferredCountry, platformAdmin = false }: Props) => (
   <>
-    {config.fields.filter((field) => !field.hidden).map((field) => {
+    {config.fields.filter((field) => !field.hidden && !field.formHidden && isAdminFieldVisible(field, platformAdmin)).map((field) => {
       const required = field.required || (!editing && field.requiredOnCreate);
       const rules = required ? [{ required: true, message: `${field.label} is required` }] : [];
       const disabled = Boolean(editing && field.readOnlyOnEdit);

@@ -1,4 +1,4 @@
-import { useCan, useDelete, useList, useResource } from '@refinedev/core';
+import { useCan, useDelete, useGetIdentity, useList, useResource } from '@refinedev/core';
 import { App, Button, Input, Popconfirm, Space, Tag, type TableProps } from 'antd';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -8,10 +8,19 @@ import { EmptyState } from '../../components/common/EmptyState.tsx';
 import { LoadingState } from '../../components/common/LoadingState.tsx';
 import { PageContainer } from '../../components/common/PageContainer.tsx';
 import { PageHeader } from '../../components/common/PageHeader.tsx';
-import { getAdminResourceConfig, toFormValues } from './adminResourceConfig.ts';
+import type { AdminField } from './adminResourceConfig.ts';
+import { getAdminResourceConfig, isAdminFieldVisible, toFormValues } from './adminResourceConfig.ts';
 
-const displayValue = (value: unknown) => {
+interface LeaveMasterIdentity {
+  platformAdmin?: boolean;
+}
+
+const displayValue = (field: AdminField, value: unknown) => {
   if (typeof value === 'boolean') return value ? <Tag color="green">Yes</Tag> : <Tag>No</Tag>;
+  if (field.options) {
+    const option = field.options.find((item) => item.value === value);
+    if (option) return option.label;
+  }
   if (value && typeof value === 'object') return JSON.stringify(value);
   return String(value ?? '—');
 };
@@ -19,6 +28,8 @@ const displayValue = (value: unknown) => {
 export const ResourceListPage = () => {
   const { resource } = useResource();
   const config = getAdminResourceConfig(resource?.name);
+  const { data: identity } = useGetIdentity<LeaveMasterIdentity>();
+  const platformAdmin = Boolean(identity?.platformAdmin);
   const [search, setSearch] = useState('');
   const navigate = useNavigate();
   const { message } = App.useApp();
@@ -48,12 +59,14 @@ export const ResourceListPage = () => {
     }
   };
 
-  const columns: TableProps<Record<string, unknown>>['columns'] = config.fields.filter((field) => field.list).map((field) => ({
-    title: field.label,
-    dataIndex: field.name,
-    sorter: (a, b) => String(a[field.name] ?? '').localeCompare(String(b[field.name] ?? ''), undefined, { numeric: true }),
-    render: (value: unknown) => displayValue(value),
-  }));
+  const columns: TableProps<Record<string, unknown>>['columns'] = config.fields
+    .filter((field) => field.list && isAdminFieldVisible(field, platformAdmin))
+    .map((field) => ({
+      title: field.label,
+      dataIndex: field.name,
+      sorter: (a, b) => String(a[field.name] ?? '').localeCompare(String(b[field.name] ?? ''), undefined, { numeric: true }),
+      render: (value: unknown) => displayValue(field, value),
+    }));
 
   columns?.push({
     title: 'Actions', dataIndex: '__actions', sorter: () => 0,

@@ -96,6 +96,7 @@ describe('authProvider', () => {
       tenantId: 'T2',
       country: 'Singapore',
       active: true,
+      platformAdmin: false,
       authorities: ['LEAVE_APPLICATION_APPROVE'],
     });
     await expect(authProvider.getIdentity?.()).resolves.toEqual({
@@ -104,7 +105,25 @@ describe('authProvider', () => {
       staffId: 'S2',
       tenantId: 'T2',
       country: 'Singapore',
+      platformAdmin: false,
       authorities: ['LEAVE_APPLICATION_APPROVE'],
+    });
+  });
+
+  it('exposes the platform admin flag used by administration field visibility', async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({
+      loginName: 'platformadmin',
+      staffId: null,
+      tenantId: null,
+      active: true,
+      platformAdmin: true,
+      authorities: ['LEAVE_ENTITLEMENT_POLICY_WRITE'],
+    });
+
+    await expect(authProvider.getIdentity?.()).resolves.toMatchObject({
+      id: 'platformadmin',
+      platformAdmin: true,
+      tenantId: null,
     });
   });
 

@@ -1,4 +1,5 @@
 export type AdminFieldType = 'text' | 'email' | 'date' | 'boolean' | 'select' | 'country' | 'json' | 'password' | 'permissions';
+export type AdminFieldAudience = 'platform' | 'tenant';
 
 export interface AdminField {
   name: string;
@@ -10,6 +11,8 @@ export interface AdminField {
   options?: { label: string; value: string | boolean }[];
   list?: boolean;
   hidden?: boolean;
+  formHidden?: boolean;
+  audience?: AdminFieldAudience;
 }
 
 export interface AdminResourceConfig {
@@ -35,6 +38,10 @@ const accrualMethods = ['NONE', 'ANNUAL', 'MONTHLY', 'PER_PAY_PERIOD'].map((valu
 const prorationMethods = ['NONE', 'CALENDAR_DAYS', 'MONTHS'].map((value) => ({ label: value, value }));
 const eligibilityCriterionTypes = ['LOCATION_ID', 'JURISDICTION_CODE', 'SERVICE_MONTHS'].map((value) => ({ label: value, value }));
 const eligibilityOperators = ['EQUALS', 'NOT_EQUALS', 'IN', 'NOT_IN', 'GREATER_THAN', 'GREATER_THAN_OR_EQUAL', 'LESS_THAN', 'LESS_THAN_OR_EQUAL'].map((value) => ({ label: value, value }));
+const configurationScopes = [
+  { label: 'Platform template', value: 'PLATFORM_TEMPLATE' },
+  { label: 'Tenant policy', value: 'TENANT' },
+];
 
 export const adminResourceConfigs: Record<string, AdminResourceConfig> = {
   tenants: {
@@ -134,12 +141,12 @@ export const adminResourceConfigs: Record<string, AdminResourceConfig> = {
     name: 'leave-entitlement-policies', label: 'Entitlement Policies', singular: 'Entitlement policy', idField: 'id',
     fields: [
       { name: 'id', label: 'ID', readOnlyOnEdit: true, list: true, hidden: true },
-      { name: 'scope', label: 'Scope', list: true, readOnlyOnEdit: true },
-      { name: 'tenantId', label: 'Tenant ID', list: true, readOnlyOnEdit: true },
-      { name: 'jurisdictionId', label: 'Template jurisdiction', list: true },
-      { name: 'jurisdictionLeaveTypeId', label: 'Jurisdiction leave type ID', list: true },
-      { name: 'leaveTypeId', label: 'Tenant leave type ID', list: true },
-      { name: 'sourceTemplateId', label: 'Source template ID', list: true, readOnlyOnEdit: true },
+      { name: 'scope', label: 'Policy type', type: 'select', options: configurationScopes, list: true, formHidden: true },
+      { name: 'tenantId', label: 'Tenant ID', hidden: true },
+      { name: 'jurisdictionId', label: 'Jurisdiction', required: true, list: true, audience: 'platform' },
+      { name: 'jurisdictionLeaveTypeId', label: 'Jurisdiction leave type ID', required: true, list: true, audience: 'platform' },
+      { name: 'leaveTypeId', label: 'Leave type ID', required: true, list: true, audience: 'tenant' },
+      { name: 'sourceTemplateId', label: 'Source template ID', list: true, formHidden: true, audience: 'tenant' },
       { name: 'name', label: 'Name', required: true, list: true },
       { name: 'active', label: 'Active', type: 'boolean', list: true },
       { name: 'priority', label: 'Priority', required: true, list: true },
@@ -194,6 +201,12 @@ export const adminResourceConfigs: Record<string, AdminResourceConfig> = {
 };
 
 export const getAdminResourceConfig = (name?: string) => (name ? adminResourceConfigs[name] : undefined);
+
+export const isAdminFieldVisible = (field: AdminField, platformAdmin: boolean) => {
+  if (field.audience === 'platform') return platformAdmin;
+  if (field.audience === 'tenant') return !platformAdmin;
+  return true;
+};
 
 export const normaliseFormValues = (config: AdminResourceConfig, values: Record<string, unknown>) => {
   const result = { ...values };

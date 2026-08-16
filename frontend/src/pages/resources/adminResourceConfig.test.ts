@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { adminResourceConfigs, normaliseFormValues, toFormValues } from './adminResourceConfig.ts';
+import { adminResourceConfigs, isAdminFieldVisible, normaliseFormValues, toFormValues } from './adminResourceConfig.ts';
 
 describe('adminResourceConfigs', () => {
   it('registers every administration module from issue 111', () => {
@@ -21,6 +21,38 @@ describe('adminResourceConfigs', () => {
   it('allows leave calendar templates to be edited and deleted now that the backend supports CRUD', () => {
     expect(adminResourceConfigs['leave-calendars'].editable).not.toBe(false);
     expect(adminResourceConfigs['leave-calendars'].deletable).not.toBe(false);
+  });
+
+  it('hides internal entitlement policy scope and tenant id from forms', () => {
+    const fields = adminResourceConfigs['leave-entitlement-policies'].fields;
+    expect(fields.find((field) => field.name === 'scope')).toMatchObject({
+      label: 'Policy type',
+      formHidden: true,
+      list: true,
+    });
+    expect(fields.find((field) => field.name === 'tenantId')).toMatchObject({ hidden: true });
+  });
+
+  it('shows template fields only to platform admin', () => {
+    const fields = adminResourceConfigs['leave-entitlement-policies'].fields;
+    const visible = fields.filter((field) => !field.hidden && !field.formHidden && isAdminFieldVisible(field, true)).map((field) => field.name);
+
+    expect(visible).toContain('jurisdictionId');
+    expect(visible).toContain('jurisdictionLeaveTypeId');
+    expect(visible).not.toContain('leaveTypeId');
+    expect(visible).not.toContain('tenantId');
+    expect(visible).not.toContain('scope');
+  });
+
+  it('shows tenant leave type only to tenant administrators', () => {
+    const fields = adminResourceConfigs['leave-entitlement-policies'].fields;
+    const visible = fields.filter((field) => !field.hidden && !field.formHidden && isAdminFieldVisible(field, false)).map((field) => field.name);
+
+    expect(visible).toContain('leaveTypeId');
+    expect(visible).not.toContain('jurisdictionId');
+    expect(visible).not.toContain('jurisdictionLeaveTypeId');
+    expect(visible).not.toContain('tenantId');
+    expect(visible).not.toContain('scope');
   });
 
   it('configures role permissions as a checkbox-backed permission field', () => {
