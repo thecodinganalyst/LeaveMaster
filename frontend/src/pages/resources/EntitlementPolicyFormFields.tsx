@@ -77,7 +77,10 @@ export const EntitlementPolicyFormFields = ({ editing = false, platformAdmin = f
             <JurisdictionSelect disabled={editing} />
           </Form.Item>
           <Form.Item name="jurisdictionLeaveTypeId" label="Jurisdiction leave type" rules={[{ required: true, message: 'Jurisdiction leave type is required' }]}>
-            <JurisdictionLeaveTypeSelect jurisdictionId={jurisdictionId ? String(jurisdictionId) : undefined} disabled={editing} />
+            <JurisdictionLeaveTypeSelect
+              {...(jurisdictionId ? { jurisdictionId: String(jurisdictionId) } : {})}
+              disabled={editing}
+            />
           </Form.Item>
         </>
       ) : (
