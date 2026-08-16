@@ -1,4 +1,4 @@
-export type AdminFieldType = 'text' | 'email' | 'date' | 'boolean' | 'select' | 'country' | 'json' | 'password' | 'permissions';
+export type AdminFieldType = 'text' | 'email' | 'date' | 'boolean' | 'select' | 'country' | 'json' | 'password' | 'permissions' | 'number';
 export type AdminFieldAudience = 'platform' | 'tenant';
 
 export interface AdminField {
@@ -13,6 +13,10 @@ export interface AdminField {
   hidden?: boolean;
   formHidden?: boolean;
   audience?: AdminFieldAudience;
+  description?: string;
+  defaultValue?: unknown;
+  min?: number;
+  step?: number;
 }
 
 export interface AdminResourceConfig {
@@ -149,7 +153,17 @@ export const adminResourceConfigs: Record<string, AdminResourceConfig> = {
       { name: 'sourceTemplateId', label: 'Source template ID', list: true, formHidden: true, audience: 'tenant' },
       { name: 'name', label: 'Name', required: true, list: true },
       { name: 'active', label: 'Active', type: 'boolean', list: true },
-      { name: 'priority', label: 'Priority', required: true, list: true },
+      {
+        name: 'priority',
+        label: 'Priority (higher number wins)',
+        type: 'number',
+        required: true,
+        list: true,
+        min: 0,
+        step: 1,
+        defaultValue: 10,
+        description: 'Determines which policy wins when more than one policy matches an employee. Start with 10 for the default policy and use higher values such as 20 or 30 for more specific rules. Using increments of 10 leaves room for intermediate priorities. Avoid giving overlapping policies the same highest priority because that makes policy resolution ambiguous.',
+      },
       { name: 'entitlementUnit', label: 'Unit', type: 'select', required: true, options: entitlementUnits, list: true },
       { name: 'entitlementAmount', label: 'Entitlement amount', required: true, list: true },
       { name: 'accrualMethod', label: 'Accrual method', type: 'select', required: true, options: accrualMethods, list: true },
@@ -207,6 +221,12 @@ export const isAdminFieldVisible = (field: AdminField, platformAdmin: boolean) =
   if (field.audience === 'tenant') return !platformAdmin;
   return true;
 };
+
+export const getAdminResourceInitialValues = (config: AdminResourceConfig) => Object.fromEntries(
+  config.fields
+    .filter((field) => field.defaultValue !== undefined)
+    .map((field) => [field.name, field.defaultValue]),
+);
 
 export const normaliseFormValues = (config: AdminResourceConfig, values: Record<string, unknown>) => {
   const result = { ...values };

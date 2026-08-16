@@ -1,4 +1,5 @@
-import { Form, Input, Select, Switch } from 'antd';
+import { Form, Input, InputNumber, Select, Switch } from 'antd';
+import type { Rule } from 'antd/es/form';
 
 import type { AdminResourceConfig } from './adminResourceConfig.ts';
 import { isAdminFieldVisible } from './adminResourceConfig.ts';
@@ -17,12 +18,20 @@ export const ResourceFormFields = ({ config, editing = false, preferredCountry, 
   <>
     {config.fields.filter((field) => !field.hidden && !field.formHidden && isAdminFieldVisible(field, platformAdmin)).map((field) => {
       const required = field.required || (!editing && field.requiredOnCreate);
-      const rules = required ? [{ required: true, message: `${field.label} is required` }] : [];
+      const rules: Rule[] = required ? [{ required: true, message: `${field.label} is required` }] : [];
+      if (field.type === 'number') {
+        rules.push({
+          type: 'integer',
+          ...(field.min !== undefined ? { min: field.min } : {}),
+          message: `${field.label} must be a whole number${field.min !== undefined ? ` of at least ${field.min}` : ''}`,
+        });
+      }
       const disabled = Boolean(editing && field.readOnlyOnEdit);
+      const itemProps = { name: field.name, label: field.label, rules, extra: field.description };
 
       if (field.type === 'boolean') {
         return (
-          <Form.Item key={field.name} name={field.name} label={field.label} valuePropName="checked">
+          <Form.Item key={field.name} {...itemProps} valuePropName="checked">
             <Switch disabled={disabled} />
           </Form.Item>
         );
@@ -30,7 +39,7 @@ export const ResourceFormFields = ({ config, editing = false, preferredCountry, 
 
       if (field.name === 'jurisdictionId') {
         return (
-          <Form.Item key={field.name} name={field.name} label={field.label} rules={rules}>
+          <Form.Item key={field.name} {...itemProps}>
             <JurisdictionSelect disabled={disabled} />
           </Form.Item>
         );
@@ -38,7 +47,7 @@ export const ResourceFormFields = ({ config, editing = false, preferredCountry, 
 
       if (field.type === 'select') {
         return (
-          <Form.Item key={field.name} name={field.name} label={field.label} rules={rules}>
+          <Form.Item key={field.name} {...itemProps}>
             <Select options={field.options ?? []} disabled={disabled} />
           </Form.Item>
         );
@@ -46,7 +55,7 @@ export const ResourceFormFields = ({ config, editing = false, preferredCountry, 
 
       if (field.type === 'country') {
         return (
-          <Form.Item key={field.name} name={field.name} label={field.label} rules={rules}>
+          <Form.Item key={field.name} {...itemProps}>
             <Select
               options={getCountryOptions(preferredCountry)}
               disabled={disabled}
@@ -60,7 +69,7 @@ export const ResourceFormFields = ({ config, editing = false, preferredCountry, 
 
       if (field.type === 'permissions') {
         return (
-          <Form.Item key={field.name} name={field.name} label={field.label} rules={rules}>
+          <Form.Item key={field.name} {...itemProps}>
             <RolePermissionCheckboxList disabled={disabled} />
           </Form.Item>
         );
@@ -68,8 +77,22 @@ export const ResourceFormFields = ({ config, editing = false, preferredCountry, 
 
       if (field.type === 'json') {
         return (
-          <Form.Item key={field.name} name={field.name} label={field.label} rules={rules}>
+          <Form.Item key={field.name} {...itemProps}>
             <Input.TextArea rows={5} disabled={disabled} placeholder="[]" />
+          </Form.Item>
+        );
+      }
+
+      if (field.type === 'number') {
+        return (
+          <Form.Item key={field.name} {...itemProps}>
+            <InputNumber
+              disabled={disabled}
+              {...(field.min !== undefined ? { min: field.min } : {})}
+              step={field.step ?? 1}
+              precision={0}
+              style={{ width: '100%' }}
+            />
           </Form.Item>
         );
       }
@@ -80,7 +103,7 @@ export const ResourceFormFields = ({ config, editing = false, preferredCountry, 
         : <Input type={inputType} disabled={disabled} />;
 
       return (
-        <Form.Item key={field.name} name={field.name} label={field.label} rules={rules}>
+        <Form.Item key={field.name} {...itemProps}>
           {input}
         </Form.Item>
       );
