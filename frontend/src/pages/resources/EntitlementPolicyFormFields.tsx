@@ -39,7 +39,6 @@ export const EntitlementPolicyFormFields = ({ editing = false, platformAdmin = f
   const name = Form.useWatch('name', form);
   const accrualMethod = Form.useWatch('accrualMethod', form);
   const entitlementAmount = Form.useWatch('entitlementAmount', form);
-  const previousGeneratedId = useRef('');
   const previousJurisdictionId = useRef<string | undefined>(undefined);
 
   useEffect(() => {
@@ -68,13 +67,7 @@ export const EntitlementPolicyFormFields = ({ editing = false, platformAdmin = f
     if (editing) return;
     const prefix = platformAdmin ? String(jurisdictionId ?? '') : String(leaveTypeId ?? '');
     const generated = generateEntitlementPolicyId(prefix, String(name ?? ''));
-    if (!generated) return;
-
-    const current = String(form.getFieldValue('id') ?? '');
-    if (!current || current === previousGeneratedId.current) {
-      form.setFieldValue('id', generated);
-      previousGeneratedId.current = generated;
-    }
+    form.setFieldValue('id', generated || undefined);
   }, [editing, form, jurisdictionId, leaveTypeId, name, platformAdmin]);
 
   const calculatedMonthlyRate = accrualMethod === 'MONTHLY' ? monthlyAccrualRate(entitlementAmount) : undefined;
@@ -115,13 +108,8 @@ export const EntitlementPolicyFormFields = ({ editing = false, platformAdmin = f
         <Input />
       </Form.Item>
 
-      <Form.Item
-        name="id"
-        label="ID"
-        extra={editing ? 'The ID is fixed after the policy is created.' : 'Generated from the jurisdiction and policy name. You may override it before saving.'}
-        rules={[{ required: true, message: 'ID is required' }]}
-      >
-        <Input disabled={editing} />
+      <Form.Item name="id" hidden>
+        <Input />
       </Form.Item>
 
       <Form.Item name="active" label="Active" valuePropName="checked">
