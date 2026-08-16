@@ -61,8 +61,10 @@ describe('EligibilityRuleFormFields', () => {
 
     const operator = screen.getByRole('combobox', { name: 'Operator' });
     fireEvent.mouseDown(operator);
-    expect(screen.getByText('Greater than or equal to')).toBeInTheDocument();
-    expect(screen.getByText('Less than or equal to')).toBeInTheDocument();
+    const listboxes = screen.getAllByRole('listbox');
+    const operatorList = listboxes[listboxes.length - 1];
+    expect(within(operatorList).getByText('Greater than or equal to')).toBeInTheDocument();
+    expect(within(operatorList).getByText('Less than or equal to')).toBeInTheDocument();
   });
 
   it('uses a location dropdown and limits location operators to set comparisons', () => {
