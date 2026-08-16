@@ -30,7 +30,7 @@ describe('ColdStartGate', () => {
       </ColdStartGate>,
     );
 
-    expect(screen.getByText('LeaveMaster is waking up after sleeping')).toBeInTheDocument();
+    expect(screen.getByText('LeaveMaestro is waking up after sleeping')).toBeInTheDocument();
     expect(screen.getByText('Waiting for 0 seconds…')).toBeInTheDocument();
 
     await act(async () => {
@@ -67,7 +67,7 @@ describe('ColdStartGate', () => {
 
     expect(mockedGetCsrfToken).toHaveBeenCalledTimes(2);
     expect(screen.getByText('Application ready')).toBeInTheDocument();
-    expect(screen.queryByText('LeaveMaster is waking up after sleeping')).not.toBeInTheDocument();
+    expect(screen.queryByText('LeaveMaestro is waking up after sleeping')).not.toBeInTheDocument();
   });
 
   it('cleans up timers when it is unmounted', async () => {
