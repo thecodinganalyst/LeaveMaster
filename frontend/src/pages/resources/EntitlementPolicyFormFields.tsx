@@ -11,10 +11,8 @@ interface Props {
 }
 
 const accrualMethods = [
-  { label: 'None', value: 'NONE' },
-  { label: 'Annual', value: 'ANNUAL' },
-  { label: 'Monthly', value: 'MONTHLY' },
-  { label: 'Per pay period', value: 'PER_PAY_PERIOD' },
+  { label: 'Front-loaded', value: 'NONE' },
+  { label: 'Monthly accrual', value: 'MONTHLY' },
 ];
 
 const prorationMethods = [
@@ -23,12 +21,24 @@ const prorationMethods = [
   { label: 'Months', value: 'MONTHS' },
 ];
 
+const monthlyAccrualRate = (amount: unknown) => {
+  const numericAmount = Number(amount);
+  if (!Number.isFinite(numericAmount) || numericAmount < 0) return undefined;
+  return Number((numericAmount / 12).toFixed(8));
+};
+
+const formatMonthlyAccrual = (rate: number | undefined) => {
+  if (rate === undefined) return '';
+  return `${rate.toFixed(4).replace(/0+$/, '').replace(/\.$/, '')} days per month`;
+};
+
 export const EntitlementPolicyFormFields = ({ editing = false, platformAdmin = false }: Props) => {
   const form = Form.useFormInstance();
   const jurisdictionId = Form.useWatch('jurisdictionId', form);
   const leaveTypeId = Form.useWatch('leaveTypeId', form);
   const name = Form.useWatch('name', form);
   const accrualMethod = Form.useWatch('accrualMethod', form);
+  const entitlementAmount = Form.useWatch('entitlementAmount', form);
   const previousGeneratedId = useRef('');
   const previousJurisdictionId = useRef<string | undefined>(undefined);
 
@@ -36,6 +46,12 @@ export const EntitlementPolicyFormFields = ({ editing = false, platformAdmin = f
     if (editing) return;
     if (!form.getFieldValue('entitlementUnit')) form.setFieldValue('entitlementUnit', 'DAYS');
     if (!form.getFieldValue('priority')) form.setFieldValue('priority', 10);
+    if (!form.getFieldValue('accrualMethod')) form.setFieldValue('accrualMethod', 'NONE');
+  }, [editing, form]);
+
+  useEffect(() => {
+    if (!editing || form.getFieldValue('accrualMethod') !== 'ANNUAL') return;
+    form.setFieldValue('accrualMethod', 'NONE');
   }, [editing, form]);
 
   useEffect(() => {
@@ -61,6 +77,12 @@ export const EntitlementPolicyFormFields = ({ editing = false, platformAdmin = f
     }
   }, [editing, form, jurisdictionId, leaveTypeId, name, platformAdmin]);
 
+  const calculatedMonthlyRate = accrualMethod === 'MONTHLY' ? monthlyAccrualRate(entitlementAmount) : undefined;
+
+  useEffect(() => {
+    form.setFieldValue('accrualRate', calculatedMonthlyRate);
+  }, [calculatedMonthlyRate, form]);
+
   return (
     <>
       <Alert
@@ -68,7 +90,7 @@ export const EntitlementPolicyFormFields = ({ editing = false, platformAdmin = f
         showIcon
         style={{ marginBottom: 20 }}
         message="What an entitlement policy controls"
-        description="An entitlement policy defines how much leave an eligible employee receives, how the entitlement accrues, whether it is prorated, and how unused leave may be carried forward. Eligibility rules determine which employees the policy applies to."
+        description="An entitlement policy defines how much leave an eligible employee receives, how the entitlement becomes available, whether it is prorated, and how unused leave may be carried forward. Eligibility rules determine which employees the policy applies to."
       />
 
       {platformAdmin ? (
@@ -120,7 +142,7 @@ export const EntitlementPolicyFormFields = ({ editing = false, platformAdmin = f
           <Form.Item
             name="entitlementAmount"
             label="Entitlement amount"
-            extra="The amount of leave granted by this policy. For example, enter 14 with unit DAYS for 14 days of annual leave."
+            extra="The total leave entitlement for the policy period. For example, enter 14 with unit DAYS for 14 days of annual leave."
             rules={[{ required: true, message: 'Entitlement amount is required' }, { type: 'number', min: 0, message: 'Entitlement amount must be 0 or greater' }]}
           >
             <InputNumber min={0} step={0.5} inputMode="decimal" onKeyDown={(event) => blockInvalidNumericKey(event, false)} style={{ width: '100%' }} />
@@ -141,25 +163,33 @@ export const EntitlementPolicyFormFields = ({ editing = false, platformAdmin = f
       <Form.Item
         name="accrualMethod"
         label="Accrual method"
-        extra="Determines how entitlement is credited. NONE grants the configured entitlement without periodic accrual; ANNUAL credits annually; MONTHLY accrues each month; PER_PAY_PERIOD accrues by payroll period where supported."
+        extra="Controls when entitlement becomes available. Front-loaded makes the entitlement available without progressive monthly earning. Monthly accrual makes entitlement available progressively each eligible month."
         rules={[{ required: true, message: 'Accrual method is required' }]}
       >
         <Select options={accrualMethods} />
       </Form.Item>
 
-      <Form.Item
-        name="accrualRate"
-        label="Accrual rate"
-        extra="Amount accrued during each accrual interval. This is only relevant when an accrual method other than NONE is used."
-        rules={[{ type: 'number', min: 0, message: 'Accrual rate must be 0 or greater' }]}
-      >
-        <InputNumber min={0} step={0.01} inputMode="decimal" onKeyDown={(event) => blockInvalidNumericKey(event, false)} disabled={accrualMethod === 'NONE'} style={{ width: '100%' }} />
+      <Form.Item name="accrualRate" hidden>
+        <Input />
       </Form.Item>
+
+      {accrualMethod === 'MONTHLY' ? (
+        <Form.Item
+          label="Calculated monthly accrual"
+          extra="Calculated automatically as entitlement amount ÷ 12. It cannot be edited directly. Monthly accrual already uses eligible months, so proration should not reduce the same period a second time."
+        >
+          <Input value={formatMonthlyAccrual(calculatedMonthlyRate)} readOnly aria-label="Calculated monthly accrual" />
+        </Form.Item>
+      ) : (
+        <Form.Item label="Calculated accrual" extra="Front-loaded policies do not use a periodic accrual rate.">
+          <Input value="Not applicable" readOnly aria-label="Calculated accrual" />
+        </Form.Item>
+      )}
 
       <Form.Item
         name="prorationMethod"
         label="Proration method"
-        extra="Determines how entitlement is adjusted when an employee is eligible for only part of the policy period. NONE: full entitlement once eligible. CALENDAR_DAYS: prorate by eligible calendar days. MONTHS: prorate by eligible months."
+        extra="Proration is separate from accrual. It adjusts entitlement when an employee is eligible for only part of the policy period. NONE: full entitlement once eligible. CALENDAR_DAYS: prorate by eligible calendar days. MONTHS: prorate by eligible months. Monthly accrual already accounts for eligible months and is not reduced again by these proration settings."
         rules={[{ required: true, message: 'Proration method is required' }]}
       >
         <Select options={prorationMethods} />
