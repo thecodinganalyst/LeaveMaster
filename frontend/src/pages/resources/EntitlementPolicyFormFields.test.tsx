@@ -194,7 +194,8 @@ describe('EntitlementPolicyFormFields', () => {
       </Form>,
     );
 
-    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Accrual method' })).toHaveTextContent('Front-loaded'));
+    const accrualSelect = screen.getByRole('combobox', { name: 'Accrual method' });
+    await waitFor(() => expect(accrualSelect.closest('.ant-select-selector')).toHaveTextContent('Front-loaded'));
     expect(screen.getByRole('combobox', { name: 'Jurisdiction' })).toBeDisabled();
     expect(screen.getByRole('combobox', { name: 'Jurisdiction leave type' })).toBeDisabled();
     expect(screen.getByRole('textbox', { name: 'ID' })).toBeDisabled();
