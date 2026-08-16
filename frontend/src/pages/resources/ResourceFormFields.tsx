@@ -1,4 +1,5 @@
 import { Form, Input, InputNumber, Select, Switch } from 'antd';
+import type { Rule } from 'antd/es/form';
 
 import type { AdminResourceConfig } from './adminResourceConfig.ts';
 import { isAdminFieldVisible } from './adminResourceConfig.ts';
@@ -17,7 +18,14 @@ export const ResourceFormFields = ({ config, editing = false, preferredCountry, 
   <>
     {config.fields.filter((field) => !field.hidden && !field.formHidden && isAdminFieldVisible(field, platformAdmin)).map((field) => {
       const required = field.required || (!editing && field.requiredOnCreate);
-      const rules = required ? [{ required: true, message: `${field.label} is required` }] : [];
+      const rules: Rule[] = required ? [{ required: true, message: `${field.label} is required` }] : [];
+      if (field.type === 'number') {
+        rules.push({
+          type: 'integer',
+          min: field.min,
+          message: `${field.label} must be a whole number${field.min !== undefined ? ` of at least ${field.min}` : ''}`,
+        });
+      }
       const disabled = Boolean(editing && field.readOnlyOnEdit);
       const itemProps = { key: field.name, name: field.name, label: field.label, rules, extra: field.description };
 
