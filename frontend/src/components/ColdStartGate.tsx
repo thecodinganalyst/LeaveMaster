@@ -61,7 +61,7 @@ export const ColdStartGate = ({
       <section className="cold-start-card">
         <Spin size="large" />
         <Typography.Title level={2} className="cold-start-title">
-          LeaveMaster is waking up after sleeping
+          LeaveMaestro is waking up after sleeping
         </Typography.Title>
         <Typography.Paragraph className="cold-start-message">
           The application was resting to save resources. It will open automatically as soon as it is ready.
