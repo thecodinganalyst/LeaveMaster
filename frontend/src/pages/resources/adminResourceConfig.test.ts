@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { adminResourceConfigs, isAdminFieldVisible, normaliseFormValues, toFormValues } from './adminResourceConfig.ts';
+import {
+  adminResourceConfigs,
+  getAdminResourceInitialValues,
+  isAdminFieldVisible,
+  normaliseFormValues,
+  toFormValues,
+} from './adminResourceConfig.ts';
 
 describe('adminResourceConfigs', () => {
   it('registers every administration module from issue 111', () => {
@@ -53,6 +59,27 @@ describe('adminResourceConfigs', () => {
     expect(visible).not.toContain('jurisdictionLeaveTypeId');
     expect(visible).not.toContain('tenantId');
     expect(visible).not.toContain('scope');
+  });
+
+  it('configures priority as a non-negative integer with guidance and a default of 10', () => {
+    const priority = adminResourceConfigs['leave-entitlement-policies'].fields.find((field) => field.name === 'priority');
+
+    expect(priority).toMatchObject({
+      label: 'Priority (higher number wins)',
+      type: 'number',
+      required: true,
+      min: 0,
+      step: 1,
+      defaultValue: 10,
+    });
+    expect(priority?.description).toContain('20 or 30');
+    expect(priority?.description).toContain('ambiguous');
+    expect(getAdminResourceInitialValues(adminResourceConfigs['leave-entitlement-policies'])).toMatchObject({ priority: 10 });
+  });
+
+  it('does not inject defaults when converting an existing policy for editing', () => {
+    const config = adminResourceConfigs['leave-entitlement-policies'];
+    expect(toFormValues(config, { id: 'policy-1', priority: 30 })).toMatchObject({ priority: 30 });
   });
 
   it('configures role permissions as a checkbox-backed permission field', () => {
