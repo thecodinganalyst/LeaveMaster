@@ -1,0 +1,181 @@
+import { Alert, Form, Input, InputNumber, Select, Space, Switch } from 'antd';
+import { useEffect, useRef } from 'react';
+
+import { blockInvalidNumericKey, generateEntitlementPolicyId } from './entitlementPolicyForm.ts';
+import { JurisdictionSelect } from './JurisdictionSelect.tsx';
+
+interface Props {
+  editing?: boolean;
+  platformAdmin?: boolean;
+}
+
+const accrualMethods = [
+  { label: 'None', value: 'NONE' },
+  { label: 'Annual', value: 'ANNUAL' },
+  { label: 'Monthly', value: 'MONTHLY' },
+  { label: 'Per pay period', value: 'PER_PAY_PERIOD' },
+];
+
+const prorationMethods = [
+  { label: 'None', value: 'NONE' },
+  { label: 'Calendar days', value: 'CALENDAR_DAYS' },
+  { label: 'Months', value: 'MONTHS' },
+];
+
+export const EntitlementPolicyFormFields = ({ editing = false, platformAdmin = false }: Props) => {
+  const form = Form.useFormInstance();
+  const jurisdictionId = Form.useWatch('jurisdictionId', form);
+  const leaveTypeId = Form.useWatch('leaveTypeId', form);
+  const name = Form.useWatch('name', form);
+  const accrualMethod = Form.useWatch('accrualMethod', form);
+  const previousGeneratedId = useRef('');
+
+  useEffect(() => {
+    if (editing) return;
+    if (!form.getFieldValue('entitlementUnit')) form.setFieldValue('entitlementUnit', 'DAYS');
+    if (!form.getFieldValue('priority')) form.setFieldValue('priority', 10);
+  }, [editing, form]);
+
+  useEffect(() => {
+    if (editing) return;
+    const prefix = platformAdmin ? String(jurisdictionId ?? '') : String(leaveTypeId ?? '');
+    const generated = generateEntitlementPolicyId(prefix, String(name ?? ''));
+    if (!generated) return;
+
+    const current = String(form.getFieldValue('id') ?? '');
+    if (!current || current === previousGeneratedId.current) {
+      form.setFieldValue('id', generated);
+      previousGeneratedId.current = generated;
+    }
+  }, [editing, form, jurisdictionId, leaveTypeId, name, platformAdmin]);
+
+  return (
+    <>
+      <Alert
+        type="info"
+        showIcon
+        style={{ marginBottom: 20 }}
+        message="What an entitlement policy controls"
+        description="An entitlement policy defines how much leave an eligible employee receives, how the entitlement accrues, whether it is prorated, and how unused leave may be carried forward. Eligibility rules determine which employees the policy applies to."
+      />
+
+      {platformAdmin ? (
+        <>
+          <Form.Item name="jurisdictionId" label="Jurisdiction" rules={[{ required: true, message: 'Jurisdiction is required' }]}>
+            <JurisdictionSelect />
+          </Form.Item>
+          <Form.Item name="jurisdictionLeaveTypeId" label="Jurisdiction leave type ID" rules={[{ required: true, message: 'Jurisdiction leave type ID is required' }]}>
+            <Input />
+          </Form.Item>
+        </>
+      ) : (
+        <Form.Item name="leaveTypeId" label="Leave type ID" rules={[{ required: true, message: 'Leave type ID is required' }]}>
+          <Input />
+        </Form.Item>
+      )}
+
+      <Form.Item name="name" label="Name" rules={[{ required: true, message: 'Name is required' }]}>
+        <Input />
+      </Form.Item>
+
+      <Form.Item
+        name="id"
+        label="ID"
+        extra={editing ? 'The ID is fixed after the policy is created.' : 'Generated from the jurisdiction and policy name. You may override it before saving.'}
+        rules={[{ required: true, message: 'ID is required' }]}
+      >
+        <Input disabled={editing} />
+      </Form.Item>
+
+      <Form.Item name="active" label="Active" valuePropName="checked">
+        <Switch />
+      </Form.Item>
+
+      <Form.Item
+        name="priority"
+        label="Priority (higher number wins)"
+        extra="Determines which policy wins when more than one policy matches. Start with 10 for the default policy and use 20 or 30 for more specific rules. Avoid equal highest priorities for overlapping policies."
+        rules={[{ required: true, message: 'Priority is required' }, { type: 'integer', min: 0, message: 'Priority must be a whole number of at least 0' }]}
+      >
+        <InputNumber min={0} step={1} precision={0} inputMode="numeric" onKeyDown={(event) => blockInvalidNumericKey(event, true)} style={{ width: '100%' }} />
+      </Form.Item>
+
+      <Space.Compact block style={{ alignItems: 'flex-start', marginBottom: 0 }}>
+        <div style={{ flex: '1 1 auto', minWidth: 0 }}>
+          <Form.Item
+            name="entitlementAmount"
+            label="Entitlement amount"
+            extra="The amount of leave granted by this policy. For example, enter 14 with unit DAYS for 14 days of annual leave."
+            rules={[{ required: true, message: 'Entitlement amount is required' }, { type: 'number', min: 0, message: 'Entitlement amount must be 0 or greater' }]}
+          >
+            <InputNumber min={0} step={0.5} inputMode="decimal" onKeyDown={(event) => blockInvalidNumericKey(event, false)} style={{ width: '100%' }} />
+          </Form.Item>
+        </div>
+        <div style={{ flex: '0 0 118px' }}>
+          <Form.Item
+            name="entitlementUnit"
+            label="Unit"
+            extra="LeaveMaestro currently supports day-based entitlement only."
+            rules={[{ required: true, message: 'Unit is required' }]}
+          >
+            <Select options={[{ label: 'Days', value: 'DAYS' }]} />
+          </Form.Item>
+        </div>
+      </Space.Compact>
+
+      <Form.Item
+        name="accrualMethod"
+        label="Accrual method"
+        extra="Determines how entitlement is credited. NONE grants the configured entitlement without periodic accrual; ANNUAL credits annually; MONTHLY accrues each month; PER_PAY_PERIOD accrues by payroll period where supported."
+        rules={[{ required: true, message: 'Accrual method is required' }]}
+      >
+        <Select options={accrualMethods} />
+      </Form.Item>
+
+      <Form.Item
+        name="accrualRate"
+        label="Accrual rate"
+        extra="Amount accrued during each accrual interval. This is only relevant when an accrual method other than NONE is used."
+        rules={[{ type: 'number', min: 0, message: 'Accrual rate must be 0 or greater' }]}
+      >
+        <InputNumber min={0} step={0.01} inputMode="decimal" onKeyDown={(event) => blockInvalidNumericKey(event, false)} disabled={accrualMethod === 'NONE'} style={{ width: '100%' }} />
+      </Form.Item>
+
+      <Form.Item
+        name="prorationMethod"
+        label="Proration method"
+        extra="Determines how entitlement is adjusted when an employee is eligible for only part of the policy period. NONE: full entitlement once eligible. CALENDAR_DAYS: prorate by eligible calendar days. MONTHS: prorate by eligible months."
+        rules={[{ required: true, message: 'Proration method is required' }]}
+      >
+        <Select options={prorationMethods} />
+      </Form.Item>
+
+      <Form.Item name="carryForwardAllowed" label="Carry forward allowed" valuePropName="checked">
+        <Switch />
+      </Form.Item>
+
+      <Form.Item
+        name="carryForwardLimit"
+        label="Carry forward limit"
+        rules={[{ type: 'number', min: 0, message: 'Carry forward limit must be 0 or greater' }]}
+      >
+        <InputNumber min={0} step={0.5} inputMode="decimal" onKeyDown={(event) => blockInvalidNumericKey(event, false)} style={{ width: '100%' }} />
+      </Form.Item>
+
+      <Form.Item
+        name="carryForwardExpiryMonths"
+        label="Carry forward expiry (months)"
+        rules={[{ type: 'integer', min: 0, message: 'Carry forward expiry must be a whole number of at least 0' }]}
+      >
+        <InputNumber min={0} step={1} precision={0} inputMode="numeric" onKeyDown={(event) => blockInvalidNumericKey(event, true)} style={{ width: '100%' }} />
+      </Form.Item>
+
+      <Form.Item name="effectiveFrom" label="Effective from" rules={[{ required: true, message: 'Effective from is required' }]}>
+        <Input type="date" />
+      </Form.Item>
+      <Form.Item name="effectiveTo" label="Effective to">
+        <Input type="date" />
+      </Form.Item>
+    </>
+  );
+};
