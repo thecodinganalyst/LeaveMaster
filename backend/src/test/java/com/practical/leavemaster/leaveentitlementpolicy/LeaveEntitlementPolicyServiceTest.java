@@ -119,6 +119,63 @@ class LeaveEntitlementPolicyServiceTest {
     }
 
     @Test
+    void derivesMonthlyRateAndIgnoresClientSuppliedRate() {
+        LeaveEntitlementPolicy policy = validPolicy("tenant-a", "annual");
+        policy.setAccrualMethod(AccrualMethod.MONTHLY);
+        policy.setAccrualRate(new BigDecimal("99"));
+        when(leaveTypeRepository.findById("annual")).thenReturn(Optional.of(leaveType("annual", "tenant-a")));
+        when(policyRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        LeaveEntitlementPolicy saved = service.create(policy);
+
+        assertThat(saved.getAccrualRate()).isEqualByComparingTo("1.16666667");
+    }
+
+    @Test
+    void clearsAccrualRateForFrontLoadedPolicy() {
+        LeaveEntitlementPolicy policy = validPolicy("tenant-a", "annual");
+        policy.setAccrualRate(new BigDecimal("3"));
+        when(leaveTypeRepository.findById("annual")).thenReturn(Optional.of(leaveType("annual", "tenant-a")));
+        when(policyRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        assertThat(service.create(policy).getAccrualRate()).isNull();
+    }
+
+    @Test
+    void rejectsUnsupportedAccrualMethodsOnCreate() {
+        LeaveEntitlementPolicy annual = validPolicy("tenant-a", "annual");
+        annual.setAccrualMethod(AccrualMethod.ANNUAL);
+        assertThatThrownBy(() -> service.create(annual))
+                .isInstanceOf(LeaveEntitlementPolicyValidationException.class)
+                .hasMessageContaining("ANNUAL accrual is no longer configurable");
+
+        LeaveEntitlementPolicy payPeriod = validPolicy("tenant-a", "annual");
+        payPeriod.setAccrualMethod(AccrualMethod.PER_PAY_PERIOD);
+        assertThatThrownBy(() -> service.create(payPeriod))
+                .isInstanceOf(LeaveEntitlementPolicyValidationException.class)
+                .hasMessageContaining("PER_PAY_PERIOD accrual is not supported");
+    }
+
+    @Test
+    void migratesLegacyAnnualPolicyToFrontLoadedWhenUpdated() {
+        LeaveEntitlementPolicy existing = validPolicy("tenant-a", "annual");
+        existing.setId("policy-1");
+        existing.setAccrualMethod(AccrualMethod.ANNUAL);
+        existing.setAccrualRate(new BigDecimal("14"));
+        LeaveEntitlementPolicy requested = validPolicy("tenant-a", "annual");
+        requested.setAccrualMethod(AccrualMethod.ANNUAL);
+        requested.setAccrualRate(new BigDecimal("14"));
+        when(policyRepository.findById("policy-1")).thenReturn(Optional.of(existing));
+        when(leaveTypeRepository.findById("annual")).thenReturn(Optional.of(leaveType("annual", "tenant-a")));
+        when(policyRepository.save(existing)).thenReturn(existing);
+
+        LeaveEntitlementPolicy saved = service.update("policy-1", requested);
+
+        assertThat(saved.getAccrualMethod()).isEqualTo(AccrualMethod.NONE);
+        assertThat(saved.getAccrualRate()).isNull();
+    }
+
+    @Test
     void rejectsMissingRequiredFieldsAndUnknownLeaveType() {
         LeaveEntitlementPolicy missingTenant = validPolicy(null, "annual");
         assertThatThrownBy(() -> service.create(missingTenant)).isInstanceOf(LeaveEntitlementPolicyValidationException.class).hasMessageContaining("tenantId");
@@ -165,14 +222,11 @@ class LeaveEntitlementPolicyServiceTest {
     }
 
     @Test
-    void rejectsNegativeEntitlementAccrualCarryForwardAndExpiry() {
+    void rejectsNegativeEntitlementCarryForwardAndExpiry() {
         when(leaveTypeRepository.findById("annual")).thenReturn(Optional.of(leaveType("annual", "tenant-a")));
         LeaveEntitlementPolicy negativeEntitlement = validPolicy("tenant-a", "annual");
         negativeEntitlement.setEntitlementAmount(new BigDecimal("-1"));
         assertThatThrownBy(() -> service.create(negativeEntitlement)).hasMessageContaining("entitlementAmount");
-        LeaveEntitlementPolicy negativeAccrual = validPolicy("tenant-a", "annual");
-        negativeAccrual.setAccrualRate(new BigDecimal("-0.5"));
-        assertThatThrownBy(() -> service.create(negativeAccrual)).hasMessageContaining("accrualRate");
         LeaveEntitlementPolicy negativeCarryForward = validPolicy("tenant-a", "annual");
         negativeCarryForward.setCarryForwardAllowed(true);
         negativeCarryForward.setCarryForwardLimit(new BigDecimal("-1"));
@@ -254,14 +308,14 @@ class LeaveEntitlementPolicyServiceTest {
     private LeaveEntitlementPolicy validPolicy(String tenantId, String leaveTypeId) {
         return LeaveEntitlementPolicy.builder().tenantId(tenantId).scope(ConfigurationScope.TENANT).leaveTypeId(leaveTypeId)
                 .name("Annual leave policy").active(true).priority(10).entitlementUnit(EntitlementUnit.DAYS)
-                .entitlementAmount(new BigDecimal("14")).accrualMethod(AccrualMethod.ANNUAL).prorationMethod(ProrationMethod.MONTHS)
+                .entitlementAmount(new BigDecimal("14")).accrualMethod(AccrualMethod.NONE).prorationMethod(ProrationMethod.MONTHS)
                 .carryForwardAllowed(false).effectiveFrom(LocalDate.of(2026, 1, 1)).build();
     }
 
     private LeaveEntitlementPolicy validTemplate(String jurisdictionId, String jurisdictionLeaveTypeId) {
         return LeaveEntitlementPolicy.builder().scope(ConfigurationScope.PLATFORM_TEMPLATE).jurisdictionId(jurisdictionId)
                 .jurisdictionLeaveTypeId(jurisdictionLeaveTypeId).name("Annual leave policy").active(true).priority(10)
-                .entitlementUnit(EntitlementUnit.DAYS).entitlementAmount(new BigDecimal("14")).accrualMethod(AccrualMethod.ANNUAL)
+                .entitlementUnit(EntitlementUnit.DAYS).entitlementAmount(new BigDecimal("14")).accrualMethod(AccrualMethod.NONE)
                 .prorationMethod(ProrationMethod.MONTHS).carryForwardAllowed(false).effectiveFrom(LocalDate.of(2026, 1, 1)).build();
     }
 }

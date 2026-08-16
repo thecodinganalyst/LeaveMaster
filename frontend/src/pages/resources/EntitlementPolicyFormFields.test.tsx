@@ -61,7 +61,7 @@ describe('EntitlementPolicyFormFields', () => {
     ], 'SG', 'SG:OLD_LEAVE')).toEqual([{ label: 'Old Leave (OLD_LEAVE)', value: 'SG:OLD_LEAVE' }]);
   });
 
-  it('renders policy guidance, days-only unit, and numeric controls', () => {
+  it('shows only supported accrual methods and explains front-loaded behavior', () => {
     render(
       <Form initialValues={{
         leaveTypeId: 'SG_ANNUAL_LEAVE',
@@ -78,19 +78,35 @@ describe('EntitlementPolicyFormFields', () => {
     );
 
     expect(screen.getByText('What an entitlement policy controls')).toBeInTheDocument();
-    expect(screen.getByText(/Eligibility rules determine which employees/i)).toBeInTheDocument();
-    expect(screen.getByText(/CALENDAR_DAYS: prorate by eligible calendar days/i)).toBeInTheDocument();
-    expect(screen.getByText(/PER_PAY_PERIOD accrues by payroll period/i)).toBeInTheDocument();
-
+    expect(screen.getByText(/Proration is separate from accrual/i)).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Not applicable')).toBeInTheDocument();
+    expect(screen.queryByText('Annual')).not.toBeInTheDocument();
+    expect(screen.queryByText('Per pay period')).not.toBeInTheDocument();
+    expect(screen.queryByRole('spinbutton', { name: 'Accrual rate' })).not.toBeInTheDocument();
     expect(screen.getByText('Days')).toBeInTheDocument();
-    expect(screen.queryByText('HOURS')).not.toBeInTheDocument();
     expect(screen.queryByText('Hours')).not.toBeInTheDocument();
+  });
 
-    expect(screen.getByRole('spinbutton', { name: /Priority/i })).toBeInTheDocument();
-    expect(screen.getByRole('spinbutton', { name: 'Entitlement amount' })).toBeInTheDocument();
-    expect(screen.getByRole('spinbutton', { name: 'Accrual rate' })).toBeDisabled();
-    expect(screen.getByRole('spinbutton', { name: 'Carry forward limit' })).toBeInTheDocument();
-    expect(screen.getByRole('spinbutton', { name: /Carry forward expiry/i })).toBeInTheDocument();
+  it('calculates monthly accrual from entitlement amount and keeps it read-only', async () => {
+    render(
+      <Form initialValues={{
+        leaveTypeId: 'SG_ANNUAL_LEAVE',
+        name: 'Standard Annual Leave',
+        entitlementAmount: 14,
+        entitlementUnit: 'DAYS',
+        accrualMethod: 'MONTHLY',
+        prorationMethod: 'NONE',
+      }}>
+        <EntitlementPolicyFormFields />
+      </Form>,
+    );
+
+    const calculated = screen.getByRole('textbox', { name: 'Calculated monthly accrual' });
+    await waitFor(() => expect(calculated).toHaveValue('1.1667 days per month'));
+    expect(calculated).toHaveAttribute('readonly');
+
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Entitlement amount' }), { target: { value: '24' } });
+    await waitFor(() => expect(calculated).toHaveValue('2 days per month'));
   });
 
   it('auto-generates an id and keeps a user override', async () => {
@@ -128,7 +144,7 @@ describe('EntitlementPolicyFormFields', () => {
     await waitFor(() => expect(leaveType).toHaveValue(''));
   });
 
-  it('submits the jurisdiction leave type id selected from the dropdown', async () => {
+  it('submits the derived monthly accrual rate rather than a manual value', async () => {
     const onFinish = vi.fn();
     render(
       <Form
@@ -139,7 +155,7 @@ describe('EntitlementPolicyFormFields', () => {
           priority: 10,
           entitlementAmount: 14,
           entitlementUnit: 'DAYS',
-          accrualMethod: 'NONE',
+          accrualMethod: 'MONTHLY',
           prorationMethod: 'NONE',
           effectiveFrom: '2026-01-01',
         }}
@@ -156,24 +172,32 @@ describe('EntitlementPolicyFormFields', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => expect(onFinish).toHaveBeenCalled());
-    expect(onFinish.mock.calls[0]?.[0]).toMatchObject({ jurisdictionId: 'SG', jurisdictionLeaveTypeId: 'SG:ANNUAL_LEAVE' });
+    expect(onFinish.mock.calls[0]?.[0]).toMatchObject({
+      jurisdictionId: 'SG',
+      jurisdictionLeaveTypeId: 'SG:ANNUAL_LEAVE',
+      accrualMethod: 'MONTHLY',
+      accrualRate: 1.16666667,
+    });
   });
 
-  it('locks jurisdiction and jurisdiction leave type during edit', () => {
+  it('migrates legacy annual selection to front-loaded on edit', async () => {
     render(
       <Form initialValues={{
         id: 'SG_POLICY',
         jurisdictionId: 'SG',
         jurisdictionLeaveTypeId: 'SG:ANNUAL_LEAVE',
         name: 'Existing policy',
+        entitlementAmount: 14,
+        accrualMethod: 'ANNUAL',
       }}>
         <EntitlementPolicyFormFields editing platformAdmin />
       </Form>,
     );
 
+    const accrualSelect = screen.getByRole('combobox', { name: 'Accrual method' });
+    await waitFor(() => expect(accrualSelect.closest('.ant-select-selector')).toHaveTextContent('Front-loaded'));
     expect(screen.getByRole('combobox', { name: 'Jurisdiction' })).toBeDisabled();
     expect(screen.getByRole('combobox', { name: 'Jurisdiction leave type' })).toBeDisabled();
-    expect(screen.getByRole('combobox', { name: 'Jurisdiction leave type' })).toHaveValue('SG:ANNUAL_LEAVE');
     expect(screen.getByRole('textbox', { name: 'ID' })).toBeDisabled();
   });
 

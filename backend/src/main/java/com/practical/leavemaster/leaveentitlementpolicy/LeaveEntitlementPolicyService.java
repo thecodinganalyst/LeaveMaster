@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -21,6 +22,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class LeaveEntitlementPolicyService {
     private static final String PLATFORM_ADMIN_ROLE_ID = "PLATFORM_ADMIN";
+    private static final BigDecimal MONTHS_PER_YEAR = BigDecimal.valueOf(12);
 
     private final LeaveEntitlementPolicyRepository policyRepository;
     private final LeaveTypeRepository leaveTypeRepository;
@@ -47,6 +49,7 @@ public class LeaveEntitlementPolicyService {
     @Transactional
     public LeaveEntitlementPolicy create(LeaveEntitlementPolicy policy) {
         applyCurrentUsersScope(policy);
+        normaliseAccrualConfiguration(policy, false);
         validate(policy);
         LeaveEntitlementPolicy saved = policyRepository.save(policy);
         touchTenant(saved);
@@ -73,6 +76,7 @@ public class LeaveEntitlementPolicyService {
         existing.setCarryForwardExpiryMonths(requested.getCarryForwardExpiryMonths());
         existing.setEffectiveFrom(requested.getEffectiveFrom());
         existing.setEffectiveTo(requested.getEffectiveTo());
+        normaliseAccrualConfiguration(existing, true);
         validate(existing);
         LeaveEntitlementPolicy saved = policyRepository.save(existing);
         touchTenant(saved);
@@ -85,6 +89,28 @@ public class LeaveEntitlementPolicyService {
                 .orElseThrow(() -> new LeaveEntitlementPolicyNotFoundException(id));
         policyRepository.delete(existing);
         touchTenant(existing);
+    }
+
+    private void normaliseAccrualConfiguration(LeaveEntitlementPolicy policy, boolean migrateLegacyAnnual) {
+        if (policy.getAccrualMethod() == null) {
+            return;
+        }
+        if (policy.getAccrualMethod() == AccrualMethod.PER_PAY_PERIOD) {
+            throw new LeaveEntitlementPolicyValidationException("PER_PAY_PERIOD accrual is not supported until payroll schedules are implemented");
+        }
+        if (policy.getAccrualMethod() == AccrualMethod.ANNUAL) {
+            if (!migrateLegacyAnnual) {
+                throw new LeaveEntitlementPolicyValidationException("ANNUAL accrual is no longer configurable; use NONE for front-loaded entitlement");
+            }
+            policy.setAccrualMethod(AccrualMethod.NONE);
+        }
+        if (policy.getAccrualMethod() == AccrualMethod.NONE) {
+            policy.setAccrualRate(null);
+            return;
+        }
+        if (policy.getAccrualMethod() == AccrualMethod.MONTHLY && policy.getEntitlementAmount() != null) {
+            policy.setAccrualRate(policy.getEntitlementAmount().divide(MONTHS_PER_YEAR, 8, RoundingMode.HALF_UP));
+        }
     }
 
     private void validate(LeaveEntitlementPolicy policy) {
