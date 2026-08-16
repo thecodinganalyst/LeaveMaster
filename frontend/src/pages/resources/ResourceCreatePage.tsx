@@ -13,6 +13,7 @@ interface LeaveMasterIdentity {
   id: string;
   name: string;
   country?: string | null;
+  platformAdmin?: boolean;
 }
 
 export const ResourceCreatePage = () => {
@@ -46,7 +47,7 @@ export const ResourceCreatePage = () => {
       <PageHeader title={`Create ${config.singular}`} subtitle={`Add a new ${config.singular.toLowerCase()} record.`} />
       <FormSection title="Details">
         <Form form={form} layout="vertical" onFinish={submit} initialValues={{ active: true, used: false, status: 'ACTIVE' }}>
-          <ResourceFormFields config={config} preferredCountry={identity?.country} />
+          <ResourceFormFields config={config} preferredCountry={identity?.country} platformAdmin={Boolean(identity?.platformAdmin)} />
           <Space>
             <Button type="primary" htmlType="submit" loading={isLoading}>Save</Button>
             <Button htmlType="button" onClick={() => navigate(`/${config.name}`)}>Cancel</Button>
