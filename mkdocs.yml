@@ -43,6 +43,7 @@ nav:
   - Security and Access:
       - RBAC: rbac.md
       - AI assistant security: assistant-security.md
+      - AI assistant providers: assistant-providers.md
       - Platform Admin password: platform-admin-password.md
       - Platform Admin tenant smoke test: platform-admin-tenant-smoke-test.md
       - Identity providers:
