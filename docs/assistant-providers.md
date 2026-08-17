@@ -2,6 +2,8 @@
 
 Ask LeaveMaestro is provider-neutral at the API and frontend layers. The backend selects one Spring AI chat provider at startup and reuses the same MCP tools, confirmation workflow, authorization checks, rate limits, timeout handling, circuit breaker and audit behavior for either provider.
 
+For complete credential creation, Secret Manager, GitHub variable, deployment, verification, switching, rotation and troubleshooting steps, see [Set up Ask LeaveMaestro](assistant-setup.md).
+
 ## Runtime configuration
 
 | Variable | Required | Description |
