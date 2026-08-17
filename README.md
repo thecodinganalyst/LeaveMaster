@@ -13,7 +13,7 @@ The repository is a monorepo. Backend, frontend, infrastructure, deployment work
 - Configurable RBAC enforced on the backend for every protected operation.
 - Session-based authentication plus optional Google, Microsoft, GitHub and Facebook OAuth/OIDC login for pre-provisioned users.
 - A React 18 frontend built with Refine, Ant Design and Vite.
-- An embedded **Ask LeaveMaestro** assistant backed by Spring AI/OpenAI and the same authorized MCP tool contract used by the backend.
+- An embedded **Ask LeaveMaestro** assistant backed by Spring AI with selectable OpenAI or Gemini chat providers and the same authorized MCP tool contract used by the backend.
 - Explicit confirmation, authorization re-checks, idempotency and audit logging for AI-proposed writes.
 - PostgreSQL/Supabase production persistence, H2 local/test persistence and Flyway migrations.
 - Google Cloud Run backend deployment, Firebase Hosting frontend deployment and Terraform-managed infrastructure.
@@ -42,14 +42,16 @@ flowchart LR
     Postgres[(Supabase PostgreSQL)]
     GCS[(GCS attachments)]
     OpenAI[OpenAI API]
+    Gemini[Gemini API]
     SecretManager[Google Secret Manager]
 
     Browser --> Firebase
     Firebase -->|/api /auth /login /oauth2 rewrites| CloudRun
     CloudRun --> Postgres
     CloudRun --> GCS
-    SecretManager -->|runtime secrets| CloudRun
+    SecretManager -->|selected provider runtime secret| CloudRun
     CloudRun -. optional assistant .-> OpenAI
+    CloudRun -. optional assistant .-> Gemini
 ```
 
 Production browser traffic is intentionally same-origin. Firebase Hosting serves the SPA and rewrites backend routes to Cloud Run. This preserves CSRF/session behavior and the Firebase-compatible `__session` cookie without exposing the Cloud Run URL in the frontend bundle.
@@ -61,7 +63,7 @@ See [Architecture](docs/architecture.md) for component, security, MCP/AI and dep
 | Area | Technology |
 |---|---|
 | Backend | Java 25, Spring Boot 4.1, Spring Security, Spring Data JPA |
-| AI / MCP | Spring AI 2.0, OpenAI, Spring AI MCP server |
+| AI / MCP | Spring AI 2.0, OpenAI or Google GenAI/Gemini, Spring AI MCP server |
 | Database | H2 locally/tests, PostgreSQL 17 in production |
 | Migrations | Flyway |
 | Frontend | React 18, TypeScript 5.9, Refine 4, Ant Design 5, Vite 7 |
@@ -116,7 +118,7 @@ npm run dev
 
 The frontend starts at `http://localhost:5173`. The example local environment points it at `http://localhost:8080`.
 
-Only non-secret browser configuration belongs in `VITE_*` variables. Never put database passwords, OpenAI keys, OAuth client secrets or service-account credentials in Vite configuration.
+Only non-secret browser configuration belongs in `VITE_*` variables. Never put database passwords, AI provider API keys, OAuth client secrets or service-account credentials in Vite configuration.
 
 ### 3. Sign in locally
 
@@ -188,6 +190,8 @@ POST /api/assistant/actions/confirm
 
 The assistant reuses the MCP tool callbacks rather than maintaining a second set of business operations.
 
+Ask LeaveMaestro can use either OpenAI or Gemini without frontend or MCP-tool changes. See [Set up Ask LeaveMaestro](docs/assistant-setup.md) for complete OpenAI and Gemini setup instructions.
+
 ### Read operations
 
 Authorized read tools may execute during the model turn. Selected business results are also returned as structured data so the frontend can render authoritative cards separately from model-generated prose.
@@ -235,13 +239,14 @@ Production uses:
 - Cloud Build for container builds.
 - Supabase PostgreSQL for application data.
 - GCS for attachments and Cloud Build staging.
-- Secret Manager for database, PlatformAdmin and optional OpenAI credentials.
+- Secret Manager for database, PlatformAdmin and the selected optional AI-provider credential.
 - Terraform state in a GCS backend.
 - GitHub Actions authentication to Google Cloud through Workload Identity Federation; no long-lived service-account JSON key is required.
 
 See:
 
 - [Cloud Run deployment](docs/cloudrun-deployment.md)
+- [Set up Ask LeaveMaestro](docs/assistant-setup.md)
 - [Environments, domains, CORS and runtime secrets](docs/environments-and-domains.md)
 - [Platform Admin password management](docs/platform-admin-password.md)
 
@@ -296,17 +301,17 @@ Common non-secret settings include:
 - `VITE_API_URL` — local frontend backend URL; leave unset for same-origin production.
 - `APP_PUBLIC_URL` — canonical production app origin.
 - `APP_CORS_ALLOWED_ORIGINS` — exact allowed frontend origins.
-- `ASSISTANT_ENABLED` / `SPRING_AI_MODEL_CHAT` / `OPENAI_MODEL` — assistant runtime selection.
+- `ASSISTANT_ENABLED` / `ASSISTANT_PROVIDER` / `ASSISTANT_MODEL` — provider-neutral assistant runtime selection.
 
 Production secret values belong in Google Secret Manager, including:
 
 - database password;
 - PlatformAdmin bootstrap/recovery password;
-- OpenAI API key when the assistant is enabled.
+- OpenAI or Gemini API key for the currently selected assistant provider.
 
 OAuth client secrets are also backend-only credentials and must never be compiled into frontend assets.
 
-The Cloud Run profile validates production URLs/CORS and refuses to start an enabled assistant without its OpenAI key.
+When Ask LeaveMaestro is enabled, startup validation requires a supported provider, a non-blank model and only the selected provider's credential. The non-selected provider key is not required.
 
 ## API documentation
 
@@ -327,6 +332,7 @@ For resource-level API notes, see [API documentation](docs/api.md). For the enti
 | [Development and CI](docs/development-and-ci.md) | Local setup, scripts, test gates, GitHub Actions and deployments |
 | [Policy-driven leave entitlement generation](docs/leave-entitlement-generation.md) | Policies, eligibility, resolution, proration, accrual, carry-forward, reconciliation and generation API examples |
 | [Troubleshooting](docs/troubleshooting.md) | Build, authentication, Firebase, Cloud Run, Terraform and AI failures |
+| [Set up Ask LeaveMaestro](docs/assistant-setup.md) | End-to-end OpenAI and Gemini setup, provider switching, key rotation and troubleshooting |
 | [AI assistant security](docs/assistant-security.md) | Confirmation, audit, redaction, rate/provider limits and AI trust boundaries |
 | [Environments and domains](docs/environments-and-domains.md) | CORS, cookies, OAuth callbacks, custom domains and secrets |
 | [Cloud Run deployment](docs/cloudrun-deployment.md) | One-time GCP/Supabase/WIF/Terraform deployment setup |
@@ -340,7 +346,7 @@ A few production-specific rules solve many common problems:
 - A login that succeeds but `/auth/me` returns `401`: verify the Cloud Run session cookie is named `__session`.
 - Firebase shows **Site Not Found**: provisioning the site is not the same as deploying `frontend/dist`; check the frontend deployment workflow.
 - Cloud Run reports an image tag not found: verify Cloud Build pushed the current Git SHA and do not rely on stale state-backed image outputs after targeted Terraform applies.
-- The assistant returns `503`: confirm it is enabled and the Secret Manager OpenAI key is attached to Cloud Run.
+- The assistant returns `503`: confirm it is enabled, the provider/model settings agree, and the selected OpenAI or Gemini Secret Manager key is attached to Cloud Run.
 - CORS fails locally: use the documented `http://localhost:5173` frontend origin and `VITE_API_URL=http://localhost:8080`.
 
 See [Troubleshooting](docs/troubleshooting.md) for detailed checks.
