@@ -31,6 +31,7 @@ locals {
   ]
 
   attachment_bucket_name = "${var.project_id}-leavemaster-attachments-${data.google_project.current.number}"
+  assistant_provider     = lower(var.ai_assistant_provider)
 }
 
 data "google_project" "current" {
@@ -38,10 +39,17 @@ data "google_project" "current" {
 }
 
 data "google_secret_manager_secret" "openai_api_key" {
-  count = var.enable_openai_assistant ? 1 : 0
+  count = var.enable_ai_assistant && local.assistant_provider == "openai" ? 1 : 0
 
   project   = var.project_id
   secret_id = var.openai_api_key_secret_id
+}
+
+data "google_secret_manager_secret" "gemini_api_key" {
+  count = var.enable_ai_assistant && local.assistant_provider == "gemini" ? 1 : 0
+
+  project   = var.project_id
+  secret_id = var.gemini_api_key_secret_id
 }
 
 resource "google_project_service" "required" {
@@ -161,10 +169,19 @@ resource "google_secret_manager_secret_iam_member" "cloud_run_platform_admin_pas
 }
 
 resource "google_secret_manager_secret_iam_member" "cloud_run_openai_api_key" {
-  count = var.enable_openai_assistant ? 1 : 0
+  count = var.enable_ai_assistant && local.assistant_provider == "openai" ? 1 : 0
 
   project   = var.project_id
   secret_id = data.google_secret_manager_secret.openai_api_key[0].secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.cloud_run.email}"
+}
+
+resource "google_secret_manager_secret_iam_member" "cloud_run_gemini_api_key" {
+  count = var.enable_ai_assistant && local.assistant_provider == "gemini" ? 1 : 0
+
+  project   = var.project_id
+  secret_id = data.google_secret_manager_secret.gemini_api_key[0].secret_id
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${google_service_account.cloud_run.email}"
 }
@@ -250,17 +267,17 @@ resource "google_cloud_run_v2_service" "api" {
 
       env {
         name  = "ASSISTANT_ENABLED"
-        value = tostring(var.enable_openai_assistant)
+        value = tostring(var.enable_ai_assistant)
       }
 
       env {
-        name  = "SPRING_AI_MODEL_CHAT"
-        value = var.enable_openai_assistant ? "openai" : "none"
+        name  = "ASSISTANT_PROVIDER"
+        value = local.assistant_provider
       }
 
       env {
-        name  = "OPENAI_MODEL"
-        value = var.openai_model
+        name  = "ASSISTANT_MODEL"
+        value = var.ai_assistant_model
       }
 
       env {
@@ -280,7 +297,7 @@ resource "google_cloud_run_v2_service" "api" {
       }
 
       dynamic "env" {
-        for_each = var.enable_openai_assistant ? [1] : []
+        for_each = var.enable_ai_assistant && local.assistant_provider == "openai" ? [1] : []
 
         content {
           name = "OPENAI_API_KEY"
@@ -288,6 +305,21 @@ resource "google_cloud_run_v2_service" "api" {
           value_source {
             secret_key_ref {
               secret  = data.google_secret_manager_secret.openai_api_key[0].secret_id
+              version = "latest"
+            }
+          }
+        }
+      }
+
+      dynamic "env" {
+        for_each = var.enable_ai_assistant && local.assistant_provider == "gemini" ? [1] : []
+
+        content {
+          name = "GEMINI_API_KEY"
+
+          value_source {
+            secret_key_ref {
+              secret  = data.google_secret_manager_secret.gemini_api_key[0].secret_id
               version = "latest"
             }
           }
@@ -315,7 +347,8 @@ resource "google_cloud_run_v2_service" "api" {
     google_project_service.required["run.googleapis.com"],
     google_secret_manager_secret_iam_member.cloud_run_database_password,
     google_secret_manager_secret_iam_member.cloud_run_platform_admin_password,
-    google_secret_manager_secret_iam_member.cloud_run_openai_api_key
+    google_secret_manager_secret_iam_member.cloud_run_openai_api_key,
+    google_secret_manager_secret_iam_member.cloud_run_gemini_api_key
   ]
 }
 
