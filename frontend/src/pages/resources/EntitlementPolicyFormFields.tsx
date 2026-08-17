@@ -46,6 +46,7 @@ export const EntitlementPolicyFormFields = ({ editing = false, platformAdmin = f
     if (!form.getFieldValue('entitlementUnit')) form.setFieldValue('entitlementUnit', 'DAYS');
     if (!form.getFieldValue('priority')) form.setFieldValue('priority', 10);
     if (!form.getFieldValue('accrualMethod')) form.setFieldValue('accrualMethod', 'NONE');
+    if (form.getFieldValue('carryForwardAllowed') == null) form.setFieldValue('carryForwardAllowed', false);
   }, [editing, form]);
 
   useEffect(() => {
