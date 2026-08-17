@@ -43,6 +43,65 @@ For leave types, the existing jurisdiction leave-type resolution uses the leave-
 
 For entitlement policy templates, the logical key combines the jurisdiction leave-type code and policy name. For calendars, the date range is the logical override key.
 
+## Singapore statutory entitlement templates
+
+The platform seeds active Singapore (`SG`) entitlement templates only where the statutory eligibility can be represented safely by the current eligibility engine.
+
+### Annual leave
+
+Singapore annual leave is seeded as eight service bands using `SERVICE_MONTHS` eligibility rules:
+
+| Completed service | Entitlement |
+|---|---:|
+| 3 to <12 months | 7 days |
+| 12 to <24 months | 8 days |
+| 24 to <36 months | 9 days |
+| 36 to <48 months | 10 days |
+| 48 to <60 months | 11 days |
+| 60 to <72 months | 12 days |
+| 72 to <84 months | 13 days |
+| 84 months and later | 14 days |
+
+Source: Singapore Ministry of Manpower, [Annual leave eligibility and entitlement](https://www.mom.gov.sg/employment-practices/leave/annual-leave/eligibility-and-entitlement).
+
+### Sick and hospitalisation leave
+
+The statutory service progression is represented with separate outpatient sick-leave and hospitalisation-leave templates:
+
+| Completed service | Outpatient sick leave | Hospitalisation leave |
+|---|---:|---:|
+| 3 to <4 months | 5 days | 15 days |
+| 4 to <5 months | 8 days | 30 days |
+| 5 to <6 months | 11 days | 45 days |
+| 6 months and later | 14 days | 60 days |
+
+The hospitalisation limit includes outpatient sick leave already taken. For example, an employee who has used all 14 outpatient sick-leave days has at most 46 additional hospitalisation-leave days from the 60-day combined statutory limit. LeaveMaestro currently stores the two entitlement ceilings separately, so downstream entitlement/balance generation must not treat 14 + 60 as an additive 74-day statutory allowance.
+
+Source: Singapore Ministry of Manpower, [Sick leave eligibility and entitlement](https://www.mom.gov.sg/employment-practices/leave/sick-leave/eligibility-and-entitlement).
+
+### Family leave not yet seeded as active policies
+
+Singapore maternity, paternity, shared parental, childcare, extended childcare, unpaid infant care and adoption leave are intentionally **not seeded as active entitlement-policy templates yet**. This is a safety constraint, not an indication that these statutory leave types do not exist.
+
+The current eligibility engine can evaluate only:
+
+- `LOCATION_ID`
+- `JURISDICTION_CODE`
+- `SERVICE_MONTHS`
+
+Family-leave schemes require additional facts such as parent role/sex, child age, child Singapore citizenship, marital or parental relationship, child date of birth, adoption/Formal Intent to Adopt dates and, for Shared Parental Leave, the employee's allocated share. Seeding only `SERVICE_MONTHS >= 3` would cause tenant provisioning to create policies that can match employees who are not legally eligible.
+
+As of 17 August 2026, examples of current statutory entitlements include 16 weeks of Government-Paid Maternity Leave, 4 weeks of Government-Paid Paternity Leave for qualifying births/adoptions from 1 April 2025, up to 10 weeks of Shared Parental Leave for qualifying births/Formal Intent to Adopt dates from 1 April 2026, 6 days of Government-Paid Childcare Leave, 2 days of Extended Childcare Leave, 12 days of Unpaid Infant Care Leave, and 12 weeks of Adoption Leave. These schemes must be modelled only after the employee/child eligibility data and rules are available.
+
+Official references:
+
+- [Government-Paid Maternity Leave](https://www.profamilyleave.msf.gov.sg/schemes/maternity-leave/)
+- [Government-Paid Paternity Leave](https://www.profamilyleave.msf.gov.sg/schemes/paternity-leave/)
+- [Shared Parental Leave](https://www.profamilyleave.msf.gov.sg/schemes/shared-parental-leave/)
+- [Childcare and Extended Childcare Leave](https://www.profamilyleave.msf.gov.sg/schemes/childcare-leave/)
+- [Support for adoptive parents](https://www.profamilyleave.msf.gov.sg/adoptive-parents)
+- [Adoption Leave](https://www.profamilyleave.msf.gov.sg/schemes/adoption-leave)
+
 ## Authorization boundary
 
 Platform Admin can manage platform templates and global jurisdiction catalogue data. Platform Admin does not receive general CRUD access to tenant-owned entitlement policies, eligibility rules, or calendars.
