@@ -14,19 +14,13 @@ public class CloudRunConfigurationValidator implements ApplicationRunner {
 
     private final String publicAppUrl;
     private final String allowedOrigins;
-    private final boolean assistantEnabled;
-    private final String openAiApiKey;
 
     public CloudRunConfigurationValidator(
         @Value("${app.public-url}") String publicAppUrl,
-        @Value("${app.cors.allowed-origins:}") String allowedOrigins,
-        @Value("${app.assistant.enabled:false}") boolean assistantEnabled,
-        @Value("${spring.ai.openai.api-key:}") String openAiApiKey
+        @Value("${app.cors.allowed-origins:}") String allowedOrigins
     ) {
         this.publicAppUrl = publicAppUrl;
         this.allowedOrigins = allowedOrigins;
-        this.assistantEnabled = assistantEnabled;
-        this.openAiApiKey = openAiApiKey;
     }
 
     @Override
@@ -38,12 +32,6 @@ public class CloudRunConfigurationValidator implements ApplicationRunner {
                 throw new IllegalStateException("APP_CORS_ALLOWED_ORIGINS must not contain wildcard origins");
             }
             validateHttpsOrigin("APP_CORS_ALLOWED_ORIGINS", origin);
-        }
-
-        if (assistantEnabled && (openAiApiKey == null || openAiApiKey.isBlank())) {
-            throw new IllegalStateException(
-                "ASSISTANT_ENABLED=true requires OPENAI_API_KEY to be supplied from backend secret configuration"
-            );
         }
     }
 
