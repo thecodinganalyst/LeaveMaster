@@ -11,3 +11,9 @@ database_name = "postgres"
 image_tag = "replace-with-git-sha"
 
 deploy_service = false
+
+enable_ai_assistant        = false
+ai_assistant_provider      = "openai"
+ai_assistant_model         = "gpt-5-mini"
+openai_api_key_secret_id   = "leavemaster-openai-api-key"
+gemini_api_key_secret_id   = "leavemaster-gemini-api-key"

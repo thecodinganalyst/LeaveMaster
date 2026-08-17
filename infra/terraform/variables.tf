@@ -73,10 +73,32 @@ variable "allowed_frontend_origins" {
   }
 }
 
-variable "enable_openai_assistant" {
-  description = "Whether Cloud Run should enable the OpenAI assistant and read its API key from Secret Manager"
+variable "enable_ai_assistant" {
+  description = "Whether Cloud Run should enable Ask LeaveMaestro and inject the selected provider credential"
   type        = bool
   default     = false
+}
+
+variable "ai_assistant_provider" {
+  description = "AI provider used by Ask LeaveMaestro: openai or gemini"
+  type        = string
+  default     = "openai"
+
+  validation {
+    condition     = contains(["openai", "gemini"], lower(var.ai_assistant_provider))
+    error_message = "ai_assistant_provider must be either openai or gemini."
+  }
+}
+
+variable "ai_assistant_model" {
+  description = "Provider model used by Ask LeaveMaestro"
+  type        = string
+  default     = "gpt-5-mini"
+
+  validation {
+    condition     = length(trimspace(var.ai_assistant_model)) > 0
+    error_message = "ai_assistant_model must not be blank."
+  }
 }
 
 variable "openai_api_key_secret_id" {
@@ -85,10 +107,10 @@ variable "openai_api_key_secret_id" {
   default     = "leavemaster-openai-api-key"
 }
 
-variable "openai_model" {
-  description = "OpenAI model used by the optional assistant"
+variable "gemini_api_key_secret_id" {
+  description = "Existing Secret Manager secret containing the Gemini API key"
   type        = string
-  default     = "gpt-5-mini"
+  default     = "leavemaster-gemini-api-key"
 }
 
 variable "enable_platform_admin_password_secret" {

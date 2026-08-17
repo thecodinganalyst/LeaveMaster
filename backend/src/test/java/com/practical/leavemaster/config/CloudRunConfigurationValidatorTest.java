@@ -13,9 +13,7 @@ class CloudRunConfigurationValidatorTest {
     void shouldAcceptSecureProductionConfiguration() throws Exception {
         new CloudRunConfigurationValidator(
             "https://leavemaster-production.firebaseapp.com",
-            "https://leavemaster-production.firebaseapp.com,https://leavemaster-production.web.app",
-            true,
-            "test-api-key"
+            "https://leavemaster-production.firebaseapp.com,https://leavemaster-production.web.app"
         ).run(NO_ARGS);
     }
 
@@ -23,9 +21,7 @@ class CloudRunConfigurationValidatorTest {
     void shouldRejectWildcardCorsOrigin() {
         CloudRunConfigurationValidator validator = new CloudRunConfigurationValidator(
             "https://leavemaster-production.firebaseapp.com",
-            "https://*.example.com",
-            false,
-            ""
+            "https://*.example.com"
         );
 
         assertThatThrownBy(() -> validator.run(NO_ARGS))
@@ -34,25 +30,9 @@ class CloudRunConfigurationValidatorTest {
     }
 
     @Test
-    void shouldRequireOpenAiKeyWhenAssistantEnabled() {
-        CloudRunConfigurationValidator validator = new CloudRunConfigurationValidator(
-            "https://leavemaster-production.firebaseapp.com",
-            "https://leavemaster-production.firebaseapp.com",
-            true,
-            ""
-        );
-
-        assertThatThrownBy(() -> validator.run(NO_ARGS))
-            .isInstanceOf(IllegalStateException.class)
-            .hasMessageContaining("OPENAI_API_KEY");
-    }
-
-    @Test
     void shouldRejectNonHttpsPublicUrl() {
         CloudRunConfigurationValidator validator = new CloudRunConfigurationValidator(
             "http://example.com",
-            "",
-            false,
             ""
         );
 

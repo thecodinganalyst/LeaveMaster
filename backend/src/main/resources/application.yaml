@@ -70,8 +70,12 @@ spring:
     openai:
       api-key: ${OPENAI_API_KEY:}
       chat:
-        options:
-          model: ${OPENAI_MODEL:gpt-5-mini}
+        model: ${ASSISTANT_MODEL:${OPENAI_MODEL:gpt-5-mini}}
+    google:
+      genai:
+        api-key: ${GEMINI_API_KEY:}
+        chat:
+          model: ${ASSISTANT_MODEL:${GEMINI_MODEL:gemini-2.5-flash}}
     tools:
       throw-exception-on-error: true
     mcp:
@@ -113,6 +117,8 @@ app:
       window-seconds: ${CUSTOMER_ENQUIRY_RATE_LIMIT_WINDOW_SECONDS:900}
   assistant:
     enabled: ${ASSISTANT_ENABLED:false}
+    provider: ${ASSISTANT_PROVIDER:openai}
+    model: ${ASSISTANT_MODEL:}
     timeout-seconds: ${ASSISTANT_TIMEOUT_SECONDS:30}
     confirmation-ttl-seconds: ${ASSISTANT_CONFIRMATION_TTL_SECONDS:300}
     max-message-chars: ${ASSISTANT_MAX_MESSAGE_CHARS:4000}
