@@ -1,5 +1,7 @@
 package com.practical.leavemaster.leaveentitlementpolicy;
 
+import com.fasterxml.jackson.annotation.JsonSetter;
+import com.fasterxml.jackson.annotation.Nulls;
 import com.practical.leavemaster.config.ConfigurationScope;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -78,6 +80,7 @@ public class LeaveEntitlementPolicy {
     private ProrationMethod prorationMethod;
 
     @Column(name = "carry_forward_allowed", nullable = false)
+    @JsonSetter(nulls = Nulls.SKIP)
     private boolean carryForwardAllowed;
 
     @Column(name = "carry_forward_limit", precision = 12, scale = 4)

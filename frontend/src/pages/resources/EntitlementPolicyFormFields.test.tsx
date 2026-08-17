@@ -129,7 +129,7 @@ describe('EntitlementPolicyFormFields', () => {
     await waitFor(() => expect(leaveType).toHaveValue(''));
   });
 
-  it('submits generated technical id and derived monthly accrual without exposing the id field', async () => {
+  it('submits generated technical id, default carry forward value, and derived monthly accrual', async () => {
     const onFinish = vi.fn();
     render(
       <Form
@@ -163,6 +163,7 @@ describe('EntitlementPolicyFormFields', () => {
       jurisdictionLeaveTypeId: 'SG:ANNUAL_LEAVE',
       accrualMethod: 'MONTHLY',
       accrualRate: 1.16666667,
+      carryForwardAllowed: false,
     });
   });
 
