@@ -75,7 +75,7 @@ spring:
       genai:
         api-key: ${GEMINI_API_KEY:}
         chat:
-          model: ${ASSISTANT_MODEL:${GEMINI_MODEL:gemini-2.5-flash}}
+          model: ${ASSISTANT_MODEL:${GEMINI_MODEL:gemini-3.6-flash}}
     tools:
       throw-exception-on-error: true
     mcp:
