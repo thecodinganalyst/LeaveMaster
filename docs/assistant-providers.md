@@ -10,7 +10,7 @@ For complete credential creation, Secret Manager, GitHub variable, deployment, v
 |---|---:|---|
 | `ASSISTANT_ENABLED` | No | `true` enables the assistant. Default: `false`. |
 | `ASSISTANT_PROVIDER` | When enabled | `openai` or `gemini`. Default provider: `openai`. |
-| `ASSISTANT_MODEL` | When enabled | Provider-specific model ID, for example `gpt-5-mini` or `gemini-2.5-flash`. |
+| `ASSISTANT_MODEL` | When enabled | Provider-specific model ID, for example `gpt-5-mini` or `gemini-3.6-flash`. |
 | `OPENAI_API_KEY` | Only for OpenAI | OpenAI credential. |
 | `GEMINI_API_KEY` | Only for Gemini | Gemini Developer API credential. |
 
@@ -35,7 +35,7 @@ Gemini:
 ```bash
 export ASSISTANT_ENABLED=true
 export ASSISTANT_PROVIDER=gemini
-export ASSISTANT_MODEL=gemini-2.5-flash
+export ASSISTANT_MODEL=gemini-3.6-flash
 export GEMINI_API_KEY='...'
 ./backend/gradlew bootRun
 ```
@@ -53,6 +53,8 @@ AI_ASSISTANT_MODEL=gpt-5-mini
 OPENAI_API_KEY_SECRET_ID=leavemaster-openai-api-key
 GEMINI_API_KEY_SECRET_ID=leavemaster-gemini-api-key
 ```
+
+For Gemini production deployments, use `AI_ASSISTANT_PROVIDER=gemini` together with `AI_ASSISTANT_MODEL=gemini-3.6-flash`.
 
 To switch providers, change `AI_ASSISTANT_PROVIDER` and `AI_ASSISTANT_MODEL`, ensure the corresponding Secret Manager secret exists, and redeploy. No frontend change is required.
 
