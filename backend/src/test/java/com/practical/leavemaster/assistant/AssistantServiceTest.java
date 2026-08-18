@@ -1,10 +1,15 @@
 package com.practical.leavemaster.assistant;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.practical.leavemaster.rbac.RbacPermissions;
 import com.practical.leavemaster.user.AppUser;
 import com.practical.leavemaster.user.AppUserRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
@@ -35,6 +40,8 @@ class AssistantServiceTest {
     private ToolCallbackProvider toolProvider;
     private AppUserRepository userRepository;
     private AssistantService service;
+    private Logger serviceLogger;
+    private ListAppender<ILoggingEvent> logAppender;
 
     @BeforeEach
     void setUp() {
@@ -46,6 +53,10 @@ class AssistantServiceTest {
                 mock(AssistantConfirmationService.class), mock(AssistantAuditService.class),
                 mock(AssistantRateLimitService.class), mock(AssistantProviderGuard.class));
         ReflectionTestUtils.setField(service, "enabled", true);
+        ReflectionTestUtils.setField(service, "provider", "gemini");
+        ReflectionTestUtils.setField(service, "model", "gemini-2.5-flash");
+        ReflectionTestUtils.setField(service, "openAiApiKey", "");
+        ReflectionTestUtils.setField(service, "geminiApiKey", "gem-secret-value");
         ReflectionTestUtils.setField(service, "timeoutSeconds", 5L);
 
         when(chatModelProvider.getIfAvailable()).thenReturn(chatModel);
@@ -54,6 +65,18 @@ class AssistantServiceTest {
                 .loginName("dennis").staffId("S1").tenantId("T1").active(true).build()));
         ToolCallback tenantReadCallback = callback("getAllTenants");
         when(toolProvider.getToolCallbacks()).thenReturn(new ToolCallback[]{tenantReadCallback});
+
+        serviceLogger = (Logger) LoggerFactory.getLogger(AssistantService.class);
+        logAppender = new ListAppender<>();
+        logAppender.start();
+        serviceLogger.addAppender(logAppender);
+    }
+
+    @AfterEach
+    void tearDown() {
+        serviceLogger.detachAppender(logAppender);
+        logAppender.stop();
+        service.shutdownProviderExecutor();
     }
 
     @Test
@@ -73,10 +96,62 @@ class AssistantServiceTest {
     }
 
     @Test
-    void shouldFailSafelyWhenProviderFails() {
-        when(chatModel.call(any(Prompt.class))).thenThrow(new RuntimeException("provider down"));
-        assertThatThrownBy(() -> service.chat(new AssistantDtos.ChatRequest("Hello", null), authentication(RbacPermissions.TENANT_READ)))
-                .isInstanceOf(AssistantProviderException.class).hasMessageContaining("could not complete");
+    void shouldFailSafelyWhenProviderFailsAndLogDiagnostics() {
+        when(chatModel.call(any(Prompt.class)))
+                .thenThrow(new RuntimeException("Gemini rejected configured credential gem-secret-value"));
+
+        assertThatThrownBy(() -> service.chat(
+                new AssistantDtos.ChatRequest("Hello", "conversation-provider-failure"),
+                authentication(RbacPermissions.TENANT_READ)))
+                .isInstanceOf(AssistantProviderException.class)
+                .hasMessageContaining("could not complete");
+
+        String logs = formattedLogs();
+        assertThat(logs)
+                .contains("Ask LeaveMaestro provider request failed")
+                .contains("provider=gemini")
+                .contains("model=gemini-2.5-flash")
+                .contains("conversationId=conversation-provider-failure")
+                .contains("exceptionType=java.lang.RuntimeException")
+                .contains("rootCauseType=java.lang.RuntimeException")
+                .contains("[REDACTED]")
+                .doesNotContain("gem-secret-value");
+    }
+
+    @Test
+    void shouldLogTimeoutWithProviderContext() {
+        ReflectionTestUtils.setField(service, "timeoutSeconds", 0L);
+        when(chatModel.call(any(Prompt.class))).thenAnswer(invocation -> {
+            Thread.sleep(5_000);
+            return new ChatResponse(List.of(new Generation(new AssistantMessage("late response"))));
+        });
+
+        assertThatThrownBy(() -> service.chat(
+                new AssistantDtos.ChatRequest("Hello", "conversation-timeout"),
+                authentication(RbacPermissions.TENANT_READ)))
+                .isInstanceOf(AssistantProviderException.class)
+                .hasMessageContaining("timed out");
+
+        assertThat(formattedLogs())
+                .contains("Ask LeaveMaestro provider request timed out")
+                .contains("provider=gemini")
+                .contains("model=gemini-2.5-flash")
+                .contains("conversationId=conversation-timeout")
+                .contains("timeoutSeconds=0");
+    }
+
+    @Test
+    void shouldRedactCredentialLikeValuesFromProviderMessages() {
+        RuntimeException failure = new RuntimeException(
+                "authorization=Bearer abc.def api_key=another-key token=token-value secret=secret-value gem-secret-value");
+
+        assertThat(service.safeProviderMessage(failure))
+                .contains("[REDACTED]")
+                .doesNotContain("abc.def")
+                .doesNotContain("another-key")
+                .doesNotContain("token-value")
+                .doesNotContain("secret-value")
+                .doesNotContain("gem-secret-value");
     }
 
     @Test
@@ -97,6 +172,12 @@ class AssistantServiceTest {
         when(userRepository.findById("dennis")).thenReturn(Optional.empty());
         assertThatThrownBy(() -> service.chat(new AssistantDtos.ChatRequest("Hello", null), authentication(RbacPermissions.TENANT_READ)))
                 .isInstanceOf(AssistantUnavailableException.class);
+    }
+
+    private String formattedLogs() {
+        return logAppender.list.stream()
+                .map(ILoggingEvent::getFormattedMessage)
+                .reduce("", (left, right) -> left + "\n" + right);
     }
 
     private UsernamePasswordAuthenticationToken authentication(String authority) {
