@@ -54,7 +54,7 @@ class AssistantServiceTest {
                 mock(AssistantRateLimitService.class), mock(AssistantProviderGuard.class));
         ReflectionTestUtils.setField(service, "enabled", true);
         ReflectionTestUtils.setField(service, "provider", "gemini");
-        ReflectionTestUtils.setField(service, "model", "gemini-2.5-flash");
+        ReflectionTestUtils.setField(service, "model", "gemini-3.6-flash");
         ReflectionTestUtils.setField(service, "openAiApiKey", "");
         ReflectionTestUtils.setField(service, "geminiApiKey", "gem-secret-value");
         ReflectionTestUtils.setField(service, "timeoutSeconds", 5L);
@@ -110,7 +110,7 @@ class AssistantServiceTest {
         assertThat(logs)
                 .contains("Ask LeaveMaestro provider request failed")
                 .contains("provider=gemini")
-                .contains("model=gemini-2.5-flash")
+                .contains("model=gemini-3.6-flash")
                 .contains("conversationId=conversation-provider-failure")
                 .contains("exceptionType=java.lang.RuntimeException")
                 .contains("rootCauseType=java.lang.RuntimeException")
@@ -135,7 +135,7 @@ class AssistantServiceTest {
         assertThat(formattedLogs())
                 .contains("Ask LeaveMaestro provider request timed out")
                 .contains("provider=gemini")
-                .contains("model=gemini-2.5-flash")
+                .contains("model=gemini-3.6-flash")
                 .contains("conversationId=conversation-timeout")
                 .contains("timeoutSeconds=0");
     }
