@@ -150,13 +150,11 @@ If your Cloud project is not visible in AI Studio, import it from the AI Studio 
 
 ### 2. Choose the Gemini model
 
-The model currently configured and tested for LeaveMaestro is:
+The model currently configured and recommended for LeaveMaestro is:
 
 ```text
-gemini-2.5-flash
+gemini-3.6-flash
 ```
-
-Official model page: <https://ai.google.dev/gemini-api/docs/models/gemini-2.5-flash>
 
 Use a different model only after confirming that the model is available through the Gemini Developer API and supports the function/tool-calling behavior needed by Ask LeaveMaestro.
 
@@ -199,7 +197,7 @@ Set:
 ```text
 ENABLE_AI_ASSISTANT=true
 AI_ASSISTANT_PROVIDER=gemini
-AI_ASSISTANT_MODEL=gemini-2.5-flash
+AI_ASSISTANT_MODEL=gemini-3.6-flash
 GEMINI_API_KEY_SECRET_ID=leavemaster-gemini-api-key
 ```
 
@@ -221,7 +219,7 @@ Terraform will:
 Check the Cloud Run logs for a line similar to:
 
 ```text
-Ask LeaveMaestro enabled with provider=gemini model=gemini-2.5-flash
+Ask LeaveMaestro enabled with provider=gemini model=gemini-3.6-flash
 ```
 
 No credential value should be logged.
@@ -238,7 +236,7 @@ Provider selection does not bypass LeaveMaestro authorization. Tenant isolation 
 ```bash
 export ASSISTANT_ENABLED=true
 export ASSISTANT_PROVIDER=gemini
-export ASSISTANT_MODEL=gemini-2.5-flash
+export ASSISTANT_MODEL=gemini-3.6-flash
 export GEMINI_API_KEY='your-key-here'
 ./backend/gradlew bootRun
 ```
@@ -254,7 +252,7 @@ export GEMINI_API_KEY='your-key-here'
 
    ```text
    AI_ASSISTANT_PROVIDER=gemini
-   AI_ASSISTANT_MODEL=gemini-2.5-flash
+   AI_ASSISTANT_MODEL=gemini-3.6-flash
    ```
 
 3. Ensure `GEMINI_API_KEY_SECRET_ID` points to the correct secret ID.
@@ -381,6 +379,8 @@ The key may be invalid, expired, revoked, restricted incorrectly or associated w
 ### Model unavailable or unsupported
 
 Check the provider's current model documentation and account/project availability. Model names can change independently of LeaveMaestro. Update `AI_ASSISTANT_MODEL` and redeploy only after confirming compatibility.
+
+For Gemini, the current LeaveMaestro recommendation is `gemini-3.6-flash`. A `404` indicating that the configured Gemini model is no longer available means the model setting should be updated and Cloud Run redeployed; API-key rotation is not required solely for that error.
 
 ### Billing, quota or rate-limit error
 
