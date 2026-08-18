@@ -4,6 +4,7 @@ import com.practical.leavemaster.user.AppUser;
 import com.practical.leavemaster.user.AppUserRepository;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.tool.ToolCallback;
@@ -26,10 +27,18 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.regex.Pattern;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AssistantService {
+
+    private static final int MAX_LOG_MESSAGE_LENGTH = 1_000;
+    private static final Pattern SENSITIVE_ASSIGNMENT = Pattern.compile(
+            "(?i)((?:authorization|api[-_ ]?key|access[-_ ]?token|secret|token)\\s*[:=]\\s*)(?:bearer\\s+)?[^\\s,;]+"
+    );
+    private static final Pattern BEARER_TOKEN = Pattern.compile("(?i)(bearer\\s+)[A-Za-z0-9._~+/=-]+");
 
     private final ObjectProvider<ChatModel> chatModelProvider;
     private final ToolCallbackProvider leaveMasterTools;
@@ -43,6 +52,18 @@ public class AssistantService {
 
     @Value("${app.assistant.enabled:false}")
     private boolean enabled;
+
+    @Value("${app.assistant.provider:unknown}")
+    private String provider;
+
+    @Value("${app.assistant.model:unknown}")
+    private String model;
+
+    @Value("${OPENAI_API_KEY:}")
+    private String openAiApiKey;
+
+    @Value("${GEMINI_API_KEY:}")
+    private String geminiApiKey;
 
     @Value("${app.assistant.timeout-seconds:30}")
     private long timeoutSeconds;
@@ -94,16 +115,35 @@ public class AssistantService {
         } catch (TimeoutException e) {
             providerCall.cancel(true);
             providerGuard.failure();
+            log.error(
+                    "Ask LeaveMaestro provider request timed out: provider={}, model={}, conversationId={}, timeoutSeconds={}",
+                    provider, model, conversationId, timeoutSeconds, e);
             throw new AssistantProviderException("The AI provider timed out", e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             providerCall.cancel(true);
+            log.error(
+                    "Ask LeaveMaestro provider request was interrupted: provider={}, model={}, conversationId={}",
+                    provider, model, conversationId, e);
             throw new AssistantProviderException("The AI provider request was interrupted", e);
         } catch (ExecutionException e) {
             Throwable cause = e.getCause();
             if (cause instanceof AccessDeniedException accessDenied) throw accessDenied;
             if (cause instanceof IllegalArgumentException illegalArgument) throw illegalArgument;
+
             providerGuard.failure();
+            Throwable failure = cause == null ? e : cause;
+            Throwable rootCause = rootCause(failure);
+            log.error(
+                    "Ask LeaveMaestro provider request failed: provider={}, model={}, conversationId={}, exceptionType={}, rootCauseType={}, message={}",
+                    provider,
+                    model,
+                    conversationId,
+                    failure.getClass().getName(),
+                    rootCause.getClass().getName(),
+                    safeProviderMessage(rootCause),
+                    failure);
+
             if (cause instanceof RuntimeException runtime) {
                 throw new AssistantProviderException("The AI provider could not complete the request", runtime);
             }
@@ -120,6 +160,33 @@ public class AssistantService {
     @PreDestroy
     void shutdownProviderExecutor() {
         providerExecutor.shutdownNow();
+    }
+
+    String safeProviderMessage(Throwable throwable) {
+        if (throwable == null || throwable.getMessage() == null || throwable.getMessage().isBlank()) {
+            return "<no message>";
+        }
+
+        String sanitized = SENSITIVE_ASSIGNMENT.matcher(throwable.getMessage()).replaceAll("$1[REDACTED]");
+        sanitized = BEARER_TOKEN.matcher(sanitized).replaceAll("$1[REDACTED]");
+        sanitized = redactConfiguredSecret(sanitized, openAiApiKey);
+        sanitized = redactConfiguredSecret(sanitized, geminiApiKey);
+        return sanitized.length() <= MAX_LOG_MESSAGE_LENGTH
+                ? sanitized
+                : sanitized.substring(0, MAX_LOG_MESSAGE_LENGTH) + "…";
+    }
+
+    private String redactConfiguredSecret(String value, String secret) {
+        if (secret == null || secret.isBlank()) return value;
+        return value.replace(secret, "[REDACTED]");
+    }
+
+    private Throwable rootCause(Throwable throwable) {
+        Throwable current = throwable;
+        for (int depth = 0; depth < 16 && current.getCause() != null && current.getCause() != current; depth++) {
+            current = current.getCause();
+        }
+        return current;
     }
 
     private String systemPrompt(AppUser user) {
