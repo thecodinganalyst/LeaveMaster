@@ -24,7 +24,7 @@ class AssistantConfigurationValidatorTest {
 
     @Test
     void acceptsGeminiConfiguration() {
-        AssistantConfigurationValidator validator = new AssistantConfigurationValidator(true, "GEMINI", "gemini-2.5-flash", "", "key");
+        AssistantConfigurationValidator validator = new AssistantConfigurationValidator(true, "GEMINI", "gemini-3.6-flash", "", "key");
         assertThatCode(() -> validator.run(NO_ARGS)).doesNotThrowAnyException();
     }
 
@@ -54,7 +54,7 @@ class AssistantConfigurationValidatorTest {
 
     @Test
     void requiresGeminiKeyOnlyForGemini() {
-        AssistantConfigurationValidator validator = new AssistantConfigurationValidator(true, "gemini", "gemini-2.5-flash", "unused", null);
+        AssistantConfigurationValidator validator = new AssistantConfigurationValidator(true, "gemini", "gemini-3.6-flash", "unused", null);
         assertThatThrownBy(() -> validator.run(NO_ARGS))
             .isInstanceOf(IllegalStateException.class)
             .hasMessageContaining("GEMINI_API_KEY");
