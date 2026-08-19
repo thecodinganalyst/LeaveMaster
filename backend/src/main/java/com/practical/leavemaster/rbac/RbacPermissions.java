@@ -18,6 +18,8 @@ public final class RbacPermissions {
     public static final String LEAVE_APPROVER_WRITE = "LEAVE_APPROVER_WRITE";
     public static final String LEAVE_CALENDAR_READ = "LEAVE_CALENDAR_READ";
     public static final String LEAVE_CALENDAR_WRITE = "LEAVE_CALENDAR_WRITE";
+    public static final String PUBLIC_HOLIDAY_READ = "PUBLIC_HOLIDAY_READ";
+    public static final String PUBLIC_HOLIDAY_WRITE = "PUBLIC_HOLIDAY_WRITE";
     public static final String LOCATION_READ = "LOCATION_READ";
     public static final String LOCATION_WRITE = "LOCATION_WRITE";
     public static final String LEAVE_APPLICATION_READ = "LEAVE_APPLICATION_READ";
