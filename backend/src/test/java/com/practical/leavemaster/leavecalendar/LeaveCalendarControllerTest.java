@@ -83,6 +83,22 @@ class LeaveCalendarControllerTest {
     }
 
     @Test
+    void shouldReturnLeaveCalendarById() throws Exception {
+        LeaveCalendar leaveCalendar = calendar("template:SG:2026-01-01_2026-12-31");
+        when(leaveCalendarService.findById("template:SG:2026-01-01_2026-12-31")).thenReturn(Optional.of(leaveCalendar));
+
+        mockMvc.perform(get("/api/leave-calendars/template:SG:2026-01-01_2026-12-31"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value("template:SG:2026-01-01_2026-12-31"));
+    }
+
+    @Test
+    void shouldReturn404WhenLeaveCalendarByIdIsNotAccessible() throws Exception {
+        when(leaveCalendarService.findById("missing")).thenReturn(Optional.empty());
+        mockMvc.perform(get("/api/leave-calendars/missing")).andExpect(status().isNotFound());
+    }
+
+    @Test
     void shouldReturnValidationMessageWhenCreatingInvalidLeaveCalendar() throws Exception {
         LeaveCalendar leaveCalendar = calendar(null);
         when(leaveCalendarService.create(any(LeaveCalendar.class)))

@@ -49,6 +49,13 @@ public class LeaveCalendarController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<LeaveCalendar> getById(@PathVariable String id) {
+        return leaveCalendarService.findById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
     @PostMapping
     public ResponseEntity<?> create(@RequestBody LeaveCalendar leaveCalendar) {
         try {

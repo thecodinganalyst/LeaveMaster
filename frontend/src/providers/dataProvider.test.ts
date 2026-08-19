@@ -125,6 +125,20 @@ describe('leaveMaestroDataProvider', () => {
     expect(deleted.data).toEqual({ id: 'Tenant A' });
   });
 
+  it('reads platform leave calendar templates by encoded id', async () => {
+    const id = 'template:SG:2026-01-01_2026-12-31';
+    vi.mocked(apiFetch).mockResolvedValue({ id, scope: 'PLATFORM_TEMPLATE', tenantId: null });
+
+    const result = await leaveMaestroDataProvider.getOne({
+      resource: 'leave-calendars',
+      id,
+      meta: {},
+    });
+
+    expect(apiFetch).toHaveBeenCalledWith('/api/leave-calendars/template%3ASG%3A2026-01-01_2026-12-31');
+    expect(result.data).toMatchObject({ id, scope: 'PLATFORM_TEMPLATE', tenantId: null });
+  });
+
   it('reports a clear routing error when a list endpoint returns the SPA instead of JSON', async () => {
     vi.mocked(apiFetch).mockResolvedValue('<!doctype html><html></html>');
 
