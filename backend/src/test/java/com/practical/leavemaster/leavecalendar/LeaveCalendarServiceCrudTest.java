@@ -20,6 +20,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -57,6 +58,58 @@ class LeaveCalendarServiceCrudTest {
         assertThat(saved.getJurisdictionId()).isEqualTo("SG");
         assertThat(saved.getSourceTemplateId()).isEqualTo("origin");
         verify(tenantActivityService, never()).touch(any());
+    }
+
+    @Test
+    void platformAdminCanRetrieveTemplatesForJurisdictionAndYear() {
+        authenticatePlatformAdmin();
+        LeaveCalendar calendar2026 = template("template:SG:2026", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31));
+        LeaveCalendar calendar2027 = template("template:SG:2027", LocalDate.of(2027, 1, 1), LocalDate.of(2027, 12, 31));
+        LeaveCalendar tenantCalendar = LeaveCalendar.builder()
+                .id("tenant-1:2026")
+                .tenantId("tenant-1")
+                .scope(ConfigurationScope.TENANT)
+                .start(LocalDate.of(2026, 1, 1))
+                .end(LocalDate.of(2026, 12, 31))
+                .build();
+        when(leaveCalendarRepository.findAllByScopeAndJurisdictionId(ConfigurationScope.PLATFORM_TEMPLATE, "SG"))
+                .thenReturn(List.of(calendar2027, tenantCalendar, calendar2026));
+
+        List<LeaveCalendar> result = service.findPlatformTemplates("SG", 2026);
+
+        assertThat(result).extracting(LeaveCalendar::getId).containsExactly("template:SG:2026");
+    }
+
+    @Test
+    void createRejectsDuplicateHolidayDateAndNameIgnoringCaseAndWhitespace() {
+        LeaveCalendar requested = template(null, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31));
+        requested.setPublicHolidays(List.of(
+                PublicHoliday.builder()
+                        .holidayDate(LocalDate.of(2026, 8, 9))
+                        .holidayName("National Day")
+                        .build(),
+                PublicHoliday.builder()
+                        .holidayDate(LocalDate.of(2026, 8, 9))
+                        .holidayName(" national day ")
+                        .build()));
+
+        assertThatThrownBy(() -> service.create(requested))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Duplicate public holiday");
+
+        verify(leaveCalendarRepository, never()).save(any());
+    }
+
+    @Test
+    void tenantUserCannotRetrievePlatformHolidayTemplates() {
+        authenticateTenantUser();
+
+        assertThatThrownBy(() -> service.findPlatformTemplates("SG", 2026))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Only Platform Admin");
+
+        verify(leaveCalendarRepository, never())
+                .findAllByScopeAndJurisdictionId(any(), any());
     }
 
     @Test
