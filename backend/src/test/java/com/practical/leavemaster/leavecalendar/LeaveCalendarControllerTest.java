@@ -87,7 +87,7 @@ class LeaveCalendarControllerTest {
         LeaveCalendar leaveCalendar = calendar("template:SG:2026-01-01_2026-12-31");
         when(leaveCalendarService.findById("template:SG:2026-01-01_2026-12-31")).thenReturn(Optional.of(leaveCalendar));
 
-        mockMvc.perform(get("/api/leave-calendars/template%3ASG%3A2026-01-01_2026-12-31"))
+        mockMvc.perform(get("/api/leave-calendars/template:SG:2026-01-01_2026-12-31"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value("template:SG:2026-01-01_2026-12-31"));
     }
