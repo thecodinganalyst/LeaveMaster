@@ -12,9 +12,12 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -36,6 +39,33 @@ public class LeaveCalendarService {
         }
         return leaveCalendarRepository.findAllByTenantIdOrderByStartAsc(requiredTenantId(user.get())).stream()
                 .filter(calendar -> calendar.getScope() == ConfigurationScope.TENANT)
+                .toList();
+    }
+
+    /**
+     * Returns platform holiday-calendar templates for a jurisdiction that overlap the requested calendar year.
+     * This is intentionally read-only and does not provision tenant calendars.
+     */
+    public List<LeaveCalendar> findPlatformTemplates(String jurisdictionId, int year) {
+        if (jurisdictionId == null || jurisdictionId.isBlank()) {
+            throw new IllegalArgumentException("jurisdictionId is required");
+        }
+        if (year < 1900 || year > 9999) {
+            throw new IllegalArgumentException("year must be between 1900 and 9999");
+        }
+        Optional<AppUser> user = currentUser();
+        if (user.isPresent() && !isPlatformAdmin(user.get())) {
+            throw new IllegalStateException("Only Platform Admin can access platform holiday calendar templates");
+        }
+
+        LocalDate yearStart = LocalDate.of(year, 1, 1);
+        LocalDate yearEnd = LocalDate.of(year, 12, 31);
+        return leaveCalendarRepository
+                .findAllByScopeAndJurisdictionId(ConfigurationScope.PLATFORM_TEMPLATE, jurisdictionId.trim())
+                .stream()
+                .filter(calendar -> calendar.getTenantId() == null)
+                .filter(calendar -> !calendar.getStart().isAfter(yearEnd) && !calendar.getEnd().isBefore(yearStart))
+                .sorted(Comparator.comparing(LeaveCalendar::getStart))
                 .toList();
     }
 
@@ -149,6 +179,7 @@ public class LeaveCalendarService {
             if (leaveCalendar.getJurisdictionId() == null || leaveCalendar.getJurisdictionId().isBlank()) {
                 throw new IllegalArgumentException("jurisdictionId is required for platform calendar templates");
             }
+            leaveCalendar.setJurisdictionId(leaveCalendar.getJurisdictionId().trim());
         } else {
             if (leaveCalendar.getTenantId() == null || leaveCalendar.getTenantId().isBlank()) {
                 throw new IllegalArgumentException("tenantId is required for tenant calendars");
@@ -157,12 +188,19 @@ public class LeaveCalendarService {
         }
 
         List<PublicHoliday> publicHolidays = leaveCalendar.getPublicHolidays() == null ? List.of() : leaveCalendar.getPublicHolidays();
+        Set<String> holidayKeys = new HashSet<>();
         for (PublicHoliday publicHoliday : publicHolidays) {
             if (publicHoliday.getHolidayDate() == null || publicHoliday.getHolidayName() == null || publicHoliday.getHolidayName().isBlank()) {
                 throw new IllegalArgumentException("Public holidays require both holidayDate and holidayName");
             }
             if (publicHoliday.getHolidayDate().isBefore(leaveCalendar.getStart()) || publicHoliday.getHolidayDate().isAfter(leaveCalendar.getEnd())) {
                 throw new IllegalArgumentException("Public holiday must be within the leave calendar range");
+            }
+            String normalizedName = publicHoliday.getHolidayName().trim().toLowerCase(Locale.ROOT);
+            String key = publicHoliday.getHolidayDate() + "\u0000" + normalizedName;
+            if (!holidayKeys.add(key)) {
+                throw new IllegalArgumentException("Duplicate public holiday for date and name: "
+                        + publicHoliday.getHolidayDate() + " / " + publicHoliday.getHolidayName().trim());
             }
         }
     }
