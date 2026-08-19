@@ -39,6 +39,7 @@ export const AppLayout = ({ children }: PropsWithChildren) => {
   const { data: tenantAccess } = useCan({ resource: 'tenants', action: 'list' });
   const { data: jurisdictionAccess } = useCan({ resource: 'jurisdictions', action: 'list' });
   const { data: jurisdictionLeaveTypeAccess } = useCan({ resource: 'jurisdiction-leave-types', action: 'list' });
+  const { data: publicHolidayAccess } = useCan({ resource: 'public-holidays', action: 'list' });
   const { data: userAccess } = useCan({ resource: 'users', action: 'list' });
   const { data: roleAccess } = useCan({ resource: 'roles', action: 'list' });
   const { data: locationAccess } = useCan({ resource: 'locations', action: 'list' });
@@ -57,6 +58,7 @@ export const AppLayout = ({ children }: PropsWithChildren) => {
       ...(tenantAccess?.can ? [{ key: '/tenants', icon: <BankOutlined />, label: <Link to="/tenants">Tenants</Link> }] : []),
       ...(jurisdictionAccess?.can ? [{ key: '/jurisdictions', icon: <GlobalOutlined />, label: <Link to="/jurisdictions">Jurisdictions</Link> }] : []),
       ...(jurisdictionLeaveTypeAccess?.can ? [{ key: '/jurisdiction-leave-types', icon: <TagsOutlined />, label: <Link to="/jurisdiction-leave-types">Jurisdiction Leave Types</Link> }] : []),
+      ...(publicHolidayAccess?.can ? [{ key: '/public-holidays', icon: <CalendarOutlined />, label: <Link to="/public-holidays">Public Holidays</Link> }] : []),
       ...(userAccess?.can ? [{ key: '/users', icon: <UserOutlined />, label: <Link to="/users">App Users</Link> }] : []),
       ...(roleAccess?.can ? [{ key: '/roles', icon: <SafetyCertificateOutlined />, label: <Link to="/roles">Roles</Link> }] : []),
       ...(locationAccess?.can ? [{ key: '/locations', icon: <EnvironmentOutlined />, label: <Link to="/locations">Locations</Link> }] : []),
@@ -66,7 +68,7 @@ export const AppLayout = ({ children }: PropsWithChildren) => {
       ...(calendarAccess?.can ? [{ key: '/leave-calendars', icon: <CalendarOutlined />, label: <Link to="/leave-calendars">Leave Calendars</Link> }] : []),
       ...(approverAccess?.can ? [{ key: '/leave-approvers', icon: <AuditOutlined />, label: <Link to="/leave-approvers">Leave Approvers</Link> }] : []),
     ],
-    [approvalAccess?.can, approverAccess?.can, calendarAccess?.can, eligibilityRuleAccess?.can, employeeAccess?.can, entitlementPolicyAccess?.can, jurisdictionAccess?.can, jurisdictionLeaveTypeAccess?.can, leaveAccess?.can, leaveTypeAccess?.can, locationAccess?.can, roleAccess?.can, tenantAccess?.can, userAccess?.can],
+    [approvalAccess?.can, approverAccess?.can, calendarAccess?.can, eligibilityRuleAccess?.can, employeeAccess?.can, entitlementPolicyAccess?.can, jurisdictionAccess?.can, jurisdictionLeaveTypeAccess?.can, leaveAccess?.can, leaveTypeAccess?.can, locationAccess?.can, publicHolidayAccess?.can, roleAccess?.can, tenantAccess?.can, userAccess?.can],
   );
 
   const selectedKeys = useMemo(() => {

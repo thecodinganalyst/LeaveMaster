@@ -6,7 +6,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { FormSection } from '../../components/common/FormSection.tsx';
 import { PageContainer } from '../../components/common/PageContainer.tsx';
 import { PageHeader } from '../../components/common/PageHeader.tsx';
-import { getAdminResourceConfig, normaliseFormValues, toFormValues } from './adminResourceConfig.ts';
+import { getAdminResourceConfig, normaliseFormValues, toFormValues } from './resourceConfigResolver.ts';
 import { ResourceFormFields } from './ResourceFormFields.tsx';
 
 interface LeaveMasterIdentity {
@@ -38,9 +38,10 @@ export const ResourceEditPage = () => {
     try {
       const payload = normaliseFormValues(config, values);
       for (const field of config.fields.filter((item) => item.readOnlyOnEdit || item.formHidden || item.hidden)) delete payload[field.name];
-      await mutateAsync({ resource: config.name, id, values: payload });
+      const result = await mutateAsync({ resource: config.name, id, values: payload });
+      const updatedId = String((result.data as Record<string, unknown> | undefined)?.[config.idField] ?? id);
       message.success(`${config.singular} updated`);
-      navigate(`/${config.name}/show/${encodeURIComponent(id)}`);
+      navigate(`/${config.name}/show/${encodeURIComponent(updatedId)}`);
     } catch {
       message.error(`Unable to update ${config.singular.toLowerCase()}`);
     }

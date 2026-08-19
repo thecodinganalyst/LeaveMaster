@@ -85,6 +85,10 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/leave-approvers/**", "/api/leave-approvers/**").hasAuthority(RbacPermissions.LEAVE_APPROVER_WRITE)
                 .requestMatchers(HttpMethod.PUT, "/leave-approvers/**", "/api/leave-approvers/**").hasAuthority(RbacPermissions.LEAVE_APPROVER_WRITE)
                 .requestMatchers(HttpMethod.DELETE, "/leave-approvers/**", "/api/leave-approvers/**").hasAuthority(RbacPermissions.LEAVE_APPROVER_WRITE)
+                .requestMatchers(HttpMethod.GET, "/public-holidays/**", "/api/public-holidays/**").hasAuthority(RbacPermissions.PUBLIC_HOLIDAY_READ)
+                .requestMatchers(HttpMethod.POST, "/public-holidays/**", "/api/public-holidays/**").hasAuthority(RbacPermissions.PUBLIC_HOLIDAY_WRITE)
+                .requestMatchers(HttpMethod.PUT, "/public-holidays/**", "/api/public-holidays/**").hasAuthority(RbacPermissions.PUBLIC_HOLIDAY_WRITE)
+                .requestMatchers(HttpMethod.DELETE, "/public-holidays/**", "/api/public-holidays/**").hasAuthority(RbacPermissions.PUBLIC_HOLIDAY_WRITE)
                 .requestMatchers(HttpMethod.GET, "/leave-calendars/**", "/api/leave-calendars/**").hasAuthority(RbacPermissions.LEAVE_CALENDAR_READ)
                 .requestMatchers(HttpMethod.POST, "/leave-calendars/**", "/api/leave-calendars/**").hasAuthority(RbacPermissions.LEAVE_CALENDAR_WRITE)
                 .requestMatchers(HttpMethod.PUT, "/leave-calendars/**", "/api/leave-calendars/**").hasAuthority(RbacPermissions.LEAVE_CALENDAR_WRITE)
@@ -105,32 +109,24 @@ public class SecurityConfig {
             )
             .formLogin(form -> form
                 .loginProcessingUrl("/auth/login")
-                .successHandler((request, response, authentication) ->
-                    response.setStatus(HttpServletResponse.SC_OK))
-                .failureHandler((request, response, exception) ->
-                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED))
+                .successHandler((request, response, authentication) -> response.setStatus(HttpServletResponse.SC_OK))
+                .failureHandler((request, response, exception) -> response.setStatus(HttpServletResponse.SC_UNAUTHORIZED))
             )
             .logout(logout -> logout
                 .logoutUrl("/logout")
-                .logoutSuccessHandler((request, response, authentication) ->
-                    response.setStatus(HttpServletResponse.SC_OK))
+                .logoutSuccessHandler((request, response, authentication) -> response.setStatus(HttpServletResponse.SC_OK))
             )
             .httpBasic(Customizer.withDefaults())
             .exceptionHandling(ex -> ex
-                .authenticationEntryPoint((request, response, authException) ->
-                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized"))
+                .authenticationEntryPoint((request, response, authException) -> response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized"))
             );
 
         if (clientRegistrationRepositoryProvider.getIfAvailable() != null) {
-            ExistingUserOnlyOAuth2UserService existingUserOnlyOAuth2UserService =
-                new ExistingUserOnlyOAuth2UserService(appUserRepository);
+            ExistingUserOnlyOAuth2UserService existingUserOnlyOAuth2UserService = new ExistingUserOnlyOAuth2UserService(appUserRepository);
             http.oauth2Login(oauth2 -> oauth2
-                .userInfoEndpoint(userInfo -> userInfo
-                    .userService(existingUserOnlyOAuth2UserService))
-                .successHandler((request, response, authentication) ->
-                    response.sendRedirect(normalizedPublicAppUrl + "/"))
-                .failureHandler((request, response, exception) ->
-                    response.sendRedirect(normalizedPublicAppUrl + "/login?oauthError=true"))
+                .userInfoEndpoint(userInfo -> userInfo.userService(existingUserOnlyOAuth2UserService))
+                .successHandler((request, response, authentication) -> response.sendRedirect(normalizedPublicAppUrl + "/"))
+                .failureHandler((request, response, exception) -> response.sendRedirect(normalizedPublicAppUrl + "/login?oauthError=true"))
             );
         }
 
@@ -144,13 +140,7 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(parseAllowedOrigins(configuredOrigins));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of(
-            HttpHeaders.ACCEPT,
-            HttpHeaders.CONTENT_TYPE,
-            HttpHeaders.AUTHORIZATION,
-            "X-XSRF-TOKEN",
-            "X-CSRF-TOKEN"
-        ));
+        configuration.setAllowedHeaders(List.of(HttpHeaders.ACCEPT, HttpHeaders.CONTENT_TYPE, HttpHeaders.AUTHORIZATION, "X-XSRF-TOKEN", "X-CSRF-TOKEN"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
 

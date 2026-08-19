@@ -48,6 +48,23 @@ describe('accessControlProvider', () => {
       .resolves.toMatchObject({ can: true });
   });
 
+  it('allows platform public holidays without granting tenant leave calendar access', async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({
+      loginName: 'PlatformAdmin',
+      staffId: null,
+      tenantId: null,
+      active: true,
+      authorities: ['PUBLIC_HOLIDAY_READ', 'PUBLIC_HOLIDAY_WRITE'],
+    });
+
+    await expect(accessControlProvider.can({ resource: 'public-holidays', action: 'list', params: {} }))
+      .resolves.toMatchObject({ can: true });
+    await expect(accessControlProvider.can({ resource: 'public-holidays', action: 'edit', params: {} }))
+      .resolves.toMatchObject({ can: true });
+    await expect(accessControlProvider.can({ resource: 'leave-calendars', action: 'list', params: {} }))
+      .resolves.toMatchObject({ can: false, reason: 'Missing LEAVE_CALENDAR_READ' });
+  });
+
   it('keeps tenant administration read-only without TENANT_WRITE', async () => {
     vi.mocked(getCurrentUser).mockResolvedValue({
       loginName: 'tenant-reader',

@@ -40,6 +40,7 @@ nav:
       - Entitlement generation: leave-entitlement-generation.md
       - Entitlement proration: leave-entitlement-proration.md
       - Staff change lifecycle: staff-change-lifecycle.md
+      - Platform public holidays: public-holidays.md
   - Security and Access:
       - RBAC: rbac.md
       - AI assistant security: assistant-security.md

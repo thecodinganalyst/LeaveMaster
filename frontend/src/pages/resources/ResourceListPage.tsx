@@ -8,8 +8,8 @@ import { EmptyState } from '../../components/common/EmptyState.tsx';
 import { LoadingState } from '../../components/common/LoadingState.tsx';
 import { PageContainer } from '../../components/common/PageContainer.tsx';
 import { PageHeader } from '../../components/common/PageHeader.tsx';
-import type { AdminField } from './adminResourceConfig.ts';
-import { getAdminResourceConfig, isAdminFieldVisible, toFormValues } from './adminResourceConfig.ts';
+import type { AdminField } from './resourceConfigResolver.ts';
+import { getAdminResourceConfig, isAdminFieldVisible, toFormValues } from './resourceConfigResolver.ts';
 
 interface LeaveMasterIdentity {
   platformAdmin?: boolean;
