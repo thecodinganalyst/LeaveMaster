@@ -3,6 +3,7 @@ package com.practical.leavemaster.leavecalendar;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -27,6 +28,18 @@ public class LeaveCalendarController {
     @GetMapping
     public List<LeaveCalendar> getAll() {
         return leaveCalendarService.findAll();
+    }
+
+    @GetMapping("/templates")
+    @PreAuthorize("hasAuthority('JURISDICTION_READ')")
+    public ResponseEntity<?> getTemplates(
+            @RequestParam String jurisdictionId,
+            @RequestParam int year) {
+        try {
+            return ResponseEntity.ok(leaveCalendarService.findPlatformTemplates(jurisdictionId, year));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 
     @GetMapping("/current")
