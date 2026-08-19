@@ -10,6 +10,7 @@ This site is the technical documentation hub for developers and operators. Use t
 - [API documentation](api.md) — resource-level API notes and examples.
 - [Policy-driven leave entitlement generation](leave-entitlement-generation.md) — eligibility, policy resolution, accrual, carry-forward, proration, and reconciliation.
 - [Platform leave configuration templates](platform-leave-configuration-templates.md) — jurisdiction defaults, template scope, tenant provisioning, authorization, and source traceability.
+- [Platform public holidays](public-holidays.md) — Platform Admin CRUD, dedicated permissions, seeded Singapore holidays, and the boundary from tenant leave calendars.
 - [Development and CI](development-and-ci.md) — local development, test gates, and GitHub Actions.
 - [Cloud Run deployment](cloudrun-deployment.md) — production backend deployment and infrastructure setup.
 - [Troubleshooting](troubleshooting.md) — common build, authentication, deployment, and assistant failures.
