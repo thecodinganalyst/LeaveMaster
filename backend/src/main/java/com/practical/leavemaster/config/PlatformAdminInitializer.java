@@ -28,12 +28,14 @@ public class PlatformAdminInitializer implements ApplicationRunner {
 
     static final String PLATFORM_ADMIN_ROLE_ID = "PLATFORM_ADMIN";
     static final String PLATFORM_ADMIN_LOGIN_NAME = "PlatformAdmin";
-    private static final Set<String> REQUIRED_TENANT_PERMISSIONS = Set.of(
+    private static final Set<String> REQUIRED_PLATFORM_PERMISSIONS = Set.of(
             RbacPermissions.TENANT_READ,
             RbacPermissions.TENANT_WRITE,
             RbacPermissions.LEAVE_ENTITLEMENT_POLICY_READ,
             RbacPermissions.LEAVE_ENTITLEMENT_POLICY_WRITE,
-            RbacPermissions.LEAVE_ENTITLEMENT_GENERATE
+            RbacPermissions.LEAVE_ENTITLEMENT_GENERATE,
+            RbacPermissions.PUBLIC_HOLIDAY_READ,
+            RbacPermissions.PUBLIC_HOLIDAY_WRITE
     );
 
     private final AppRoleRepository appRoleRepository;
@@ -91,9 +93,9 @@ public class PlatformAdminInitializer implements ApplicationRunner {
         log.info("Creating {} role", PLATFORM_ADMIN_ROLE_ID);
         AppRole newRole = AppRole.builder()
                 .id(PLATFORM_ADMIN_ROLE_ID)
-                .description("Platform administrator – manages tenants")
+                .description("Platform administrator – manages tenants and platform reference data")
                 .active(true)
-                .permissions(loadRequiredTenantPermissions())
+                .permissions(loadRequiredPlatformPermissions())
                 .build();
         return appRoleRepository.save(newRole);
     }
@@ -109,7 +111,7 @@ public class PlatformAdminInitializer implements ApplicationRunner {
         Set<String> existingCodes = permissions.stream()
                 .map(AppPermission::getCode)
                 .collect(Collectors.toSet());
-        for (AppPermission requiredPermission : loadRequiredTenantPermissions()) {
+        for (AppPermission requiredPermission : loadRequiredPlatformPermissions()) {
             if (existingCodes.add(requiredPermission.getCode())) {
                 permissions.add(requiredPermission);
                 changed = true;
@@ -118,13 +120,13 @@ public class PlatformAdminInitializer implements ApplicationRunner {
 
         if (changed) {
             role.setPermissions(permissions);
-            log.info("Reconciling {} role with required tenant-management permissions", PLATFORM_ADMIN_ROLE_ID);
+            log.info("Reconciling {} role with required platform-management permissions", PLATFORM_ADMIN_ROLE_ID);
             appRoleRepository.save(role);
         }
         return role;
     }
 
-    private Set<AppPermission> loadRequiredTenantPermissions() {
-        return Set.copyOf(appPermissionRepository.findAllById(REQUIRED_TENANT_PERMISSIONS));
+    private Set<AppPermission> loadRequiredPlatformPermissions() {
+        return Set.copyOf(appPermissionRepository.findAllById(REQUIRED_PLATFORM_PERMISSIONS));
     }
 }
