@@ -17,6 +17,7 @@ const permissionByResource: Record<string, { read?: string; write?: string; appr
   'leave-entitlement-policy-eligibility-rules': { read: 'LEAVE_ENTITLEMENT_POLICY_READ', write: 'LEAVE_ENTITLEMENT_POLICY_WRITE' },
   'leave-approvers': { read: 'LEAVE_APPROVER_READ', write: 'LEAVE_APPROVER_WRITE' },
   'leave-calendars': { read: 'LEAVE_CALENDAR_READ', write: 'LEAVE_CALENDAR_WRITE' },
+  'public-holidays': { read: 'PUBLIC_HOLIDAY_READ', write: 'PUBLIC_HOLIDAY_WRITE' },
   'leave-requests': {
     read: 'LEAVE_APPLICATION_READ',
     write: 'LEAVE_APPLICATION_WRITE',
