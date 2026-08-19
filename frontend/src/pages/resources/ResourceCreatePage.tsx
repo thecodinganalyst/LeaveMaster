@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { FormSection } from '../../components/common/FormSection.tsx';
 import { PageContainer } from '../../components/common/PageContainer.tsx';
 import { PageHeader } from '../../components/common/PageHeader.tsx';
-import { getAdminResourceConfig, getAdminResourceInitialValues, normaliseFormValues } from './adminResourceConfig.ts';
+import { getAdminResourceConfig, getAdminResourceInitialValues, normaliseFormValues } from './resourceConfigResolver.ts';
 import { ResourceFormFields } from './ResourceFormFields.tsx';
 
 interface LeaveMasterIdentity {
