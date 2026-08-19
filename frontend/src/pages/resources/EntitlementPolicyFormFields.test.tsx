@@ -33,6 +33,20 @@ vi.mock('./JurisdictionLeaveTypeSelect.tsx', () => ({
   ),
 }));
 
+vi.mock('./TenantLeaveTypeSelect.tsx', () => ({
+  TenantLeaveTypeSelect: ({ value, onChange, disabled = false }: {
+    value?: string;
+    onChange?: (value: string) => void;
+    disabled?: boolean;
+  }) => (
+    <select aria-label="Leave type" value={value ?? ''} onChange={(event) => onChange?.(event.target.value)} disabled={disabled}>
+      <option value="">Select a leave type</option>
+      <option value="SG_ANNUAL_LEAVE">Annual Leave (SG_ANNUAL_LEAVE)</option>
+      <option value="SG_SICK_LEAVE">Sick Leave (SG_SICK_LEAVE)</option>
+    </select>
+  ),
+}));
+
 import { EntitlementPolicyFormFields } from './EntitlementPolicyFormFields.tsx';
 import { generateEntitlementPolicyId, normalisePolicyIdPart, sanitiseNumericInput } from './entitlementPolicyForm.ts';
 import { getJurisdictionLeaveTypeOptions } from './jurisdictionLeaveTypes.ts';
@@ -59,6 +73,46 @@ describe('EntitlementPolicyFormFields', () => {
     expect(getJurisdictionLeaveTypeOptions([
       { id: 'SG:OLD_LEAVE', jurisdictionId: 'SG', code: 'OLD_LEAVE', name: 'Old Leave', active: false },
     ], 'SG', 'SG:OLD_LEAVE')).toEqual([{ label: 'Old Leave (OLD_LEAVE)', value: 'SG:OLD_LEAVE' }]);
+  });
+
+  it('renders tenant leave type as a dropdown instead of a text box', () => {
+    render(
+      <Form initialValues={{ leaveTypeId: 'SG_ANNUAL_LEAVE', name: 'Standard Annual Leave' }}>
+        <EntitlementPolicyFormFields />
+      </Form>,
+    );
+
+    expect(screen.getByRole('combobox', { name: 'Leave type' })).toHaveValue('SG_ANNUAL_LEAVE');
+    expect(screen.queryByRole('textbox', { name: 'Leave type' })).not.toBeInTheDocument();
+  });
+
+  it('submits the selected tenant leave type id', async () => {
+    const onFinish = vi.fn();
+    render(
+      <Form
+        initialValues={{
+          name: 'Standard Annual Leave',
+          entitlementAmount: 14,
+          entitlementUnit: 'DAYS',
+          accrualMethod: 'NONE',
+          prorationMethod: 'NONE',
+          effectiveFrom: '2026-01-01',
+        }}
+        onFinish={onFinish}
+      >
+        <EntitlementPolicyFormFields />
+        <Button htmlType="submit">Save</Button>
+      </Form>,
+    );
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Leave type' }), { target: { value: 'SG_SICK_LEAVE' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(onFinish).toHaveBeenCalled());
+    expect(onFinish.mock.calls[0]?.[0]).toMatchObject({
+      leaveTypeId: 'SG_SICK_LEAVE',
+      id: 'SG_SICK_LEAVE_STANDARD_ANNUAL_LEAVE',
+    });
   });
 
   it('shows only supported accrual methods and explains front-loaded behavior', () => {
@@ -186,6 +240,16 @@ describe('EntitlementPolicyFormFields', () => {
     expect(screen.getByRole('combobox', { name: 'Jurisdiction' })).toBeDisabled();
     expect(screen.getByRole('combobox', { name: 'Jurisdiction leave type' })).toBeDisabled();
     expect(screen.queryByRole('textbox', { name: 'ID' })).not.toBeInTheDocument();
+  });
+
+  it('preselects the existing tenant leave type during edit', () => {
+    render(
+      <Form initialValues={{ id: 'EXISTING_POLICY', leaveTypeId: 'SG_SICK_LEAVE', name: 'Existing policy' }}>
+        <EntitlementPolicyFormFields editing />
+      </Form>,
+    );
+
+    expect(screen.getByRole('combobox', { name: 'Leave type' })).toHaveValue('SG_SICK_LEAVE');
   });
 
   it('blocks alphabetic keystrokes in numeric fields while allowing decimal input', () => {
