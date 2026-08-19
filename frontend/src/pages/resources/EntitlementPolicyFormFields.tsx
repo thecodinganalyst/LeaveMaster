@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { blockInvalidNumericKey, generateEntitlementPolicyId } from './entitlementPolicyForm.ts';
 import { JurisdictionLeaveTypeSelect } from './JurisdictionLeaveTypeSelect.tsx';
 import { JurisdictionSelect } from './JurisdictionSelect.tsx';
+import { TenantLeaveTypeSelect } from './TenantLeaveTypeSelect.tsx';
 
 interface Props {
   editing?: boolean;
@@ -100,8 +101,8 @@ export const EntitlementPolicyFormFields = ({ editing = false, platformAdmin = f
           </Form.Item>
         </>
       ) : (
-        <Form.Item name="leaveTypeId" label="Leave type ID" rules={[{ required: true, message: 'Leave type ID is required' }]}>
-          <Input />
+        <Form.Item name="leaveTypeId" label="Leave type" rules={[{ required: true, message: 'Leave type is required' }]}>
+          <TenantLeaveTypeSelect />
         </Form.Item>
       )}
 
