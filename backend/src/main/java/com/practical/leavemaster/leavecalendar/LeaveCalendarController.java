@@ -29,6 +29,17 @@ public class LeaveCalendarController {
         return leaveCalendarService.findAll();
     }
 
+    @GetMapping("/templates")
+    public ResponseEntity<?> getTemplates(
+            @RequestParam String jurisdictionId,
+            @RequestParam int year) {
+        try {
+            return ResponseEntity.ok(leaveCalendarService.findPlatformTemplates(jurisdictionId, year));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
     @GetMapping("/current")
     public ResponseEntity<LeaveCalendar> getCurrent(@RequestParam(required = false) LocalDate date) {
         return leaveCalendarService.getCalendarFor(date == null ? LocalDate.now() : date)
