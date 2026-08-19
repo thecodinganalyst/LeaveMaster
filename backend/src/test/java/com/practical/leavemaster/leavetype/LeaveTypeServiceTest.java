@@ -1,14 +1,21 @@
 package com.practical.leavemaster.leavetype;
 
+import com.practical.leavemaster.rbac.AppRole;
 import com.practical.leavemaster.tenant.TenantActivityService;
+import com.practical.leavemaster.user.AppUser;
+import com.practical.leavemaster.user.AppUserRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -23,8 +30,16 @@ class LeaveTypeServiceTest {
     @Mock
     private TenantActivityService tenantActivityService;
 
+    @Mock
+    private AppUserRepository appUserRepository;
+
     @InjectMocks
     private LeaveTypeService leaveTypeService;
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
 
     @Test
     void shouldReturnAllLeaveTypes() {
@@ -40,6 +55,53 @@ class LeaveTypeServiceTest {
     }
 
     @Test
+    void shouldReturnOnlyCurrentTenantLeaveTypesForTenantUser() {
+        authenticate("tenant-admin");
+        AppUser user = AppUser.builder().loginName("tenant-admin").active(true).tenantId("TENANT_A").build();
+        List<LeaveType> leaveTypes = List.of(
+                LeaveType.builder().id("annual").name("Annual Leave").tenantId("TENANT_A").build()
+        );
+        when(appUserRepository.findById("tenant-admin")).thenReturn(Optional.of(user));
+        when(leaveTypeRepository.findAllByTenantId("TENANT_A")).thenReturn(leaveTypes);
+
+        List<LeaveType> result = leaveTypeService.findAll();
+
+        assertThat(result).containsExactlyElementsOf(leaveTypes);
+        verify(leaveTypeRepository).findAllByTenantId("TENANT_A");
+        verify(leaveTypeRepository, never()).findAll();
+    }
+
+    @Test
+    void shouldReturnNoLeaveTypesWhenTenantUserHasNoTenantId() {
+        authenticate("tenant-admin");
+        AppUser user = AppUser.builder().loginName("tenant-admin").active(true).tenantId(" ").build();
+        when(appUserRepository.findById("tenant-admin")).thenReturn(Optional.of(user));
+
+        assertThat(leaveTypeService.findAll()).isEmpty();
+        verifyNoInteractions(leaveTypeRepository);
+    }
+
+    @Test
+    void shouldAllowPlatformAdminToReturnAllLeaveTypes() {
+        authenticate("platform-admin");
+        AppRole platformAdminRole = AppRole.builder().id("PLATFORM_ADMIN").active(true).build();
+        AppUser user = AppUser.builder()
+                .loginName("platform-admin")
+                .active(true)
+                .roles(Set.of(platformAdminRole))
+                .build();
+        when(appUserRepository.findById("platform-admin")).thenReturn(Optional.of(user));
+        when(leaveTypeRepository.findAll()).thenReturn(List.of(
+                LeaveType.builder().id("tenant-a-annual").tenantId("TENANT_A").build(),
+                LeaveType.builder().id("tenant-b-annual").tenantId("TENANT_B").build()
+        ));
+
+        assertThat(leaveTypeService.findAll()).hasSize(2);
+        verify(leaveTypeRepository).findAll();
+        verify(leaveTypeRepository, never()).findAllByTenantId(anyString());
+    }
+
+    @Test
     void shouldReturnLeaveTypeById() {
         LeaveType leaveType = LeaveType.builder().id("annual").name("Annual Leave").used(false).build();
         when(leaveTypeRepository.findById("annual")).thenReturn(Optional.of(leaveType));
@@ -51,6 +113,17 @@ class LeaveTypeServiceTest {
     }
 
     @Test
+    void shouldHideOtherTenantLeaveTypeById() {
+        authenticate("tenant-admin");
+        AppUser user = AppUser.builder().loginName("tenant-admin").active(true).tenantId("TENANT_A").build();
+        LeaveType otherTenant = LeaveType.builder().id("annual").name("Annual Leave").tenantId("TENANT_B").build();
+        when(appUserRepository.findById("tenant-admin")).thenReturn(Optional.of(user));
+        when(leaveTypeRepository.findById("annual")).thenReturn(Optional.of(otherTenant));
+
+        assertThat(leaveTypeService.findById("annual")).isEmpty();
+    }
+
+    @Test
     void shouldSaveLeaveType() {
         LeaveType leaveType = LeaveType.builder().id("annual").name("Annual Leave").used(true).build();
         when(leaveTypeRepository.save(any(LeaveType.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -59,6 +132,33 @@ class LeaveTypeServiceTest {
 
         assertThat(result.getId()).isEqualTo("annual");
         assertThat(result.isUsed()).isFalse();
+    }
+
+    @Test
+    void shouldApplyCurrentTenantWhenTenantUserSavesLeaveType() {
+        authenticate("tenant-admin");
+        AppUser user = AppUser.builder().loginName("tenant-admin").active(true).tenantId("TENANT_A").build();
+        when(appUserRepository.findById("tenant-admin")).thenReturn(Optional.of(user));
+        when(leaveTypeRepository.save(any(LeaveType.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        LeaveType result = leaveTypeService.save(
+                LeaveType.builder().id("annual").name("Annual Leave").tenantId("TENANT_B").used(true).build());
+
+        assertThat(result.getTenantId()).isEqualTo("TENANT_A");
+        assertThat(result.isUsed()).isFalse();
+        verify(tenantActivityService).touch("TENANT_A");
+    }
+
+    @Test
+    void shouldRejectSaveWhenTenantUserHasNoTenantId() {
+        authenticate("tenant-admin");
+        AppUser user = AppUser.builder().loginName("tenant-admin").active(true).tenantId(null).build();
+        when(appUserRepository.findById("tenant-admin")).thenReturn(Optional.of(user));
+
+        assertThatThrownBy(() -> leaveTypeService.save(LeaveType.builder().id("annual").build()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("tenant id");
+        verify(leaveTypeRepository, never()).save(any());
     }
 
     @Test
@@ -109,5 +209,10 @@ class LeaveTypeServiceTest {
 
         assertThatThrownBy(() -> leaveTypeService.delete("nonexistent"))
                 .isInstanceOf(LeaveTypeNotFoundException.class);
+    }
+
+    private void authenticate(String username) {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(username, "n/a", List.of()));
     }
 }
