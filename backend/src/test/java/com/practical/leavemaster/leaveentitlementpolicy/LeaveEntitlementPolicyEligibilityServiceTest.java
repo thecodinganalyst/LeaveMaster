@@ -57,7 +57,7 @@ class LeaveEntitlementPolicyEligibilityServiceTest {
     void validatesJurisdictionCodesAndSupportedOperators() {
         LeaveEntitlementPolicy policy = policy("p1", "tenant-a");
         when(policyService.findById("p1")).thenReturn(Optional.of(policy));
-        when(jurisdictionRepository.findByCode("SG")).thenReturn(Optional.of(Jurisdiction.builder().id("SG").code("SG").build()));
+        when(jurisdictionRepository.findByCode("UNKNOWN")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.create("p1", rule(EligibilityCriterionType.JURISDICTION_CODE, EligibilityOperator.GREATER_THAN, "SG")))
                 .isInstanceOf(LeaveEntitlementPolicyValidationException.class)
@@ -89,6 +89,7 @@ class LeaveEntitlementPolicyEligibilityServiceTest {
         LeaveEntitlementPolicy policy = policy("p1", "tenant-a");
         when(policyService.findById("p1")).thenReturn(Optional.of(policy));
         when(jurisdictionRepository.findByCode("SG")).thenReturn(Optional.of(Jurisdiction.builder().id("SG").code("SG").build()));
+        when(jurisdictionRepository.findByCode("UNKNOWN")).thenReturn(Optional.empty());
 
         when(ruleRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         LeaveEntitlementPolicyEligibilityRule jurisdiction = service.create("p1",
