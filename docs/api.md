@@ -12,7 +12,7 @@ All endpoints (except `/users/login`, OAuth2 login endpoints, Swagger/OpenAPI, a
 |--------|------|-------------|
 | `GET` | `/tenants` | Retrieve a list of all tenants. |
 | `GET` | `/tenants/{id}` | Retrieve a single tenant by ID. Returns `404` if not found. |
-| `POST` | `/tenants` | Create a new tenant. Body: `{ "id": "...", "name": "...", "startDate": "YYYY-MM-DD", "endDate": "YYYY-MM-DD", "status": "ACTIVE" }`. `endDate` is optional. `status` must be one of `ACTIVE`, `DORMANT`, or `TERMINATED`. |
+| `POST` | `/tenants` | Create a new tenant. Body includes the tenant ID, name, `jurisdictionId`, start date, optional end date, and status. `jurisdictionId` must reference an existing jurisdiction. |
 | `PUT` | `/tenants/{id}` | Update an existing tenant (name, dates, or status). Returns `404` if not found. |
 | `DELETE` | `/tenants/{id}` | Delete a tenant. Returns `204` on success, `404` if not found. |
 
@@ -70,8 +70,8 @@ Required permissions: `ROLE_MANAGE` for all role endpoints.
 |--------|------|-------------|
 | `GET` | `/staff` | Retrieve a list of all staff records. |
 | `GET` | `/staff/{id}` | Retrieve a single staff record by ID. Returns `404` if not found. |
-| `POST` | `/staff` | Create a new staff record. Accepts an optional `location` object (`{ "id": "..." }`) to assign the staff member to a location. Returns `400` for invalid input. |
-| `PUT` | `/staff/{id}` | Update an existing staff record, including the optional `location` assignment. Returns `404` if not found, `400` for invalid input. |
+| `POST` | `/staff` | Create a new staff record. `jurisdictionId` identifies the staff member's jurisdiction and is used for jurisdiction-specific calendars and eligibility rules. Returns `400` for invalid input. |
+| `PUT` | `/staff/{id}` | Update an existing staff record, including `jurisdictionId`. Returns `404` if not found, `400` for invalid input. |
 | `DELETE` | `/staff/{id}` | Delete a staff record. Returns `204` on success, `404` if not found, `409` if the staff member is referenced by other records. |
 | `PUT` | `/staff/{id}/terminate` | Terminate a staff member on a given date (query param `termDate`). Cancels any approved future leave and removes pending leave applications. Returns `400` for invalid input. |
 
@@ -114,25 +114,13 @@ Required permissions: `LEAVE_APPROVER_READ` for `GET`, `LEAVE_APPROVER_WRITE` fo
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/leave-calendars` | Retrieve a list of all leave calendars. |
-| `GET` | `/leave-calendars/current` | Retrieve the leave calendar that covers the given date (query param `date`, defaults to today). Returns `404` if no matching calendar is found. |
-| `POST` | `/leave-calendars` | Create a new leave calendar for a specific year, including its list of public holidays. Each public holiday may include an optional `locationId` field to scope it to a specific location; omit `locationId` (or set it to `null`) for a holiday that applies globally to all locations. Returns `400` for invalid input, `409` if a calendar already exists for the same period. |
+| `GET` | `/leave-calendars` | Retrieve leave calendars accessible to the current user. Tenant calendars are scoped by tenant and jurisdiction; Platform Admin manages public-holiday templates separately. |
+| `GET` | `/leave-calendars/current` | Retrieve the leave calendar that covers the given date (query param `date`, defaults to today) in the applicable jurisdiction. Returns `404` if no matching calendar is found. |
+| `POST` | `/leave-calendars` | Create a jurisdiction-specific leave calendar including its public holidays. Returns `400` for invalid input and `409` for an overlapping calendar in the same tenant and jurisdiction. |
 
-Required permissions: `LEAVE_CALENDAR_READ` for `GET`, `LEAVE_CALENDAR_WRITE` for `POST`/`PUT`/`DELETE`.
+Required permissions: `LEAVE_CALENDAR_READ` for `GET`, `LEAVE_CALENDAR_WRITE` for writes.
 
----
-
-## Locations (`/locations`)
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/locations` | Retrieve a list of all locations. |
-| `GET` | `/locations/{id}` | Retrieve a single location by ID. Returns `404` if not found. |
-| `POST` | `/locations` | Create a new location. Body: `{ "id": "...", "locationName": "...", "country": "...", "state": "..." }`. `state` is optional (omit for country-level locations). |
-| `PUT` | `/locations/{id}` | Update an existing location. Returns `404` if not found. |
-| `DELETE` | `/locations/{id}` | Delete a location. Returns `204` on success, `404` if not found, `409` if the location is assigned to one or more staff members. |
-
-Required permissions: `LOCATION_READ` for `GET`, `LOCATION_WRITE` for `POST`/`PUT`/`DELETE`.
+Jurisdiction is the sole geographic applicability model. LeaveMaster no longer exposes a separate Location resource or location-scoped public holidays.
 
 ---
 
