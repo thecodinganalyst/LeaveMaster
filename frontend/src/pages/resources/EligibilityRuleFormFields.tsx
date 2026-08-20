@@ -7,19 +7,12 @@ import { apiFetch } from '../../api/http.ts';
 import { blockInvalidNumericKey } from './entitlementPolicyForm.ts';
 import { getJurisdictionOptions, type JurisdictionOptionSource } from './jurisdictions.ts';
 
-type CriterionType = 'LOCATION_ID' | 'JURISDICTION_CODE' | 'SERVICE_MONTHS';
+type CriterionType = 'JURISDICTION_CODE' | 'SERVICE_MONTHS';
 type EligibilityOperator = 'EQUALS' | 'NOT_EQUALS' | 'IN' | 'NOT_IN' | 'GREATER_THAN' | 'GREATER_THAN_OR_EQUAL' | 'LESS_THAN' | 'LESS_THAN_OR_EQUAL';
 
 interface PolicyOptionSource {
   id: string;
   name?: string | null;
-  scope?: 'PLATFORM_TEMPLATE' | 'TENANT' | string | null;
-  tenantId?: string | null;
-}
-
-interface LocationOptionSource {
-  id: string;
-  locationName?: string | null;
 }
 
 interface Props {
@@ -27,7 +20,6 @@ interface Props {
 }
 
 const criterionOptions = [
-  { label: 'Employee location', value: 'LOCATION_ID' },
   { label: 'Jurisdiction', value: 'JURISDICTION_CODE' },
   { label: 'Length of service (months)', value: 'SERVICE_MONTHS' },
 ];
@@ -65,19 +57,16 @@ const blockInvalidTagKey = (event: KeyboardEvent<HTMLInputElement | HTMLTextArea
 };
 
 const loadPolicies = () => apiFetch<PolicyOptionSource[]>('/api/leave-entitlement-policies');
-const loadLocations = () => apiFetch<LocationOptionSource[]>('/api/locations');
 const loadJurisdictions = () => apiFetch<JurisdictionOptionSource[]>('/api/jurisdictions');
 
 export const EligibilityRuleFormFields = ({ editing = false }: Props) => {
   const form = Form.useFormInstance();
-  const policyId = Form.useWatch('policyId', form);
   const criterionType = Form.useWatch('criterionType', form) as CriterionType | undefined;
   const operator = Form.useWatch('operator', form) as EligibilityOperator | undefined;
   const previousCriterion = useRef<CriterionType | undefined>(criterionType);
   const previousOperator = useRef<EligibilityOperator | undefined>(operator);
 
   const policiesQuery = useQuery({ queryKey: ['leave-entitlement-policies', 'options'], queryFn: loadPolicies, staleTime: 5 * 60 * 1000 });
-  const locationsQuery = useQuery({ queryKey: ['locations', 'eligibility-options'], queryFn: loadLocations, staleTime: 5 * 60 * 1000 });
   const jurisdictionsQuery = useQuery({ queryKey: ['jurisdictions', 'eligibility-options'], queryFn: loadJurisdictions, staleTime: 5 * 60 * 1000 });
 
   useEffect(() => {
@@ -107,25 +96,8 @@ export const EligibilityRuleFormFields = ({ editing = false }: Props) => {
     value: policy.id,
   })), [policiesQuery.data]);
 
-  const selectedPolicy = (policiesQuery.data ?? []).find((policy) => policy.id === policyId);
-  const platformTemplate = Boolean(selectedPolicy && (
-    selectedPolicy.scope === 'PLATFORM_TEMPLATE'
-    || (!selectedPolicy.tenantId && selectedPolicy.scope !== 'TENANT')
-  ));
-
-  useEffect(() => {
-    if (platformTemplate && criterionType === 'LOCATION_ID') {
-      form.setFieldsValue({ criterionType: undefined, operator: undefined, value: undefined });
-    }
-  }, [criterionType, form, platformTemplate]);
-
   const operatorOptions = criterionType === 'SERVICE_MONTHS' ? numericOperators : setOperators;
   const isMulti = operator ? multiValueOperators.has(operator) : false;
-
-  const locationOptions = useMemo(() => (locationsQuery.data ?? []).map((location) => ({
-    label: location.locationName ? `${location.locationName} (${location.id})` : location.id,
-    value: location.id,
-  })).sort((left, right) => left.label.localeCompare(right.label)), [locationsQuery.data]);
 
   const jurisdictionOptions = useMemo(() => getJurisdictionOptions(jurisdictionsQuery.data ?? []), [jurisdictionsQuery.data]);
 
@@ -155,20 +127,6 @@ export const EligibilityRuleFormFields = ({ editing = false }: Props) => {
       );
     }
 
-    if (criterionType === 'LOCATION_ID') {
-      return (
-        <Select
-          {...(isMulti ? { mode: 'multiple' as const } : {})}
-          loading={locationsQuery.isLoading}
-          disabled={locationsQuery.isError}
-          options={locationOptions}
-          showSearch
-          optionFilterProp="label"
-          placeholder={locationsQuery.isError ? 'Unable to load locations' : isMulti ? 'Select locations' : 'Select a location'}
-        />
-      );
-    }
-
     if (criterionType === 'JURISDICTION_CODE') {
       return (
         <Select
@@ -188,11 +146,9 @@ export const EligibilityRuleFormFields = ({ editing = false }: Props) => {
 
   const valueExtra = criterionType === 'SERVICE_MONTHS'
     ? isMulti ? 'Enter one or more non-negative whole numbers.' : 'Enter a non-negative whole number of completed service months.'
-    : criterionType === 'LOCATION_ID'
-      ? 'Select the employee location value used by this rule.'
-      : criterionType === 'JURISDICTION_CODE'
-        ? 'Select the jurisdiction value used by this rule.'
-        : 'Choose a criterion and operator before entering a value.';
+    : criterionType === 'JURISDICTION_CODE'
+      ? 'Select the jurisdiction value used by this rule.'
+      : 'Choose a criterion and operator before entering a value.';
 
   return (
     <>
@@ -215,19 +171,14 @@ export const EligibilityRuleFormFields = ({ editing = false }: Props) => {
       <Form.Item
         name="criterionType"
         label="Criterion"
-        extra={criterionType === 'LOCATION_ID'
-          ? 'Matches the employee’s assigned work location.'
-          : criterionType === 'JURISDICTION_CODE'
-            ? 'Matches the jurisdiction derived from the employee’s work location.'
-            : criterionType === 'SERVICE_MONTHS'
-              ? 'Matches completed months of service as of the policy evaluation date.'
-              : 'Choose the employee attribute this rule evaluates.'}
+        extra={criterionType === 'JURISDICTION_CODE'
+          ? 'Matches the employee’s assigned jurisdiction or an active parent jurisdiction.'
+          : criterionType === 'SERVICE_MONTHS'
+            ? 'Matches completed months of service as of the policy evaluation date.'
+            : 'Choose the employee attribute this rule evaluates.'}
         rules={[{ required: true, message: 'Criterion is required' }]}
       >
-        <Select
-          options={criterionOptions.map((option) => option.value === 'LOCATION_ID' && platformTemplate ? { ...option, disabled: true } : option)}
-          placeholder="Select a criterion"
-        />
+        <Select options={criterionOptions} placeholder="Select a criterion" />
       </Form.Item>
 
       <Form.Item
