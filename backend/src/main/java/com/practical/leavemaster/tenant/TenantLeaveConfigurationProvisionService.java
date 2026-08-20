@@ -170,7 +170,6 @@ public class TenantLeaveConfigurationProvisionService {
                     .map(holiday -> PublicHoliday.builder()
                             .holidayDate(holiday.getHolidayDate())
                             .holidayName(holiday.getHolidayName())
-                            .locationId(null)
                             .build())
                     .toList();
             leaveCalendarRepository.save(LeaveCalendar.builder()
@@ -180,6 +179,7 @@ public class TenantLeaveConfigurationProvisionService {
                     .publicHolidays(holidays)
                     .tenantId(tenant.getId())
                     .scope(ConfigurationScope.TENANT)
+                    .jurisdictionId(template.getJurisdictionId())
                     .sourceTemplateId(template.getId())
                     .build());
         }

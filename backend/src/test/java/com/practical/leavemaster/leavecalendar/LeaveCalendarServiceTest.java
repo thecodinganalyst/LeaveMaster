@@ -79,19 +79,19 @@ class LeaveCalendarServiceTest {
     }
 
     @Test
-    void tenantUserCreateForcesTenantScopeAndTenantId() {
+    void tenantUserCreateForcesTenantScopeAndTenantIdAndRetainsJurisdiction() {
         authenticateTenantUser("hr", "tenant-1");
         LeaveCalendar requested = platformTemplate(null);
-        when(leaveCalendarRepository.existsById("tenant-1:2026-01-01_2026-12-31")).thenReturn(false);
-        when(leaveCalendarRepository.existsByTenantIdAndStartLessThanEqualAndEndGreaterThanEqual(
-                "tenant-1", LocalDate.of(2026, 12, 31), LocalDate.of(2026, 1, 1))).thenReturn(false);
+        when(leaveCalendarRepository.existsById("tenant-1:SG:2026-01-01_2026-12-31")).thenReturn(false);
+        when(leaveCalendarRepository.existsByTenantIdAndJurisdictionIdAndStartLessThanEqualAndEndGreaterThanEqual(
+                "tenant-1", "SG", LocalDate.of(2026, 12, 31), LocalDate.of(2026, 1, 1))).thenReturn(false);
         when(leaveCalendarRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         LeaveCalendar saved = leaveCalendarService.create(requested);
 
         assertThat(saved.getScope()).isEqualTo(ConfigurationScope.TENANT);
         assertThat(saved.getTenantId()).isEqualTo("tenant-1");
-        assertThat(saved.getJurisdictionId()).isNull();
+        assertThat(saved.getJurisdictionId()).isEqualTo("SG");
         verify(tenantActivityService).touch("tenant-1");
     }
 
@@ -99,7 +99,6 @@ class LeaveCalendarServiceTest {
     void platformAdminCreateForcesTemplateScopeAndNullTenant() {
         authenticatePlatformAdmin("platform");
         LeaveCalendar requested = tenantCalendar(null, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31));
-        requested.setJurisdictionId("SG");
         when(leaveCalendarRepository.existsById("template:SG:2026-01-01_2026-12-31")).thenReturn(false);
         when(leaveCalendarRepository.findAllByScopeAndJurisdictionId(ConfigurationScope.PLATFORM_TEMPLATE, "SG")).thenReturn(List.of());
         when(leaveCalendarRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -113,20 +112,34 @@ class LeaveCalendarServiceTest {
     }
 
     @Test
-    void tenantUserUsesTenantScopedCalendarLookupAndGeneration() {
+    void tenantUserUsesJurisdictionScopedCalendarLookupAndGeneration() {
         authenticateTenantUser("hr", "tenant-1");
         LocalDate requestedDate = LocalDate.of(2027, 6, 1);
         LeaveCalendar existing = tenantCalendar("fy2026", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31));
-        when(leaveCalendarRepository.findByTenantIdAndStartLessThanEqualAndEndGreaterThanEqual("tenant-1", requestedDate, requestedDate))
-                .thenReturn(Optional.empty());
-        when(leaveCalendarRepository.findTopByTenantIdOrderByEndDesc("tenant-1")).thenReturn(Optional.of(existing));
+        when(leaveCalendarRepository.findByTenantIdAndJurisdictionIdAndStartLessThanEqualAndEndGreaterThanEqual(
+                "tenant-1", "SG", requestedDate, requestedDate)).thenReturn(Optional.empty());
+        when(leaveCalendarRepository.findTopByTenantIdAndJurisdictionIdOrderByEndDesc("tenant-1", "SG"))
+                .thenReturn(Optional.of(existing));
         when(leaveCalendarRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        Optional<LeaveCalendar> result = leaveCalendarService.getCalendarFor(requestedDate);
+        Optional<LeaveCalendar> result = leaveCalendarService.getCalendarFor("SG", requestedDate);
 
         assertThat(result).isPresent();
         assertThat(result.get().getTenantId()).isEqualTo("tenant-1");
+        assertThat(result.get().getJurisdictionId()).isEqualTo("SG");
         assertThat(result.get().getStart()).isEqualTo(LocalDate.of(2027, 1, 1));
+    }
+
+    @Test
+    void tenantDateOnlyLookupReturnsEmptyWhenMultipleJurisdictionsMatch() {
+        authenticateTenantUser("hr", "tenant-1");
+        LocalDate date = LocalDate.of(2026, 6, 1);
+        LeaveCalendar sg = tenantCalendar("sg", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31));
+        LeaveCalendar my = tenantCalendar("my", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31));
+        my.setJurisdictionId("MY");
+        when(leaveCalendarRepository.findAllByTenantIdOrderByStartAsc("tenant-1")).thenReturn(List.of(sg, my));
+
+        assertThat(leaveCalendarService.getCalendarFor(date)).isEmpty();
     }
 
     @Test
@@ -142,14 +155,15 @@ class LeaveCalendarServiceTest {
         LeaveCalendar leaveCalendar = tenantCalendar("fy2026", LocalDate.of(2026, 4, 1), LocalDate.of(2027, 3, 31));
         leaveCalendar.setPublicHolidays(List.of(PublicHoliday.builder().holidayDate(LocalDate.of(2026, 5, 1)).holidayName("Labour Day").build()));
         when(leaveCalendarRepository.existsById("fy2026")).thenReturn(false);
-        when(leaveCalendarRepository.existsByTenantIdAndStartLessThanEqualAndEndGreaterThanEqual(
-                "tenant-1", LocalDate.of(2027, 3, 31), LocalDate.of(2026, 4, 1))).thenReturn(false);
+        when(leaveCalendarRepository.existsByTenantIdAndJurisdictionIdAndStartLessThanEqualAndEndGreaterThanEqual(
+                "tenant-1", "SG", LocalDate.of(2027, 3, 31), LocalDate.of(2026, 4, 1))).thenReturn(false);
         when(leaveCalendarRepository.save(any(LeaveCalendar.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         LeaveCalendar result = leaveCalendarService.create(leaveCalendar);
         assertThat(result.getId()).isEqualTo("fy2026");
         assertThat(result.getTenantId()).isEqualTo("tenant-1");
         assertThat(result.getScope()).isEqualTo(ConfigurationScope.TENANT);
+        assertThat(result.getJurisdictionId()).isEqualTo("SG");
         assertThat(result.getPublicHolidays()).hasSize(1);
     }
 
@@ -163,10 +177,11 @@ class LeaveCalendarServiceTest {
 
         Optional<LeaveCalendar> result = leaveCalendarService.getCalendarFor(LocalDate.of(2027, 4, 15));
         assertThat(result).isPresent();
-        assertThat(result.get().getId()).isEqualTo("tenant-1:2027-04-01_2028-03-31");
+        assertThat(result.get().getId()).isEqualTo("tenant-1:SG:2027-04-01_2028-03-31");
         assertThat(result.get().getStart()).isEqualTo(LocalDate.of(2027, 4, 1));
         assertThat(result.get().getEnd()).isEqualTo(LocalDate.of(2028, 3, 31));
         assertThat(result.get().getTenantId()).isEqualTo("tenant-1");
+        assertThat(result.get().getJurisdictionId()).isEqualTo("SG");
         assertThat(result.get().getPublicHolidays()).containsExactly(PublicHoliday.builder().holidayDate(LocalDate.of(2027, 5, 1)).holidayName("Labour Day").build());
     }
 
@@ -201,12 +216,26 @@ class LeaveCalendarServiceTest {
     }
 
     @Test
-    void shouldThrowWhenTenantLeaveCalendarOverlapsExisting() {
+    void shouldThrowWhenTenantLeaveCalendarOverlapsSameJurisdiction() {
         LeaveCalendar leaveCalendar = tenantCalendar(null, LocalDate.of(2026, 4, 1), LocalDate.of(2027, 3, 31));
-        when(leaveCalendarRepository.existsById("tenant-1:2026-04-01_2027-03-31")).thenReturn(false);
-        when(leaveCalendarRepository.existsByTenantIdAndStartLessThanEqualAndEndGreaterThanEqual(
-                "tenant-1", LocalDate.of(2027, 3, 31), LocalDate.of(2026, 4, 1))).thenReturn(true);
+        when(leaveCalendarRepository.existsById("tenant-1:SG:2026-04-01_2027-03-31")).thenReturn(false);
+        when(leaveCalendarRepository.existsByTenantIdAndJurisdictionIdAndStartLessThanEqualAndEndGreaterThanEqual(
+                "tenant-1", "SG", LocalDate.of(2027, 3, 31), LocalDate.of(2026, 4, 1))).thenReturn(true);
         assertThatThrownBy(() -> leaveCalendarService.create(leaveCalendar)).isInstanceOf(LeaveCalendarConflictException.class).hasMessageContaining("overlaps");
+    }
+
+    @Test
+    void shouldAllowSamePeriodForDifferentJurisdiction() {
+        LeaveCalendar leaveCalendar = tenantCalendar(null, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31));
+        leaveCalendar.setJurisdictionId("MY");
+        when(leaveCalendarRepository.existsById("tenant-1:MY:2026-01-01_2026-12-31")).thenReturn(false);
+        when(leaveCalendarRepository.existsByTenantIdAndJurisdictionIdAndStartLessThanEqualAndEndGreaterThanEqual(
+                "tenant-1", "MY", LocalDate.of(2026, 12, 31), LocalDate.of(2026, 1, 1))).thenReturn(false);
+        when(leaveCalendarRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        LeaveCalendar saved = leaveCalendarService.create(leaveCalendar);
+
+        assertThat(saved.getJurisdictionId()).isEqualTo("MY");
     }
 
     @Test
@@ -219,6 +248,13 @@ class LeaveCalendarServiceTest {
     void shouldThrowWhenStartDateIsAfterEndDate() {
         LeaveCalendar leaveCalendar = tenantCalendar(null, LocalDate.of(2027, 3, 31), LocalDate.of(2026, 4, 1));
         assertThatThrownBy(() -> leaveCalendarService.create(leaveCalendar)).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("start date must be on or before end date");
+    }
+
+    @Test
+    void shouldThrowWhenJurisdictionIsMissing() {
+        LeaveCalendar leaveCalendar = tenantCalendar(null, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31));
+        leaveCalendar.setJurisdictionId(null);
+        assertThatThrownBy(() -> leaveCalendarService.create(leaveCalendar)).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("jurisdictionId");
     }
 
     @Test
@@ -257,11 +293,11 @@ class LeaveCalendarServiceTest {
     @Test
     void shouldCreateCalendarWithAutoGeneratedIdWhenNoneProvided() {
         LeaveCalendar leaveCalendar = tenantCalendar(null, LocalDate.of(2026, 4, 1), LocalDate.of(2027, 3, 31));
-        when(leaveCalendarRepository.existsById("tenant-1:2026-04-01_2027-03-31")).thenReturn(false);
-        when(leaveCalendarRepository.existsByTenantIdAndStartLessThanEqualAndEndGreaterThanEqual(
-                "tenant-1", LocalDate.of(2027, 3, 31), LocalDate.of(2026, 4, 1))).thenReturn(false);
+        when(leaveCalendarRepository.existsById("tenant-1:SG:2026-04-01_2027-03-31")).thenReturn(false);
+        when(leaveCalendarRepository.existsByTenantIdAndJurisdictionIdAndStartLessThanEqualAndEndGreaterThanEqual(
+                "tenant-1", "SG", LocalDate.of(2027, 3, 31), LocalDate.of(2026, 4, 1))).thenReturn(false);
         when(leaveCalendarRepository.save(any(LeaveCalendar.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        assertThat(leaveCalendarService.create(leaveCalendar).getId()).isEqualTo("tenant-1:2026-04-01_2027-03-31");
+        assertThat(leaveCalendarService.create(leaveCalendar).getId()).isEqualTo("tenant-1:SG:2026-04-01_2027-03-31");
     }
 
     @Test
@@ -277,7 +313,7 @@ class LeaveCalendarServiceTest {
 
     private LeaveCalendar tenantCalendar(String id, LocalDate start, LocalDate end) {
         return LeaveCalendar.builder().id(id).start(start).end(end).tenantId("tenant-1")
-                .scope(ConfigurationScope.TENANT).publicHolidays(List.of()).build();
+                .scope(ConfigurationScope.TENANT).jurisdictionId("SG").publicHolidays(List.of()).build();
     }
 
     private LeaveCalendar platformTemplate(String id) {

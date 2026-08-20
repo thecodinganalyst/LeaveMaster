@@ -83,9 +83,9 @@ public class LeaveCalendarService {
             throw new LeaveCalendarConflictException("Leave calendar already exists: " + normalized.getId());
         }
         if (normalized.getScope() == ConfigurationScope.TENANT) {
-            if (leaveCalendarRepository.existsByTenantIdAndStartLessThanEqualAndEndGreaterThanEqual(
-                    normalized.getTenantId(), normalized.getEnd(), normalized.getStart())) {
-                throw new LeaveCalendarConflictException("Leave calendar overlaps an existing tenant calendar");
+            if (leaveCalendarRepository.existsByTenantIdAndJurisdictionIdAndStartLessThanEqualAndEndGreaterThanEqual(
+                    normalized.getTenantId(), normalized.getJurisdictionId(), normalized.getEnd(), normalized.getStart())) {
+                throw new LeaveCalendarConflictException("Leave calendar overlaps an existing tenant calendar for this jurisdiction");
             }
         } else {
             ensureNoOverlap(normalized, null);
@@ -104,7 +104,6 @@ public class LeaveCalendarService {
         normalized.setScope(existing.getScope());
         normalized.setTenantId(existing.getTenantId());
         normalized.setSourceTemplateId(existing.getSourceTemplateId());
-        if (existing.getScope() == ConfigurationScope.TENANT) normalized.setJurisdictionId(null);
         validate(normalized);
         ensureNoOverlap(normalized, id);
         LeaveCalendar saved = leaveCalendarRepository.save(normalized);
@@ -123,7 +122,12 @@ public class LeaveCalendarService {
         Optional<AppUser> user = currentUser();
         if (user.isPresent()) {
             if (isPlatformAdmin(user.get())) return Optional.empty();
-            return getTenantCalendarFor(requiredTenantId(user.get()), date);
+            String tenantId = requiredTenantId(user.get());
+            List<LeaveCalendar> matching = leaveCalendarRepository.findAllByTenantIdOrderByStartAsc(tenantId).stream()
+                    .filter(calendar -> calendar.getScope() == ConfigurationScope.TENANT)
+                    .filter(calendar -> !calendar.getStart().isAfter(date) && !calendar.getEnd().isBefore(date))
+                    .toList();
+            return matching.size() == 1 ? Optional.of(matching.get(0)) : Optional.empty();
         }
 
         Optional<LeaveCalendar> existing = leaveCalendarRepository.findByStartLessThanEqualAndEndGreaterThanEqual(date, date);
@@ -139,10 +143,28 @@ public class LeaveCalendarService {
         return Optional.of(calendar);
     }
 
-    private Optional<LeaveCalendar> getTenantCalendarFor(String tenantId, LocalDate date) {
-        Optional<LeaveCalendar> existing = leaveCalendarRepository.findByTenantIdAndStartLessThanEqualAndEndGreaterThanEqual(tenantId, date, date);
+    public Optional<LeaveCalendar> getCalendarFor(String jurisdictionId, LocalDate date) {
+        if (jurisdictionId == null || jurisdictionId.isBlank()) {
+            throw new IllegalArgumentException("jurisdictionId is required");
+        }
+        Optional<AppUser> user = currentUser();
+        if (user.isPresent()) {
+            if (isPlatformAdmin(user.get())) return Optional.empty();
+            return getTenantCalendarFor(requiredTenantId(user.get()), jurisdictionId.trim(), date);
+        }
+        return leaveCalendarRepository.findAll().stream()
+                .filter(calendar -> calendar.getScope() == ConfigurationScope.TENANT)
+                .filter(calendar -> jurisdictionId.trim().equals(calendar.getJurisdictionId()))
+                .filter(calendar -> !calendar.getStart().isAfter(date) && !calendar.getEnd().isBefore(date))
+                .findFirst();
+    }
+
+    private Optional<LeaveCalendar> getTenantCalendarFor(String tenantId, String jurisdictionId, LocalDate date) {
+        Optional<LeaveCalendar> existing = leaveCalendarRepository
+                .findByTenantIdAndJurisdictionIdAndStartLessThanEqualAndEndGreaterThanEqual(tenantId, jurisdictionId, date, date);
         if (existing.isPresent()) return existing;
-        Optional<LeaveCalendar> latest = leaveCalendarRepository.findTopByTenantIdOrderByEndDesc(tenantId);
+        Optional<LeaveCalendar> latest = leaveCalendarRepository
+                .findTopByTenantIdAndJurisdictionIdOrderByEndDesc(tenantId, jurisdictionId);
         if (latest.isEmpty() || !date.isAfter(latest.get().getEnd())) return Optional.empty();
         LeaveCalendar calendar = latest.get();
         while (date.isAfter(calendar.getEnd())) {
@@ -155,14 +177,14 @@ public class LeaveCalendarService {
     private void ensureNoOverlap(LeaveCalendar calendar, String excludedId) {
         List<LeaveCalendar> candidates = calendar.getScope() == ConfigurationScope.PLATFORM_TEMPLATE
                 ? leaveCalendarRepository.findAllByScopeAndJurisdictionId(ConfigurationScope.PLATFORM_TEMPLATE, calendar.getJurisdictionId())
-                : leaveCalendarRepository.findAllByTenantIdOrderByStartAsc(calendar.getTenantId());
+                : leaveCalendarRepository.findAllByTenantIdAndJurisdictionIdOrderByStartAsc(calendar.getTenantId(), calendar.getJurisdictionId());
         boolean overlaps = candidates.stream()
                 .filter(existing -> excludedId == null || !excludedId.equals(existing.getId()))
                 .anyMatch(existing -> !existing.getStart().isAfter(calendar.getEnd()) && !existing.getEnd().isBefore(calendar.getStart()));
         if (overlaps) {
             throw new LeaveCalendarConflictException(calendar.getScope() == ConfigurationScope.PLATFORM_TEMPLATE
                     ? "Leave calendar template overlaps an existing jurisdiction template"
-                    : "Leave calendar overlaps an existing tenant calendar");
+                    : "Leave calendar overlaps an existing tenant calendar for this jurisdiction");
         }
     }
 
@@ -174,17 +196,14 @@ public class LeaveCalendarService {
             throw new IllegalArgumentException("Leave calendar start date must be on or before end date");
         }
         if (leaveCalendar.getScope() == null) throw new IllegalArgumentException("Leave calendar scope is required");
+        if (leaveCalendar.getJurisdictionId() == null || leaveCalendar.getJurisdictionId().isBlank()) {
+            throw new IllegalArgumentException("jurisdictionId is required for leave calendars");
+        }
+        leaveCalendar.setJurisdictionId(leaveCalendar.getJurisdictionId().trim());
         if (leaveCalendar.getScope() == ConfigurationScope.PLATFORM_TEMPLATE) {
             if (leaveCalendar.getTenantId() != null) throw new IllegalArgumentException("Platform calendar templates must not have a tenantId");
-            if (leaveCalendar.getJurisdictionId() == null || leaveCalendar.getJurisdictionId().isBlank()) {
-                throw new IllegalArgumentException("jurisdictionId is required for platform calendar templates");
-            }
-            leaveCalendar.setJurisdictionId(leaveCalendar.getJurisdictionId().trim());
-        } else {
-            if (leaveCalendar.getTenantId() == null || leaveCalendar.getTenantId().isBlank()) {
-                throw new IllegalArgumentException("tenantId is required for tenant calendars");
-            }
-            if (leaveCalendar.getJurisdictionId() != null) throw new IllegalArgumentException("Tenant calendars must not have jurisdictionId");
+        } else if (leaveCalendar.getTenantId() == null || leaveCalendar.getTenantId().isBlank()) {
+            throw new IllegalArgumentException("tenantId is required for tenant calendars");
         }
 
         List<PublicHoliday> publicHolidays = leaveCalendar.getPublicHolidays() == null ? List.of() : leaveCalendar.getPublicHolidays();
@@ -212,11 +231,12 @@ public class LeaveCalendarService {
                 .map(publicHoliday -> PublicHoliday.builder()
                         .holidayDate(publicHoliday.getHolidayDate().plusYears(1))
                         .holidayName(publicHoliday.getHolidayName())
-                        .locationId(publicHoliday.getLocationId())
                         .build())
                 .toList();
         return LeaveCalendar.builder()
-                .id(current.getTenantId() == null ? defaultId(current) + "-next" : current.getTenantId() + ":" + nextStart + "_" + nextEnd)
+                .id(current.getTenantId() == null
+                        ? defaultId(current) + "-next"
+                        : current.getTenantId() + ":" + current.getJurisdictionId() + ":" + nextStart + "_" + nextEnd)
                 .start(nextStart)
                 .end(nextEnd)
                 .publicHolidays(nextPublicHolidays)
@@ -234,7 +254,6 @@ public class LeaveCalendarService {
                 .map(publicHoliday -> PublicHoliday.builder()
                         .holidayDate(publicHoliday.getHolidayDate())
                         .holidayName(publicHoliday.getHolidayName())
-                        .locationId(publicHoliday.getLocationId())
                         .build())
                 .toList();
         return LeaveCalendar.builder()
@@ -259,7 +278,6 @@ public class LeaveCalendarService {
         } else {
             calendar.setScope(ConfigurationScope.TENANT);
             calendar.setTenantId(requiredTenantId(user.get()));
-            calendar.setJurisdictionId(null);
             calendar.setSourceTemplateId(null);
         }
     }
@@ -298,7 +316,7 @@ public class LeaveCalendarService {
     private String defaultId(LeaveCalendar calendar) {
         String prefix = calendar.getScope() == ConfigurationScope.PLATFORM_TEMPLATE
                 ? "template:" + calendar.getJurisdictionId() + ":"
-                : calendar.getTenantId() + ":";
+                : calendar.getTenantId() + ":" + calendar.getJurisdictionId() + ":";
         return prefix + calendar.getStart() + "_" + calendar.getEnd();
     }
 }

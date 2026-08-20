@@ -16,7 +16,7 @@ export const resources: IResourceItem[] = [
   crud('tenants', 'Tenants', 'bank'),
   crud('jurisdictions', 'Jurisdictions', 'global'),
   crud('jurisdiction-leave-types', 'Jurisdiction Leave Types', 'tags'),
-  crud('public-holidays', 'Public Holidays', 'calendar'),
+  crud('public-holidays', 'Public Holiday Templates', 'calendar'),
   crud('users', 'App Users', 'user'),
   crud('roles', 'Roles', 'safety'),
   crud('locations', 'Locations', 'environment'),

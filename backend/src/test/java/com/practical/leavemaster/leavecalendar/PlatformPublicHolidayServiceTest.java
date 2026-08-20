@@ -29,9 +29,9 @@ class PlatformPublicHolidayServiceTest {
         LeaveCalendar platform = platformCalendar("template:SG:2026-01-01_2026-12-31", "SG", 2026);
         platform.getPublicHolidays().add(holiday("New Year's Day", LocalDate.of(2026, 1, 1)));
         LeaveCalendar tenant = LeaveCalendar.builder()
-                .id("tenant-1:2026").tenantId("tenant-1").scope(ConfigurationScope.TENANT)
+                .id("tenant-1:SG:2026").tenantId("tenant-1").scope(ConfigurationScope.TENANT)
                 .start(LocalDate.of(2026, 1, 1)).end(LocalDate.of(2026, 12, 31))
-                .jurisdictionId(null).publicHolidays(new ArrayList<>(List.of(holiday("Tenant Day", LocalDate.of(2026, 2, 1)))))
+                .jurisdictionId("SG").publicHolidays(new ArrayList<>(List.of(holiday("Tenant Day", LocalDate.of(2026, 2, 1)))))
                 .build();
         when(leaveCalendarRepository.findAll()).thenReturn(List.of(tenant, platform));
 
@@ -51,7 +51,7 @@ class PlatformPublicHolidayServiceTest {
         when(leaveCalendarRepository.save(any(LeaveCalendar.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         PlatformPublicHoliday created = service.create(new PlatformPublicHolidayRequest(
-                " SG ", LocalDate.of(2026, 8, 9), " National Day ", null));
+                " SG ", LocalDate.of(2026, 8, 9), " National Day "));
 
         assertThat(created.jurisdictionId()).isEqualTo("SG");
         assertThat(created.holidayName()).isEqualTo("National Day");
@@ -66,7 +66,7 @@ class PlatformPublicHolidayServiceTest {
         when(leaveCalendarRepository.save(any(LeaveCalendar.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         PlatformPublicHoliday created = service.create(new PlatformPublicHolidayRequest(
-                "SG", LocalDate.of(2028, 1, 1), "New Year's Day", null));
+                "SG", LocalDate.of(2028, 1, 1), "New Year's Day"));
 
         assertThat(created.calendarId()).isEqualTo("template:SG:2028-01-01_2028-12-31");
         assertThat(created.year()).isEqualTo(2028);
@@ -80,7 +80,7 @@ class PlatformPublicHolidayServiceTest {
                 .thenReturn(List.of(platform));
 
         assertThatThrownBy(() -> service.create(new PlatformPublicHolidayRequest(
-                "SG", LocalDate.of(2026, 8, 9), " national day ", null)))
+                "SG", LocalDate.of(2026, 8, 9), " national day ")))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Duplicate public holiday");
     }
@@ -97,12 +97,11 @@ class PlatformPublicHolidayServiceTest {
         when(leaveCalendarRepository.save(any(LeaveCalendar.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         PlatformPublicHoliday updated = service.update(id, new PlatformPublicHolidayRequest(
-                "MY", LocalDate.of(2027, 8, 31), "National Day", "KL"));
+                "MY", LocalDate.of(2027, 8, 31), "National Day"));
 
         assertThat(source.getPublicHolidays()).isEmpty();
         assertThat(updated.jurisdictionId()).isEqualTo("MY");
         assertThat(updated.year()).isEqualTo(2027);
-        assertThat(updated.locationId()).isEqualTo("KL");
     }
 
     @Test
@@ -123,7 +122,7 @@ class PlatformPublicHolidayServiceTest {
 
     @Test
     void rejectsInvalidRequestAndInvalidIds() {
-        assertThatThrownBy(() -> service.create(new PlatformPublicHolidayRequest("", null, "", null)))
+        assertThatThrownBy(() -> service.create(new PlatformPublicHolidayRequest("", null, "")))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> service.findById("not-base64"))
                 .isInstanceOf(IllegalArgumentException.class)

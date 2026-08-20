@@ -21,7 +21,4 @@ public class PublicHoliday {
 
     @Column(name = "holiday_name", nullable = false)
     private String holidayName;
-
-    @Column(name = "location_id")
-    private String locationId;
 }

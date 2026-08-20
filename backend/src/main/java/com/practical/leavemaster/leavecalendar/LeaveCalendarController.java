@@ -43,8 +43,13 @@ public class LeaveCalendarController {
     }
 
     @GetMapping("/current")
-    public ResponseEntity<LeaveCalendar> getCurrent(@RequestParam(required = false) LocalDate date) {
-        return leaveCalendarService.getCalendarFor(date == null ? LocalDate.now() : date)
+    public ResponseEntity<LeaveCalendar> getCurrent(
+            @RequestParam(required = false) LocalDate date,
+            @RequestParam(required = false) String jurisdictionId) {
+        LocalDate targetDate = date == null ? LocalDate.now() : date;
+        return (jurisdictionId == null || jurisdictionId.isBlank()
+                ? leaveCalendarService.getCalendarFor(targetDate)
+                : leaveCalendarService.getCalendarFor(jurisdictionId, targetDate))
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }

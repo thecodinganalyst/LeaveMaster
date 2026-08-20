@@ -48,7 +48,7 @@ describe('AppLayout navigation', () => {
     expect(screen.queryByRole('link', { name: 'Staff' })).not.toBeInTheDocument();
   });
 
-  it('shows Public Holidays without exposing tenant Leave Calendars', () => {
+  it('shows Public Holiday Templates without exposing tenant Leave Calendars', () => {
     mocks.useCan.mockImplementation(({ resource }: { resource: string }) => ({
       data: { can: resource === 'public-holidays' },
     }));
@@ -59,7 +59,7 @@ describe('AppLayout navigation', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole('link', { name: 'Public Holidays' })).toHaveAttribute('href', '/public-holidays');
+    expect(screen.getByRole('link', { name: 'Public Holiday Templates' })).toHaveAttribute('href', '/public-holidays');
     expect(screen.queryByRole('link', { name: 'Leave Calendars' })).not.toBeInTheDocument();
   });
 
