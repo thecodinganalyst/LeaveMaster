@@ -86,7 +86,7 @@ LeaveMaster supports local form login and optional OAuth/OIDC providers. Authent
 
 The frontend consumes authenticated-user/permission information to implement navigation and action visibility through Refine's access-control layer. That is a UX optimization only. Direct API access still goes through Spring Security authorization.
 
-Typical permission groups include tenant, user, role, staff, leave-type, approver, calendar, location and leave-application read/write/approval authorities.
+Typical permission groups include tenant, user, role, staff, jurisdiction, leave-type, approver, calendar, entitlement-policy and leave-application read/write/approval authorities. Jurisdiction is the sole geographic model; the former Location module and its permissions have been removed.
 
 OAuth providers are restricted to existing active LeaveMaster users mapped to an IdP provider/subject. Production callbacks use the canonical frontend origin and are rewritten through Firebase Hosting to Cloud Run.
 
