@@ -3,8 +3,6 @@ package com.practical.leavemaster.leaveentitlementpolicy;
 import com.practical.leavemaster.config.ConfigurationScope;
 import com.practical.leavemaster.jurisdiction.Jurisdiction;
 import com.practical.leavemaster.jurisdiction.JurisdictionRepository;
-import com.practical.leavemaster.location.Location;
-import com.practical.leavemaster.location.LocationRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -26,17 +24,15 @@ import static org.mockito.Mockito.when;
 class LeaveEntitlementPolicyEligibilityServiceTest {
     @Mock private LeaveEntitlementPolicyEligibilityRepository ruleRepository;
     @Mock private LeaveEntitlementPolicyService policyService;
-    @Mock private LocationRepository locationRepository;
     @Mock private JurisdictionRepository jurisdictionRepository;
     @InjectMocks private LeaveEntitlementPolicyEligibilityService service;
 
     @Test
     void createsListsUpdatesAndDeletesRulesForAccessiblePolicy() {
         LeaveEntitlementPolicy policy = policy("p1", "tenant-a");
-        LeaveEntitlementPolicyEligibilityRule rule = rule(EligibilityCriterionType.LOCATION_ID, EligibilityOperator.EQUALS, "loc-1");
-        Location location = Location.builder().id("loc-1").locationName("Office").tenantId("tenant-a").country("SG").build();
+        LeaveEntitlementPolicyEligibilityRule rule = rule(EligibilityCriterionType.JURISDICTION_CODE, EligibilityOperator.EQUALS, "SG");
         when(policyService.findById("p1")).thenReturn(Optional.of(policy));
-        when(locationRepository.findById("loc-1")).thenReturn(Optional.of(location));
+        when(jurisdictionRepository.findByCode("SG")).thenReturn(Optional.of(Jurisdiction.builder().id("SG").code("SG").build()));
         when(ruleRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         LeaveEntitlementPolicyEligibilityRule created = service.create("p1", rule);
@@ -58,33 +54,34 @@ class LeaveEntitlementPolicyEligibilityServiceTest {
     }
 
     @Test
-    void validatesLocationTenantAndSupportedOperators() {
+    void validatesJurisdictionCodesAndSupportedOperators() {
         LeaveEntitlementPolicy policy = policy("p1", "tenant-a");
         when(policyService.findById("p1")).thenReturn(Optional.of(policy));
-        when(locationRepository.findById("loc-b")).thenReturn(Optional.of(
-                Location.builder().id("loc-b").locationName("Other").tenantId("tenant-b").country("SG").build()));
+        when(jurisdictionRepository.findByCode("SG")).thenReturn(Optional.of(Jurisdiction.builder().id("SG").code("SG").build()));
 
-        assertThatThrownBy(() -> service.create("p1", rule(EligibilityCriterionType.LOCATION_ID, EligibilityOperator.GREATER_THAN, "loc-b")))
+        assertThatThrownBy(() -> service.create("p1", rule(EligibilityCriterionType.JURISDICTION_CODE, EligibilityOperator.GREATER_THAN, "SG")))
                 .isInstanceOf(LeaveEntitlementPolicyValidationException.class)
                 .hasMessageContaining("supports only");
-        assertThatThrownBy(() -> service.create("p1", rule(EligibilityCriterionType.LOCATION_ID, EligibilityOperator.EQUALS, "loc-b")))
+        assertThatThrownBy(() -> service.create("p1", rule(EligibilityCriterionType.JURISDICTION_CODE, EligibilityOperator.EQUALS, "UNKNOWN")))
                 .isInstanceOf(LeaveEntitlementPolicyValidationException.class)
-                .hasMessageContaining("policy tenant");
+                .hasMessageContaining("Unknown jurisdiction");
     }
 
     @Test
-    void rejectsLocationEligibilityForPlatformTemplates() {
+    void allowsJurisdictionEligibilityForPlatformTemplates() {
         LeaveEntitlementPolicy template = policy("template-1", null);
         template.setScope(ConfigurationScope.PLATFORM_TEMPLATE);
         template.setLeaveTypeId(null);
         template.setJurisdictionId("SG");
         template.setJurisdictionLeaveTypeId("SG:ANNUAL_LEAVE");
         when(policyService.findById("template-1")).thenReturn(Optional.of(template));
+        when(jurisdictionRepository.findByCode("SG")).thenReturn(Optional.of(Jurisdiction.builder().id("SG").code("SG").build()));
+        when(ruleRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        assertThatThrownBy(() -> service.create("template-1",
-                rule(EligibilityCriterionType.LOCATION_ID, EligibilityOperator.EQUALS, "loc-1")))
-                .isInstanceOf(LeaveEntitlementPolicyValidationException.class)
-                .hasMessageContaining("tenant-specific");
+        LeaveEntitlementPolicyEligibilityRule created = service.create("template-1",
+                rule(EligibilityCriterionType.JURISDICTION_CODE, EligibilityOperator.EQUALS, "SG"));
+
+        assertThat(created.getValue()).isEqualTo("SG");
     }
 
     @Test
