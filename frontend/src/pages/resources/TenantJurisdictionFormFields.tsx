@@ -3,13 +3,10 @@ import { Form, Input, Select, Switch, Typography } from 'antd';
 
 import { apiFetch } from '../../api/http.ts';
 import { getJurisdictionOptions, type JurisdictionOptionSource } from './jurisdictions.ts';
-
-interface TenantJurisdictionRecord {
-  jurisdictionId: string;
-}
+import { excludeExistingJurisdictions, type TenantJurisdictionSummary } from './tenantOnboarding.ts';
 
 const loadJurisdictions = () => apiFetch<JurisdictionOptionSource[]>('/api/jurisdictions');
-const loadTenantJurisdictions = () => apiFetch<TenantJurisdictionRecord[]>('/api/tenant-jurisdictions');
+const loadTenantJurisdictions = () => apiFetch<TenantJurisdictionSummary[]>('/api/tenant-jurisdictions');
 
 export const TenantJurisdictionFormFields = () => {
   const jurisdictionsQuery = useQuery({
@@ -22,9 +19,10 @@ export const TenantJurisdictionFormFields = () => {
     queryFn: loadTenantJurisdictions,
   });
 
-  const existing = new Set((tenantJurisdictionsQuery.data ?? []).map((item) => item.jurisdictionId));
-  const availableOptions = getJurisdictionOptions(jurisdictionsQuery.data ?? [])
-    .filter((option) => !existing.has(String(option.value)));
+  const availableOptions = excludeExistingJurisdictions(
+    getJurisdictionOptions(jurisdictionsQuery.data ?? []),
+    tenantJurisdictionsQuery.data ?? [],
+  );
   const loading = jurisdictionsQuery.isLoading || tenantJurisdictionsQuery.isLoading;
   const failed = jurisdictionsQuery.isError || tenantJurisdictionsQuery.isError;
 
