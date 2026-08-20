@@ -3,7 +3,6 @@ import type { Rule } from 'antd/es/form';
 
 import type { AdminResourceConfig } from './adminResourceConfig.ts';
 import { isAdminFieldVisible } from './adminResourceConfig.ts';
-import { getCountryOptions } from './countries.ts';
 import { EligibilityRuleFormFields } from './EligibilityRuleFormFields.tsx';
 import { EntitlementPolicyFormFields } from './EntitlementPolicyFormFields.tsx';
 import { JurisdictionSelect } from './JurisdictionSelect.tsx';
@@ -16,7 +15,7 @@ interface Props {
   platformAdmin?: boolean;
 }
 
-export const ResourceFormFields = ({ config, editing = false, preferredCountry, platformAdmin = false }: Props) => {
+export const ResourceFormFields = ({ config, editing = false, platformAdmin = false }: Props) => {
   if (config.name === 'leave-entitlement-policies') {
     return <EntitlementPolicyFormFields editing={editing} platformAdmin={platformAdmin} />;
   }
@@ -60,20 +59,6 @@ export const ResourceFormFields = ({ config, editing = false, preferredCountry, 
           return (
             <Form.Item key={field.name} {...itemProps}>
               <Select options={field.options ?? []} disabled={disabled} />
-            </Form.Item>
-          );
-        }
-
-        if (field.type === 'country') {
-          return (
-            <Form.Item key={field.name} {...itemProps}>
-              <Select
-                options={getCountryOptions(preferredCountry)}
-                disabled={disabled}
-                showSearch
-                optionFilterProp="label"
-                placeholder="Select a country"
-              />
             </Form.Item>
           );
         }
