@@ -23,11 +23,6 @@ export const resources: IResourceItem[] = [
   crud('leave-types', 'Leave Types', 'tags'),
   crud('leave-entitlement-policies', 'Entitlement Policies', 'solution'),
   crud('leave-entitlement-policy-eligibility-rules', 'Eligibility Rules', 'filter'),
-  {
-    name: 'leave-calendars',
-    list: '/leave-calendars',
-    create: '/leave-calendars/create',
-    meta: { label: 'Leave Calendars', icon: 'calendar' },
-  },
+  crud('leave-calendars', 'Leave Calendars', 'calendar'),
   crud('leave-approvers', 'Leave Approvers', 'audit'),
 ];
