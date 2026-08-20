@@ -5,6 +5,7 @@ import { getCurrentUser } from '../auth/session.ts';
 
 const permissionByResource: Record<string, { read?: string; write?: string; approve?: string }> = {
   tenants: { read: 'TENANT_READ', write: 'TENANT_WRITE' },
+  'tenant-jurisdictions': { read: 'LEAVE_CALENDAR_READ', write: 'LEAVE_CALENDAR_WRITE' },
   jurisdictions: { read: 'JURISDICTION_READ', write: 'JURISDICTION_WRITE' },
   'jurisdiction-leave-types': { read: 'JURISDICTION_LEAVE_TYPE_READ', write: 'JURISDICTION_LEAVE_TYPE_WRITE' },
   users: { read: 'USER_READ', write: 'USER_WRITE' },
