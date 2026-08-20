@@ -68,6 +68,7 @@ public class StaffService {
         }
         existing.setTermDate(updated.getTermDate());
         existing.setLocation(updated.getLocation());
+        existing.setJurisdictionId(updated.getJurisdictionId());
         if (updated.getLeaveEntitlements() != null) {
             List<LeaveEntitlement> normalized = normalizeLeaveEntitlements(existing, updated.getLeaveEntitlements());
             existing.getLeaveEntitlements().clear();
@@ -197,7 +198,9 @@ public class StaffService {
             throw new IllegalArgumentException("Leave entitlement requires both from and to when setting period manually");
         }
 
-        Optional<LeaveCalendar> leaveCalendar = leaveCalendarService.getCalendarFor(staff.getJoinDate());
+        Optional<LeaveCalendar> leaveCalendar = staff.getJurisdictionId() == null || staff.getJurisdictionId().isBlank()
+                ? leaveCalendarService.getCalendarFor(staff.getJoinDate())
+                : leaveCalendarService.getCalendarFor(staff.getJurisdictionId(), staff.getJoinDate());
         if (leaveCalendar.isEmpty()) {
             throw new IllegalArgumentException("No leave calendar found for join date: " + staff.getJoinDate());
         }
