@@ -16,14 +16,8 @@ beforeEach(() => {
   useQueryMock.mockImplementation(({ queryKey }: { queryKey: string[] }) => {
     if (queryKey[0] === 'leave-entitlement-policies') {
       return queryResult([
-        { id: 'SG_ANNUAL', name: 'Singapore Annual Leave', scope: 'TENANT', tenantId: 'ACME' },
-        { id: 'SG_TEMPLATE', name: 'Singapore Template', scope: 'PLATFORM_TEMPLATE', tenantId: null },
-      ]);
-    }
-    if (queryKey[0] === 'locations') {
-      return queryResult([
-        { id: 'SG-HQ', locationName: 'Singapore HQ' },
-        { id: 'SG-EAST', locationName: 'Singapore East' },
+        { id: 'SG_ANNUAL', name: 'Singapore Annual Leave' },
+        { id: 'SG_TEMPLATE', name: 'Singapore Template' },
       ]);
     }
     return queryResult([
@@ -63,16 +57,16 @@ describe('EligibilityRuleFormFields', () => {
     expect(operator.closest('.ant-select')).toHaveTextContent('Greater than or equal to');
   });
 
-  it('uses a location dropdown and limits location operators to set comparisons', () => {
+  it('uses a jurisdiction dropdown and limits jurisdiction operators to set comparisons', () => {
     render(
-      <Form initialValues={{ policyId: 'SG_ANNUAL', criterionType: 'LOCATION_ID', operator: 'EQUALS' }}>
+      <Form initialValues={{ policyId: 'SG_ANNUAL', criterionType: 'JURISDICTION_CODE', operator: 'EQUALS' }}>
         <EligibilityRuleFormFields />
       </Form>,
     );
 
     const value = screen.getByRole('combobox', { name: 'Value' });
     fireEvent.mouseDown(value);
-    expect(screen.getByText(/Singapore HQ/)).toBeInTheDocument();
+    expect(screen.getByText('Singapore > Central')).toBeInTheDocument();
 
     const operator = screen.getByRole('combobox', { name: 'Operator' });
     fireEvent.mouseDown(operator);
