@@ -78,7 +78,7 @@ export const ResourceFormFields = ({ config, editing = false, platformAdmin = fa
               key={field.name}
               name={field.name}
               label={field.label}
-              description={field.description}
+              {...(field.description !== undefined ? { description: field.description } : {})}
               disabled={disabled}
             />
           );
