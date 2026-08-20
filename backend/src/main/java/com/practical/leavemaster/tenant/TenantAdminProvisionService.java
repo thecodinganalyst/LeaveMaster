@@ -52,8 +52,6 @@ public class TenantAdminProvisionService {
             RbacPermissions.LEAVE_APPROVER_WRITE,
             RbacPermissions.LEAVE_CALENDAR_READ,
             RbacPermissions.LEAVE_CALENDAR_WRITE,
-            RbacPermissions.LOCATION_READ,
-            RbacPermissions.LOCATION_WRITE,
             RbacPermissions.LEAVE_APPLICATION_READ,
             RbacPermissions.LEAVE_APPLICATION_WRITE,
             RbacPermissions.LEAVE_APPLICATION_APPROVE
@@ -74,8 +72,6 @@ public class TenantAdminProvisionService {
             RbacPermissions.LEAVE_APPROVER_WRITE,
             RbacPermissions.LEAVE_CALENDAR_READ,
             RbacPermissions.LEAVE_CALENDAR_WRITE,
-            RbacPermissions.LOCATION_READ,
-            RbacPermissions.LOCATION_WRITE,
             RbacPermissions.LEAVE_APPLICATION_READ,
             RbacPermissions.LEAVE_APPLICATION_WRITE,
             RbacPermissions.LEAVE_APPLICATION_APPROVE
