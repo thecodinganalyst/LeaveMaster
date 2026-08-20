@@ -1,6 +1,7 @@
 package com.practical.leavemaster.config;
 
-import com.practical.leavemaster.location.Location;
+import com.practical.leavemaster.jurisdiction.Jurisdiction;
+import com.practical.leavemaster.jurisdiction.JurisdictionRepository;
 import com.practical.leavemaster.rbac.AppRole;
 import com.practical.leavemaster.staff.Staff;
 import com.practical.leavemaster.staff.StaffRepository;
@@ -27,6 +28,7 @@ class AuthSessionControllerTest {
     private AppUserRepository appUserRepository;
     private AppUserService appUserService;
     private StaffRepository staffRepository;
+    private JurisdictionRepository jurisdictionRepository;
     private AuthSessionController controller;
 
     @BeforeEach
@@ -34,7 +36,8 @@ class AuthSessionControllerTest {
         appUserRepository = mock(AppUserRepository.class);
         appUserService = mock(AppUserService.class);
         staffRepository = mock(StaffRepository.class);
-        controller = new AuthSessionController(appUserRepository, appUserService, staffRepository);
+        jurisdictionRepository = mock(JurisdictionRepository.class);
+        controller = new AuthSessionController(appUserRepository, appUserService, staffRepository, jurisdictionRepository);
     }
 
     @Test
@@ -56,18 +59,15 @@ class AuthSessionControllerTest {
             .tenantId("tenant-1")
             .active(true)
             .build();
-        Location location = Location.builder()
-            .id("SG-HQ")
-            .locationName("Singapore HQ")
-            .country("Singapore")
-            .build();
         Staff staff = Staff.builder()
             .id("S001")
             .name("Admin")
-            .location(location)
+            .jurisdictionId("SG")
             .build();
         when(appUserRepository.findById("admin@example.com")).thenReturn(Optional.of(user));
         when(staffRepository.findById("S001")).thenReturn(Optional.of(staff));
+        when(jurisdictionRepository.findById("SG")).thenReturn(Optional.of(
+            Jurisdiction.builder().id("SG").code("SG").name("Singapore").countryCode("SG").active(true).build()));
 
         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
             "admin@example.com",
@@ -85,14 +85,14 @@ class AuthSessionControllerTest {
         assertThat(response.getBody().loginName()).isEqualTo("admin@example.com");
         assertThat(response.getBody().staffId()).isEqualTo("S001");
         assertThat(response.getBody().tenantId()).isEqualTo("tenant-1");
-        assertThat(response.getBody().country()).isEqualTo("Singapore");
+        assertThat(response.getBody().country()).isEqualTo("SG");
         assertThat(response.getBody().active()).isTrue();
         assertThat(response.getBody().platformAdmin()).isFalse();
         assertThat(response.getBody().authorities()).containsExactly("STAFF_READ", "STAFF_WRITE");
     }
 
     @Test
-    void shouldReturnNullCountryWhenUserHasNoStaffLocation() {
+    void shouldReturnNullCountryWhenUserHasNoStaffJurisdiction() {
         AppUser user = AppUser.builder()
             .loginName("user@example.com")
             .staffId("S002")

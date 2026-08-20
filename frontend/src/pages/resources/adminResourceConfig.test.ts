@@ -9,19 +9,23 @@ import {
 } from './adminResourceConfig.ts';
 
 describe('adminResourceConfigs', () => {
-  it('registers every administration module from issue 111', () => {
+  it('registers current administration modules without the removed location module', () => {
     expect(Object.keys(adminResourceConfigs)).toEqual(
       expect.arrayContaining([
         'tenants',
+        'jurisdictions',
+        'jurisdiction-leave-types',
         'employees',
         'users',
         'roles',
-        'locations',
         'leave-types',
+        'leave-entitlement-policies',
+        'leave-entitlement-policy-eligibility-rules',
         'leave-calendars',
         'leave-approvers',
       ]),
     );
+    expect(Object.keys(adminResourceConfigs)).not.toContain('locations');
   });
 
   it('allows leave calendar templates to be edited and deleted now that the backend supports CRUD', () => {

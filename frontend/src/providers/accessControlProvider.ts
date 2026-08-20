@@ -11,7 +11,6 @@ const permissionByResource: Record<string, { read?: string; write?: string; appr
   roles: { read: 'ROLE_MANAGE', write: 'ROLE_MANAGE' },
   employees: { read: 'STAFF_READ', write: 'STAFF_WRITE' },
   staff: { read: 'STAFF_READ', write: 'STAFF_WRITE' },
-  locations: { read: 'LOCATION_READ', write: 'LOCATION_WRITE' },
   'leave-types': { read: 'LEAVE_TYPE_READ', write: 'LEAVE_TYPE_WRITE' },
   'leave-entitlement-policies': { read: 'LEAVE_ENTITLEMENT_POLICY_READ', write: 'LEAVE_ENTITLEMENT_POLICY_WRITE' },
   'leave-entitlement-policy-eligibility-rules': { read: 'LEAVE_ENTITLEMENT_POLICY_READ', write: 'LEAVE_ENTITLEMENT_POLICY_WRITE' },

@@ -101,7 +101,6 @@ class TenantAdminProvisionServiceTest {
                         RbacPermissions.LEAVE_TYPE_READ, RbacPermissions.LEAVE_TYPE_WRITE,
                         RbacPermissions.LEAVE_APPROVER_READ, RbacPermissions.LEAVE_APPROVER_WRITE,
                         RbacPermissions.LEAVE_CALENDAR_READ, RbacPermissions.LEAVE_CALENDAR_WRITE,
-                        RbacPermissions.LOCATION_READ, RbacPermissions.LOCATION_WRITE,
                         RbacPermissions.LEAVE_APPLICATION_READ, RbacPermissions.LEAVE_APPLICATION_WRITE,
                         RbacPermissions.LEAVE_APPLICATION_APPROVE,
                         RbacPermissions.LEAVE_ENTITLEMENT_POLICY_READ,

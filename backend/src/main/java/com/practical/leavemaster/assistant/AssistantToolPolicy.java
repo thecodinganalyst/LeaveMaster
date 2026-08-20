@@ -18,7 +18,6 @@ final class AssistantToolPolicy {
             Map.entry("createUser", RbacPermissions.USER_WRITE), Map.entry("updateUser", RbacPermissions.USER_WRITE), Map.entry("changePassword", RbacPermissions.USER_WRITE), Map.entry("activateUser", RbacPermissions.USER_WRITE), Map.entry("deactivateUser", RbacPermissions.USER_WRITE), Map.entry("deleteUser", RbacPermissions.USER_WRITE),
             Map.entry("getAllRoles", RbacPermissions.ROLE_MANAGE), Map.entry("getRolesByTenantId", RbacPermissions.ROLE_MANAGE), Map.entry("getAllPermissions", RbacPermissions.ROLE_MANAGE), Map.entry("getRoleById", RbacPermissions.ROLE_MANAGE),
             Map.entry("createRole", RbacPermissions.ROLE_MANAGE), Map.entry("updateRole", RbacPermissions.ROLE_MANAGE), Map.entry("disableRole", RbacPermissions.ROLE_MANAGE), Map.entry("enableRole", RbacPermissions.ROLE_MANAGE), Map.entry("addUserToRole", RbacPermissions.ROLE_MANAGE), Map.entry("removeUserFromRole", RbacPermissions.ROLE_MANAGE),
-            Map.entry("getAllLocations", RbacPermissions.LOCATION_READ), Map.entry("getLocationById", RbacPermissions.LOCATION_READ), Map.entry("createLocation", RbacPermissions.LOCATION_WRITE), Map.entry("updateLocation", RbacPermissions.LOCATION_WRITE), Map.entry("deleteLocation", RbacPermissions.LOCATION_WRITE),
             Map.entry("getAllLeaveTypes", RbacPermissions.LEAVE_TYPE_READ), Map.entry("getLeaveTypeById", RbacPermissions.LEAVE_TYPE_READ), Map.entry("createLeaveType", RbacPermissions.LEAVE_TYPE_WRITE), Map.entry("updateLeaveType", RbacPermissions.LEAVE_TYPE_WRITE), Map.entry("deleteLeaveType", RbacPermissions.LEAVE_TYPE_WRITE),
             Map.entry("getAllLeaveCalendars", RbacPermissions.LEAVE_CALENDAR_READ), Map.entry("getLeaveCalendarById", RbacPermissions.LEAVE_CALENDAR_READ), Map.entry("createLeaveCalendar", RbacPermissions.LEAVE_CALENDAR_WRITE),
             Map.entry("getAllLeaveApprovers", RbacPermissions.LEAVE_APPROVER_READ), Map.entry("getLeaveApproversByStaffId", RbacPermissions.LEAVE_APPROVER_READ), Map.entry("getLeaveApproverById", RbacPermissions.LEAVE_APPROVER_READ), Map.entry("createLeaveApprover", RbacPermissions.LEAVE_APPROVER_WRITE), Map.entry("updateLeaveApprover", RbacPermissions.LEAVE_APPROVER_WRITE), Map.entry("deleteLeaveApprover", RbacPermissions.LEAVE_APPROVER_WRITE),
@@ -31,7 +30,7 @@ final class AssistantToolPolicy {
             "createTenant", "updateTenant", "deleteTenant", "createStaff", "updateStaff", "deleteStaff", "terminateStaff",
             "createUser", "updateUser", "changePassword", "activateUser", "deactivateUser", "deleteUser",
             "createRole", "updateRole", "disableRole", "enableRole", "addUserToRole", "removeUserFromRole",
-            "createLocation", "updateLocation", "deleteLocation", "createLeaveType", "updateLeaveType", "deleteLeaveType", "createLeaveCalendar",
+            "createLeaveType", "updateLeaveType", "deleteLeaveType", "createLeaveCalendar",
             "createLeaveApprover", "updateLeaveApprover", "deleteLeaveApprover", "applyForLeave", "updateLeaveApplication", "deleteLeaveApplication",
             "approveLeaveApplication", "rejectLeaveApplication", "approveCancellation", "rejectCancellation"
     );

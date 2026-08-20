@@ -6,7 +6,6 @@ import com.practical.leavemaster.leaveapprover.LeaveApproverRepository;
 import com.practical.leavemaster.leavecalendar.LeaveCalendarRepository;
 import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicyRepository;
 import com.practical.leavemaster.leavetype.LeaveTypeRepository;
-import com.practical.leavemaster.location.LocationRepository;
 import com.practical.leavemaster.staff.StaffRepository;
 import com.practical.leavemaster.user.AppUserRepository;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +27,6 @@ public class TenantService {
     private final LeaveEntitlementPolicyRepository leaveEntitlementPolicyRepository;
     private final LeaveTypeRepository leaveTypeRepository;
     private final LeaveCalendarRepository leaveCalendarRepository;
-    private final LocationRepository locationRepository;
     private final AppUserRepository appUserRepository;
     private final TenantAdminProvisionService tenantAdminProvisionService;
     private final TenantLeaveConfigurationProvisionService tenantLeaveConfigurationProvisionService;
@@ -89,7 +87,6 @@ public class TenantService {
         leaveEntitlementPolicyRepository.deleteAllByTenantId(id);
         leaveTypeRepository.deleteAllByTenantId(id);
         leaveCalendarRepository.deleteAllByTenantId(id);
-        locationRepository.deleteAllByTenantId(id);
         appUserRepository.deleteAllByTenantId(id);
         tenantAdminProvisionService.deprovision(id);
         tenantRepository.deleteById(id);

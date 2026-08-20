@@ -2,7 +2,6 @@ package com.practical.leavemaster.leaveentitlementpolicy;
 
 import com.practical.leavemaster.jurisdiction.Jurisdiction;
 import com.practical.leavemaster.jurisdiction.JurisdictionRepository;
-import com.practical.leavemaster.location.Location;
 import com.practical.leavemaster.staff.Staff;
 import com.practical.leavemaster.staff.StaffRepository;
 import com.practical.leavemaster.user.AppUser;
@@ -86,8 +85,7 @@ public class LeaveEntitlementPolicyResolutionService {
     private PolicyResolutionResult.RuleEvaluation evaluateRule(
             LeaveEntitlementPolicyEligibilityRule rule, Staff staff, LocalDate date) {
         boolean matched = switch (rule.getCriterionType()) {
-            case LOCATION_ID -> evaluateStringSet(staff.getLocation() == null ? Set.of() : Set.of(staff.getLocation().getId()), rule);
-            case JURISDICTION_CODE -> evaluateStringSet(jurisdictionCodes(staff.getLocation()), rule);
+            case JURISDICTION_CODE -> evaluateStringSet(jurisdictionCodes(staff.getJurisdictionId()), rule);
             case SERVICE_MONTHS -> evaluateNumber(serviceMonths(staff, date), rule);
         };
         return new PolicyResolutionResult.RuleEvaluation(rule.getId(), rule.getCriterionType(), rule.getOperator(), matched,
@@ -129,30 +127,25 @@ public class LeaveEntitlementPolicyResolutionService {
         return ChronoUnit.MONTHS.between(staff.getJoinDate(), date);
     }
 
-    private Set<String> jurisdictionCodes(Location location) {
-        if (location == null) {
+    private Set<String> jurisdictionCodes(String jurisdictionId) {
+        if (jurisdictionId == null || jurisdictionId.isBlank()) {
             return Set.of();
         }
-        String country = normalized(location.getCountry());
-        String state = normalized(location.getState());
-        Set<String> matches = new HashSet<>();
-        for (Jurisdiction jurisdiction : jurisdictionRepository.findAll()) {
-            if (!jurisdiction.isActive()) {
-                continue;
+        Set<String> codes = new HashSet<>();
+        Set<String> visited = new HashSet<>();
+        String currentId = jurisdictionId;
+        while (currentId != null && !currentId.isBlank() && visited.add(currentId)) {
+            Optional<Jurisdiction> current = jurisdictionRepository.findById(currentId);
+            if (current.isEmpty()) {
+                break;
             }
-            boolean countryMatches = country.equals(normalized(jurisdiction.getCountryCode()))
-                    || country.equals(normalized(jurisdiction.getName()));
-            if (!countryMatches) {
-                continue;
+            Jurisdiction jurisdiction = current.get();
+            if (jurisdiction.isActive()) {
+                codes.add(jurisdiction.getCode());
             }
-            if (jurisdiction.getSubdivisionCode() == null || jurisdiction.getSubdivisionCode().isBlank()) {
-                matches.add(jurisdiction.getCode());
-            } else if (state.equals(normalized(jurisdiction.getSubdivisionCode()))
-                    || state.equals(normalized(jurisdiction.getName()))) {
-                matches.add(jurisdiction.getCode());
-            }
+            currentId = jurisdiction.getParentId();
         }
-        return matches;
+        return codes;
     }
 
     private void assertTenantAccess(String tenantId) {
@@ -176,9 +169,5 @@ public class LeaveEntitlementPolicyResolutionService {
     private boolean isPlatformAdmin(AppUser user) {
         return user != null && user.isActive() && user.getRoles() != null && user.getRoles().stream()
                 .anyMatch(role -> role != null && role.isActive() && PLATFORM_ADMIN_ROLE_ID.equalsIgnoreCase(role.getId()));
-    }
-
-    private String normalized(String value) {
-        return value == null ? "" : value.trim().toUpperCase();
     }
 }

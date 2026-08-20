@@ -1,5 +1,6 @@
 package com.practical.leavemaster.config;
 
+import com.practical.leavemaster.jurisdiction.JurisdictionRepository;
 import com.practical.leavemaster.staff.StaffRepository;
 import com.practical.leavemaster.user.AppUserRepository;
 import com.practical.leavemaster.user.AppUserService;
@@ -22,7 +23,12 @@ class AuthSessionPasswordChangeTest {
     @BeforeEach
     void setUp() {
         appUserService = mock(AppUserService.class);
-        controller = new AuthSessionController(mock(AppUserRepository.class), appUserService, mock(StaffRepository.class));
+        controller = new AuthSessionController(
+            mock(AppUserRepository.class),
+            appUserService,
+            mock(StaffRepository.class),
+            mock(JurisdictionRepository.class)
+        );
         authentication = new UsernamePasswordAuthenticationToken("alice", "n/a", List.of());
     }
 

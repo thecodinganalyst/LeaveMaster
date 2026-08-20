@@ -7,7 +7,9 @@ LeaveMaestro separates **platform public-holiday reference data** from **tenant 
 - **Public holidays** are jurisdiction/year seed data maintained centrally by `PLATFORM_ADMIN`.
 - **Leave calendars** are tenant-owned operational configuration used for leave calculations and tenant customisation.
 
-Platform Admin therefore manages public holidays through the dedicated **Public Holidays** menu and API. It does not require tenant `LEAVE_CALENDAR_READ` or `LEAVE_CALENDAR_WRITE` permissions.
+Platform Admin therefore manages public holidays through the dedicated **Public Holiday Templates** menu and API. It does not require tenant `LEAVE_CALENDAR_READ` or `LEAVE_CALENDAR_WRITE` permissions.
+
+Jurisdiction is the geographic source of truth for public holidays. The former Location module and `locationId` holiday applicability have been removed.
 
 ## Seed data
 
@@ -28,17 +30,9 @@ Granting `PUBLIC_HOLIDAY_READ` or `PUBLIC_HOLIDAY_WRITE` does not grant access t
 
 ## Admin UI
 
-Platform Admin users with `PUBLIC_HOLIDAY_READ` see a **Public Holidays** menu item.
+Platform Admin users with `PUBLIC_HOLIDAY_READ` see a **Public Holiday Templates** menu item.
 
-The resource supports:
-
-- list and search,
-- view,
-- create,
-- edit,
-- delete,
-- jurisdiction selection through the existing jurisdiction selector,
-- date/year display.
+The resource supports list/search, view, create, edit, delete, jurisdiction selection through the existing jurisdiction selector, and date/year display.
 
 The **Leave Calendars** menu remains controlled independently by `LEAVE_CALENDAR_READ`.
 
@@ -74,8 +68,7 @@ Content-Type: application/json
 {
   "jurisdictionId": "SG",
   "holidayDate": "2026-12-25",
-  "holidayName": "Christmas Day",
-  "locationId": null
+  "holidayName": "Christmas Day"
 }
 ```
 
@@ -92,8 +85,7 @@ Content-Type: application/json
 {
   "jurisdictionId": "SG",
   "holidayDate": "2026-12-25",
-  "holidayName": "Christmas Day",
-  "locationId": null
+  "holidayName": "Christmas Day"
 }
 ```
 
@@ -117,6 +109,6 @@ Requires `PUBLIC_HOLIDAY_WRITE`.
 - Tenant calendar records are excluded from this API even when they contain public holidays.
 - Tenant users do not receive the platform public-holiday permissions by default.
 
-## Future tenant provisioning
+## Tenant provisioning
 
-A later tenant-provisioning flow can copy applicable jurisdiction public holidays into a tenant-owned leave calendar. Once copied, the tenant calendar is independent: changing platform public-holiday reference data must not silently overwrite tenant customisations.
+Tenant provisioning copies applicable jurisdiction public holidays into a tenant-owned leave calendar. Once copied, the tenant calendar is independent: changing platform public-holiday reference data does not silently overwrite tenant customisations.

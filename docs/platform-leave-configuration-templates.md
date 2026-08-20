@@ -87,9 +87,10 @@ Singapore maternity, paternity, shared parental, childcare, extended childcare, 
 
 The current eligibility engine can evaluate only:
 
-- `LOCATION_ID`
 - `JURISDICTION_CODE`
 - `SERVICE_MONTHS`
+
+`JURISDICTION_CODE` evaluates the employee's assigned jurisdiction and can match an active parent jurisdiction. The separate Location model has been removed; jurisdiction is the geographic source of truth.
 
 Family-leave schemes require additional facts such as parent role/sex, child age, child Singapore citizenship, marital or parental relationship, child date of birth, adoption/Formal Intent to Adopt dates and, for Shared Parental Leave, the employee's allocated share. Seeding only `SERVICE_MONTHS >= 3` would cause tenant provisioning to create policies that can match employees who are not legally eligible.
 

@@ -71,13 +71,14 @@ For monthly accrual, the generation calculation already counts only eligible mon
 
 Eligibility rules narrow which staff can use a policy. LeaveMaestro currently evaluates rules using staff data it stores reliably:
 
-- `LOCATION_ID`
 - `JURISDICTION_CODE`
 - `SERVICE_MONTHS`
 
+`JURISDICTION_CODE` uses the staff member's assigned `jurisdictionId`. A rule can also match an active parent jurisdiction in that jurisdiction's hierarchy. This allows, for example, a state-level employee to match a country-level rule without maintaining a second Location model.
+
 Active rules on the same policy use **AND semantics**: every active rule must match for the policy to be eligible. Inactive rules are ignored.
 
-Supported operators include `EQUALS`, `NOT_EQUALS`, `IN`, `NOT_IN`, `GREATER_THAN`, `GREATER_THAN_OR_EQUAL`, `LESS_THAN`, and `LESS_THAN_OR_EQUAL`, subject to criterion/operator validation.
+Supported operators include `EQUALS`, `NOT_EQUALS`, `IN`, `NOT_IN`, `GREATER_THAN`, `GREATER_THAN_OR_EQUAL`, `LESS_THAN`, and `LESS_THAN_OR_EQUAL`, subject to criterion/operator validation. Jurisdiction rules support the set operators; service-month rules also support numeric comparisons.
 
 ## 3. Resolve the winning policy
 

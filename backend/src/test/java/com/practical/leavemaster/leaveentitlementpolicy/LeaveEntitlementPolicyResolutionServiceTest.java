@@ -3,7 +3,6 @@ package com.practical.leavemaster.leaveentitlementpolicy;
 import com.practical.leavemaster.jurisdiction.Jurisdiction;
 import com.practical.leavemaster.jurisdiction.JurisdictionRepository;
 import com.practical.leavemaster.jurisdiction.JurisdictionType;
-import com.practical.leavemaster.location.Location;
 import com.practical.leavemaster.rbac.AppRole;
 import com.practical.leavemaster.staff.Staff;
 import com.practical.leavemaster.staff.StaffRepository;
@@ -47,7 +46,7 @@ class LeaveEntitlementPolicyResolutionServiceTest {
 
     @Test
     void selectsHighestPriorityMatchingPolicyWithAndRules() {
-        Staff staff = staff("staff-1", "tenant-a", LocalDate.of(2025, 1, 1), location("loc-sg", "tenant-a", "SG", null));
+        Staff staff = staff("staff-1", "tenant-a", LocalDate.of(2025, 1, 1), "SG");
         LeaveEntitlementPolicy standard = policy("p1", 10, LocalDate.of(2026, 1, 1), null);
         LeaveEntitlementPolicy senior = policy("p2", 20, LocalDate.of(2026, 1, 1), null);
         when(staffRepository.findById("staff-1")).thenReturn(Optional.of(staff));
@@ -58,7 +57,8 @@ class LeaveEntitlementPolicyResolutionServiceTest {
         when(ruleRepository.findAllByPolicyIdAndActiveTrueOrderBySortOrderAsc("p2"))
                 .thenReturn(List.of(
                         rule("r2", "p2", EligibilityCriterionType.SERVICE_MONTHS, EligibilityOperator.GREATER_THAN_OR_EQUAL, "12"),
-                        rule("r3", "p2", EligibilityCriterionType.LOCATION_ID, EligibilityOperator.EQUALS, "loc-sg")));
+                        rule("r3", "p2", EligibilityCriterionType.JURISDICTION_CODE, EligibilityOperator.EQUALS, "SG")));
+        when(jurisdictionRepository.findById("SG")).thenReturn(Optional.of(jurisdiction("SG", "Singapore", null, true)));
 
         PolicyResolutionResult result = service.resolve("staff-1", "annual", date);
 
@@ -69,7 +69,7 @@ class LeaveEntitlementPolicyResolutionServiceTest {
 
     @Test
     void supportsAllNumericOperatorsAndSetOperators() {
-        Staff staff = staff("staff-1", "tenant-a", LocalDate.of(2025, 8, 14), location("loc-sg", "tenant-a", "SG", null));
+        Staff staff = staff("staff-1", "tenant-a", LocalDate.of(2025, 8, 14), null);
         when(staffRepository.findById("staff-1")).thenReturn(Optional.of(staff));
 
         for (EligibilityOperator operator : EligibilityOperator.values()) {
@@ -91,18 +91,18 @@ class LeaveEntitlementPolicyResolutionServiceTest {
     }
 
     @Test
-    void jurisdictionRuleMatchesCountryAndSubdivisionAndIgnoresInactiveJurisdictions() {
-        Location location = location("loc-nsw", "tenant-a", "AU", "NSW");
-        Staff staff = staff("staff-1", "tenant-a", LocalDate.of(2025, 1, 1), location);
+    void jurisdictionRuleMatchesAssignedJurisdictionAndParentHierarchy() {
+        Staff staff = staff("staff-1", "tenant-a", LocalDate.of(2025, 1, 1), "AU-NSW");
         LeaveEntitlementPolicy policy = policy("p1", 10, LocalDate.of(2026, 1, 1), null);
         when(staffRepository.findById("staff-1")).thenReturn(Optional.of(staff));
         when(policyRepository.findAllByTenantIdAndLeaveTypeIdAndActiveTrue("tenant-a", "annual")).thenReturn(List.of(policy));
         when(ruleRepository.findAllByPolicyIdAndActiveTrueOrderBySortOrderAsc("p1"))
                 .thenReturn(List.of(rule("r1", "p1", EligibilityCriterionType.JURISDICTION_CODE, EligibilityOperator.IN, "AU,AU-NSW")));
-        when(jurisdictionRepository.findAll()).thenReturn(List.of(
-                jurisdiction("AU", "Australia", "AU", null, true),
-                jurisdiction("AU-NSW", "New South Wales", "AU", "NSW", true),
-                jurisdiction("AU-VIC", "Victoria", "AU", "VIC", false)));
+        when(jurisdictionRepository.findById("AU-NSW")).thenReturn(Optional.of(
+                Jurisdiction.builder().id("AU-NSW").code("AU-NSW").name("New South Wales")
+                        .countryCode("AU").subdivisionCode("NSW").parentId("AU")
+                        .jurisdictionType(JurisdictionType.STATE).active(true).build()));
+        when(jurisdictionRepository.findById("AU")).thenReturn(Optional.of(jurisdiction("AU", "Australia", null, true)));
 
         PolicyResolutionResult result = service.resolve("staff-1", "annual", date);
 
@@ -111,14 +111,32 @@ class LeaveEntitlementPolicyResolutionServiceTest {
     }
 
     @Test
+    void inactiveJurisdictionDoesNotMatch() {
+        Staff staff = staff("staff-1", "tenant-a", LocalDate.of(2025, 1, 1), "AU-VIC");
+        LeaveEntitlementPolicy policy = policy("p1", 10, LocalDate.of(2026, 1, 1), null);
+        when(staffRepository.findById("staff-1")).thenReturn(Optional.of(staff));
+        when(policyRepository.findAllByTenantIdAndLeaveTypeIdAndActiveTrue("tenant-a", "annual")).thenReturn(List.of(policy));
+        when(ruleRepository.findAllByPolicyIdAndActiveTrueOrderBySortOrderAsc("p1"))
+                .thenReturn(List.of(rule("r1", "p1", EligibilityCriterionType.JURISDICTION_CODE, EligibilityOperator.EQUALS, "AU-VIC")));
+        when(jurisdictionRepository.findById("AU-VIC")).thenReturn(Optional.of(
+                Jurisdiction.builder().id("AU-VIC").code("AU-VIC").name("Victoria").countryCode("AU")
+                        .jurisdictionType(JurisdictionType.STATE).active(false).build()));
+
+        PolicyResolutionResult result = service.resolve("staff-1", "annual", date);
+
+        assertThat(result.selectedPolicyId()).isNull();
+    }
+
+    @Test
     void returnsNoMatchForFailedAndRuleAndForOutOfRangePolicy() {
-        Staff staff = staff("staff-1", "tenant-a", LocalDate.of(2026, 1, 1), null);
+        Staff staff = staff("staff-1", "tenant-a", LocalDate.of(2026, 1, 1), "SG");
         LeaveEntitlementPolicy failedRule = policy("p1", 10, LocalDate.of(2026, 1, 1), null);
         LeaveEntitlementPolicy expired = policy("p2", 20, LocalDate.of(2025, 1, 1), LocalDate.of(2025, 12, 31));
         when(staffRepository.findById("staff-1")).thenReturn(Optional.of(staff));
         when(policyRepository.findAllByTenantIdAndLeaveTypeIdAndActiveTrue("tenant-a", "annual")).thenReturn(List.of(failedRule, expired));
         when(ruleRepository.findAllByPolicyIdAndActiveTrueOrderBySortOrderAsc("p1"))
-                .thenReturn(List.of(rule("r1", "p1", EligibilityCriterionType.LOCATION_ID, EligibilityOperator.EQUALS, "somewhere")));
+                .thenReturn(List.of(rule("r1", "p1", EligibilityCriterionType.JURISDICTION_CODE, EligibilityOperator.EQUALS, "AU")));
+        when(jurisdictionRepository.findById("SG")).thenReturn(Optional.of(jurisdiction("SG", "Singapore", null, true)));
 
         PolicyResolutionResult result = service.resolve("staff-1", "annual", date);
 
@@ -162,12 +180,8 @@ class LeaveEntitlementPolicyResolutionServiceTest {
                 .loginName(login).active(true).tenantId(tenantId).roles(roles).build()));
     }
 
-    private Staff staff(String id, String tenantId, LocalDate joinDate, Location location) {
-        return Staff.builder().id(id).name(id).tenantId(tenantId).joinDate(joinDate).location(location).build();
-    }
-
-    private Location location(String id, String tenantId, String country, String state) {
-        return Location.builder().id(id).locationName(id).tenantId(tenantId).country(country).state(state).build();
+    private Staff staff(String id, String tenantId, LocalDate joinDate, String jurisdictionId) {
+        return Staff.builder().id(id).name(id).tenantId(tenantId).joinDate(joinDate).jurisdictionId(jurisdictionId).build();
     }
 
     private LeaveEntitlementPolicy policy(String id, int priority, LocalDate from, LocalDate to) {
@@ -182,8 +196,8 @@ class LeaveEntitlementPolicyResolutionServiceTest {
                 .operator(operator).value(value).active(true).sortOrder(1).build();
     }
 
-    private Jurisdiction jurisdiction(String code, String name, String country, String subdivision, boolean active) {
-        return Jurisdiction.builder().id(code).code(code).name(name).countryCode(country).subdivisionCode(subdivision)
-                .jurisdictionType(subdivision == null ? JurisdictionType.COUNTRY : JurisdictionType.STATE).active(active).build();
+    private Jurisdiction jurisdiction(String code, String name, String parentId, boolean active) {
+        return Jurisdiction.builder().id(code).code(code).name(name).countryCode(code.substring(0, 2))
+                .parentId(parentId).jurisdictionType(JurisdictionType.COUNTRY).active(active).build();
     }
 }

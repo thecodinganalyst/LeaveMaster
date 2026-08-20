@@ -6,7 +6,6 @@ import com.practical.leavemaster.leaveapprover.LeaveApproverRepository;
 import com.practical.leavemaster.leavecalendar.LeaveCalendarRepository;
 import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicyRepository;
 import com.practical.leavemaster.leavetype.LeaveTypeRepository;
-import com.practical.leavemaster.location.LocationRepository;
 import com.practical.leavemaster.staff.Staff;
 import com.practical.leavemaster.staff.StaffRepository;
 import com.practical.leavemaster.user.AppUserRepository;
@@ -36,7 +35,6 @@ class TenantServiceTest {
     @Mock private LeaveEntitlementPolicyRepository leaveEntitlementPolicyRepository;
     @Mock private LeaveTypeRepository leaveTypeRepository;
     @Mock private LeaveCalendarRepository leaveCalendarRepository;
-    @Mock private LocationRepository locationRepository;
     @Mock private AppUserRepository appUserRepository;
     @Mock private TenantAdminProvisionService tenantAdminProvisionService;
     @Mock private TenantLeaveConfigurationProvisionService tenantLeaveConfigurationProvisionService;
@@ -128,7 +126,6 @@ class TenantServiceTest {
         verify(leaveEntitlementPolicyRepository).deleteAllByTenantId("t1");
         verify(leaveTypeRepository).deleteAllByTenantId("t1");
         verify(leaveCalendarRepository).deleteAllByTenantId("t1");
-        verify(locationRepository).deleteAllByTenantId("t1");
         verify(appUserRepository).deleteAllByTenantId("t1");
         verify(tenantAdminProvisionService).deprovision("t1");
         verify(tenantRepository).deleteById("t1");

@@ -9,7 +9,7 @@ describe('frontend API route namespace', () => {
     expect(dataProviderSource).toContain("tenants: '/api/tenants'");
     expect(dataProviderSource).toContain("users: '/api/users'");
     expect(dataProviderSource).toContain("roles: '/api/roles'");
-    expect(dataProviderSource).toContain("locations: '/api/locations'");
+    expect(dataProviderSource).not.toContain("locations: '/api/locations'");
     expect(dataProviderSource).toContain("'leave-types': '/api/leave-types'");
     expect(dataProviderSource).toContain("'leave-approvers': '/api/leave-approvers'");
     expect(dataProviderSource).toContain("'leave-calendars': '/api/leave-calendars'");

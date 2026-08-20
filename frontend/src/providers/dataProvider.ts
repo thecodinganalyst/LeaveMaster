@@ -17,7 +17,6 @@ const endpointByResource: Record<string, string> = {
   roles: '/api/roles',
   employees: '/api/staff',
   staff: '/api/staff',
-  locations: '/api/locations',
   'leave-types': '/api/leave-types',
   'leave-approvers': '/api/leave-approvers',
   'leave-calendars': '/api/leave-calendars',

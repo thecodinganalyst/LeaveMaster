@@ -1,6 +1,6 @@
 package com.practical.leavemaster.config;
 
-import com.practical.leavemaster.location.Location;
+import com.practical.leavemaster.jurisdiction.JurisdictionRepository;
 import com.practical.leavemaster.staff.Staff;
 import com.practical.leavemaster.staff.StaffRepository;
 import com.practical.leavemaster.user.AppUser;
@@ -32,6 +32,7 @@ public class AuthSessionController {
     private final AppUserRepository appUserRepository;
     private final AppUserService appUserService;
     private final StaffRepository staffRepository;
+    private final JurisdictionRepository jurisdictionRepository;
 
     @GetMapping("/csrf")
     public CsrfResponse csrf(CsrfToken csrfToken) {
@@ -80,8 +81,10 @@ public class AuthSessionController {
 
         String country = Optional.ofNullable(user.getStaffId())
             .flatMap(staffRepository::findById)
-            .map(Staff::getLocation)
-            .map(Location::getCountry)
+            .map(Staff::getJurisdictionId)
+            .filter(jurisdictionId -> !jurisdictionId.isBlank())
+            .flatMap(jurisdictionRepository::findById)
+            .map(jurisdiction -> jurisdiction.getCountryCode())
             .orElse(null);
 
         return new CurrentUserResponse(

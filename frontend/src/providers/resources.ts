@@ -19,7 +19,6 @@ export const resources: IResourceItem[] = [
   crud('public-holidays', 'Public Holiday Templates', 'calendar'),
   crud('users', 'App Users', 'user'),
   crud('roles', 'Roles', 'safety'),
-  crud('locations', 'Locations', 'environment'),
   crud('leave-types', 'Leave Types', 'tags'),
   crud('leave-entitlement-policies', 'Entitlement Policies', 'solution'),
   crud('leave-entitlement-policy-eligibility-rules', 'Eligibility Rules', 'filter'),
