@@ -67,7 +67,6 @@ public class StaffService {
             existing.setWorkSchedule(new ArrayList<>(updated.getWorkSchedule()));
         }
         existing.setTermDate(updated.getTermDate());
-        existing.setLocation(updated.getLocation());
         existing.setJurisdictionId(updated.getJurisdictionId());
         if (updated.getLeaveEntitlements() != null) {
             List<LeaveEntitlement> normalized = normalizeLeaveEntitlements(existing, updated.getLeaveEntitlements());
