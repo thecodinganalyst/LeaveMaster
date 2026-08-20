@@ -1,4 +1,4 @@
-export type AdminFieldType = 'text' | 'email' | 'date' | 'boolean' | 'select' | 'json' | 'password' | 'permissions' | 'number';
+export type AdminFieldType = 'text' | 'email' | 'date' | 'boolean' | 'select' | 'json' | 'password' | 'permissions' | 'number' | 'holiday-list';
 export type AdminFieldAudience = 'platform' | 'tenant';
 
 export interface AdminField {
@@ -189,7 +189,7 @@ export const adminResourceConfigs: Record<string, AdminResourceConfig> = {
       { name: 'sourceTemplateId', label: 'Source template ID', hidden: true },
       { name: 'start', label: 'Start date', type: 'date', required: true, list: true },
       { name: 'end', label: 'End date', type: 'date', required: true, list: true },
-      { name: 'publicHolidays', label: 'Public holidays (JSON)', type: 'json' },
+      { name: 'publicHolidays', label: 'Public holidays', type: 'holiday-list' },
     ],
   },
   'leave-approvers': {
@@ -242,10 +242,8 @@ export const toFormValues = (config: AdminResourceConfig, record: Record<string,
   if (config.name === 'leave-approvers') {
     const staff = record.staff as { id?: string } | undefined;
     const approver = record.approver as { id?: string } | undefined;
-    const admin = record.admin as { id?: string } | undefined;
-    result.staffId = staff?.id ?? result.staffId;
-    result.approverId = approver?.id ?? result.approverId;
-    result.adminId = admin?.id ?? result.adminId;
+    result.staffId = staff?.id;
+    result.approverId = approver?.id;
   }
   return result;
 };
