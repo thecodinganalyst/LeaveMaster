@@ -10,7 +10,7 @@ import {
 
 const publicHolidayConfig: AdminResourceConfig = {
   name: 'public-holidays',
-  label: 'Public Holidays',
+  label: 'Public Holiday Templates',
   singular: 'Public holiday',
   idField: 'id',
   fields: [
@@ -19,7 +19,6 @@ const publicHolidayConfig: AdminResourceConfig = {
     { name: 'year', label: 'Year', type: 'number', list: true, formHidden: true },
     { name: 'holidayDate', label: 'Holiday date', type: 'date', required: true, list: true },
     { name: 'holidayName', label: 'Holiday name', required: true, list: true },
-    { name: 'locationId', label: 'Location ID', list: true },
     { name: 'calendarId', label: 'Backing template', readOnlyOnEdit: true, formHidden: true },
   ],
 };
