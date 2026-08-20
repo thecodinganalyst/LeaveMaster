@@ -58,7 +58,7 @@ export const AppLayout = ({ children }: PropsWithChildren) => {
       ...(tenantAccess?.can ? [{ key: '/tenants', icon: <BankOutlined />, label: <Link to="/tenants">Tenants</Link> }] : []),
       ...(jurisdictionAccess?.can ? [{ key: '/jurisdictions', icon: <GlobalOutlined />, label: <Link to="/jurisdictions">Jurisdictions</Link> }] : []),
       ...(jurisdictionLeaveTypeAccess?.can ? [{ key: '/jurisdiction-leave-types', icon: <TagsOutlined />, label: <Link to="/jurisdiction-leave-types">Jurisdiction Leave Types</Link> }] : []),
-      ...(publicHolidayAccess?.can ? [{ key: '/public-holidays', icon: <CalendarOutlined />, label: <Link to="/public-holidays">Public Holidays</Link> }] : []),
+      ...(publicHolidayAccess?.can ? [{ key: '/public-holidays', icon: <CalendarOutlined />, label: <Link to="/public-holidays">Public Holiday Templates</Link> }] : []),
       ...(userAccess?.can ? [{ key: '/users', icon: <UserOutlined />, label: <Link to="/users">App Users</Link> }] : []),
       ...(roleAccess?.can ? [{ key: '/roles', icon: <SafetyCertificateOutlined />, label: <Link to="/roles">Roles</Link> }] : []),
       ...(locationAccess?.can ? [{ key: '/locations', icon: <EnvironmentOutlined />, label: <Link to="/locations">Locations</Link> }] : []),
