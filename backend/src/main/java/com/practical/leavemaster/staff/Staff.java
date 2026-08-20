@@ -1,7 +1,6 @@
 package com.practical.leavemaster.staff;
 
 import com.practical.leavemaster.leaveentitlement.LeaveEntitlement;
-import com.practical.leavemaster.location.Location;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
@@ -9,7 +8,6 @@ import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
@@ -52,10 +50,6 @@ public class Staff {
 
     @Column(name = "term_date")
     private LocalDate termDate;
-
-    @ManyToOne
-    @JoinColumn(name = "location_id")
-    private Location location;
 
     @Column(name = "jurisdiction_id", length = 32)
     private String jurisdictionId;
