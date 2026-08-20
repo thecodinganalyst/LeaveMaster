@@ -9,6 +9,7 @@ import type { AdminField } from './resourceConfigResolver.ts';
 import { getAdminResourceConfig, isAdminFieldVisible, toFormValues } from './resourceConfigResolver.ts';
 import { RoleMembershipCard } from './RoleMembershipCard.tsx';
 import { RolePermissionCheckboxList } from './RolePermissionCheckboxList.tsx';
+import { shouldHideTenantInternalId, shouldShowResourceIdSubtitle } from './tenantInternalIdVisibility.ts';
 
 interface LeaveMasterIdentity {
   platformAdmin?: boolean;
@@ -41,12 +42,15 @@ export const ResourceShowPage = () => {
     <PageContainer>
       <PageHeader
         title={`${config.singular} details`}
-        subtitle={id}
+        {...(shouldShowResourceIdSubtitle(config.name, platformAdmin) ? { subtitle: id } : {})}
         extra={canEdit?.can && config.editable !== false ? <Button type="primary"><Link to={`/${config.name}/edit/${encodeURIComponent(id)}`}>Edit</Link></Button> : undefined}
       />
       <Card>
         <Descriptions bordered column={1}>
-          {config.fields.filter((field) => field.type !== 'password' && !field.hidden && isAdminFieldVisible(field, platformAdmin)).map((field) => (
+          {config.fields.filter((field) => field.type !== 'password'
+            && !field.hidden
+            && isAdminFieldVisible(field, platformAdmin)
+            && !shouldHideTenantInternalId(config.name, config.idField, field.name, platformAdmin)).map((field) => (
             <Descriptions.Item key={field.name} label={field.label}>
               {field.type === 'permissions' ? (
                 <RolePermissionCheckboxList value={(record[field.name] as string[] | undefined) ?? []} disabled />

@@ -10,6 +10,7 @@ import { PublicHolidayListField } from './PublicHolidayListField.tsx';
 import { RolePermissionCheckboxList } from './RolePermissionCheckboxList.tsx';
 import { TenantJurisdictionFormFields } from './TenantJurisdictionFormFields.tsx';
 import { TenantOnboardingFormFields } from './TenantOnboardingFormFields.tsx';
+import { shouldHideTenantInternalId } from './tenantInternalIdVisibility.ts';
 
 interface Props {
   config: AdminResourceConfig;
@@ -37,7 +38,10 @@ export const ResourceFormFields = ({ config, editing = false, platformAdmin = fa
 
   return (
     <>
-      {config.fields.filter((field) => !field.hidden && !field.formHidden && isAdminFieldVisible(field, platformAdmin)).map((field) => {
+      {config.fields.filter((field) => !field.hidden
+        && !field.formHidden
+        && isAdminFieldVisible(field, platformAdmin)
+        && !(editing && shouldHideTenantInternalId(config.name, config.idField, field.name, platformAdmin))).map((field) => {
         const required = field.required || (!editing && field.requiredOnCreate);
         const rules: Rule[] = required ? [{ required: true, message: `${field.label} is required` }] : [];
         if (field.type === 'number') {

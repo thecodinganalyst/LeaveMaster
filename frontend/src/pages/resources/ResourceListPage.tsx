@@ -10,6 +10,7 @@ import { PageContainer } from '../../components/common/PageContainer.tsx';
 import { PageHeader } from '../../components/common/PageHeader.tsx';
 import type { AdminField } from './resourceConfigResolver.ts';
 import { getAdminResourceConfig, isAdminFieldVisible, toFormValues } from './resourceConfigResolver.ts';
+import { shouldHideTenantInternalId } from './tenantInternalIdVisibility.ts';
 
 interface LeaveMasterIdentity {
   platformAdmin?: boolean;
@@ -60,7 +61,9 @@ export const ResourceListPage = () => {
   };
 
   const columns: TableProps<Record<string, unknown>>['columns'] = config.fields
-    .filter((field) => field.list && isAdminFieldVisible(field, platformAdmin))
+    .filter((field) => field.list
+      && isAdminFieldVisible(field, platformAdmin)
+      && !shouldHideTenantInternalId(config.name, config.idField, field.name, platformAdmin))
     .map((field) => ({
       title: field.label,
       dataIndex: field.name,
