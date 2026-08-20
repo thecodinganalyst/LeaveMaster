@@ -60,7 +60,6 @@ class TenantLeaveConfigurationSelectiveProvisionTest {
         when(jurisdictionRepository.findById("SG")).thenReturn(Optional.of(sg));
         when(leaveCalendarRepository.findAllByScopeAndJurisdictionId(ConfigurationScope.PLATFORM_TEMPLATE, "SG")).thenReturn(List.of(template));
         when(leaveCalendarRepository.findByTenantIdAndJurisdictionIdAndStartAndEnd("ACME", "SG", start, end)).thenReturn(Optional.empty());
-        when(leaveCalendarRepository.findById(any())).thenReturn(Optional.empty());
         when(leaveCalendarRepository.save(any(LeaveCalendar.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         service.provision(tenant, new TenantJurisdictionProvisionRequest("SG", true, false, start, end));
