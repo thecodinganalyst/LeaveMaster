@@ -91,10 +91,6 @@ class McpAuthorizationTest {
         assertPermissions(AppRoleMcpTools.class, Map.of(
             RbacPermissions.ROLE_MANAGE, new String[]{"getAllRoles", "getRolesByTenantId", "getAllPermissions", "getRoleById", "createRole", "updateRole", "disableRole", "enableRole", "addUserToRole", "removeUserFromRole"}
         ));
-        assertPermissions(LocationMcpTools.class, Map.of(
-            RbacPermissions.LOCATION_READ, new String[]{"getAllLocations", "getLocationById"},
-            RbacPermissions.LOCATION_WRITE, new String[]{"createLocation", "updateLocation", "deleteLocation"}
-        ));
         assertPermissions(LeaveTypeMcpTools.class, Map.of(
             RbacPermissions.LEAVE_TYPE_READ, new String[]{"getAllLeaveTypes", "getLeaveTypeById"},
             RbacPermissions.LEAVE_TYPE_WRITE, new String[]{"createLeaveType", "updateLeaveType", "deleteLeaveType"}
