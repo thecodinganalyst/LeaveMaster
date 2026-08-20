@@ -8,6 +8,7 @@ import { PageContainer } from '../../components/common/PageContainer.tsx';
 import { PageHeader } from '../../components/common/PageHeader.tsx';
 import { getAdminResourceConfig, getAdminResourceInitialValues, normaliseFormValues } from './resourceConfigResolver.ts';
 import { ResourceFormFields } from './ResourceFormFields.tsx';
+import { tenantOnboardingInitialValues } from './tenantOnboarding.ts';
 
 interface LeaveMasterIdentity {
   id: string;
@@ -15,26 +16,6 @@ interface LeaveMasterIdentity {
   country?: string | null;
   platformAdmin?: boolean;
 }
-
-const onboardingInitialValues = (resourceName?: string) => {
-  if (!['tenants', 'tenant-jurisdictions'].includes(resourceName ?? '')) return {};
-  const year = new Date().getFullYear();
-  const calendarValues = {
-    calendarStart: `${year}-01-01`,
-    calendarEnd: `${year}-12-31`,
-  };
-  if (resourceName === 'tenants') {
-    return {
-      ...calendarValues,
-      jurisdictions: [{ includePublicHolidays: true, includeLeaveConfiguration: true }],
-    };
-  }
-  return {
-    ...calendarValues,
-    includePublicHolidays: true,
-    includeLeaveConfiguration: true,
-  };
-};
 
 export const ResourceCreatePage = () => {
   const { resource } = useResource();
@@ -75,7 +56,7 @@ export const ResourceCreatePage = () => {
             used: false,
             status: 'ACTIVE',
             ...getAdminResourceInitialValues(config),
-            ...onboardingInitialValues(config.name),
+            ...tenantOnboardingInitialValues(config.name),
           }}
         >
           <ResourceFormFields config={config} preferredCountry={identity?.country} platformAdmin={Boolean(identity?.platformAdmin)} />
