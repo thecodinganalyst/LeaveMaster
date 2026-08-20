@@ -4,7 +4,6 @@ import com.practical.leavemaster.email.EmailService;
 import com.practical.leavemaster.leavecalendar.LeaveCalendar;
 import com.practical.leavemaster.leavecalendar.LeaveCalendarNotFoundException;
 import com.practical.leavemaster.leavecalendar.LeaveCalendarService;
-import com.practical.leavemaster.leavecalendar.PublicHoliday;
 import com.practical.leavemaster.leaveentitlement.LeaveEntitlement;
 import com.practical.leavemaster.leaveapprover.LeaveApprover;
 import com.practical.leavemaster.leaveapprover.LeaveApproverRepository;
@@ -76,10 +75,10 @@ public class LeaveApplicationService {
     }
 
     public List<LeaveApplication> findByStaffId(String staffId, LocalDate date) {
-        LeaveCalendar calendar = leaveCalendarService.getCalendarFor(date)
-                .orElseThrow(() -> new LeaveCalendarNotFoundException(date.toString()));
         Staff staff = staffRepository.findById(staffId)
                 .orElseThrow(() -> new StaffNotFoundException(staffId));
+        LeaveCalendar calendar = calendarForStaff(staff, date)
+                .orElseThrow(() -> new LeaveCalendarNotFoundException(date.toString()));
         return leaveApplicationRepository.findByStaffAndLeaveDateBetween(staff, calendar.getStart(), calendar.getEnd());
     }
 
@@ -144,8 +143,8 @@ public class LeaveApplicationService {
             }
         }
         for (LocalDate date : leaveDates) {
-            Optional<LeaveCalendar> calendar = leaveCalendarService.getCalendarFor(date);
-            if (calendar.isPresent() && isPublicHoliday(date, calendar.get(), staff)) {
+            Optional<LeaveCalendar> calendar = calendarForStaff(staff, date);
+            if (calendar.isPresent() && isPublicHoliday(date, calendar.get())) {
                 continue;
             }
             LeaveApplication application = LeaveApplication.builder()
@@ -324,6 +323,13 @@ public class LeaveApplicationService {
         return dates;
     }
 
+    private Optional<LeaveCalendar> calendarForStaff(Staff staff, LocalDate date) {
+        if (staff.getJurisdictionId() == null || staff.getJurisdictionId().isBlank()) {
+            return leaveCalendarService.getCalendarFor(date);
+        }
+        return leaveCalendarService.getCalendarFor(staff.getJurisdictionId(), date);
+    }
+
     private String resolveTenantId(LeaveApplication application) {
         if (application.getTenantId() != null && !application.getTenantId().isBlank()) {
             return application.getTenantId();
@@ -331,11 +337,8 @@ public class LeaveApplicationService {
         return application.getStaff() != null ? application.getStaff().getTenantId() : null;
     }
 
-    private boolean isPublicHoliday(LocalDate date, LeaveCalendar calendar, Staff staff) {
-        String staffLocationId = staff.getLocation() != null ? staff.getLocation().getId() : null;
+    private boolean isPublicHoliday(LocalDate date, LeaveCalendar calendar) {
         return calendar.getPublicHolidays().stream()
-                .filter(publicHoliday -> date.equals(publicHoliday.getHolidayDate()))
-                .anyMatch(publicHoliday -> publicHoliday.getLocationId() == null
-                        || publicHoliday.getLocationId().equals(staffLocationId));
+                .anyMatch(publicHoliday -> date.equals(publicHoliday.getHolidayDate()));
     }
 }
