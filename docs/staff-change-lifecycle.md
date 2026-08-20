@@ -11,7 +11,7 @@ This document describes the side effects performed by the staff write endpoints 
    - The referenced leave type is marked `used=true` (if not already).
    - `staff` and `tenantId` are attached to the entitlement row.
    - Period/proration rules are applied (see [Leave entitlement proration](leave-entitlement-proration.md)).
-2. The staff record is saved.
+2. The staff record is saved. `jurisdictionId` identifies the jurisdiction used for calendars and jurisdiction-based eligibility rules.
 3. An `app_user` row is created for the staff member:
    - `loginName` uses `staff.loginName` when provided, otherwise falls back to `staff.id`.
    - Initial password is set to the same value as the login name (stored encoded).
@@ -24,7 +24,7 @@ This document describes the side effects performed by the staff write endpoints 
 `StaffService.update(...)` performs the following steps:
 
 1. Load existing staff by ID, otherwise fail with `StaffNotFoundException`.
-2. Update mutable fields: `name`, `joinDate`, `termDate`, `location`.
+2. Update mutable fields: `name`, `joinDate`, `termDate`, and `jurisdictionId`.
 3. If `workSchedule` is present in request, replace it; if omitted, keep existing schedule.
 4. If `leaveEntitlements` is present in request:
    - Normalize them using the same rules as create.
