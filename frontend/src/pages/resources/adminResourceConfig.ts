@@ -1,4 +1,4 @@
-export type AdminFieldType = 'text' | 'email' | 'date' | 'boolean' | 'select' | 'country' | 'json' | 'password' | 'permissions' | 'number';
+export type AdminFieldType = 'text' | 'email' | 'date' | 'boolean' | 'select' | 'json' | 'password' | 'permissions' | 'number';
 export type AdminFieldAudience = 'platform' | 'tenant';
 
 export interface AdminField {
@@ -40,7 +40,7 @@ const jurisdictionTypes = ['COUNTRY', 'STATE', 'PROVINCE', 'TERRITORY', 'REGION'
 const entitlementUnits = ['DAYS', 'HOURS'].map((value) => ({ label: value, value }));
 const accrualMethods = ['NONE', 'ANNUAL', 'MONTHLY', 'PER_PAY_PERIOD'].map((value) => ({ label: value, value }));
 const prorationMethods = ['NONE', 'CALENDAR_DAYS', 'MONTHS'].map((value) => ({ label: value, value }));
-const eligibilityCriterionTypes = ['LOCATION_ID', 'JURISDICTION_CODE', 'SERVICE_MONTHS'].map((value) => ({ label: value, value }));
+const eligibilityCriterionTypes = ['JURISDICTION_CODE', 'SERVICE_MONTHS'].map((value) => ({ label: value, value }));
 const eligibilityOperators = ['EQUALS', 'NOT_EQUALS', 'IN', 'NOT_IN', 'GREATER_THAN', 'GREATER_THAN_OR_EQUAL', 'LESS_THAN', 'LESS_THAN_OR_EQUAL'].map((value) => ({ label: value, value }));
 const configurationScopes = [
   { label: 'Platform template', value: 'PLATFORM_TEMPLATE' },
@@ -99,7 +99,6 @@ export const adminResourceConfigs: Record<string, AdminResourceConfig> = {
       { name: 'termDate', label: 'Termination date', type: 'date', list: true },
       { name: 'loginName', label: 'Login name', list: true },
       { name: 'jurisdictionId', label: 'Jurisdiction', required: true, list: true },
-      { name: 'location', label: 'Location (JSON)', type: 'json' },
       { name: 'workSchedule', label: 'Work schedule (JSON)', type: 'json' },
       { name: 'leaveEntitlements', label: 'Leave entitlements (JSON)', type: 'json' },
     ],
@@ -122,15 +121,6 @@ export const adminResourceConfigs: Record<string, AdminResourceConfig> = {
       { name: 'description', label: 'Description', required: true, list: true },
       { name: 'active', label: 'Active', type: 'boolean', list: true },
       { name: 'permissionCodes', label: 'Permissions', type: 'permissions', required: true },
-    ],
-  },
-  locations: {
-    name: 'locations', label: 'Locations', singular: 'Location', idField: 'id',
-    fields: [
-      { name: 'id', label: 'ID', required: true, readOnlyOnEdit: true, list: true },
-      { name: 'locationName', label: 'Location name', required: true, list: true },
-      { name: 'country', label: 'Country', type: 'country', required: true, list: true },
-      { name: 'state', label: 'State / province', list: true },
     ],
   },
   'leave-types': {
