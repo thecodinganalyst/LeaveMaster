@@ -8,7 +8,6 @@ public record PlatformPublicHoliday(
         String jurisdictionId,
         int year,
         LocalDate holidayDate,
-        String holidayName,
-        String locationId
+        String holidayName
 ) {
 }
