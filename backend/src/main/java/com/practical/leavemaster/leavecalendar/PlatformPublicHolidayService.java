@@ -46,7 +46,6 @@ public class PlatformPublicHolidayService {
         PublicHoliday holiday = PublicHoliday.builder()
                 .holidayDate(request.holidayDate())
                 .holidayName(request.holidayName().trim())
-                .locationId(blankToNull(request.locationId()))
                 .build();
         calendar.getPublicHolidays().add(holiday);
         leaveCalendarRepository.save(calendar);
@@ -72,7 +71,6 @@ public class PlatformPublicHolidayService {
         PublicHoliday replacement = PublicHoliday.builder()
                 .holidayDate(request.holidayDate())
                 .holidayName(request.holidayName().trim())
-                .locationId(blankToNull(request.locationId()))
                 .build();
         targetCalendar.getPublicHolidays().add(replacement);
         leaveCalendarRepository.save(existingCalendar);
@@ -157,8 +155,7 @@ public class PlatformPublicHolidayService {
                 calendar.getJurisdictionId(),
                 holiday.getHolidayDate().getYear(),
                 holiday.getHolidayDate(),
-                holiday.getHolidayName(),
-                holiday.getLocationId());
+                holiday.getHolidayName());
     }
 
     private String encodeId(String calendarId, LocalDate date, String name) {
@@ -175,10 +172,6 @@ public class PlatformPublicHolidayService {
         } catch (RuntimeException ex) {
             throw new IllegalArgumentException("Invalid platform public holiday id");
         }
-    }
-
-    private String blankToNull(String value) {
-        return value == null || value.isBlank() ? null : value.trim();
     }
 
     private record HolidayKey(String calendarId, LocalDate date, String name) {
