@@ -54,6 +54,24 @@ class LeaveEntitlementPolicyEligibilityServiceTest {
     }
 
     @Test
+    void listsRulesForAllAccessiblePolicies() {
+        LeaveEntitlementPolicy firstPolicy = policy("p1", "tenant-a");
+        LeaveEntitlementPolicy secondPolicy = policy("p2", "tenant-a");
+        LeaveEntitlementPolicyEligibilityRule firstRule = rule(EligibilityCriterionType.SERVICE_MONTHS, EligibilityOperator.GREATER_THAN_OR_EQUAL, "3");
+        firstRule.setId("r1");
+        firstRule.setPolicyId("p1");
+        LeaveEntitlementPolicyEligibilityRule secondRule = rule(EligibilityCriterionType.JURISDICTION_CODE, EligibilityOperator.EQUALS, "SG");
+        secondRule.setId("r2");
+        secondRule.setPolicyId("p2");
+
+        when(policyService.findAll()).thenReturn(List.of(firstPolicy, secondPolicy));
+        when(ruleRepository.findAllByPolicyIdOrderBySortOrderAsc("p1")).thenReturn(List.of(firstRule));
+        when(ruleRepository.findAllByPolicyIdOrderBySortOrderAsc("p2")).thenReturn(List.of(secondRule));
+
+        assertThat(service.findAllAccessible()).containsExactly(firstRule, secondRule);
+    }
+
+    @Test
     void validatesJurisdictionCodesAndSupportedOperators() {
         LeaveEntitlementPolicy policy = policy("p1", "tenant-a");
         when(policyService.findById("p1")).thenReturn(Optional.of(policy));
