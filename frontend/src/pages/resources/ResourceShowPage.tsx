@@ -42,7 +42,7 @@ export const ResourceShowPage = () => {
     <PageContainer>
       <PageHeader
         title={`${config.singular} details`}
-        subtitle={shouldShowResourceIdSubtitle(config.name, platformAdmin) ? id : undefined}
+        {...(shouldShowResourceIdSubtitle(config.name, platformAdmin) ? { subtitle: id } : {})}
         extra={canEdit?.can && config.editable !== false ? <Button type="primary"><Link to={`/${config.name}/edit/${encodeURIComponent(id)}`}>Edit</Link></Button> : undefined}
       />
       <Card>
