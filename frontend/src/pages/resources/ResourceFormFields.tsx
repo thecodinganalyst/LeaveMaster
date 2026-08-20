@@ -6,6 +6,7 @@ import { isAdminFieldVisible } from './adminResourceConfig.ts';
 import { EligibilityRuleFormFields } from './EligibilityRuleFormFields.tsx';
 import { EntitlementPolicyFormFields } from './EntitlementPolicyFormFields.tsx';
 import { JurisdictionSelect } from './JurisdictionSelect.tsx';
+import { PublicHolidayListField } from './PublicHolidayListField.tsx';
 import { RolePermissionCheckboxList } from './RolePermissionCheckboxList.tsx';
 
 interface Props {
@@ -68,6 +69,18 @@ export const ResourceFormFields = ({ config, editing = false, platformAdmin = fa
             <Form.Item key={field.name} {...itemProps}>
               <RolePermissionCheckboxList disabled={disabled} />
             </Form.Item>
+          );
+        }
+
+        if (field.type === 'holiday-list') {
+          return (
+            <PublicHolidayListField
+              key={field.name}
+              name={field.name}
+              label={field.label}
+              {...(field.description !== undefined ? { description: field.description } : {})}
+              disabled={disabled}
+            />
           );
         }
 
