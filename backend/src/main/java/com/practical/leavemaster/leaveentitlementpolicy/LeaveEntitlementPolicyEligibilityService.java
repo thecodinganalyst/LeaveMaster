@@ -1,9 +1,6 @@
 package com.practical.leavemaster.leaveentitlementpolicy;
 
-import com.practical.leavemaster.config.ConfigurationScope;
 import com.practical.leavemaster.jurisdiction.JurisdictionRepository;
-import com.practical.leavemaster.location.Location;
-import com.practical.leavemaster.location.LocationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,7 +15,6 @@ import java.util.Optional;
 public class LeaveEntitlementPolicyEligibilityService {
     private final LeaveEntitlementPolicyEligibilityRepository ruleRepository;
     private final LeaveEntitlementPolicyService policyService;
-    private final LocationRepository locationRepository;
     private final JurisdictionRepository jurisdictionRepository;
 
     public List<LeaveEntitlementPolicyEligibilityRule> findAllAccessible() {
@@ -108,23 +104,8 @@ public class LeaveEntitlementPolicyEligibilityService {
         }
 
         switch (rule.getCriterionType()) {
-            case LOCATION_ID -> validateLocationRule(policy, rule);
             case JURISDICTION_CODE -> validateJurisdictionRule(rule);
             case SERVICE_MONTHS -> validateServiceMonthsRule(rule);
-        }
-    }
-
-    private void validateLocationRule(LeaveEntitlementPolicy policy, LeaveEntitlementPolicyEligibilityRule rule) {
-        if (policy.getScope() == ConfigurationScope.PLATFORM_TEMPLATE || policy.getTenantId() == null) {
-            throw new LeaveEntitlementPolicyValidationException("LOCATION_ID eligibility is tenant-specific and cannot be used in platform templates");
-        }
-        requireSetOperator(rule.getOperator(), "LOCATION_ID");
-        for (String locationId : values(rule.getValue())) {
-            Location location = locationRepository.findById(locationId)
-                    .orElseThrow(() -> new LeaveEntitlementPolicyValidationException("Unknown location: " + locationId));
-            if (!policy.getTenantId().equals(location.getTenantId())) {
-                throw new LeaveEntitlementPolicyValidationException("Location must belong to the policy tenant");
-            }
         }
     }
 
