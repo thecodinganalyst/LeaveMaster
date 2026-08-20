@@ -2,7 +2,7 @@ CREATE TABLE tenant_jurisdiction (
     id VARCHAR(255) NOT NULL,
     tenant_id VARCHAR(255) NOT NULL,
     jurisdiction_id VARCHAR(32) NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     CONSTRAINT UK_tenant_jurisdiction UNIQUE (tenant_id, jurisdiction_id),
     CONSTRAINT FK_tenant_jurisdiction_tenant FOREIGN KEY (tenant_id) REFERENCES tenant(id),
