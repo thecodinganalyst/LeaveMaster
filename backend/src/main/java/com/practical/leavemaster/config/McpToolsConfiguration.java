@@ -6,7 +6,6 @@ import com.practical.leavemaster.mcp.LeaveApplicationMcpTools;
 import com.practical.leavemaster.mcp.LeaveApproverMcpTools;
 import com.practical.leavemaster.mcp.LeaveCalendarMcpTools;
 import com.practical.leavemaster.mcp.LeaveTypeMcpTools;
-import com.practical.leavemaster.mcp.LocationMcpTools;
 import com.practical.leavemaster.mcp.StaffMcpTools;
 import com.practical.leavemaster.mcp.TenantMcpTools;
 import org.springframework.ai.tool.ToolCallbackProvider;
@@ -20,7 +19,6 @@ public class McpToolsConfiguration {
     @Bean
     public ToolCallbackProvider leaveMasterTools(
             LeaveTypeMcpTools leaveTypeMcpTools,
-            LocationMcpTools locationMcpTools,
             StaffMcpTools staffMcpTools,
             TenantMcpTools tenantMcpTools,
             LeaveApplicationMcpTools leaveApplicationMcpTools,
@@ -32,7 +30,6 @@ public class McpToolsConfiguration {
         return MethodToolCallbackProvider.builder()
                 .toolObjects(
                         leaveTypeMcpTools,
-                        locationMcpTools,
                         staffMcpTools,
                         tenantMcpTools,
                         leaveApplicationMcpTools,
