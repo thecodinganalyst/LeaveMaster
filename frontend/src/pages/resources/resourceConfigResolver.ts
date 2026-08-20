@@ -23,9 +23,42 @@ const publicHolidayConfig: AdminResourceConfig = {
   ],
 };
 
-export const getAdminResourceConfig = (name?: string) => (
-  name === 'public-holidays' ? publicHolidayConfig : getBaseAdminResourceConfig(name)
-);
+const tenantJurisdictionConfig: AdminResourceConfig = {
+  name: 'tenant-jurisdictions',
+  label: 'Tenant Jurisdictions',
+  singular: 'Tenant jurisdiction',
+  idField: 'id',
+  editable: false,
+  deletable: false,
+  fields: [
+    { name: 'id', label: 'ID', hidden: true, readOnlyOnEdit: true },
+    { name: 'tenantId', label: 'Tenant ID', hidden: true },
+    { name: 'jurisdictionId', label: 'Jurisdiction', required: true, list: true },
+    {
+      name: 'includePublicHolidays',
+      label: 'Add public holidays from template',
+      type: 'boolean',
+      defaultValue: true,
+      description: 'Creates a tenant leave calendar for this jurisdiction and copies applicable public holidays from the platform template.',
+    },
+    {
+      name: 'includeLeaveConfiguration',
+      label: 'Add leave types, entitlement policies and eligibility rules from template',
+      type: 'boolean',
+      defaultValue: true,
+      description: 'Copies the active jurisdiction leave configuration into tenant-owned records that can be customized later.',
+    },
+    { name: 'calendarStart', label: 'Calendar start', type: 'date', required: true },
+    { name: 'calendarEnd', label: 'Calendar end', type: 'date', required: true },
+    { name: 'createdAt', label: 'Added', list: true, formHidden: true },
+  ],
+};
+
+export const getAdminResourceConfig = (name?: string) => {
+  if (name === 'public-holidays') return publicHolidayConfig;
+  if (name === 'tenant-jurisdictions') return tenantJurisdictionConfig;
+  return getBaseAdminResourceConfig(name);
+};
 
 export {
   getAdminResourceInitialValues,
