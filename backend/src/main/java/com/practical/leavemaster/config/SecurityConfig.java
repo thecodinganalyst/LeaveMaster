@@ -73,6 +73,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/tenants/**", "/api/tenants/**").hasAuthority(RbacPermissions.TENANT_WRITE)
                 .requestMatchers(HttpMethod.PUT, "/tenants/**", "/api/tenants/**").hasAuthority(RbacPermissions.TENANT_WRITE)
                 .requestMatchers(HttpMethod.DELETE, "/tenants/**", "/api/tenants/**").hasAuthority(RbacPermissions.TENANT_WRITE)
+                .requestMatchers(HttpMethod.GET, "/tenant-jurisdictions/**", "/api/tenant-jurisdictions/**").hasAuthority(RbacPermissions.LEAVE_CALENDAR_READ)
+                .requestMatchers(HttpMethod.POST, "/tenant-jurisdictions/**", "/api/tenant-jurisdictions/**").hasAuthority(RbacPermissions.LEAVE_CALENDAR_WRITE)
                 .requestMatchers(HttpMethod.GET, "/staff/**", "/api/staff/**").hasAuthority(RbacPermissions.STAFF_READ)
                 .requestMatchers(HttpMethod.POST, "/staff/**", "/api/staff/**").hasAuthority(RbacPermissions.STAFF_WRITE)
                 .requestMatchers(HttpMethod.PUT, "/staff/**", "/api/staff/**").hasAuthority(RbacPermissions.STAFF_WRITE)
