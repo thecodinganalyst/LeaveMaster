@@ -242,8 +242,10 @@ export const toFormValues = (config: AdminResourceConfig, record: Record<string,
   if (config.name === 'leave-approvers') {
     const staff = record.staff as { id?: string } | undefined;
     const approver = record.approver as { id?: string } | undefined;
-    result.staffId = staff?.id;
-    result.approverId = approver?.id;
+    const admin = record.admin as { id?: string } | undefined;
+    result.staffId = staff?.id ?? result.staffId;
+    result.approverId = approver?.id ?? result.approverId;
+    result.adminId = admin?.id ?? result.adminId;
   }
   return result;
 };
