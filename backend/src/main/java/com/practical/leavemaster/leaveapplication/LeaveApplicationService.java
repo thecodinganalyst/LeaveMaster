@@ -75,8 +75,16 @@ public class LeaveApplicationService {
     }
 
     public List<LeaveApplication> findByStaffId(String staffId, LocalDate date) {
-        Staff staff = staffRepository.findById(staffId)
-                .orElseThrow(() -> new StaffNotFoundException(staffId));
+        Optional<Staff> staffResult = staffRepository.findById(staffId);
+        if (staffResult.isEmpty()) {
+            // Preserve the existing API's validation precedence for unknown staff while
+            // using jurisdiction-aware resolution for every real staff record.
+            if (leaveCalendarService.getCalendarFor(date).isEmpty()) {
+                throw new LeaveCalendarNotFoundException(date.toString());
+            }
+            throw new StaffNotFoundException(staffId);
+        }
+        Staff staff = staffResult.get();
         LeaveCalendar calendar = calendarForStaff(staff, date)
                 .orElseThrow(() -> new LeaveCalendarNotFoundException(date.toString()));
         return leaveApplicationRepository.findByStaffAndLeaveDateBetween(staff, calendar.getStart(), calendar.getEnd());
