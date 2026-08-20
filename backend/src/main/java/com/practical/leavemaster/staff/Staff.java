@@ -57,6 +57,9 @@ public class Staff {
     @JoinColumn(name = "location_id")
     private Location location;
 
+    @Column(name = "jurisdiction_id", length = 32)
+    private String jurisdictionId;
+
     @Builder.Default
     @OneToMany(mappedBy = "staff", cascade = CascadeType.ALL, orphanRemoval = true)
     @ToString.Exclude
