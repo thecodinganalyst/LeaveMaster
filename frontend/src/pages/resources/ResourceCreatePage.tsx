@@ -16,6 +16,26 @@ interface LeaveMasterIdentity {
   platformAdmin?: boolean;
 }
 
+const onboardingInitialValues = (resourceName?: string) => {
+  if (!['tenants', 'tenant-jurisdictions'].includes(resourceName ?? '')) return {};
+  const year = new Date().getFullYear();
+  const calendarValues = {
+    calendarStart: `${year}-01-01`,
+    calendarEnd: `${year}-12-31`,
+  };
+  if (resourceName === 'tenants') {
+    return {
+      ...calendarValues,
+      jurisdictions: [{ includePublicHolidays: true, includeLeaveConfiguration: true }],
+    };
+  }
+  return {
+    ...calendarValues,
+    includePublicHolidays: true,
+    includeLeaveConfiguration: true,
+  };
+};
+
 export const ResourceCreatePage = () => {
   const { resource } = useResource();
   const config = getAdminResourceConfig(resource?.name);
@@ -50,7 +70,13 @@ export const ResourceCreatePage = () => {
           form={form}
           layout="vertical"
           onFinish={submit}
-          initialValues={{ active: true, used: false, status: 'ACTIVE', ...getAdminResourceInitialValues(config) }}
+          initialValues={{
+            active: true,
+            used: false,
+            status: 'ACTIVE',
+            ...getAdminResourceInitialValues(config),
+            ...onboardingInitialValues(config.name),
+          }}
         >
           <ResourceFormFields config={config} preferredCountry={identity?.country} platformAdmin={Boolean(identity?.platformAdmin)} />
           <Space>
