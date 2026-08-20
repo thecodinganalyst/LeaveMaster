@@ -8,6 +8,7 @@ import { PageContainer } from '../../components/common/PageContainer.tsx';
 import { PageHeader } from '../../components/common/PageHeader.tsx';
 import { getAdminResourceConfig, getAdminResourceInitialValues, normaliseFormValues } from './resourceConfigResolver.ts';
 import { ResourceFormFields } from './ResourceFormFields.tsx';
+import { tenantOnboardingInitialValues } from './tenantOnboarding.ts';
 
 interface LeaveMasterIdentity {
   id: string;
@@ -50,7 +51,13 @@ export const ResourceCreatePage = () => {
           form={form}
           layout="vertical"
           onFinish={submit}
-          initialValues={{ active: true, used: false, status: 'ACTIVE', ...getAdminResourceInitialValues(config) }}
+          initialValues={{
+            active: true,
+            used: false,
+            status: 'ACTIVE',
+            ...getAdminResourceInitialValues(config),
+            ...tenantOnboardingInitialValues(config.name),
+          }}
         >
           <ResourceFormFields config={config} preferredCountry={identity?.country} platformAdmin={Boolean(identity?.platformAdmin)} />
           <Space>

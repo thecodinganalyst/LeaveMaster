@@ -37,6 +37,7 @@ nav:
   - Home: index.md
   - Architecture: architecture.md
   - Leave Management:
+      - Tenant jurisdiction onboarding: tenant-jurisdiction-onboarding.md
       - Entitlement generation: leave-entitlement-generation.md
       - Entitlement proration: leave-entitlement-proration.md
       - Staff change lifecycle: staff-change-lifecycle.md

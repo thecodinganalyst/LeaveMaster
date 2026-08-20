@@ -26,6 +26,9 @@ public interface LeaveCalendarRepository extends JpaRepository<LeaveCalendar, St
     Optional<LeaveCalendar> findByTenantIdAndJurisdictionIdAndStartLessThanEqualAndEndGreaterThanEqual(
             String tenantId, String jurisdictionId, LocalDate start, LocalDate end);
 
+    Optional<LeaveCalendar> findByTenantIdAndJurisdictionIdAndStartAndEnd(
+            String tenantId, String jurisdictionId, LocalDate start, LocalDate end);
+
     Optional<LeaveCalendar> findTopByOrderByEndDesc();
 
     Optional<LeaveCalendar> findTopByTenantIdOrderByEndDesc(String tenantId);

@@ -8,6 +8,8 @@ import { EntitlementPolicyFormFields } from './EntitlementPolicyFormFields.tsx';
 import { JurisdictionSelect } from './JurisdictionSelect.tsx';
 import { PublicHolidayListField } from './PublicHolidayListField.tsx';
 import { RolePermissionCheckboxList } from './RolePermissionCheckboxList.tsx';
+import { TenantJurisdictionFormFields } from './TenantJurisdictionFormFields.tsx';
+import { TenantOnboardingFormFields } from './TenantOnboardingFormFields.tsx';
 
 interface Props {
   config: AdminResourceConfig;
@@ -17,6 +19,14 @@ interface Props {
 }
 
 export const ResourceFormFields = ({ config, editing = false, platformAdmin = false }: Props) => {
+  if (config.name === 'tenants' && !editing) {
+    return <TenantOnboardingFormFields />;
+  }
+
+  if (config.name === 'tenant-jurisdictions' && !editing) {
+    return <TenantJurisdictionFormFields />;
+  }
+
   if (config.name === 'leave-entitlement-policies') {
     return <EntitlementPolicyFormFields editing={editing} platformAdmin={platformAdmin} />;
   }

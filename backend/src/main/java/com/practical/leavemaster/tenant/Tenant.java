@@ -8,6 +8,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,6 +16,8 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "tenant")
@@ -46,6 +49,16 @@ public class Tenant {
 
     @Column(name = "last_modified", nullable = false)
     private LocalDateTime lastModified;
+
+    @Transient
+    @Builder.Default
+    private List<TenantJurisdictionProvisionRequest> jurisdictions = new ArrayList<>();
+
+    @Transient
+    private LocalDate calendarStart;
+
+    @Transient
+    private LocalDate calendarEnd;
 
     @PrePersist
     @PreUpdate

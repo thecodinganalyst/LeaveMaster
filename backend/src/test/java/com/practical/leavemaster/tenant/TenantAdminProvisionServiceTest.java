@@ -98,6 +98,7 @@ class TenantAdminProvisionServiceTest {
                 .containsExactlyInAnyOrder(
                         RbacPermissions.USER_READ, RbacPermissions.USER_WRITE,
                         RbacPermissions.STAFF_READ, RbacPermissions.STAFF_WRITE,
+                        RbacPermissions.JURISDICTION_READ,
                         RbacPermissions.LEAVE_TYPE_READ, RbacPermissions.LEAVE_TYPE_WRITE,
                         RbacPermissions.LEAVE_APPROVER_READ, RbacPermissions.LEAVE_APPROVER_WRITE,
                         RbacPermissions.LEAVE_CALENDAR_READ, RbacPermissions.LEAVE_CALENDAR_WRITE,
@@ -107,6 +108,11 @@ class TenantAdminProvisionServiceTest {
                         RbacPermissions.LEAVE_ENTITLEMENT_POLICY_WRITE,
                         RbacPermissions.LEAVE_ENTITLEMENT_GENERATE)
                 .doesNotContain(RbacPermissions.ROLE_MANAGE, RbacPermissions.TENANT_READ, RbacPermissions.TENANT_WRITE);
+    }
+
+    @Test
+    void shouldGiveTenantAdminJurisdictionReadAccess() {
+        assertThat(TenantAdminProvisionService.TENANT_ADMIN_PERMISSION_CODES).contains(RbacPermissions.JURISDICTION_READ);
     }
 
     @Test
