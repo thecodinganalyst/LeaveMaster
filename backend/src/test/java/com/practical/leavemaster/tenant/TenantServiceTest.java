@@ -8,6 +8,7 @@ import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicyRe
 import com.practical.leavemaster.leavetype.LeaveTypeRepository;
 import com.practical.leavemaster.staff.Staff;
 import com.practical.leavemaster.staff.StaffRepository;
+import com.practical.leavemaster.user.AppUser;
 import com.practical.leavemaster.user.AppUserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -39,6 +40,7 @@ class TenantServiceTest {
     @Mock private TenantAdminProvisionService tenantAdminProvisionService;
     @Mock private TenantLeaveConfigurationProvisionService tenantLeaveConfigurationProvisionService;
     @Mock private JurisdictionRepository jurisdictionRepository;
+    @Mock private TenantJurisdictionRepository tenantJurisdictionRepository;
 
     @InjectMocks private TenantService tenantService;
 
@@ -66,13 +68,93 @@ class TenantServiceTest {
         Tenant tenant = Tenant.builder().id("t1").name("Tenant 1").jurisdictionId("SG").startDate(LocalDate.now()).status(TenantStatus.ACTIVE).build();
         when(jurisdictionRepository.existsById("SG")).thenReturn(true);
         when(tenantRepository.save(any(Tenant.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(tenantJurisdictionRepository.findById("t1:SG")).thenReturn(Optional.empty());
+        when(tenantJurisdictionRepository.save(any(TenantJurisdiction.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         Tenant result = tenantService.save(tenant);
 
         assertThat(result.getId()).isEqualTo("t1");
         assertThat(result.getLastModified()).isNotNull();
+        verify(tenantJurisdictionRepository).save(any(TenantJurisdiction.class));
         verify(tenantLeaveConfigurationProvisionService).provision(result);
         verify(tenantAdminProvisionService).provision("t1");
+    }
+
+    @Test
+    void shouldProvisionSelectedOptionsForMultipleJurisdictions() {
+        LocalDate calendarStart = LocalDate.of(2026, 1, 1);
+        LocalDate calendarEnd = LocalDate.of(2026, 12, 31);
+        TenantJurisdictionProvisionRequest sg = new TenantJurisdictionProvisionRequest("SG", true, true, null, null);
+        TenantJurisdictionProvisionRequest my = new TenantJurisdictionProvisionRequest("MY", false, true, null, null);
+        Tenant tenant = Tenant.builder()
+                .id("t1")
+                .name("Tenant 1")
+                .startDate(LocalDate.of(2026, 1, 1))
+                .status(TenantStatus.ACTIVE)
+                .jurisdictions(List.of(sg, my))
+                .calendarStart(calendarStart)
+                .calendarEnd(calendarEnd)
+                .build();
+
+        when(jurisdictionRepository.existsById("SG")).thenReturn(true);
+        when(jurisdictionRepository.existsById("MY")).thenReturn(true);
+        when(tenantRepository.save(any(Tenant.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(tenantJurisdictionRepository.findById(any())).thenReturn(Optional.empty());
+        when(tenantJurisdictionRepository.save(any(TenantJurisdiction.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Tenant result = tenantService.save(tenant);
+
+        assertThat(result.getJurisdictionId()).isEqualTo("SG");
+        verify(tenantJurisdictionRepository, times(2)).save(any(TenantJurisdiction.class));
+        verify(tenantLeaveConfigurationProvisionService).provision(
+                result,
+                new TenantJurisdictionProvisionRequest("SG", true, true, calendarStart, calendarEnd)
+        );
+        verify(tenantLeaveConfigurationProvisionService).provision(result, my);
+        verify(tenantAdminProvisionService).provision("t1");
+    }
+
+    @Test
+    void shouldRejectDuplicateJurisdictionsDuringTenantCreation() {
+        Tenant tenant = Tenant.builder()
+                .id("t1")
+                .name("Tenant 1")
+                .startDate(LocalDate.now())
+                .status(TenantStatus.ACTIVE)
+                .jurisdictions(List.of(
+                        new TenantJurisdictionProvisionRequest("SG", true, true, null, null),
+                        new TenantJurisdictionProvisionRequest("SG", false, false, null, null)))
+                .build();
+        when(jurisdictionRepository.existsById("SG")).thenReturn(true);
+
+        assertThatThrownBy(() -> tenantService.save(tenant))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Duplicate jurisdiction");
+        verify(tenantRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldAllowTenantUserToAddANewJurisdiction() {
+        Tenant tenant = Tenant.builder().id("ACME").name("ACME").jurisdictionId("SG").build();
+        AppUser user = AppUser.builder().loginName("ACME_Admin").tenantId("ACME").build();
+        TenantJurisdictionProvisionRequest request = new TenantJurisdictionProvisionRequest("MY", true, false, null, null);
+        when(appUserRepository.findById("ACME_Admin")).thenReturn(Optional.of(user));
+        when(tenantRepository.findById("ACME")).thenReturn(Optional.of(tenant));
+        when(jurisdictionRepository.existsById("MY")).thenReturn(true);
+        when(tenantJurisdictionRepository.existsByTenantIdAndJurisdictionId("ACME", "MY")).thenReturn(false);
+        when(tenantJurisdictionRepository.findById("ACME:MY")).thenReturn(Optional.empty());
+        when(tenantJurisdictionRepository.save(any(TenantJurisdiction.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        TenantJurisdiction result = tenantService.addJurisdictionForUser("ACME_Admin", request);
+
+        assertThat(result.getTenantId()).isEqualTo("ACME");
+        assertThat(result.getJurisdictionId()).isEqualTo("MY");
+        verify(tenantLeaveConfigurationProvisionService).provision(eq(tenant), argThat(normalized ->
+                normalized.jurisdictionId().equals("MY")
+                        && normalized.shouldIncludePublicHolidays()
+                        && !normalized.shouldIncludeLeaveConfiguration()
+                        && normalized.calendarStart() != null
+                        && normalized.calendarEnd() != null));
     }
 
     @Test
@@ -126,6 +208,7 @@ class TenantServiceTest {
         verify(leaveEntitlementPolicyRepository).deleteAllByTenantId("t1");
         verify(leaveTypeRepository).deleteAllByTenantId("t1");
         verify(leaveCalendarRepository).deleteAllByTenantId("t1");
+        verify(tenantJurisdictionRepository).deleteAllByTenantId("t1");
         verify(appUserRepository).deleteAllByTenantId("t1");
         verify(tenantAdminProvisionService).deprovision("t1");
         verify(tenantRepository).deleteById("t1");
