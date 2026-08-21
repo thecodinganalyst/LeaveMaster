@@ -2,7 +2,7 @@ import {
   getAdminResourceConfig as getBaseAdminResourceConfig,
   getAdminResourceInitialValues as getBaseAdminResourceInitialValues,
   isAdminFieldVisible,
-  normaliseFormValues,
+  normaliseFormValues as normaliseBaseFormValues,
   toFormValues as toBaseFormValues,
   type AdminField,
   type AdminResourceConfig,
@@ -69,9 +69,24 @@ export const getAdminResourceInitialValues = (config: AdminResourceConfig) => ({
 export const toFormValues = (config: AdminResourceConfig, record: Record<string, unknown>) =>
   config.name === 'employees' ? { ...record } : toBaseFormValues(config, record);
 
+export const normaliseFormValues = (config: AdminResourceConfig, values: Record<string, unknown>) => {
+  const result = normaliseBaseFormValues(config, values);
+  if (config.name !== 'employees' || !Array.isArray(result.leaveEntitlements)) return result;
+
+  result.leaveEntitlements = (result.leaveEntitlements as Array<Record<string, unknown>>).map((entitlement) => {
+    const leaveType = entitlement.leaveType as { id?: unknown } | undefined;
+    const normalized = { ...entitlement };
+    delete normalized.leaveType;
+    return {
+      ...normalized,
+      leaveTypeId: leaveType?.id,
+    };
+  });
+  return result;
+};
+
 export {
   isAdminFieldVisible,
-  normaliseFormValues,
 };
 
 export type { AdminField, AdminResourceConfig };
