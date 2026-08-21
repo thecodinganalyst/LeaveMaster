@@ -65,7 +65,7 @@ public class AssistantService {
     @Value("${GEMINI_API_KEY:}")
     private String geminiApiKey;
 
-    @Value("${app.assistant.timeout-seconds:30}")
+    @Value("${app.assistant.timeout-seconds:60}")
     private long timeoutSeconds;
 
     public AssistantDtos.ChatResponse chat(AssistantDtos.ChatRequest request, Authentication authentication) {
@@ -81,6 +81,7 @@ public class AssistantService {
                 .orElseThrow(() -> new AssistantUnavailableException("Authenticated LeaveMaster user was not found"));
         String conversationId = request.conversationId() == null || request.conversationId().isBlank()
                 ? UUID.randomUUID().toString() : request.conversationId();
+        AssistantRequestTrace trace = new AssistantRequestTrace();
 
         rateLimitService.checkAndRecord(user.getLoginName(), user.getTenantId(), conversationId, request.message());
         providerGuard.beforeCall();
@@ -89,20 +90,33 @@ public class AssistantService {
         List<AssistantDtos.StructuredResult> structuredResults = new ArrayList<>();
         ToolCallback[] tools = AssistantToolAdapter.forUser(
                 leaveMasterTools.getToolCallbacks(), authentication, user, objectMapper, pendingActions, structuredResults,
-                conversationId, confirmationService, auditService);
+                conversationId, confirmationService, auditService, trace);
+
+        log.info("Ask LeaveMaestro request started: provider={}, model={}, conversationId={}, timeoutSeconds={}",
+                provider, model, conversationId, timeoutSeconds);
 
         Future<String> providerCall = providerExecutor.submit(() -> {
             SecurityContext context = SecurityContextHolder.createEmptyContext();
             context.setAuthentication(authentication);
             SecurityContextHolder.setContext(context);
+            long providerStartedAtNanos = System.nanoTime();
+            log.info("Ask LeaveMaestro provider workflow started: provider={}, model={}, conversationId={}",
+                    provider, model, conversationId);
             try {
-                return ChatClient.create(chatModel)
+                String result = ChatClient.create(chatModel)
                         .prompt()
                         .system(systemPrompt(user))
                         .user(request.message())
                         .toolCallbacks(tools)
                         .call()
                         .content();
+                log.info("Ask LeaveMaestro provider workflow completed: provider={}, model={}, conversationId={}, durationMs={}, status=SUCCESS",
+                        provider, model, conversationId, elapsedMillis(providerStartedAtNanos));
+                return result;
+            } catch (RuntimeException e) {
+                log.warn("Ask LeaveMaestro provider workflow completed: provider={}, model={}, conversationId={}, durationMs={}, status=FAILED, exceptionType={}",
+                        provider, model, conversationId, elapsedMillis(providerStartedAtNanos), e.getClass().getName());
+                throw e;
             } finally {
                 SecurityContextHolder.clearContext();
             }
@@ -112,20 +126,23 @@ public class AssistantService {
         try {
             content = providerCall.get(timeoutSeconds, TimeUnit.SECONDS);
             providerGuard.success();
+            log.info("Ask LeaveMaestro request completed: provider={}, model={}, conversationId={}, durationMs={}, toolCallCount={}, lastStartedTool={}, lastCompletedTool={}, status=SUCCESS",
+                    provider, model, conversationId, trace.elapsedMillis(), trace.toolCallCount(),
+                    trace.lastStartedTool(), trace.lastCompletedTool());
         } catch (TimeoutException e) {
             providerCall.cancel(true);
             providerGuard.failure();
-            log.error(
-                    "Ask LeaveMaestro provider request timed out: provider={}, model={}, conversationId={}, timeoutSeconds={}",
-                    provider, model, conversationId, timeoutSeconds, e);
-            throw new AssistantProviderException("The AI provider timed out", e);
+            log.error("Ask LeaveMaestro provider request timed out: provider={}, model={}, conversationId={}, timeoutSeconds={}, elapsedMs={}, toolCallCount={}, lastStartedTool={}, lastCompletedTool={}, status=TIMED_OUT",
+                    provider, model, conversationId, timeoutSeconds, trace.elapsedMillis(), trace.toolCallCount(),
+                    trace.lastStartedTool(), trace.lastCompletedTool());
+            throw new AssistantProviderException("The AI provider timed out", conversationId, e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             providerCall.cancel(true);
-            log.error(
-                    "Ask LeaveMaestro provider request was interrupted: provider={}, model={}, conversationId={}",
-                    provider, model, conversationId, e);
-            throw new AssistantProviderException("The AI provider request was interrupted", e);
+            log.error("Ask LeaveMaestro provider request was interrupted: provider={}, model={}, conversationId={}, elapsedMs={}, toolCallCount={}, lastStartedTool={}, lastCompletedTool={}",
+                    provider, model, conversationId, trace.elapsedMillis(), trace.toolCallCount(),
+                    trace.lastStartedTool(), trace.lastCompletedTool());
+            throw new AssistantProviderException("The AI provider request was interrupted", conversationId, e);
         } catch (ExecutionException e) {
             Throwable cause = e.getCause();
             if (cause instanceof AccessDeniedException accessDenied) throw accessDenied;
@@ -135,19 +152,23 @@ public class AssistantService {
             Throwable failure = cause == null ? e : cause;
             Throwable rootCause = rootCause(failure);
             log.error(
-                    "Ask LeaveMaestro provider request failed: provider={}, model={}, conversationId={}, exceptionType={}, rootCauseType={}, message={}",
+                    "Ask LeaveMaestro provider request failed: provider={}, model={}, conversationId={}, elapsedMs={}, toolCallCount={}, lastStartedTool={}, lastCompletedTool={}, exceptionType={}, rootCauseType={}, message={}",
                     provider,
                     model,
                     conversationId,
+                    trace.elapsedMillis(),
+                    trace.toolCallCount(),
+                    trace.lastStartedTool(),
+                    trace.lastCompletedTool(),
                     failure.getClass().getName(),
                     rootCause.getClass().getName(),
                     safeProviderMessage(rootCause),
                     failure);
 
             if (cause instanceof RuntimeException runtime) {
-                throw new AssistantProviderException("The AI provider could not complete the request", runtime);
+                throw new AssistantProviderException("The AI provider could not complete the request", conversationId, runtime);
             }
-            throw new AssistantProviderException("The AI provider could not complete the request", e);
+            throw new AssistantProviderException("The AI provider could not complete the request", conversationId, e);
         }
 
         return new AssistantDtos.ChatResponse(
@@ -174,6 +195,10 @@ public class AssistantService {
         return sanitized.length() <= MAX_LOG_MESSAGE_LENGTH
                 ? sanitized
                 : sanitized.substring(0, MAX_LOG_MESSAGE_LENGTH) + "…";
+    }
+
+    private long elapsedMillis(long startedAtNanos) {
+        return (System.nanoTime() - startedAtNanos) / 1_000_000L;
     }
 
     private String redactConfiguredSecret(String value, String secret) {
