@@ -21,7 +21,7 @@ class SingaporeEntitlementPolicySeedTest {
     private LeaveEntitlementPolicyEligibilityRepository eligibilityRepository;
 
     @Test
-    void seedsSingaporeTemplatesWithPlatformScopeOnly() {
+    void seedsSingaporeTemplatesWithPlatformScopeAndOpenEndedValidity() {
         List<LeaveEntitlementPolicy> templates = policyRepository
                 .findAllByScopeAndJurisdictionIdAndActiveTrue(ConfigurationScope.PLATFORM_TEMPLATE, "SG");
 
@@ -32,6 +32,12 @@ class SingaporeEntitlementPolicySeedTest {
             assertThat(policy.getJurisdictionId()).isEqualTo("SG");
             assertThat(policy.getJurisdictionLeaveTypeId()).startsWith("SG:");
             assertThat(policy.getEntitlementUnit()).isEqualTo(EntitlementUnit.DAYS);
+            assertThat(policy.getEffectiveFrom())
+                    .as("current statutory templates must not use the software seed date")
+                    .isNull();
+            assertThat(policy.getEffectiveTo())
+                    .as("current statutory templates remain valid until superseded")
+                    .isNull();
         });
     }
 

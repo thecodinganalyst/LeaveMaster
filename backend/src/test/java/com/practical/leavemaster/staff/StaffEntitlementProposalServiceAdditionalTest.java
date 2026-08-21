@@ -136,18 +136,45 @@ class StaffEntitlementProposalServiceAdditionalTest {
         assertThat(entitlement.getEntitlement()).isEqualByComparingTo("12.00");
     }
 
+    @Test
+    void shouldUseTodayWhenEvaluationFallsInsideEntitlementPeriod() {
+        LocalDate periodStart = LocalDate.of(2026, 1, 1);
+        LocalDate periodEnd = LocalDate.of(2026, 12, 31);
+        LocalDate today = LocalDate.of(2026, 8, 21);
+
+        assertThat(StaffEntitlementProposalService.evaluationDate(periodStart, periodEnd, today))
+                .isEqualTo(today);
+    }
+
+    @Test
+    void shouldClampPolicyEvaluationDateToEntitlementPeriod() {
+        LocalDate periodStart = LocalDate.of(2027, 1, 1);
+        LocalDate periodEnd = LocalDate.of(2027, 12, 31);
+
+        assertThat(StaffEntitlementProposalService.evaluationDate(
+                periodStart, periodEnd, LocalDate.of(2026, 8, 21)))
+                .isEqualTo(periodStart);
+        assertThat(StaffEntitlementProposalService.evaluationDate(
+                periodStart, LocalDate.of(2027, 8, 20), LocalDate.of(2027, 8, 21)))
+                .isEqualTo(LocalDate.of(2027, 8, 20));
+    }
+
     private void setupResolvedTemplate(String policyId) {
         authenticateTenantUser();
-        LeaveType annual = LeaveType.builder()
+        LeaveType annual = annualLeaveType();
+        when(leaveCalendarService.getCalendarFor("SG", joinDate)).thenReturn(Optional.of(calendar));
+        when(leaveTypeRepository.findAllByTenantId("tenant-a")).thenReturn(List.of(annual));
+        when(resolutionService.resolveTemplate(any(Staff.class), eq(SOURCE_LEAVE_TYPE_ID), any(LocalDate.class)))
+                .thenReturn(new PolicyResolutionResult("__preview__", SOURCE_LEAVE_TYPE_ID, policyId, false, "matched", List.of()));
+    }
+
+    private LeaveType annualLeaveType() {
+        return LeaveType.builder()
                 .id("annual")
                 .name("Annual Leave")
                 .tenantId("tenant-a")
                 .sourceJurisdictionLeaveTypeId(SOURCE_LEAVE_TYPE_ID)
                 .build();
-        when(leaveCalendarService.getCalendarFor("SG", joinDate)).thenReturn(Optional.of(calendar));
-        when(leaveTypeRepository.findAllByTenantId("tenant-a")).thenReturn(List.of(annual));
-        when(resolutionService.resolveTemplate(any(Staff.class), eq(SOURCE_LEAVE_TYPE_ID), eq(calendar.getStart())))
-                .thenReturn(new PolicyResolutionResult("__preview__", SOURCE_LEAVE_TYPE_ID, policyId, false, "matched", List.of()));
     }
 
     private LeaveEntitlementPolicy policy(String id, ProrationMethod prorationMethod) {
@@ -164,7 +191,8 @@ class StaffEntitlementProposalServiceAdditionalTest {
                 .entitlementAmount(new BigDecimal("24.00"))
                 .accrualMethod(AccrualMethod.ANNUAL)
                 .prorationMethod(prorationMethod)
-                .effectiveFrom(LocalDate.of(2026, 1, 1))
+                .effectiveFrom(null)
+                .effectiveTo(null)
                 .build();
     }
 

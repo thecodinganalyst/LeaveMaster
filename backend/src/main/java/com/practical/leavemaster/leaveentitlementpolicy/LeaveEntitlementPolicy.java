@@ -89,7 +89,7 @@ public class LeaveEntitlementPolicy {
     @Column(name = "carry_forward_expiry_months")
     private Integer carryForwardExpiryMonths;
 
-    @Column(name = "effective_from", nullable = false)
+    @Column(name = "effective_from")
     private LocalDate effectiveFrom;
 
     @Column(name = "effective_to")
