@@ -129,10 +129,12 @@ export const StaffFormFields = ({ editing = false, staffId }: Props) => {
   const form = Form.useFormInstance();
   const [proposalEnabled, setProposalEnabled] = useState(!editing);
   const [proposalLoading, setProposalLoading] = useState(false);
+  const [proposalLoaded, setProposalLoaded] = useState(false);
   const [proposalError, setProposalError] = useState<string>();
   const jurisdictionId = Form.useWatch('jurisdictionId', form) as string | undefined;
   const joinDate = Form.useWatch('joinDate', form) as string | undefined;
   const termDate = Form.useWatch('termDate', form) as string | undefined;
+  const leaveEntitlements = Form.useWatch('leaveEntitlements', form) as LeaveEntitlementValue[] | undefined;
 
   const calendarsQuery = useQuery({ queryKey: ['staff-form', 'leave-calendars'], queryFn: loadCalendars, staleTime: 60_000 });
   const jurisdictionsQuery = useQuery({ queryKey: ['jurisdictions', 'options'], queryFn: loadJurisdictions, staleTime: 5 * 60_000 });
@@ -152,9 +154,13 @@ export const StaffFormFields = ({ editing = false, staffId }: Props) => {
   );
 
   useEffect(() => {
-    if (!proposalEnabled || !jurisdictionId || !joinDate) return;
+    if (!proposalEnabled || !jurisdictionId || !joinDate) {
+      setProposalLoaded(false);
+      return;
+    }
     let cancelled = false;
     setProposalLoading(true);
+    setProposalLoaded(false);
     setProposalError(undefined);
     const request: ProposalRequest = {
       ...(editing && staffId ? { staffId } : {}),
@@ -166,11 +172,15 @@ export const StaffFormFields = ({ editing = false, staffId }: Props) => {
       method: 'POST',
       body: JSON.stringify(request),
     }).then((proposals) => {
-      if (!cancelled) form.setFieldValue('leaveEntitlements', proposals);
+      if (!cancelled) {
+        form.setFieldValue('leaveEntitlements', proposals);
+        setProposalLoaded(true);
+      }
     }).catch((error: unknown) => {
       if (!cancelled) {
         setProposalError(error instanceof Error ? error.message : 'Unable to generate leave entitlements');
         form.setFieldValue('leaveEntitlements', []);
+        setProposalLoaded(false);
       }
     }).finally(() => {
       if (!cancelled) setProposalLoading(false);
@@ -179,6 +189,7 @@ export const StaffFormFields = ({ editing = false, staffId }: Props) => {
   }, [editing, form, joinDate, jurisdictionId, proposalEnabled, staffId, termDate]);
 
   const noJurisdictions = !calendarsQuery.isLoading && !jurisdictionsQuery.isLoading && jurisdictionOptions.length === 0;
+  const noEligiblePolicies = proposalLoaded && !proposalLoading && !proposalError && (leaveEntitlements?.length ?? 0) === 0;
 
   return (
     <>
@@ -213,10 +224,19 @@ export const StaffFormFields = ({ editing = false, staffId }: Props) => {
 
       <Card size="small" title="Leave entitlements" style={{ marginBottom: 24 }}>
         <Typography.Paragraph type="secondary">
-          Entitlements are generated from the policies matching the selected jurisdiction. HR can adjust the leave type, dates and amount before saving.
+          Entitlements are generated from eligible jurisdiction policy templates using the staff details entered above. HR can adjust the leave type, dates and amount before saving.
         </Typography.Paragraph>
         {proposalLoading && <Space style={{ marginBottom: 12 }}><Spin size="small" /> Generating entitlements…</Space>}
         {proposalError && <Alert type="error" showIcon message={proposalError} style={{ marginBottom: 12 }} />}
+        {noEligiblePolicies && (
+          <Alert
+            type="info"
+            showIcon
+            message="No entitlement policy templates currently match this staff member"
+            description="Update the eligibility-relevant staff details or add an entitlement manually if appropriate."
+            style={{ marginBottom: 12 }}
+          />
+        )}
         <Form.List name="leaveEntitlements">
           {(fields, { add, remove }) => (
             <Space direction="vertical" size="middle" style={{ width: '100%' }}>
