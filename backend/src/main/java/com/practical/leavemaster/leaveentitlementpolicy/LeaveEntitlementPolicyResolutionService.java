@@ -131,8 +131,9 @@ public class LeaveEntitlementPolicyResolutionService {
                     effective.putIfAbsent(policy.getName(), policy);
                 }
             }
-            Jurisdiction jurisdiction = jurisdictionRepository.findById(currentId)
-                    .orElseThrow(() -> new IllegalArgumentException("Jurisdiction not found: " + currentId));
+            String lookupId = currentId;
+            Jurisdiction jurisdiction = jurisdictionRepository.findById(lookupId)
+                    .orElseThrow(() -> new IllegalArgumentException("Jurisdiction not found: " + lookupId));
             currentId = jurisdiction.getParentId();
         }
         return List.copyOf(effective.values());
