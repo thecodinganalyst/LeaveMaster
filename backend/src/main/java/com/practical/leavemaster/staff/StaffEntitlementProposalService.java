@@ -1,5 +1,6 @@
 package com.practical.leavemaster.staff;
 
+import com.practical.leavemaster.config.ConfigurationScope;
 import com.practical.leavemaster.leavecalendar.LeaveCalendar;
 import com.practical.leavemaster.leavecalendar.LeaveCalendarService;
 import com.practical.leavemaster.leaveentitlement.LeaveEntitlement;
@@ -65,10 +66,15 @@ public class StaffEntitlementProposalService {
 
         List<LeaveEntitlement> proposals = new ArrayList<>();
         for (LeaveType leaveType : leaveTypeRepository.findAllByTenantId(tenantId)) {
-            PolicyResolutionResult resolution = resolutionService.resolve(profile, leaveType.getId(), periodStart);
+            String sourceLeaveTypeId = leaveType.getSourceJurisdictionLeaveTypeId();
+            if (sourceLeaveTypeId == null || sourceLeaveTypeId.isBlank()) {
+                continue;
+            }
+
+            PolicyResolutionResult resolution = resolutionService.resolveTemplate(profile, sourceLeaveTypeId, periodStart);
             if (resolution.ambiguous()) {
                 throw new IllegalArgumentException(
-                        "Multiple matching entitlement policies have the same highest priority for leave type " + leaveType.getName());
+                        "Multiple matching entitlement policy templates have the same highest priority for leave type " + leaveType.getName());
             }
             if (resolution.selectedPolicyId() == null) {
                 continue;
@@ -76,16 +82,8 @@ public class StaffEntitlementProposalService {
 
             LeaveEntitlementPolicy policy = policyRepository.findById(resolution.selectedPolicyId())
                     .orElseThrow(() -> new IllegalStateException(
-                            "Resolved policy no longer exists: " + resolution.selectedPolicyId()));
-            if (!tenantId.equals(policy.getTenantId())) {
-                throw new IllegalArgumentException("Resolved entitlement policy does not belong to the current tenant");
-            }
-            if (policy.getEntitlementUnit() != EntitlementUnit.DAYS) {
-                throw new IllegalArgumentException("Only DAYS entitlement policies can currently generate employee balances");
-            }
-            if (policy.getAccrualMethod() == AccrualMethod.PER_PAY_PERIOD) {
-                throw new IllegalArgumentException("PER_PAY_PERIOD entitlement generation requires a payroll schedule and is not supported yet");
-            }
+                            "Resolved policy template no longer exists: " + resolution.selectedPolicyId()));
+            validateTemplatePolicy(policy, sourceLeaveTypeId);
 
             BigDecimal base = calculateBase(policy, profile, periodStart, periodEnd);
             proposals.add(LeaveEntitlement.builder()
@@ -101,6 +99,24 @@ public class StaffEntitlementProposalService {
                     .build());
         }
         return proposals;
+    }
+
+    private void validateTemplatePolicy(LeaveEntitlementPolicy policy, String sourceLeaveTypeId) {
+        if (policy.getTenantId() != null) {
+            throw new IllegalArgumentException("Resolved entitlement policy must be a platform template without a tenant id");
+        }
+        if (policy.getScope() != ConfigurationScope.PLATFORM_TEMPLATE) {
+            throw new IllegalArgumentException("Resolved entitlement policy must have PLATFORM_TEMPLATE scope");
+        }
+        if (!sourceLeaveTypeId.equals(policy.getJurisdictionLeaveTypeId())) {
+            throw new IllegalArgumentException("Resolved entitlement policy template does not match the tenant leave type source");
+        }
+        if (policy.getEntitlementUnit() != EntitlementUnit.DAYS) {
+            throw new IllegalArgumentException("Only DAYS entitlement policies can currently generate employee balances");
+        }
+        if (policy.getAccrualMethod() == AccrualMethod.PER_PAY_PERIOD) {
+            throw new IllegalArgumentException("PER_PAY_PERIOD entitlement generation requires a payroll schedule and is not supported yet");
+        }
     }
 
     private Staff previewProfile(StaffEntitlementProposalRequest request, String tenantId, String jurisdictionId) {
