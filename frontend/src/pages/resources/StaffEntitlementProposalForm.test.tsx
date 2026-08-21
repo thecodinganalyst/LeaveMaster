@@ -75,7 +75,7 @@ describe('staff entitlement template proposals', () => {
     ));
     expect(await screen.findByDisplayValue('template-sg-annual')).toBeInTheDocument();
     expect(document.getElementById('leaveEntitlements_0_from')).toHaveAttribute('value', '2026-11-03');
-    expect(document.getElementById('leaveEntitlements_0_entitlement')).toHaveAttribute('value', '2');
+    expect(document.getElementById('leaveEntitlements_0_entitlement')).toHaveAttribute('value', '2.0');
   });
 
   it('distinguishes missing templates from not eligible in the current period', async () => {
