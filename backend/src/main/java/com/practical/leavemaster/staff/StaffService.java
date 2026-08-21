@@ -177,9 +177,10 @@ public class StaffService {
         }
         String jurisdictionId = staff.getJurisdictionId().trim();
         staff.setJurisdictionId(jurisdictionId);
-        if (leaveCalendarService.getCalendarFor(jurisdictionId, staff.getJoinDate()).isEmpty()) {
+        LocalDate calendarDate = calendarLookupDate(staff.getJoinDate(), LocalDate.now());
+        if (leaveCalendarService.getCalendarFor(jurisdictionId, calendarDate).isEmpty()) {
             throw new IllegalArgumentException(
-                    "Staff jurisdiction must have a leave calendar for the current tenant and join date");
+                    "Staff jurisdiction must have a leave calendar for the current tenant and entitlement date " + calendarDate);
         }
     }
 
@@ -236,11 +237,15 @@ public class StaffService {
             throw new IllegalArgumentException("Leave entitlement requires both from and to when setting period manually");
         }
 
+        LocalDate calendarDate = staffCalendarLookupDate(staff.getJoinDate());
         Optional<LeaveCalendar> leaveCalendar = staff.getJurisdictionId() == null || staff.getJurisdictionId().isBlank()
-                ? leaveCalendarService.getCalendarFor(staff.getJoinDate())
-                : leaveCalendarService.getCalendarFor(staff.getJurisdictionId(), staff.getJoinDate());
+                ? leaveCalendarService.getCalendarFor(calendarDate)
+                : leaveCalendarService.getCalendarFor(staff.getJurisdictionId(), calendarDate);
         if (leaveCalendar.isEmpty()) {
-            throw new IllegalArgumentException("No leave calendar found for join date: " + staff.getJoinDate());
+            if (calendarDate.equals(staff.getJoinDate())) {
+                throw new IllegalArgumentException("No leave calendar found for join date: " + staff.getJoinDate());
+            }
+            throw new IllegalArgumentException("No leave calendar found for entitlement date: " + calendarDate);
         }
 
         LeaveCalendar calendar = leaveCalendar.get();
@@ -272,6 +277,18 @@ public class StaffService {
         return fullPeriodEntitlement
                 .multiply(BigDecimal.valueOf(effectiveDays))
                 .divide(BigDecimal.valueOf(totalPeriodDays), 2, RoundingMode.HALF_UP);
+    }
+
+    private LocalDate staffCalendarLookupDate(LocalDate joinDate) {
+        Optional<AppUser> user = currentUser();
+        if (user.isPresent() && !isPlatformAdmin(user.get())) {
+            return calendarLookupDate(joinDate, LocalDate.now());
+        }
+        return joinDate;
+    }
+
+    static LocalDate calendarLookupDate(LocalDate joinDate, LocalDate today) {
+        return joinDate.getYear() < today.getYear() ? today : joinDate;
     }
 
     private Optional<AppUser> currentUser() {
