@@ -1,5 +1,6 @@
 package com.practical.leavemaster.staff;
 
+import com.practical.leavemaster.config.ConfigurationScope;
 import com.practical.leavemaster.leavecalendar.LeaveCalendar;
 import com.practical.leavemaster.leavecalendar.LeaveCalendarService;
 import com.practical.leavemaster.leaveentitlement.LeaveEntitlement;
@@ -36,6 +37,8 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class StaffEntitlementProposalServiceAdditionalTest {
+
+    private static final String SOURCE_LEAVE_TYPE_ID = "sg-annual";
 
     @Mock private LeaveCalendarService leaveCalendarService;
     @Mock private LeaveTypeRepository leaveTypeRepository;
@@ -101,53 +104,59 @@ class StaffEntitlementProposalServiceAdditionalTest {
     }
 
     @Test
-    void shouldRejectResolvedPolicyThatNoLongerExists() {
-        LeaveType annual = setupResolvedPolicy("policy-missing");
+    void shouldRejectResolvedTemplateThatNoLongerExists() {
+        setupResolvedTemplate("policy-missing");
         when(policyRepository.findById("policy-missing")).thenReturn(Optional.empty());
 
-        assertThat(annual.getId()).isEqualTo("annual");
         assertThatThrownBy(() -> proposalService.propose(request(null)))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("no longer exists");
+                .hasMessageContaining("template no longer exists");
     }
 
     @Test
-    void shouldRejectResolvedPolicyFromAnotherTenant() {
-        setupResolvedPolicy("policy-foreign");
-        when(policyRepository.findById("policy-foreign")).thenReturn(Optional.of(policy(
-                "policy-foreign", "tenant-b", ProrationMethod.NONE)));
+    void shouldRejectResolvedPolicyWithNonTemplateScope() {
+        setupResolvedTemplate("policy-invalid");
+        LeaveEntitlementPolicy invalid = policy("policy-invalid", ProrationMethod.NONE);
+        invalid.setScope(ConfigurationScope.TENANT);
+        when(policyRepository.findById("policy-invalid")).thenReturn(Optional.of(invalid));
 
         assertThatThrownBy(() -> proposalService.propose(request(null)))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("current tenant");
+                .hasMessageContaining("PLATFORM_TEMPLATE");
     }
 
     @Test
     void shouldProrateAnnualEntitlementByMonths() {
-        setupResolvedPolicy("policy-months");
+        setupResolvedTemplate("policy-months");
         when(policyRepository.findById("policy-months")).thenReturn(Optional.of(policy(
-                "policy-months", "tenant-a", ProrationMethod.MONTHS)));
+                "policy-months", ProrationMethod.MONTHS)));
 
         LeaveEntitlement entitlement = proposalService.propose(request(null)).getFirst();
 
         assertThat(entitlement.getEntitlement()).isEqualByComparingTo("12.00");
     }
 
-    private LeaveType setupResolvedPolicy(String policyId) {
+    private void setupResolvedTemplate(String policyId) {
         authenticateTenantUser();
-        LeaveType annual = LeaveType.builder().id("annual").name("Annual Leave").tenantId("tenant-a").build();
+        LeaveType annual = LeaveType.builder()
+                .id("annual")
+                .name("Annual Leave")
+                .tenantId("tenant-a")
+                .sourceJurisdictionLeaveTypeId(SOURCE_LEAVE_TYPE_ID)
+                .build();
         when(leaveCalendarService.getCalendarFor("SG", joinDate)).thenReturn(Optional.of(calendar));
         when(leaveTypeRepository.findAllByTenantId("tenant-a")).thenReturn(List.of(annual));
-        when(resolutionService.resolve(any(Staff.class), eq("annual"), eq(calendar.getStart())))
-                .thenReturn(new PolicyResolutionResult("__preview__", "annual", policyId, false, "matched", List.of()));
-        return annual;
+        when(resolutionService.resolveTemplate(any(Staff.class), eq(SOURCE_LEAVE_TYPE_ID), eq(calendar.getStart())))
+                .thenReturn(new PolicyResolutionResult("__preview__", SOURCE_LEAVE_TYPE_ID, policyId, false, "matched", List.of()));
     }
 
-    private LeaveEntitlementPolicy policy(String id, String tenantId, ProrationMethod prorationMethod) {
+    private LeaveEntitlementPolicy policy(String id, ProrationMethod prorationMethod) {
         return LeaveEntitlementPolicy.builder()
                 .id(id)
-                .tenantId(tenantId)
-                .leaveTypeId("annual")
+                .tenantId(null)
+                .scope(ConfigurationScope.PLATFORM_TEMPLATE)
+                .jurisdictionId("SG")
+                .jurisdictionLeaveTypeId(SOURCE_LEAVE_TYPE_ID)
                 .name(id)
                 .active(true)
                 .priority(10)
