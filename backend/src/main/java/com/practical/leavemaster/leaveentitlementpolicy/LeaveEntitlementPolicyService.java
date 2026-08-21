@@ -168,6 +168,9 @@ public class LeaveEntitlementPolicyService {
         if (policy.getLeaveTypeId() == null || policy.getLeaveTypeId().isBlank()) {
             throw new LeaveEntitlementPolicyValidationException("leaveTypeId is required");
         }
+        if (policy.getEffectiveFrom() == null) {
+            throw new LeaveEntitlementPolicyValidationException("effectiveFrom is required");
+        }
         if (policy.getJurisdictionId() != null || policy.getJurisdictionLeaveTypeId() != null) {
             throw new LeaveEntitlementPolicyValidationException("Tenant policies must not contain platform template jurisdiction references");
         }
