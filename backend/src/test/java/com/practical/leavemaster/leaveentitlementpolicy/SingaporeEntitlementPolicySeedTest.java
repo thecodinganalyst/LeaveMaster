@@ -32,6 +32,8 @@ class SingaporeEntitlementPolicySeedTest {
             assertThat(policy.getJurisdictionId()).isEqualTo("SG");
             assertThat(policy.getJurisdictionLeaveTypeId()).startsWith("SG:");
             assertThat(policy.getEntitlementUnit()).isEqualTo(EntitlementUnit.DAYS);
+            assertThat(policy.getEffectiveFrom()).as("current statutory templates must not use the seed release date").isNull();
+            assertThat(policy.getEffectiveTo()).as("current statutory templates remain valid until superseded").isNull();
         });
     }
 
