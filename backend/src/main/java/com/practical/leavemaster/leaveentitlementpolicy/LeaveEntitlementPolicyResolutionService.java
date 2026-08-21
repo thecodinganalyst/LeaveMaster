@@ -34,6 +34,13 @@ public class LeaveEntitlementPolicyResolutionService {
     public PolicyResolutionResult resolve(String staffId, String leaveTypeId, LocalDate effectiveDate) {
         Staff staff = staffRepository.findById(staffId)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown staff id: " + staffId));
+        return resolve(staff, leaveTypeId, effectiveDate);
+    }
+
+    public PolicyResolutionResult resolve(Staff staff, String leaveTypeId, LocalDate effectiveDate) {
+        if (staff == null) {
+            throw new IllegalArgumentException("staff is required");
+        }
         if (staff.getTenantId() == null || staff.getTenantId().isBlank()) {
             throw new IllegalStateException("Staff does not have a tenant id");
         }
@@ -69,6 +76,7 @@ public class LeaveEntitlementPolicyResolutionService {
 
         matching.sort(Comparator.comparingInt(LeaveEntitlementPolicy::getPriority).reversed()
                 .thenComparing(LeaveEntitlementPolicy::getId));
+        String staffId = staff.getId();
         if (matching.isEmpty()) {
             return new PolicyResolutionResult(staffId, leaveTypeId, null, false,
                     "No matching policy", evaluations);
