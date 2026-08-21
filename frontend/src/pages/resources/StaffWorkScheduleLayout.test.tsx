@@ -27,7 +27,7 @@ describe('Staff work schedule layout', () => {
       </QueryClientProvider>,
     );
 
-    const mondaySelect = screen.getByLabelText('Monday work schedule');
+    const mondaySelect = screen.getByRole('combobox', { name: 'Monday work schedule' });
     const mondayLabel = screen.getByText('Monday');
     expect(mondayLabel.parentElement).toBe(mondaySelect.closest('.ant-select')?.parentElement);
   });
