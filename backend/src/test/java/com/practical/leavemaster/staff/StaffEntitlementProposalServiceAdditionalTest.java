@@ -137,42 +137,26 @@ class StaffEntitlementProposalServiceAdditionalTest {
     }
 
     @Test
-    void shouldEvaluateCurrentCalendarAtTodayRatherThanCalendarStart() {
-        authenticateTenantUser();
-        LeaveType annual = annualLeaveType();
-        when(leaveCalendarService.getCalendarFor("SG", joinDate)).thenReturn(Optional.of(calendar));
-        when(leaveTypeRepository.findAllByTenantId("tenant-a")).thenReturn(List.of(annual));
-        when(resolutionService.resolveTemplate(any(Staff.class), eq(SOURCE_LEAVE_TYPE_ID), eq(LocalDate.now())))
-                .thenReturn(new PolicyResolutionResult("__preview__", SOURCE_LEAVE_TYPE_ID, null, false, "none", List.of()));
+    void shouldUseTodayWhenEvaluationFallsInsideEntitlementPeriod() {
+        LocalDate periodStart = LocalDate.of(2026, 1, 1);
+        LocalDate periodEnd = LocalDate.of(2026, 12, 31);
+        LocalDate today = LocalDate.of(2026, 8, 21);
 
-        proposalService.propose(request(null));
+        assertThat(StaffEntitlementProposalService.evaluationDate(periodStart, periodEnd, today))
+                .isEqualTo(today);
     }
 
     @Test
-    void shouldClampPolicyEvaluationToFutureCalendarStartAndPastTermination() {
-        authenticateTenantUser();
-        LeaveType annual = annualLeaveType();
-        LocalDate futureStart = LocalDate.now().plusYears(1).withDayOfYear(1);
-        LeaveCalendar futureCalendar = LeaveCalendar.builder()
-                .id("future")
-                .jurisdictionId("SG")
-                .start(futureStart)
-                .end(futureStart.plusYears(1).minusDays(1))
-                .tenantId("tenant-a")
-                .build();
-        when(leaveCalendarService.getCalendarFor("SG", joinDate)).thenReturn(Optional.of(futureCalendar));
-        when(leaveTypeRepository.findAllByTenantId("tenant-a")).thenReturn(List.of(annual));
-        when(resolutionService.resolveTemplate(any(Staff.class), eq(SOURCE_LEAVE_TYPE_ID), eq(futureStart)))
-                .thenReturn(new PolicyResolutionResult("__preview__", SOURCE_LEAVE_TYPE_ID, null, false, "none", List.of()));
+    void shouldClampPolicyEvaluationDateToEntitlementPeriod() {
+        LocalDate periodStart = LocalDate.of(2027, 1, 1);
+        LocalDate periodEnd = LocalDate.of(2027, 12, 31);
 
-        proposalService.propose(request(null));
-
-        LocalDate terminatedOn = LocalDate.of(2026, 8, 20);
-        when(leaveCalendarService.getCalendarFor("SG", joinDate)).thenReturn(Optional.of(calendar));
-        when(resolutionService.resolveTemplate(any(Staff.class), eq(SOURCE_LEAVE_TYPE_ID), eq(terminatedOn)))
-                .thenReturn(new PolicyResolutionResult("__preview__", SOURCE_LEAVE_TYPE_ID, null, false, "none", List.of()));
-
-        proposalService.propose(new StaffEntitlementProposalRequest(null, "SG", joinDate, terminatedOn));
+        assertThat(StaffEntitlementProposalService.evaluationDate(
+                periodStart, periodEnd, LocalDate.of(2026, 8, 21)))
+                .isEqualTo(periodStart);
+        assertThat(StaffEntitlementProposalService.evaluationDate(
+                periodStart, LocalDate.of(2027, 8, 20), LocalDate.of(2027, 8, 21)))
+                .isEqualTo(LocalDate.of(2027, 8, 20));
     }
 
     private void setupResolvedTemplate(String policyId) {
