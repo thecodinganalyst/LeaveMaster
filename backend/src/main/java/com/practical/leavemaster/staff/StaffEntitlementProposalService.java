@@ -52,9 +52,10 @@ public class StaffEntitlementProposalService {
 
         String tenantId = currentTenantId();
         String jurisdictionId = request.jurisdictionId().trim();
-        LeaveCalendar calendar = leaveCalendarService.getCalendarFor(jurisdictionId, request.joinDate())
+        LocalDate calendarDate = calendarLookupDate(request.joinDate(), LocalDate.now());
+        LeaveCalendar calendar = leaveCalendarService.getCalendarFor(jurisdictionId, calendarDate)
                 .orElseThrow(() -> new IllegalArgumentException(
-                        "No leave calendar is configured for jurisdiction " + jurisdictionId + " and join date " + request.joinDate()));
+                        "No leave calendar is configured for jurisdiction " + jurisdictionId + " and entitlement date " + calendarDate));
 
         Staff profile = previewProfile(request, tenantId, jurisdictionId);
         LocalDate periodStart = calendar.getStart();
@@ -242,6 +243,10 @@ public class StaffEntitlementProposalService {
             return first;
         }
         return second;
+    }
+
+    static LocalDate calendarLookupDate(LocalDate joinDate, LocalDate today) {
+        return joinDate.getYear() < today.getYear() ? today : joinDate;
     }
 
     static LocalDate evaluationDate(LocalDate periodStart, LocalDate periodEnd, LocalDate today) {
