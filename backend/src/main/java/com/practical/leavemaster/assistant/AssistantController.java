@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @RestController
@@ -48,6 +49,11 @@ public class AssistantController {
 
     @ExceptionHandler(AssistantProviderException.class)
     ResponseEntity<Map<String, String>> providerFailure(AssistantProviderException exception) {
-        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of("error", exception.getMessage()));
+        Map<String, String> body = new LinkedHashMap<>();
+        body.put("error", exception.getMessage());
+        if (exception.getConversationId() != null && !exception.getConversationId().isBlank()) {
+            body.put("conversationId", exception.getConversationId());
+        }
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(body);
     }
 }
