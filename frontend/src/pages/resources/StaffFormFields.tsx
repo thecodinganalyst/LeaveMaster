@@ -66,22 +66,31 @@ const WorkScheduleEditor = () => {
         Choose the employee's normal schedule for each day. Not working days are excluded from the submitted work schedule.
       </Typography.Paragraph>
       <Form.Item name="workSchedule" noStyle><StructuredValue /></Form.Item>
-      <Row gutter={[16, 12]}>
+      <Space direction="vertical" size={8} style={{ width: '100%' }}>
         {STAFF_SCHEDULE_DAYS.map((day) => (
-          <Col xs={24} sm={12} md={8} key={day.value}>
+          <div
+            key={day.value}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 16,
+              minHeight: 40,
+            }}
+          >
             <Typography.Text>{day.label}</Typography.Text>
             <Select
               aria-label={`${day.label} work schedule`}
-              style={{ width: '100%', marginTop: 4 }}
+              style={{ width: 180, maxWidth: '55%' }}
               value={scheduleForDay(schedule, day.value)}
               options={SCHEDULE_OPTIONS}
               onChange={(value: DaySchedule | 'NONE') => {
                 form.setFieldValue('workSchedule', updateWorkSchedule(schedule, day.value, value));
               }}
             />
-          </Col>
+          </div>
         ))}
-      </Row>
+      </Space>
     </Card>
   );
 };

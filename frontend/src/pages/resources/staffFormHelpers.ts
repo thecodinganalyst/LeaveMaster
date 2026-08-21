@@ -20,6 +20,10 @@ export const STAFF_SCHEDULE_DAYS: Array<{ value: DayOfWeek; label: string }> = [
   { value: 'SUNDAY', label: 'Sunday' },
 ];
 
+export const DEFAULT_STAFF_WORK_SCHEDULE: WorkScheduleDayValue[] = STAFF_SCHEDULE_DAYS
+  .filter(({ value }) => !['SATURDAY', 'SUNDAY'].includes(value))
+  .map(({ value }) => ({ dayOfWeek: value, daySchedule: 'FULL' }));
+
 export const calendarJurisdictionIds = (calendars: LeaveCalendarJurisdictionSource[]) => new Set(
   calendars.map((calendar) => calendar.jurisdictionId?.trim()).filter((value): value is string => Boolean(value)),
 );

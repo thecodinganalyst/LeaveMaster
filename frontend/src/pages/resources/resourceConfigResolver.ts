@@ -1,12 +1,13 @@
 import {
   getAdminResourceConfig as getBaseAdminResourceConfig,
-  getAdminResourceInitialValues,
+  getAdminResourceInitialValues as getBaseAdminResourceInitialValues,
   isAdminFieldVisible,
   normaliseFormValues,
   toFormValues as toBaseFormValues,
   type AdminField,
   type AdminResourceConfig,
 } from './adminResourceConfig.ts';
+import { DEFAULT_STAFF_WORK_SCHEDULE } from './staffFormHelpers.ts';
 
 const publicHolidayConfig: AdminResourceConfig = {
   name: 'public-holidays',
@@ -60,11 +61,15 @@ export const getAdminResourceConfig = (name?: string) => {
   return getBaseAdminResourceConfig(name);
 };
 
+export const getAdminResourceInitialValues = (config: AdminResourceConfig) => ({
+  ...getBaseAdminResourceInitialValues(config),
+  ...(config.name === 'employees' ? { workSchedule: DEFAULT_STAFF_WORK_SCHEDULE.map((entry) => ({ ...entry })) } : {}),
+});
+
 export const toFormValues = (config: AdminResourceConfig, record: Record<string, unknown>) =>
   config.name === 'employees' ? { ...record } : toBaseFormValues(config, record);
 
 export {
-  getAdminResourceInitialValues,
   isAdminFieldVisible,
   normaliseFormValues,
 };
