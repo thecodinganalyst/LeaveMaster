@@ -137,10 +137,8 @@ public class LeaveEntitlementPolicyService {
         if (policy.getCarryForwardExpiryMonths() != null && policy.getCarryForwardExpiryMonths() < 0) {
             throw new LeaveEntitlementPolicyValidationException("carryForwardExpiryMonths cannot be negative");
         }
-        if (policy.getEffectiveFrom() == null) {
-            throw new LeaveEntitlementPolicyValidationException("effectiveFrom is required");
-        }
-        if (policy.getEffectiveTo() != null && policy.getEffectiveTo().isBefore(policy.getEffectiveFrom())) {
+        if (policy.getEffectiveFrom() != null && policy.getEffectiveTo() != null
+                && policy.getEffectiveTo().isBefore(policy.getEffectiveFrom())) {
             throw new LeaveEntitlementPolicyValidationException("effectiveTo cannot be before effectiveFrom");
         }
         if (!policy.isCarryForwardAllowed() && (positive(policy.getCarryForwardLimit()) || (policy.getCarryForwardExpiryMonths() != null && policy.getCarryForwardExpiryMonths() > 0))) {
