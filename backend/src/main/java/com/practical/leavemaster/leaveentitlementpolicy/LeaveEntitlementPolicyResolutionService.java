@@ -1,5 +1,6 @@
 package com.practical.leavemaster.leaveentitlementpolicy;
 
+import com.practical.leavemaster.config.ConfigurationScope;
 import com.practical.leavemaster.jurisdiction.Jurisdiction;
 import com.practical.leavemaster.jurisdiction.JurisdictionRepository;
 import com.practical.leavemaster.staff.Staff;
@@ -16,7 +17,9 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -38,17 +41,39 @@ public class LeaveEntitlementPolicyResolutionService {
     }
 
     public PolicyResolutionResult resolve(Staff staff, String leaveTypeId, LocalDate effectiveDate) {
-        if (staff == null) {
-            throw new IllegalArgumentException("staff is required");
-        }
-        if (staff.getTenantId() == null || staff.getTenantId().isBlank()) {
-            throw new IllegalStateException("Staff does not have a tenant id");
-        }
+        validateStaff(staff);
         assertTenantAccess(staff.getTenantId());
         LocalDate date = effectiveDate == null ? LocalDate.now() : effectiveDate;
         List<LeaveEntitlementPolicy> policies = policyRepository
                 .findAllByTenantIdAndLeaveTypeIdAndActiveTrue(staff.getTenantId(), leaveTypeId);
+        return evaluatePolicies(staff, leaveTypeId, date, policies);
+    }
 
+    /**
+     * Resolves platform template policies for a preview staff profile. Template policies are
+     * intentionally tenantless and are selected from the staff jurisdiction, walking up the
+     * jurisdiction hierarchy so inherited templates continue to work.
+     */
+    public PolicyResolutionResult resolveTemplate(
+            Staff staff, String jurisdictionLeaveTypeId, LocalDate effectiveDate) {
+        validateStaff(staff);
+        if (jurisdictionLeaveTypeId == null || jurisdictionLeaveTypeId.isBlank()) {
+            throw new IllegalArgumentException("jurisdictionLeaveTypeId is required");
+        }
+        assertTenantAccess(staff.getTenantId());
+        LocalDate date = effectiveDate == null ? LocalDate.now() : effectiveDate;
+        return evaluatePolicies(
+                staff,
+                jurisdictionLeaveTypeId,
+                date,
+                effectiveTemplatePolicies(staff.getJurisdictionId(), jurisdictionLeaveTypeId));
+    }
+
+    private PolicyResolutionResult evaluatePolicies(
+            Staff staff,
+            String leaveTypeId,
+            LocalDate date,
+            List<LeaveEntitlementPolicy> policies) {
         List<PolicyResolutionResult.PolicyEvaluation> evaluations = new ArrayList<>();
         List<LeaveEntitlementPolicy> matching = new ArrayList<>();
         for (LeaveEntitlementPolicy policy : policies) {
@@ -88,6 +113,38 @@ public class LeaveEntitlementPolicyResolutionService {
         }
         return new PolicyResolutionResult(staffId, leaveTypeId, winner.getId(), false,
                 "Highest-priority matching policy selected", evaluations);
+    }
+
+    private List<LeaveEntitlementPolicy> effectiveTemplatePolicies(
+            String jurisdictionId, String jurisdictionLeaveTypeId) {
+        if (jurisdictionId == null || jurisdictionId.isBlank()) {
+            return List.of();
+        }
+        Map<String, LeaveEntitlementPolicy> effective = new LinkedHashMap<>();
+        Set<String> visited = new HashSet<>();
+        String currentId = jurisdictionId;
+        while (currentId != null && !currentId.isBlank() && visited.add(currentId)) {
+            for (LeaveEntitlementPolicy policy : policyRepository
+                    .findAllByScopeAndJurisdictionIdAndTenantIdIsNullAndActiveTrue(
+                            ConfigurationScope.PLATFORM_TEMPLATE, currentId)) {
+                if (jurisdictionLeaveTypeId.equals(policy.getJurisdictionLeaveTypeId())) {
+                    effective.putIfAbsent(policy.getName(), policy);
+                }
+            }
+            Jurisdiction jurisdiction = jurisdictionRepository.findById(currentId)
+                    .orElseThrow(() -> new IllegalArgumentException("Jurisdiction not found: " + currentId));
+            currentId = jurisdiction.getParentId();
+        }
+        return List.copyOf(effective.values());
+    }
+
+    private void validateStaff(Staff staff) {
+        if (staff == null) {
+            throw new IllegalArgumentException("staff is required");
+        }
+        if (staff.getTenantId() == null || staff.getTenantId().isBlank()) {
+            throw new IllegalStateException("Staff does not have a tenant id");
+        }
     }
 
     private PolicyResolutionResult.RuleEvaluation evaluateRule(
