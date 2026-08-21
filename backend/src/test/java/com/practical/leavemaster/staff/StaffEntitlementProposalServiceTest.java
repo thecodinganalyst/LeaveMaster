@@ -114,12 +114,37 @@ class StaffEntitlementProposalServiceTest {
     }
 
     @Test
+    void shouldEvaluateCurrentCalendarAtTodayInsteadOfCalendarStart() {
+        LocalDate templateEffectiveDate = LocalDate.of(2026, 8, 17);
+        LocalDate today = LocalDate.of(2026, 8, 21);
+
+        LocalDate evaluationDate = StaffEntitlementProposalService.evaluationDate(
+                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31), today);
+
+        assertThat(evaluationDate).isEqualTo(today);
+        assertThat(evaluationDate).isAfterOrEqualTo(templateEffectiveDate);
+    }
+
+    @Test
+    void shouldClampEvaluationDateToFuturePeriodStartAndPastPeriodEnd() {
+        assertThat(StaffEntitlementProposalService.evaluationDate(
+                LocalDate.of(2027, 1, 1), LocalDate.of(2027, 12, 31), LocalDate.of(2026, 8, 21)))
+                .isEqualTo(LocalDate.of(2027, 1, 1));
+        assertThat(StaffEntitlementProposalService.evaluationDate(
+                LocalDate.of(2025, 1, 1), LocalDate.of(2025, 12, 31), LocalDate.of(2026, 8, 21)))
+                .isEqualTo(LocalDate.of(2025, 12, 31));
+        assertThat(StaffEntitlementProposalService.evaluationDate(
+                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 7, 31), LocalDate.of(2026, 8, 21)))
+                .isEqualTo(LocalDate.of(2026, 7, 31));
+    }
+
+    @Test
     void shouldSkipLeaveTypesWithoutTemplateLineageOrMatchingPolicy() {
         LeaveType manual = LeaveType.builder().id("manual").name("Manual").tenantId("tenant-a").build();
         LeaveType annual = leaveType();
         when(leaveCalendarService.getCalendarFor("SG", joinDate)).thenReturn(Optional.of(calendar));
         when(leaveTypeRepository.findAllByTenantId("tenant-a")).thenReturn(List.of(manual, annual));
-        when(resolutionService.resolveTemplate(any(Staff.class), eq(SOURCE_LEAVE_TYPE_ID), eq(calendar.getStart())))
+        when(resolutionService.resolveTemplate(any(Staff.class), eq(SOURCE_LEAVE_TYPE_ID), any(LocalDate.class)))
                 .thenReturn(new PolicyResolutionResult("__preview__", SOURCE_LEAVE_TYPE_ID, null, false, "none", List.of()));
 
         assertThat(proposalService.propose(new StaffEntitlementProposalRequest(null, "SG", joinDate, null))).isEmpty();
@@ -130,7 +155,7 @@ class StaffEntitlementProposalServiceTest {
         LeaveType annual = leaveType();
         when(leaveCalendarService.getCalendarFor("SG", joinDate)).thenReturn(Optional.of(calendar));
         when(leaveTypeRepository.findAllByTenantId("tenant-a")).thenReturn(List.of(annual));
-        when(resolutionService.resolveTemplate(any(Staff.class), eq(SOURCE_LEAVE_TYPE_ID), eq(calendar.getStart())))
+        when(resolutionService.resolveTemplate(any(Staff.class), eq(SOURCE_LEAVE_TYPE_ID), any(LocalDate.class)))
                 .thenReturn(new PolicyResolutionResult("__preview__", SOURCE_LEAVE_TYPE_ID, null, true, "ambiguous", List.of()));
 
         assertThatThrownBy(() -> proposalService.propose(new StaffEntitlementProposalRequest(null, "SG", joinDate, null)))
@@ -207,7 +232,7 @@ class StaffEntitlementProposalServiceTest {
     private void setupResolution(LeaveType leaveType, String policyId) {
         when(leaveCalendarService.getCalendarFor("SG", joinDate)).thenReturn(Optional.of(calendar));
         when(leaveTypeRepository.findAllByTenantId("tenant-a")).thenReturn(List.of(leaveType));
-        when(resolutionService.resolveTemplate(any(Staff.class), eq(SOURCE_LEAVE_TYPE_ID), eq(calendar.getStart())))
+        when(resolutionService.resolveTemplate(any(Staff.class), eq(SOURCE_LEAVE_TYPE_ID), any(LocalDate.class)))
                 .thenReturn(new PolicyResolutionResult("__preview__", SOURCE_LEAVE_TYPE_ID, policyId, false, "matched", List.of()));
     }
 
@@ -235,7 +260,7 @@ class StaffEntitlementProposalServiceTest {
                 .entitlementAmount(amount)
                 .accrualMethod(accrualMethod)
                 .prorationMethod(prorationMethod)
-                .effectiveFrom(LocalDate.of(2026, 1, 1))
+                .effectiveFrom(LocalDate.of(2026, 8, 17))
                 .build();
     }
 }
