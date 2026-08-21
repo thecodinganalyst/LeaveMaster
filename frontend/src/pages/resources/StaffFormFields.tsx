@@ -101,8 +101,8 @@ const StaffJurisdictionSelect = ({
   disabled: boolean;
   onSelected: () => void;
 }) => (
-  <Select
-    value={value}
+  <Select<string>
+    value={value ?? null}
     onChange={(next) => {
       onChange?.(next);
       onSelected();
