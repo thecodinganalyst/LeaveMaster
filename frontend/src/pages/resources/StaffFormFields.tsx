@@ -4,18 +4,15 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { apiFetch } from '../../api/http.ts';
 import { getJurisdictionOptions, type JurisdictionOptionSource } from './jurisdictions.ts';
-
-type DaySchedule = 'FULL' | 'AM' | 'PM';
-type DayOfWeek = 'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY' | 'SATURDAY' | 'SUNDAY';
-
-export interface WorkScheduleDayValue {
-  dayOfWeek: DayOfWeek;
-  daySchedule: DaySchedule;
-}
-
-interface LeaveCalendarSource {
-  jurisdictionId?: string | null;
-}
+import {
+  calendarJurisdictionIds,
+  scheduleForDay,
+  STAFF_SCHEDULE_DAYS,
+  updateWorkSchedule,
+  type DaySchedule,
+  type LeaveCalendarJurisdictionSource,
+  type WorkScheduleDayValue,
+} from './staffFormHelpers.ts';
 
 interface LeaveTypeSource {
   id: string;
@@ -46,16 +43,6 @@ interface Props {
   staffId?: string;
 }
 
-const DAYS: Array<{ value: DayOfWeek; label: string }> = [
-  { value: 'MONDAY', label: 'Monday' },
-  { value: 'TUESDAY', label: 'Tuesday' },
-  { value: 'WEDNESDAY', label: 'Wednesday' },
-  { value: 'THURSDAY', label: 'Thursday' },
-  { value: 'FRIDAY', label: 'Friday' },
-  { value: 'SATURDAY', label: 'Saturday' },
-  { value: 'SUNDAY', label: 'Sunday' },
-];
-
 const SCHEDULE_OPTIONS = [
   { label: 'Not working', value: 'NONE' },
   { label: 'Full day', value: 'FULL' },
@@ -63,29 +50,11 @@ const SCHEDULE_OPTIONS = [
   { label: 'PM', value: 'PM' },
 ];
 
-const loadCalendars = () => apiFetch<LeaveCalendarSource[]>('/api/leave-calendars');
+const loadCalendars = () => apiFetch<LeaveCalendarJurisdictionSource[]>('/api/leave-calendars');
 const loadJurisdictions = () => apiFetch<JurisdictionOptionSource[]>('/api/jurisdictions');
 const loadLeaveTypes = () => apiFetch<LeaveTypeSource[]>('/api/leave-types');
 
-export const calendarJurisdictionIds = (calendars: LeaveCalendarSource[]) => new Set(
-  calendars.map((calendar) => calendar.jurisdictionId?.trim()).filter((value): value is string => Boolean(value)),
-);
-
-export const scheduleForDay = (schedule: WorkScheduleDayValue[] | undefined, day: DayOfWeek) =>
-  schedule?.find((entry) => entry.dayOfWeek === day)?.daySchedule ?? 'NONE';
-
-export const updateWorkSchedule = (
-  schedule: WorkScheduleDayValue[] | undefined,
-  day: DayOfWeek,
-  value: DaySchedule | 'NONE',
-): WorkScheduleDayValue[] => {
-  const withoutDay = (schedule ?? []).filter((entry) => entry.dayOfWeek !== day);
-  if (value === 'NONE') return withoutDay;
-  const next = [...withoutDay, { dayOfWeek: day, daySchedule: value }];
-  return DAYS.flatMap(({ value: orderedDay }) => next.filter((entry) => entry.dayOfWeek === orderedDay));
-};
-
-const StructuredValue = (_props: { value?: unknown; onChange?: (value: unknown) => void }) => null;
+const StructuredValue = () => null;
 
 const WorkScheduleEditor = () => {
   const form = Form.useFormInstance();
@@ -98,7 +67,7 @@ const WorkScheduleEditor = () => {
       </Typography.Paragraph>
       <Form.Item name="workSchedule" noStyle><StructuredValue /></Form.Item>
       <Row gutter={[16, 12]}>
-        {DAYS.map((day) => (
+        {STAFF_SCHEDULE_DAYS.map((day) => (
           <Col xs={24} sm={12} md={8} key={day.value}>
             <Typography.Text>{day.label}</Typography.Text>
             <Select
