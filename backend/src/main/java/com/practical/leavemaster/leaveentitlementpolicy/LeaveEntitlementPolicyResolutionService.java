@@ -77,7 +77,7 @@ public class LeaveEntitlementPolicyResolutionService {
         List<PolicyResolutionResult.PolicyEvaluation> evaluations = new ArrayList<>();
         List<LeaveEntitlementPolicy> matching = new ArrayList<>();
         for (LeaveEntitlementPolicy policy : policies) {
-            boolean effective = !date.isBefore(policy.getEffectiveFrom())
+            boolean effective = (policy.getEffectiveFrom() == null || !date.isBefore(policy.getEffectiveFrom()))
                     && (policy.getEffectiveTo() == null || !date.isAfter(policy.getEffectiveTo()));
             List<PolicyResolutionResult.RuleEvaluation> ruleResults = new ArrayList<>();
             boolean matched = effective;
