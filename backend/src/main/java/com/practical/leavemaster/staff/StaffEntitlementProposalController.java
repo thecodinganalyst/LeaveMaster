@@ -26,4 +26,13 @@ public class StaffEntitlementProposalController {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
+
+    @PostMapping("/analysis")
+    public ResponseEntity<?> analyze(@RequestBody StaffEntitlementProposalRequest request) {
+        try {
+            return ResponseEntity.ok(proposalService.analyze(request));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
 }

@@ -9,6 +9,7 @@ import com.practical.leavemaster.leaveentitlementpolicy.EntitlementUnit;
 import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicy;
 import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicyRepository;
 import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicyResolutionService;
+import com.practical.leavemaster.leaveentitlementpolicy.PolicyPeriodResolutionResult;
 import com.practical.leavemaster.leaveentitlementpolicy.PolicyResolutionResult;
 import com.practical.leavemaster.leaveentitlementpolicy.ProrationMethod;
 import com.practical.leavemaster.leavetype.LeaveType;
@@ -43,15 +44,11 @@ public class StaffEntitlementProposalService {
     private final AppUserRepository appUserRepository;
 
     public List<LeaveEntitlement> propose(StaffEntitlementProposalRequest request) {
-        if (request == null || request.jurisdictionId() == null || request.jurisdictionId().isBlank()) {
-            throw new IllegalArgumentException("jurisdictionId is required");
-        }
-        if (request.joinDate() == null) {
-            throw new IllegalArgumentException("joinDate is required");
-        }
-        if (request.termDate() != null && request.termDate().isBefore(request.joinDate())) {
-            throw new IllegalArgumentException("termDate must not be before joinDate");
-        }
+        return analyze(request).proposals();
+    }
+
+    public StaffEntitlementProposalAnalysis analyze(StaffEntitlementProposalRequest request) {
+        validateRequest(request);
 
         String tenantId = currentTenantId();
         String jurisdictionId = request.jurisdictionId().trim();
@@ -66,30 +63,36 @@ public class StaffEntitlementProposalService {
         LocalDate policyEvaluationDate = evaluationDate(periodStart, periodEnd, LocalDate.now());
 
         List<LeaveEntitlement> proposals = new ArrayList<>();
+        boolean anyTemplateFound = false;
         for (LeaveType leaveType : leaveTypeRepository.findAllByTenantId(tenantId)) {
             String sourceLeaveTypeId = leaveType.getSourceJurisdictionLeaveTypeId();
             if (sourceLeaveTypeId == null || sourceLeaveTypeId.isBlank()) {
                 continue;
             }
 
-            PolicyResolutionResult resolution = resolutionService.resolveTemplate(profile, sourceLeaveTypeId, policyEvaluationDate);
-            if (resolution.ambiguous()) {
-                throw new IllegalArgumentException(
-                        "Multiple matching entitlement policy templates have the same highest priority for leave type " + leaveType.getName());
-            }
-            if (resolution.selectedPolicyId() == null) {
+            ResolutionAttempt attempt = resolvePolicy(
+                    profile, leaveType, sourceLeaveTypeId, policyEvaluationDate, periodEnd);
+            anyTemplateFound = anyTemplateFound || attempt.templatesFound();
+            if (attempt.resolved() == null) {
                 continue;
             }
 
-            LeaveEntitlementPolicy policy = policyRepository.findById(resolution.selectedPolicyId())
+            ResolvedProposalPolicy resolved = attempt.resolved();
+            LeaveEntitlementPolicy policy = policyRepository.findById(resolved.policyId())
                     .orElseThrow(() -> new IllegalStateException(
-                            "Resolved policy template no longer exists: " + resolution.selectedPolicyId()));
+                            "Resolved policy template no longer exists: " + resolved.policyId()));
             validateTemplatePolicy(policy, sourceLeaveTypeId);
 
-            BigDecimal base = calculateBase(policy, profile, periodStart, periodEnd);
+            LocalDate entitlementStart = resolved.futureEligibility()
+                    ? resolved.eligibleFrom()
+                    : periodStart;
+            LocalDate prorationStart = resolved.futureEligibility()
+                    ? resolved.eligibleFrom()
+                    : laterOf(periodStart, profile.getJoinDate());
+            BigDecimal base = calculateBase(policy, prorationStart, periodStart, periodEnd);
             proposals.add(LeaveEntitlement.builder()
                     .leaveType(leaveType)
-                    .from(periodStart)
+                    .from(entitlementStart)
                     .to(periodEnd)
                     .entitlement(base)
                     .tenantId(tenantId)
@@ -99,7 +102,62 @@ public class StaffEntitlementProposalService {
                     .adjustmentAmount(BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP))
                     .build());
         }
-        return proposals;
+
+        StaffEntitlementProposalAnalysis.Status status = !proposals.isEmpty()
+                ? StaffEntitlementProposalAnalysis.Status.AVAILABLE
+                : anyTemplateFound
+                        ? StaffEntitlementProposalAnalysis.Status.NOT_ELIGIBLE_IN_PERIOD
+                        : StaffEntitlementProposalAnalysis.Status.NO_TEMPLATE;
+        return new StaffEntitlementProposalAnalysis(List.copyOf(proposals), status);
+    }
+
+    private void validateRequest(StaffEntitlementProposalRequest request) {
+        if (request == null || request.jurisdictionId() == null || request.jurisdictionId().isBlank()) {
+            throw new IllegalArgumentException("jurisdictionId is required");
+        }
+        if (request.joinDate() == null) {
+            throw new IllegalArgumentException("joinDate is required");
+        }
+        if (request.termDate() != null && request.termDate().isBefore(request.joinDate())) {
+            throw new IllegalArgumentException("termDate must not be before joinDate");
+        }
+    }
+
+    private ResolutionAttempt resolvePolicy(
+            Staff profile,
+            LeaveType leaveType,
+            String sourceLeaveTypeId,
+            LocalDate evaluationDate,
+            LocalDate periodEnd) {
+        PolicyResolutionResult current = resolutionService.resolveTemplate(profile, sourceLeaveTypeId, evaluationDate);
+        rejectAmbiguous(current, leaveType);
+        boolean templatesFound = !current.consideredPolicies().isEmpty();
+        if (current.selectedPolicyId() != null) {
+            return new ResolutionAttempt(
+                    new ResolvedProposalPolicy(current.selectedPolicyId(), evaluationDate, false), true);
+        }
+        if (!evaluationDate.isBefore(periodEnd)) {
+            return new ResolutionAttempt(null, templatesFound);
+        }
+
+        PolicyPeriodResolutionResult future = resolutionService.resolveTemplateInPeriod(
+                profile, sourceLeaveTypeId, evaluationDate.plusDays(1), periodEnd);
+        rejectAmbiguous(future.resolution(), leaveType);
+        templatesFound = templatesFound || future.templatesFound();
+        if (future.resolution().selectedPolicyId() == null || future.matchedDate() == null) {
+            return new ResolutionAttempt(null, templatesFound);
+        }
+        return new ResolutionAttempt(
+                new ResolvedProposalPolicy(
+                        future.resolution().selectedPolicyId(), future.matchedDate(), true),
+                true);
+    }
+
+    private void rejectAmbiguous(PolicyResolutionResult resolution, LeaveType leaveType) {
+        if (resolution.ambiguous()) {
+            throw new IllegalArgumentException(
+                    "Multiple matching entitlement policy templates have the same highest priority for leave type " + leaveType.getName());
+        }
     }
 
     private void validateTemplatePolicy(LeaveEntitlementPolicy policy, String sourceLeaveTypeId) {
@@ -139,13 +197,18 @@ public class StaffEntitlementProposalService {
     }
 
     private BigDecimal calculateBase(
-            LeaveEntitlementPolicy policy, Staff staff, LocalDate periodStart, LocalDate periodEnd) {
+            LeaveEntitlementPolicy policy,
+            LocalDate eligibleStart,
+            LocalDate periodStart,
+            LocalDate periodEnd) {
+        if (eligibleStart == null) {
+            eligibleStart = periodStart;
+        }
+        if (eligibleStart.isAfter(periodEnd)) {
+            return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        }
+
         if (policy.getAccrualMethod() == AccrualMethod.MONTHLY) {
-            LocalDate eligibleStart = staff.getJoinDate() != null && staff.getJoinDate().isAfter(periodStart)
-                    ? staff.getJoinDate() : periodStart;
-            if (eligibleStart.isAfter(periodEnd)) {
-                return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
-            }
             long months = ChronoUnit.MONTHS.between(YearMonth.from(eligibleStart), YearMonth.from(periodEnd)) + 1;
             BigDecimal monthlyRate = policy.getEntitlementAmount().divide(MONTHS_PER_YEAR, 8, RoundingMode.HALF_UP);
             return monthlyRate.multiply(BigDecimal.valueOf(months))
@@ -154,29 +217,31 @@ public class StaffEntitlementProposalService {
         }
 
         BigDecimal amount = policy.getEntitlementAmount();
-        if (policy.getProrationMethod() == ProrationMethod.NONE
-                || staff.getJoinDate() == null
-                || !staff.getJoinDate().isAfter(periodStart)) {
+        if (policy.getProrationMethod() == ProrationMethod.NONE || !eligibleStart.isAfter(periodStart)) {
             return amount.setScale(2, RoundingMode.HALF_UP);
-        }
-        if (staff.getJoinDate().isAfter(periodEnd)) {
-            return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
         }
         return switch (policy.getProrationMethod()) {
             case CALENDAR_DAYS -> {
                 long totalDays = ChronoUnit.DAYS.between(periodStart, periodEnd) + 1;
-                long eligibleDays = ChronoUnit.DAYS.between(staff.getJoinDate(), periodEnd) + 1;
+                long eligibleDays = ChronoUnit.DAYS.between(eligibleStart, periodEnd) + 1;
                 yield amount.multiply(BigDecimal.valueOf(eligibleDays))
                         .divide(BigDecimal.valueOf(totalDays), 2, RoundingMode.HALF_UP);
             }
             case MONTHS -> {
                 long totalMonths = ChronoUnit.MONTHS.between(YearMonth.from(periodStart), YearMonth.from(periodEnd)) + 1;
-                long eligibleMonths = ChronoUnit.MONTHS.between(YearMonth.from(staff.getJoinDate()), YearMonth.from(periodEnd)) + 1;
+                long eligibleMonths = ChronoUnit.MONTHS.between(YearMonth.from(eligibleStart), YearMonth.from(periodEnd)) + 1;
                 yield amount.multiply(BigDecimal.valueOf(eligibleMonths))
                         .divide(BigDecimal.valueOf(totalMonths), 2, RoundingMode.HALF_UP);
             }
             case NONE -> amount.setScale(2, RoundingMode.HALF_UP);
         };
+    }
+
+    private LocalDate laterOf(LocalDate first, LocalDate second) {
+        if (second == null || first.isAfter(second)) {
+            return first;
+        }
+        return second;
     }
 
     static LocalDate evaluationDate(LocalDate periodStart, LocalDate periodEnd, LocalDate today) {
@@ -209,5 +274,11 @@ public class StaffEntitlementProposalService {
         return user.isActive() && user.getRoles() != null && user.getRoles().stream()
                 .filter(AppRole::isActive)
                 .anyMatch(role -> PLATFORM_ADMIN_ROLE_ID.equalsIgnoreCase(role.getId()));
+    }
+
+    private record ResolvedProposalPolicy(String policyId, LocalDate eligibleFrom, boolean futureEligibility) {
+    }
+
+    private record ResolutionAttempt(ResolvedProposalPolicy resolved, boolean templatesFound) {
     }
 }

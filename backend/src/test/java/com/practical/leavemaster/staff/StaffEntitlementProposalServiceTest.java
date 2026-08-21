@@ -9,6 +9,7 @@ import com.practical.leavemaster.leaveentitlementpolicy.EntitlementUnit;
 import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicy;
 import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicyRepository;
 import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicyResolutionService;
+import com.practical.leavemaster.leaveentitlementpolicy.PolicyPeriodResolutionResult;
 import com.practical.leavemaster.leaveentitlementpolicy.PolicyResolutionResult;
 import com.practical.leavemaster.leaveentitlementpolicy.ProrationMethod;
 import com.practical.leavemaster.leavetype.LeaveType;
@@ -99,6 +100,33 @@ class StaffEntitlementProposalServiceTest {
     }
 
     @Test
+    void shouldProposePolicyThatBecomesEligibleLaterInCalendarPeriod() {
+        LeaveType annual = leaveType();
+        LeaveEntitlementPolicy policy = templatePolicy(
+                "policy-future", new BigDecimal("12.00"), AccrualMethod.MONTHLY, ProrationMethod.NONE);
+        when(leaveCalendarService.getCalendarFor("SG", joinDate)).thenReturn(Optional.of(calendar));
+        when(leaveTypeRepository.findAllByTenantId("tenant-a")).thenReturn(List.of(annual));
+        when(resolutionService.resolveTemplate(any(Staff.class), eq(SOURCE_LEAVE_TYPE_ID), any(LocalDate.class)))
+                .thenReturn(noMatch());
+        LocalDate eligibleDate = LocalDate.of(2026, 11, 1);
+        when(resolutionService.resolveTemplateInPeriod(
+                any(Staff.class), eq(SOURCE_LEAVE_TYPE_ID), any(LocalDate.class), eq(calendar.getEnd())))
+                .thenReturn(new PolicyPeriodResolutionResult(
+                        new PolicyResolutionResult("__preview__", SOURCE_LEAVE_TYPE_ID, "policy-future", false, "matched", List.of()),
+                        eligibleDate,
+                        true));
+        when(policyRepository.findById("policy-future")).thenReturn(Optional.of(policy));
+
+        LeaveEntitlement entitlement = proposalService.propose(
+                new StaffEntitlementProposalRequest(null, "SG", joinDate, null)).getFirst();
+
+        assertThat(entitlement.getFrom()).isEqualTo(eligibleDate);
+        assertThat(entitlement.getTo()).isEqualTo(calendar.getEnd());
+        assertThat(entitlement.getEntitlement()).isEqualByComparingTo("2.00");
+        assertThat(entitlement.getPolicyId()).isEqualTo("policy-future");
+    }
+
+    @Test
     void shouldCalculateMonthlyAccrualAndRespectTerminationDate() {
         LeaveType annual = leaveType();
         LeaveEntitlementPolicy policy = templatePolicy("policy-monthly", new BigDecimal("12.00"), AccrualMethod.MONTHLY, ProrationMethod.NONE);
@@ -114,13 +142,16 @@ class StaffEntitlementProposalServiceTest {
     }
 
     @Test
-    void shouldSkipLeaveTypesWithoutTemplateLineageOrMatchingPolicy() {
+    void shouldSkipLeaveTypesWithoutTemplateLineageOrMatchingPolicyInPeriod() {
         LeaveType manual = LeaveType.builder().id("manual").name("Manual").tenantId("tenant-a").build();
         LeaveType annual = leaveType();
         when(leaveCalendarService.getCalendarFor("SG", joinDate)).thenReturn(Optional.of(calendar));
         when(leaveTypeRepository.findAllByTenantId("tenant-a")).thenReturn(List.of(manual, annual));
         when(resolutionService.resolveTemplate(any(Staff.class), eq(SOURCE_LEAVE_TYPE_ID), any(LocalDate.class)))
-                .thenReturn(new PolicyResolutionResult("__preview__", SOURCE_LEAVE_TYPE_ID, null, false, "none", List.of()));
+                .thenReturn(noMatch());
+        when(resolutionService.resolveTemplateInPeriod(
+                any(Staff.class), eq(SOURCE_LEAVE_TYPE_ID), any(LocalDate.class), eq(calendar.getEnd())))
+                .thenReturn(new PolicyPeriodResolutionResult(noMatch(), null, true));
 
         assertThat(proposalService.propose(new StaffEntitlementProposalRequest(null, "SG", joinDate, null))).isEmpty();
     }
@@ -132,6 +163,25 @@ class StaffEntitlementProposalServiceTest {
         when(leaveTypeRepository.findAllByTenantId("tenant-a")).thenReturn(List.of(annual));
         when(resolutionService.resolveTemplate(any(Staff.class), eq(SOURCE_LEAVE_TYPE_ID), any(LocalDate.class)))
                 .thenReturn(new PolicyResolutionResult("__preview__", SOURCE_LEAVE_TYPE_ID, null, true, "ambiguous", List.of()));
+
+        assertThatThrownBy(() -> proposalService.propose(new StaffEntitlementProposalRequest(null, "SG", joinDate, null)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("same highest priority");
+    }
+
+    @Test
+    void shouldRejectAmbiguousFutureTemplatePolicy() {
+        LeaveType annual = leaveType();
+        when(leaveCalendarService.getCalendarFor("SG", joinDate)).thenReturn(Optional.of(calendar));
+        when(leaveTypeRepository.findAllByTenantId("tenant-a")).thenReturn(List.of(annual));
+        when(resolutionService.resolveTemplate(any(Staff.class), eq(SOURCE_LEAVE_TYPE_ID), any(LocalDate.class)))
+                .thenReturn(noMatch());
+        when(resolutionService.resolveTemplateInPeriod(
+                any(Staff.class), eq(SOURCE_LEAVE_TYPE_ID), any(LocalDate.class), eq(calendar.getEnd())))
+                .thenReturn(new PolicyPeriodResolutionResult(
+                        new PolicyResolutionResult("__preview__", SOURCE_LEAVE_TYPE_ID, null, true, "ambiguous", List.of()),
+                        LocalDate.of(2026, 11, 1),
+                        true));
 
         assertThatThrownBy(() -> proposalService.propose(new StaffEntitlementProposalRequest(null, "SG", joinDate, null)))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -209,6 +259,10 @@ class StaffEntitlementProposalServiceTest {
         when(leaveTypeRepository.findAllByTenantId("tenant-a")).thenReturn(List.of(leaveType));
         when(resolutionService.resolveTemplate(any(Staff.class), eq(SOURCE_LEAVE_TYPE_ID), any(LocalDate.class)))
                 .thenReturn(new PolicyResolutionResult("__preview__", SOURCE_LEAVE_TYPE_ID, policyId, false, "matched", List.of()));
+    }
+
+    private PolicyResolutionResult noMatch() {
+        return new PolicyResolutionResult("__preview__", SOURCE_LEAVE_TYPE_ID, null, false, "none", List.of());
     }
 
     private LeaveType leaveType() {

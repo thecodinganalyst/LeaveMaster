@@ -31,6 +31,13 @@ interface LeaveEntitlementValue {
   adjustmentAmount?: number | null;
 }
 
+type ProposalStatus = 'AVAILABLE' | 'NO_TEMPLATE' | 'NOT_ELIGIBLE_IN_PERIOD';
+
+interface ProposalAnalysis {
+  proposals: LeaveEntitlementValue[];
+  status: ProposalStatus;
+}
+
 interface ProposalRequest {
   staffId?: string;
   jurisdictionId: string;
@@ -130,11 +137,11 @@ export const StaffFormFields = ({ editing = false, staffId }: Props) => {
   const [proposalEnabled, setProposalEnabled] = useState(!editing);
   const [proposalLoading, setProposalLoading] = useState(false);
   const [proposalLoaded, setProposalLoaded] = useState(false);
+  const [proposalStatus, setProposalStatus] = useState<ProposalStatus>();
   const [proposalError, setProposalError] = useState<string>();
   const jurisdictionId = Form.useWatch('jurisdictionId', form) as string | undefined;
   const joinDate = Form.useWatch('joinDate', form) as string | undefined;
   const termDate = Form.useWatch('termDate', form) as string | undefined;
-  const leaveEntitlements = Form.useWatch('leaveEntitlements', form) as LeaveEntitlementValue[] | undefined;
 
   const calendarsQuery = useQuery({ queryKey: ['staff-form', 'leave-calendars'], queryFn: loadCalendars, staleTime: 60_000 });
   const jurisdictionsQuery = useQuery({ queryKey: ['jurisdictions', 'options'], queryFn: loadJurisdictions, staleTime: 5 * 60_000 });
@@ -156,11 +163,13 @@ export const StaffFormFields = ({ editing = false, staffId }: Props) => {
   useEffect(() => {
     if (!proposalEnabled || !jurisdictionId || !joinDate) {
       setProposalLoaded(false);
+      setProposalStatus(undefined);
       return;
     }
     let cancelled = false;
     setProposalLoading(true);
     setProposalLoaded(false);
+    setProposalStatus(undefined);
     setProposalError(undefined);
     const request: ProposalRequest = {
       ...(editing && staffId ? { staffId } : {}),
@@ -168,18 +177,20 @@ export const StaffFormFields = ({ editing = false, staffId }: Props) => {
       joinDate,
       ...(termDate ? { termDate } : {}),
     };
-    void apiFetch<LeaveEntitlementValue[]>('/api/staff/entitlement-proposals', {
+    void apiFetch<ProposalAnalysis>('/api/staff/entitlement-proposals/analysis', {
       method: 'POST',
       body: JSON.stringify(request),
-    }).then((proposals) => {
+    }).then((analysis) => {
       if (!cancelled) {
-        form.setFieldValue('leaveEntitlements', proposals);
+        form.setFieldValue('leaveEntitlements', analysis.proposals);
+        setProposalStatus(analysis.status);
         setProposalLoaded(true);
       }
     }).catch((error: unknown) => {
       if (!cancelled) {
         setProposalError(error instanceof Error ? error.message : 'Unable to generate leave entitlements');
         form.setFieldValue('leaveEntitlements', []);
+        setProposalStatus(undefined);
         setProposalLoaded(false);
       }
     }).finally(() => {
@@ -189,7 +200,8 @@ export const StaffFormFields = ({ editing = false, staffId }: Props) => {
   }, [editing, form, joinDate, jurisdictionId, proposalEnabled, staffId, termDate]);
 
   const noJurisdictions = !calendarsQuery.isLoading && !jurisdictionsQuery.isLoading && jurisdictionOptions.length === 0;
-  const noEligiblePolicies = proposalLoaded && !proposalLoading && !proposalError && (leaveEntitlements?.length ?? 0) === 0;
+  const showNoTemplate = proposalLoaded && !proposalLoading && !proposalError && proposalStatus === 'NO_TEMPLATE';
+  const showNotEligible = proposalLoaded && !proposalLoading && !proposalError && proposalStatus === 'NOT_ELIGIBLE_IN_PERIOD';
 
   return (
     <>
@@ -228,12 +240,21 @@ export const StaffFormFields = ({ editing = false, staffId }: Props) => {
         </Typography.Paragraph>
         {proposalLoading && <Space style={{ marginBottom: 12 }}><Spin size="small" /> Generating entitlements…</Space>}
         {proposalError && <Alert type="error" showIcon message={proposalError} style={{ marginBottom: 12 }} />}
-        {noEligiblePolicies && (
+        {showNoTemplate && (
           <Alert
             type="info"
             showIcon
-            message="No entitlement policy templates currently match this staff member"
-            description="Update the eligibility-relevant staff details or add an entitlement manually if appropriate."
+            message="No entitlement policy templates are configured for this staff member's leave types"
+            description="Add the relevant jurisdiction policy templates, or add an entitlement manually if appropriate."
+            style={{ marginBottom: 12 }}
+          />
+        )}
+        {showNotEligible && (
+          <Alert
+            type="info"
+            showIcon
+            message="Entitlement policy templates exist, but this staff member is not eligible during the current leave-calendar period"
+            description="No automatic entitlement is proposed for this period. Review the eligibility details or add an entitlement manually if appropriate."
             style={{ marginBottom: 12 }}
           />
         )}

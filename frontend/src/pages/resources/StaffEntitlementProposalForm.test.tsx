@@ -9,6 +9,7 @@ import { DEFAULT_STAFF_WORK_SCHEDULE } from './staffFormHelpers.ts';
 
 const mockState = vi.hoisted(() => ({
   proposals: [] as Array<Record<string, unknown>>,
+  status: 'NO_TEMPLATE' as 'AVAILABLE' | 'NO_TEMPLATE' | 'NOT_ELIGIBLE_IN_PERIOD',
 }));
 
 vi.mock('../../api/http.ts', () => ({
@@ -16,7 +17,9 @@ vi.mock('../../api/http.ts', () => ({
     if (path === '/api/leave-calendars') return [{ jurisdictionId: 'SG' }];
     if (path === '/api/jurisdictions') return [{ id: 'SG', code: 'SG', name: 'Singapore', parentId: null }];
     if (path === '/api/leave-types') return [{ id: 'tenant-a:ANNUAL_LEAVE', name: 'Annual Leave' }];
-    if (path === '/api/staff/entitlement-proposals') return mockState.proposals;
+    if (path === '/api/staff/entitlement-proposals/analysis') {
+      return { proposals: mockState.proposals, status: mockState.status };
+    }
     return [];
   }),
 }));
@@ -44,17 +47,19 @@ const renderStaffForm = () => {
 describe('staff entitlement template proposals', () => {
   beforeEach(() => {
     mockState.proposals = [];
+    mockState.status = 'NO_TEMPLATE';
     vi.mocked(apiFetch).mockClear();
   });
 
-  it('automatically populates editable entitlements from the proposal endpoint', async () => {
+  it('automatically populates editable entitlements from the proposal analysis endpoint', async () => {
+    mockState.status = 'AVAILABLE';
     mockState.proposals = [{
       leaveType: { id: 'tenant-a:ANNUAL_LEAVE', name: 'Annual Leave' },
-      from: '2026-01-01',
+      from: '2026-11-03',
       to: '2026-12-31',
-      entitlement: 10.08,
+      entitlement: 2,
       policyId: 'template-sg-annual',
-      baseEntitlementAmount: 10.08,
+      baseEntitlementAmount: 2,
       carriedForwardAmount: 0,
       adjustmentAmount: 0,
     }];
@@ -62,32 +67,48 @@ describe('staff entitlement template proposals', () => {
     renderStaffForm();
 
     await waitFor(() => expect(apiFetch).toHaveBeenCalledWith(
-      '/api/staff/entitlement-proposals',
+      '/api/staff/entitlement-proposals/analysis',
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({ jurisdictionId: 'SG', joinDate: '2026-07-01' }),
       }),
     ));
     expect(await screen.findByDisplayValue('template-sg-annual')).toBeInTheDocument();
-    expect(document.getElementById('leaveEntitlements_0_entitlement')).toHaveAttribute('value', '10.08');
+    expect(document.getElementById('leaveEntitlements_0_from')).toHaveAttribute('value', '2026-11-03');
+    expect(document.getElementById('leaveEntitlements_0_entitlement')).toHaveAttribute('value', '2.0');
+  });
+
+  it('distinguishes missing templates from not eligible in the current period', async () => {
+    mockState.status = 'NO_TEMPLATE';
+    const firstRender = renderStaffForm();
+    expect(await screen.findByText("No entitlement policy templates are configured for this staff member's leave types")).toBeInTheDocument();
+    firstRender.unmount();
+
+    mockState.status = 'NOT_ELIGIBLE_IN_PERIOD';
+    renderStaffForm();
+    expect(await screen.findByText(
+      'Entitlement policy templates exist, but this staff member is not eligible during the current leave-calendar period',
+    )).toBeInTheDocument();
   });
 
   it('recalculates when an eligibility-relevant staff value changes', async () => {
-    mockState.proposals = [];
+    mockState.status = 'NOT_ELIGIBLE_IN_PERIOD';
     renderStaffForm();
 
     await waitFor(() => expect(
-      vi.mocked(apiFetch).mock.calls.filter(([path]) => path === '/api/staff/entitlement-proposals'),
+      vi.mocked(apiFetch).mock.calls.filter(([path]) => path === '/api/staff/entitlement-proposals/analysis'),
     ).toHaveLength(1));
 
     fireEvent.change(screen.getByLabelText('Join date'), { target: { value: '2026-01-01' } });
 
     await waitFor(() => expect(apiFetch).toHaveBeenCalledWith(
-      '/api/staff/entitlement-proposals',
+      '/api/staff/entitlement-proposals/analysis',
       expect.objectContaining({
         body: JSON.stringify({ jurisdictionId: 'SG', joinDate: '2026-01-01' }),
       }),
     ));
-    expect(await screen.findByText('No entitlement policy templates currently match this staff member')).toBeInTheDocument();
+    expect(await screen.findByText(
+      'Entitlement policy templates exist, but this staff member is not eligible during the current leave-calendar period',
+    )).toBeInTheDocument();
   });
 });
