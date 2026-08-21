@@ -7,6 +7,7 @@ import { PageContainer } from '../../components/common/PageContainer.tsx';
 import { PageHeader } from '../../components/common/PageHeader.tsx';
 import type { AdminField } from './resourceConfigResolver.ts';
 import { getAdminResourceConfig, isAdminFieldVisible, toFormValues } from './resourceConfigResolver.ts';
+import { PublicHolidayTable } from './PublicHolidayTable.tsx';
 import { RoleMembershipCard } from './RoleMembershipCard.tsx';
 import { RolePermissionCheckboxList } from './RolePermissionCheckboxList.tsx';
 import { shouldHideTenantInternalId, shouldShowResourceIdSubtitle } from './tenantInternalIdVisibility.ts';
@@ -54,6 +55,8 @@ export const ResourceShowPage = () => {
             <Descriptions.Item key={field.name} label={field.label}>
               {field.type === 'permissions' ? (
                 <RolePermissionCheckboxList value={(record[field.name] as string[] | undefined) ?? []} disabled />
+              ) : field.type === 'holiday-list' ? (
+                <PublicHolidayTable value={record[field.name]} />
               ) : (
                 <span style={{ whiteSpace: field.type === 'json' ? 'pre-wrap' : 'normal' }}>{displayValue(field, record[field.name])}</span>
               )}
