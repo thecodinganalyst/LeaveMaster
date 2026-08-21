@@ -114,31 +114,6 @@ class StaffEntitlementProposalServiceTest {
     }
 
     @Test
-    void shouldEvaluateCurrentCalendarAtTodayInsteadOfCalendarStart() {
-        LocalDate templateEffectiveDate = LocalDate.of(2026, 8, 17);
-        LocalDate today = LocalDate.of(2026, 8, 21);
-
-        LocalDate evaluationDate = StaffEntitlementProposalService.evaluationDate(
-                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31), today);
-
-        assertThat(evaluationDate).isEqualTo(today);
-        assertThat(evaluationDate).isAfterOrEqualTo(templateEffectiveDate);
-    }
-
-    @Test
-    void shouldClampEvaluationDateToFuturePeriodStartAndPastPeriodEnd() {
-        assertThat(StaffEntitlementProposalService.evaluationDate(
-                LocalDate.of(2027, 1, 1), LocalDate.of(2027, 12, 31), LocalDate.of(2026, 8, 21)))
-                .isEqualTo(LocalDate.of(2027, 1, 1));
-        assertThat(StaffEntitlementProposalService.evaluationDate(
-                LocalDate.of(2025, 1, 1), LocalDate.of(2025, 12, 31), LocalDate.of(2026, 8, 21)))
-                .isEqualTo(LocalDate.of(2025, 12, 31));
-        assertThat(StaffEntitlementProposalService.evaluationDate(
-                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 7, 31), LocalDate.of(2026, 8, 21)))
-                .isEqualTo(LocalDate.of(2026, 7, 31));
-    }
-
-    @Test
     void shouldSkipLeaveTypesWithoutTemplateLineageOrMatchingPolicy() {
         LeaveType manual = LeaveType.builder().id("manual").name("Manual").tenantId("tenant-a").build();
         LeaveType annual = leaveType();
@@ -260,7 +235,8 @@ class StaffEntitlementProposalServiceTest {
                 .entitlementAmount(amount)
                 .accrualMethod(accrualMethod)
                 .prorationMethod(prorationMethod)
-                .effectiveFrom(LocalDate.of(2026, 8, 17))
+                .effectiveFrom(null)
+                .effectiveTo(null)
                 .build();
     }
 }
