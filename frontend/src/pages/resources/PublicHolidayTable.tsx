@@ -19,7 +19,7 @@ export const PublicHolidayTable = ({ value }: Props) => {
 
   return (
     <Table<PublicHoliday>
-      rowKey={(holiday, index) => `${holiday.holidayDate ?? 'holiday'}-${holiday.holidayName ?? index}`}
+      rowKey={(holiday) => `${holiday.holidayDate ?? 'holiday'}-${holiday.holidayName ?? 'unnamed'}`}
       dataSource={holidays}
       pagination={false}
       size="small"
