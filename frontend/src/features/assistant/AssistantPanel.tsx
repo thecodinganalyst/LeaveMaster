@@ -31,6 +31,12 @@ const errorMessage = (error: unknown) => {
   return 'The assistant request failed. Please try again.';
 };
 
+const conversationIdFromError = (error: unknown) => {
+  if (!(error instanceof ApiError) || !error.details || typeof error.details !== 'object') return undefined;
+  if (!('conversationId' in error.details) || typeof error.details.conversationId !== 'string') return undefined;
+  return error.details.conversationId.trim() || undefined;
+};
+
 const StructuredData = ({ result }: { result: StructuredResult }) => {
   const items = Array.isArray(result.data) ? result.data : [result.data];
 
@@ -72,6 +78,7 @@ export const AssistantPanel = ({ onClose }: AssistantPanelProps) => {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [requestError, setRequestError] = useState<string>();
+  const [requestErrorConversationId, setRequestErrorConversationId] = useState<string>();
   const endRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -89,6 +96,7 @@ export const AssistantPanel = ({ onClose }: AssistantPanelProps) => {
     setMessages((current) => [...current, userMessage]);
     setInput('');
     setRequestError(undefined);
+    setRequestErrorConversationId(undefined);
     setSending(true);
 
     try {
@@ -106,7 +114,10 @@ export const AssistantPanel = ({ onClose }: AssistantPanelProps) => {
       ]);
     } catch (error) {
       const message = errorMessage(error);
+      const failedConversationId = conversationIdFromError(error);
       setRequestError(message);
+      setRequestErrorConversationId(failedConversationId);
+      if (failedConversationId) setConversationId(failedConversationId);
       setMessages((current) => [...current, { id: newId(), role: 'system', text: `Assistant error: ${message}` }]);
     } finally {
       setSending(false);
@@ -242,7 +253,20 @@ export const AssistantPanel = ({ onClose }: AssistantPanelProps) => {
         </Space>
       </div>
 
-      {requestError ? <Alert type="error" showIcon message={requestError} closable onClose={() => setRequestError(undefined)} style={{ marginTop: 12 }} /> : null}
+      {requestError ? (
+        <Alert
+          type="error"
+          showIcon
+          message={requestError}
+          description={requestErrorConversationId ? `Conversation ID: ${requestErrorConversationId}` : undefined}
+          closable
+          onClose={() => {
+            setRequestError(undefined);
+            setRequestErrorConversationId(undefined);
+          }}
+          style={{ marginTop: 12 }}
+        />
+      ) : null}
       <Divider style={{ margin: '12px 0' }} />
       <Space.Compact style={{ width: '100%' }}>
         <TextArea
