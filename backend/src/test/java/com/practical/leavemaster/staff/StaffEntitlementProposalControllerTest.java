@@ -31,6 +31,18 @@ class StaffEntitlementProposalControllerTest {
     }
 
     @Test
+    void shouldReturnProposalAnalysis() {
+        StaffEntitlementProposalAnalysis analysis = new StaffEntitlementProposalAnalysis(
+                List.of(), StaffEntitlementProposalAnalysis.Status.NOT_ELIGIBLE_IN_PERIOD);
+        when(proposalService.analyze(request)).thenReturn(analysis);
+
+        ResponseEntity<?> response = controller.analyze(request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isEqualTo(analysis);
+    }
+
+    @Test
     void shouldReturnBadRequestForValidationFailure() {
         when(proposalService.propose(request)).thenThrow(new IllegalArgumentException("invalid jurisdiction"));
 
@@ -47,5 +59,15 @@ class StaffEntitlementProposalControllerTest {
         ResponseEntity<?> response = controller.propose(request);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void shouldReturnBadRequestForAnalysisFailure() {
+        when(proposalService.analyze(request)).thenThrow(new IllegalStateException("policy missing"));
+
+        ResponseEntity<?> response = controller.analyze(request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isEqualTo(java.util.Map.of("error", "policy missing"));
     }
 }
