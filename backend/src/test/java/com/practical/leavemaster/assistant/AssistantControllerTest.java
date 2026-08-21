@@ -56,5 +56,17 @@ class AssistantControllerTest {
 
         var provider = controller.providerFailure(new AssistantProviderException("provider failed", new RuntimeException()));
         assertThat(provider.getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY);
+        assertThat(provider.getBody()).containsOnlyKeys("error");
+    }
+
+    @Test
+    void shouldExposeConversationIdForProviderFailureTroubleshooting() {
+        var provider = controller.providerFailure(new AssistantProviderException(
+                "The AI provider timed out", "conversation-timeout", new RuntimeException()));
+
+        assertThat(provider.getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY);
+        assertThat(provider.getBody())
+                .containsEntry("error", "The AI provider timed out")
+                .containsEntry("conversationId", "conversation-timeout");
     }
 }
