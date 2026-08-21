@@ -52,7 +52,13 @@ export const ResourceEditPage = () => {
       <PageHeader title={`Edit ${config.singular}`} subtitle={`Update ${id}.`} />
       <FormSection title="Details">
         <Form form={form} layout="vertical" onFinish={submit}>
-          <ResourceFormFields config={config} editing preferredCountry={identity?.country} platformAdmin={Boolean(identity?.platformAdmin)} />
+          <ResourceFormFields
+            config={config}
+            editing
+            preferredCountry={identity?.country}
+            platformAdmin={Boolean(identity?.platformAdmin)}
+            recordId={id}
+          />
           <Space>
             <Button type="primary" htmlType="submit" loading={isUpdating}>Save changes</Button>
             <Button htmlType="button" onClick={() => navigate(`/${config.name}/show/${encodeURIComponent(id)}`)}>Cancel</Button>

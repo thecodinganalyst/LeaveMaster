@@ -3,7 +3,7 @@ import {
   getAdminResourceInitialValues,
   isAdminFieldVisible,
   normaliseFormValues,
-  toFormValues,
+  toFormValues as toBaseFormValues,
   type AdminField,
   type AdminResourceConfig,
 } from './adminResourceConfig.ts';
@@ -60,11 +60,13 @@ export const getAdminResourceConfig = (name?: string) => {
   return getBaseAdminResourceConfig(name);
 };
 
+export const toFormValues = (config: AdminResourceConfig, record: Record<string, unknown>) =>
+  config.name === 'employees' ? { ...record } : toBaseFormValues(config, record);
+
 export {
   getAdminResourceInitialValues,
   isAdminFieldVisible,
   normaliseFormValues,
-  toFormValues,
 };
 
 export type { AdminField, AdminResourceConfig };

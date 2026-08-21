@@ -1,16 +1,20 @@
 package com.practical.leavemaster.staff;
 
-import com.practical.leavemaster.leavecalendar.LeaveCalendar;
-import com.practical.leavemaster.leavecalendar.LeaveCalendarService;
 import com.practical.leavemaster.leaveapplication.LeaveApplicationRepository;
 import com.practical.leavemaster.leaveapprover.LeaveApprover;
 import com.practical.leavemaster.leaveapprover.LeaveApproverRepository;
+import com.practical.leavemaster.leavecalendar.LeaveCalendar;
+import com.practical.leavemaster.leavecalendar.LeaveCalendarService;
 import com.practical.leavemaster.leaveentitlement.LeaveEntitlement;
 import com.practical.leavemaster.leavetype.LeaveType;
 import com.practical.leavemaster.leavetype.LeaveTypeRepository;
 import com.practical.leavemaster.tenant.TenantActivityService;
+import com.practical.leavemaster.user.AppUser;
+import com.practical.leavemaster.user.AppUserRepository;
 import com.practical.leavemaster.user.AppUserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -20,6 +24,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
@@ -28,6 +33,7 @@ import java.util.Set;
 public class StaffService {
 
     private static final long INCLUSIVE_DAY_OFFSET = 1L;
+    private static final String PLATFORM_ADMIN_ROLE_ID = "PLATFORM_ADMIN";
 
     private final StaffRepository staffRepository;
     private final LeaveCalendarService leaveCalendarService;
@@ -36,6 +42,7 @@ public class StaffService {
     private final LeaveApplicationRepository leaveApplicationRepository;
     private final AppUserService appUserService;
     private final TenantActivityService tenantActivityService;
+    private final AppUserRepository appUserRepository;
 
     public List<Staff> findAll() {
         return staffRepository.findAll();
@@ -46,6 +53,7 @@ public class StaffService {
     }
 
     public Staff save(Staff staff) {
+        enforceCurrentTenantAndJurisdiction(staff, false);
         if (staff.getLeaveEntitlements() != null) {
             staff.setLeaveEntitlements(normalizeLeaveEntitlements(staff, staff.getLeaveEntitlements()));
         }
@@ -68,6 +76,7 @@ public class StaffService {
         }
         existing.setTermDate(updated.getTermDate());
         existing.setJurisdictionId(updated.getJurisdictionId());
+        enforceCurrentTenantAndJurisdiction(existing, true);
         if (updated.getLeaveEntitlements() != null) {
             List<LeaveEntitlement> normalized = normalizeLeaveEntitlements(existing, updated.getLeaveEntitlements());
             existing.getLeaveEntitlements().clear();
@@ -147,6 +156,33 @@ public class StaffService {
         return new TerminationResult(saved, staffWithNoApprover);
     }
 
+    private void enforceCurrentTenantAndJurisdiction(Staff staff, boolean existingStaff) {
+        Optional<AppUser> user = currentUser();
+        if (user.isEmpty() || isPlatformAdmin(user.get())) {
+            return;
+        }
+        String tenantId = user.get().getTenantId();
+        if (tenantId == null || tenantId.isBlank()) {
+            throw new IllegalArgumentException("Authenticated tenant user does not have a tenant id");
+        }
+        if (existingStaff && staff.getTenantId() != null && !tenantId.equals(staff.getTenantId())) {
+            throw new IllegalArgumentException("Staff does not belong to the current tenant");
+        }
+        staff.setTenantId(tenantId);
+        if (staff.getJurisdictionId() == null || staff.getJurisdictionId().isBlank()) {
+            throw new IllegalArgumentException("Staff jurisdictionId is required");
+        }
+        if (staff.getJoinDate() == null) {
+            throw new IllegalArgumentException("Staff joinDate is required");
+        }
+        String jurisdictionId = staff.getJurisdictionId().trim();
+        staff.setJurisdictionId(jurisdictionId);
+        if (leaveCalendarService.getCalendarFor(jurisdictionId, staff.getJoinDate()).isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Staff jurisdiction must have a leave calendar for the current tenant and join date");
+        }
+    }
+
     private List<LeaveEntitlement> normalizeLeaveEntitlements(Staff staff, List<LeaveEntitlement> leaveEntitlements) {
         if (leaveEntitlements == null) {
             return new ArrayList<>();
@@ -161,6 +197,9 @@ public class StaffService {
             LeaveType leaveType = leaveTypeRepository.findById(leaveEntitlement.getLeaveType().getId())
                     .orElseThrow(() -> new IllegalArgumentException(
                             "Leave type not found: " + leaveEntitlement.getLeaveType().getId()));
+            if (staff.getTenantId() != null && !Objects.equals(staff.getTenantId(), leaveType.getTenantId())) {
+                throw new IllegalArgumentException("Leave type does not belong to the staff tenant");
+            }
 
             markLeaveTypeAsUsed(leaveType);
             leaveEntitlement.setStaff(staff);
@@ -233,5 +272,18 @@ public class StaffService {
         return fullPeriodEntitlement
                 .multiply(BigDecimal.valueOf(effectiveDays))
                 .divide(BigDecimal.valueOf(totalPeriodDays), 2, RoundingMode.HALF_UP);
+    }
+
+    private Optional<AppUser> currentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() || authentication.getName() == null) {
+            return Optional.empty();
+        }
+        return appUserRepository.findById(authentication.getName());
+    }
+
+    private boolean isPlatformAdmin(AppUser user) {
+        return user != null && user.isActive() && user.getRoles() != null && user.getRoles().stream()
+                .anyMatch(role -> role != null && role.isActive() && PLATFORM_ADMIN_ROLE_ID.equalsIgnoreCase(role.getId()));
     }
 }

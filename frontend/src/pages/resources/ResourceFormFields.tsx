@@ -8,6 +8,7 @@ import { EntitlementPolicyFormFields } from './EntitlementPolicyFormFields.tsx';
 import { JurisdictionSelect } from './JurisdictionSelect.tsx';
 import { PublicHolidayListField } from './PublicHolidayListField.tsx';
 import { RolePermissionCheckboxList } from './RolePermissionCheckboxList.tsx';
+import { StaffFormFields } from './StaffFormFields.tsx';
 import { TenantJurisdictionFormFields } from './TenantJurisdictionFormFields.tsx';
 import { TenantOnboardingFormFields } from './TenantOnboardingFormFields.tsx';
 import { shouldHideTenantInternalId } from './tenantInternalIdVisibility.ts';
@@ -17,15 +18,20 @@ interface Props {
   editing?: boolean;
   preferredCountry?: string | null | undefined;
   platformAdmin?: boolean;
+  recordId?: string;
 }
 
-export const ResourceFormFields = ({ config, editing = false, platformAdmin = false }: Props) => {
+export const ResourceFormFields = ({ config, editing = false, platformAdmin = false, recordId }: Props) => {
   if (config.name === 'tenants' && !editing) {
     return <TenantOnboardingFormFields />;
   }
 
   if (config.name === 'tenant-jurisdictions' && !editing) {
     return <TenantJurisdictionFormFields />;
+  }
+
+  if (config.name === 'employees') {
+    return <StaffFormFields editing={editing} {...(recordId ? { staffId: recordId } : {})} />;
   }
 
   if (config.name === 'leave-entitlement-policies') {
