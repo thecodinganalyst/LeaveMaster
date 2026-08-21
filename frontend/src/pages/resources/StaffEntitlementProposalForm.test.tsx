@@ -69,7 +69,7 @@ describe('staff entitlement template proposals', () => {
       }),
     ));
     expect(await screen.findByDisplayValue('template-sg-annual')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('10.08')).toBeInTheDocument();
+    expect(document.getElementById('leaveEntitlements_0_entitlement')).toHaveAttribute('value', '10.08');
   });
 
   it('recalculates when an eligibility-relevant staff value changes', async () => {
