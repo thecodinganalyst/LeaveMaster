@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 
 @Service
 @RequiredArgsConstructor
@@ -57,9 +58,7 @@ public class LeaveEntitlementPolicyResolutionService {
     public PolicyResolutionResult resolveTemplate(
             Staff staff, String jurisdictionLeaveTypeId, LocalDate effectiveDate) {
         validateStaff(staff);
-        if (jurisdictionLeaveTypeId == null || jurisdictionLeaveTypeId.isBlank()) {
-            throw new IllegalArgumentException("jurisdictionLeaveTypeId is required");
-        }
+        validateJurisdictionLeaveTypeId(jurisdictionLeaveTypeId);
         assertTenantAccess(staff.getTenantId());
         LocalDate date = effectiveDate == null ? LocalDate.now() : effectiveDate;
         return evaluatePolicies(
@@ -67,6 +66,82 @@ public class LeaveEntitlementPolicyResolutionService {
                 jurisdictionLeaveTypeId,
                 date,
                 effectiveTemplatePolicies(staff.getJurisdictionId(), jurisdictionLeaveTypeId));
+    }
+
+    /**
+     * Finds the first date in the supplied period on which a platform template resolves.
+     * Candidate dates are limited to the dates on which current policy semantics can change:
+     * policy validity boundaries and monthly service anniversaries. This avoids a daily scan
+     * while supporting future SERVICE_MONTHS eligibility deterministically.
+     */
+    public PolicyPeriodResolutionResult resolveTemplateInPeriod(
+            Staff staff,
+            String jurisdictionLeaveTypeId,
+            LocalDate periodStart,
+            LocalDate periodEnd) {
+        validateStaff(staff);
+        validateJurisdictionLeaveTypeId(jurisdictionLeaveTypeId);
+        if (periodStart == null || periodEnd == null || periodStart.isAfter(periodEnd)) {
+            throw new IllegalArgumentException("A valid policy resolution period is required");
+        }
+        assertTenantAccess(staff.getTenantId());
+
+        List<LeaveEntitlementPolicy> policies =
+                effectiveTemplatePolicies(staff.getJurisdictionId(), jurisdictionLeaveTypeId);
+        if (policies.isEmpty()) {
+            return new PolicyPeriodResolutionResult(
+                    evaluatePolicies(staff, jurisdictionLeaveTypeId, periodStart, policies),
+                    null,
+                    false);
+        }
+
+        for (LocalDate candidate : candidateDates(staff, policies, periodStart, periodEnd)) {
+            PolicyResolutionResult resolution =
+                    evaluatePolicies(staff, jurisdictionLeaveTypeId, candidate, policies);
+            if (resolution.ambiguous() || resolution.selectedPolicyId() != null) {
+                return new PolicyPeriodResolutionResult(resolution, candidate, true);
+            }
+        }
+
+        return new PolicyPeriodResolutionResult(
+                evaluatePolicies(staff, jurisdictionLeaveTypeId, periodEnd, policies),
+                null,
+                true);
+    }
+
+    private Set<LocalDate> candidateDates(
+            Staff staff,
+            List<LeaveEntitlementPolicy> policies,
+            LocalDate periodStart,
+            LocalDate periodEnd) {
+        Set<LocalDate> candidates = new TreeSet<>();
+        candidates.add(periodStart);
+        candidates.add(periodEnd);
+
+        for (LeaveEntitlementPolicy policy : policies) {
+            addIfWithin(candidates, policy.getEffectiveFrom(), periodStart, periodEnd);
+            if (policy.getEffectiveTo() != null && !policy.getEffectiveTo().equals(LocalDate.MAX)) {
+                addIfWithin(candidates, policy.getEffectiveTo().plusDays(1), periodStart, periodEnd);
+            }
+        }
+
+        if (staff.getJoinDate() != null) {
+            LocalDate anniversary = staff.getJoinDate();
+            while (anniversary.isBefore(periodStart)) {
+                anniversary = anniversary.plusMonths(1);
+            }
+            while (!anniversary.isAfter(periodEnd)) {
+                candidates.add(anniversary);
+                anniversary = anniversary.plusMonths(1);
+            }
+        }
+        return candidates;
+    }
+
+    private void addIfWithin(Set<LocalDate> candidates, LocalDate date, LocalDate start, LocalDate end) {
+        if (date != null && !date.isBefore(start) && !date.isAfter(end)) {
+            candidates.add(date);
+        }
     }
 
     private PolicyResolutionResult evaluatePolicies(
@@ -145,6 +220,12 @@ public class LeaveEntitlementPolicyResolutionService {
         }
         if (staff.getTenantId() == null || staff.getTenantId().isBlank()) {
             throw new IllegalStateException("Staff does not have a tenant id");
+        }
+    }
+
+    private void validateJurisdictionLeaveTypeId(String jurisdictionLeaveTypeId) {
+        if (jurisdictionLeaveTypeId == null || jurisdictionLeaveTypeId.isBlank()) {
+            throw new IllegalArgumentException("jurisdictionLeaveTypeId is required");
         }
     }
 
