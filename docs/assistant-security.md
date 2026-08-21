@@ -38,13 +38,28 @@ On confirmation the backend:
 
 A repeated confirmation of an already executed token returns the stored result with `replayed=true` instead of executing the tool again. This database-backed design works across multiple Cloud Run instances and protects retries/double-clicks from duplicate mutations.
 
-## Audit logging and redaction
+## Audit logging, diagnostics and redaction
 
 Assistant audit events are stored in `assistant_audit_event` with the actor, tenant, conversation ID, tool name, sanitized arguments, outcome and timestamp.
 
+Application logs provide request-level and tool-level timing without logging prompts, tool arguments, tool results or credentials. The main diagnostic events are:
+
+- `Ask LeaveMaestro request started`
+- `Ask LeaveMaestro provider workflow started`
+- `Ask LeaveMaestro tool started`
+- `Ask LeaveMaestro tool completed`
+- `Ask LeaveMaestro provider workflow completed`
+- `Ask LeaveMaestro request completed`
+- `Ask LeaveMaestro provider request timed out`
+- `Ask LeaveMaestro provider request failed`
+
+Tool completion events contain the tool name, duration, status and per-request call number. Request completion and timeout events contain total elapsed time, total tool-call count, and the last started/completed tool. This allows Cloud Logging to distinguish a provider delay from a slow LeaveMaster tool or repeated tool orchestration.
+
+Provider failures returned by `/api/assistant/chat` include the server-generated `conversationId`. The frontend shows this identifier with the user-friendly failure message so support can search Cloud Logging for the exact request. Conversation IDs are diagnostic correlation values, not credentials, and must not be used as authorization tokens.
+
 Arguments whose keys contain password, secret, token, API key, authorization or credential identifiers are replaced with `[REDACTED]`. OpenAI API keys and provider credentials must never be included in prompts, tool arguments, logs or frontend configuration.
 
-## Rate and provider limits
+## Rate, timeout and provider limits
 
 Defaults are intentionally conservative and can be overridden with environment variables:
 
@@ -54,12 +69,35 @@ Defaults are intentionally conservative and can be overridden with environment v
 | `ASSISTANT_TENANT_REQUESTS_PER_MINUTE` | 100 |
 | `ASSISTANT_MAX_MESSAGE_CHARS` | 4000 |
 | `ASSISTANT_CONFIRMATION_TTL_SECONDS` | 300 |
-| `ASSISTANT_TIMEOUT_SECONDS` | 30 |
+| `ASSISTANT_TIMEOUT_SECONDS` | 60 |
 | `ASSISTANT_PROVIDER_RETRY_MAX_ATTEMPTS` | 3 |
 | `ASSISTANT_CIRCUIT_FAILURE_THRESHOLD` | 5 |
 | `ASSISTANT_CIRCUIT_OPEN_SECONDS` | 30 |
 
-Rate checks use persisted assistant audit events, so limits are shared across Cloud Run instances. Provider calls are bounded by a server-side timeout. Repeated provider failures open a circuit breaker temporarily, while Spring AI retries transient provider failures with bounded exponential backoff.
+Rate checks use persisted assistant audit events, so limits are shared across Cloud Run instances. Provider calls are bounded by the assistant's overall server-side timeout. Repeated provider failures open a circuit breaker temporarily, while Spring AI retries transient provider failures with bounded exponential backoff.
+
+The 60-second assistant timeout covers the complete Spring AI workflow, including provider/tool round trips. This is deliberately longer than the previous 30-second default because a tool-enabled request may require multiple model turns. It remains a hard upper bound and should not be raised indefinitely to mask a stuck provider or tool.
+
+Spring AI owns provider-level retries below the `ChatModel` abstraction. The configured retry limit and backoff should therefore be considered part of the overall timeout budget. When troubleshooting latency, temporarily setting `ASSISTANT_PROVIDER_RETRY_MAX_ATTEMPTS=1` can isolate provider latency from retry/backoff time. Restore the intended retry policy after the test.
+
+Individual LeaveMaster tool timeouts are not implemented by running tools on separate threads because tool execution relies on the authenticated Spring Security context and transaction boundaries. Instead, each tool is timed and correlated in application logs, while the overall request timeout remains the safety bound. If a specific external-I/O tool is added later, that integration should define its own network/read timeout at the client boundary rather than relying only on the assistant timeout.
+
+## Troubleshooting assistant timeouts
+
+Search Cloud Logging by the `conversationId` shown in the frontend failure details. A typical diagnosis uses the event sequence:
+
+- no `tool started` event before timeout: investigate provider latency/retries or provider connectivity;
+- `tool started` without a matching `tool completed`: investigate that LeaveMaster tool/dependency;
+- one or more fast tool completions followed by timeout: investigate the provider follow-up/model turn;
+- many repeated tool calls: investigate model/tool orchestration and tool descriptions.
+
+For multi-tool entitlement questions, useful isolation checks are:
+
+1. `What leave entitlement policies are configured for Singapore?`
+2. `What eligibility rules are configured for Singapore?`
+3. `What are the leave entitlement policies configured for Singapore and their accompanying eligibility?`
+
+Compare tool-call counts and durations for the three requests before changing timeout values further.
 
 ## Data sent to the AI provider
 
@@ -77,4 +115,4 @@ Do not place passwords, access tokens, API keys, confidential attachments or sec
 
 ## Operational review
 
-Monitor 429, 502 and 503 responses, `assistant_audit_event` growth, provider usage/cost, repeated authorization failures and circuit-breaker openings. Database retention/archival policy for assistant audit events should be set according to the organization's privacy, security and audit requirements.
+Monitor 429, 502 and 503 responses, assistant timeout/failure logs, `assistant_audit_event` growth, provider usage/cost, repeated authorization failures and circuit-breaker openings. Database retention/archival policy for assistant audit events should be set according to the organization's privacy, security and audit requirements.
