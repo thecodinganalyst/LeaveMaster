@@ -29,9 +29,9 @@ public class StaffController {
     }
 
     @PostMapping
-    public ResponseEntity<?> create(@RequestBody Staff staff) {
+    public ResponseEntity<?> create(@RequestBody StaffWriteRequest request) {
         try {
-            Staff saved = staffService.save(staff);
+            Staff saved = staffService.save(request.toStaff());
             return ResponseEntity.status(HttpStatus.CREATED).body(saved);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -39,9 +39,9 @@ public class StaffController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> update(@PathVariable String id, @RequestBody Staff staff) {
+    public ResponseEntity<?> update(@PathVariable String id, @RequestBody StaffWriteRequest request) {
         try {
-            Staff updated = staffService.update(id, staff);
+            Staff updated = staffService.update(id, request.toStaff());
             return ResponseEntity.ok(updated);
         } catch (StaffNotFoundException e) {
             return ResponseEntity.notFound().build();
