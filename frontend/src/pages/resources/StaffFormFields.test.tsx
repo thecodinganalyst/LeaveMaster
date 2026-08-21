@@ -5,7 +5,7 @@ import {
   scheduleForDay,
   updateWorkSchedule,
   type WorkScheduleDayValue,
-} from './StaffFormFields.tsx';
+} from './staffFormHelpers.ts';
 
 describe('StaffFormFields helpers', () => {
   it('limits jurisdiction ids to calendars configured for the tenant', () => {
