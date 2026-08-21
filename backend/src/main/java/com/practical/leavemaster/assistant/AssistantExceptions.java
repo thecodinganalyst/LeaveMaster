@@ -7,7 +7,18 @@ class AssistantUnavailableException extends RuntimeException {
 }
 
 class AssistantProviderException extends RuntimeException {
+    private final String conversationId;
+
     AssistantProviderException(String message, Throwable cause) {
+        this(message, null, cause);
+    }
+
+    AssistantProviderException(String message, String conversationId, Throwable cause) {
         super(message, cause);
+        this.conversationId = conversationId;
+    }
+
+    String getConversationId() {
+        return conversationId;
     }
 }
