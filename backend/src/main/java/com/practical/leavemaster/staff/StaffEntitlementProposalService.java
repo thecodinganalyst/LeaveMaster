@@ -44,6 +44,10 @@ public class StaffEntitlementProposalService {
     private final AppUserRepository appUserRepository;
 
     public List<LeaveEntitlement> propose(StaffEntitlementProposalRequest request) {
+        return analyze(request).proposals();
+    }
+
+    public StaffEntitlementProposalAnalysis analyze(StaffEntitlementProposalRequest request) {
         validateRequest(request);
 
         String tenantId = currentTenantId();
@@ -59,18 +63,21 @@ public class StaffEntitlementProposalService {
         LocalDate policyEvaluationDate = evaluationDate(periodStart, periodEnd, LocalDate.now());
 
         List<LeaveEntitlement> proposals = new ArrayList<>();
+        boolean anyTemplateFound = false;
         for (LeaveType leaveType : leaveTypeRepository.findAllByTenantId(tenantId)) {
             String sourceLeaveTypeId = leaveType.getSourceJurisdictionLeaveTypeId();
             if (sourceLeaveTypeId == null || sourceLeaveTypeId.isBlank()) {
                 continue;
             }
 
-            ResolvedProposalPolicy resolved = resolvePolicy(
+            ResolutionAttempt attempt = resolvePolicy(
                     profile, leaveType, sourceLeaveTypeId, policyEvaluationDate, periodEnd);
-            if (resolved == null) {
+            anyTemplateFound = anyTemplateFound || attempt.templatesFound();
+            if (attempt.resolved() == null) {
                 continue;
             }
 
+            ResolvedProposalPolicy resolved = attempt.resolved();
             LeaveEntitlementPolicy policy = policyRepository.findById(resolved.policyId())
                     .orElseThrow(() -> new IllegalStateException(
                             "Resolved policy template no longer exists: " + resolved.policyId()));
@@ -95,7 +102,13 @@ public class StaffEntitlementProposalService {
                     .adjustmentAmount(BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP))
                     .build());
         }
-        return proposals;
+
+        StaffEntitlementProposalAnalysis.Status status = !proposals.isEmpty()
+                ? StaffEntitlementProposalAnalysis.Status.AVAILABLE
+                : anyTemplateFound
+                        ? StaffEntitlementProposalAnalysis.Status.NOT_ELIGIBLE_IN_PERIOD
+                        : StaffEntitlementProposalAnalysis.Status.NO_TEMPLATE;
+        return new StaffEntitlementProposalAnalysis(List.copyOf(proposals), status);
     }
 
     private void validateRequest(StaffEntitlementProposalRequest request) {
@@ -110,7 +123,7 @@ public class StaffEntitlementProposalService {
         }
     }
 
-    private ResolvedProposalPolicy resolvePolicy(
+    private ResolutionAttempt resolvePolicy(
             Staff profile,
             LeaveType leaveType,
             String sourceLeaveTypeId,
@@ -118,21 +131,26 @@ public class StaffEntitlementProposalService {
             LocalDate periodEnd) {
         PolicyResolutionResult current = resolutionService.resolveTemplate(profile, sourceLeaveTypeId, evaluationDate);
         rejectAmbiguous(current, leaveType);
+        boolean templatesFound = !current.consideredPolicies().isEmpty();
         if (current.selectedPolicyId() != null) {
-            return new ResolvedProposalPolicy(current.selectedPolicyId(), evaluationDate, false);
+            return new ResolutionAttempt(
+                    new ResolvedProposalPolicy(current.selectedPolicyId(), evaluationDate, false), true);
         }
         if (!evaluationDate.isBefore(periodEnd)) {
-            return null;
+            return new ResolutionAttempt(null, templatesFound);
         }
 
         PolicyPeriodResolutionResult future = resolutionService.resolveTemplateInPeriod(
                 profile, sourceLeaveTypeId, evaluationDate.plusDays(1), periodEnd);
         rejectAmbiguous(future.resolution(), leaveType);
+        templatesFound = templatesFound || future.templatesFound();
         if (future.resolution().selectedPolicyId() == null || future.matchedDate() == null) {
-            return null;
+            return new ResolutionAttempt(null, templatesFound);
         }
-        return new ResolvedProposalPolicy(
-                future.resolution().selectedPolicyId(), future.matchedDate(), true);
+        return new ResolutionAttempt(
+                new ResolvedProposalPolicy(
+                        future.resolution().selectedPolicyId(), future.matchedDate(), true),
+                true);
     }
 
     private void rejectAmbiguous(PolicyResolutionResult resolution, LeaveType leaveType) {
@@ -259,5 +277,8 @@ public class StaffEntitlementProposalService {
     }
 
     private record ResolvedProposalPolicy(String policyId, LocalDate eligibleFrom, boolean futureEligibility) {
+    }
+
+    private record ResolutionAttempt(ResolvedProposalPolicy resolved, boolean templatesFound) {
     }
 }
