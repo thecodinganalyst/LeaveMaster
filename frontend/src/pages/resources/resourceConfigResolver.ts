@@ -75,9 +75,10 @@ export const normaliseFormValues = (config: AdminResourceConfig, values: Record<
 
   result.leaveEntitlements = (result.leaveEntitlements as Array<Record<string, unknown>>).map((entitlement) => {
     const leaveType = entitlement.leaveType as { id?: unknown } | undefined;
-    const { leaveType: _leaveType, ...rest } = entitlement;
+    const normalized = { ...entitlement };
+    delete normalized.leaveType;
     return {
-      ...rest,
+      ...normalized,
       leaveTypeId: leaveType?.id,
     };
   });
