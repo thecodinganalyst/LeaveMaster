@@ -63,6 +63,7 @@ public class StaffEntitlementProposalService {
         LocalDate periodStart = calendar.getStart();
         LocalDate periodEnd = request.termDate() != null && request.termDate().isBefore(calendar.getEnd())
                 ? request.termDate() : calendar.getEnd();
+        LocalDate policyEvaluationDate = evaluationDate(periodStart, periodEnd, LocalDate.now());
 
         List<LeaveEntitlement> proposals = new ArrayList<>();
         for (LeaveType leaveType : leaveTypeRepository.findAllByTenantId(tenantId)) {
@@ -71,7 +72,7 @@ public class StaffEntitlementProposalService {
                 continue;
             }
 
-            PolicyResolutionResult resolution = resolutionService.resolveTemplate(profile, sourceLeaveTypeId, periodStart);
+            PolicyResolutionResult resolution = resolutionService.resolveTemplate(profile, sourceLeaveTypeId, policyEvaluationDate);
             if (resolution.ambiguous()) {
                 throw new IllegalArgumentException(
                         "Multiple matching entitlement policy templates have the same highest priority for leave type " + leaveType.getName());
@@ -176,6 +177,16 @@ public class StaffEntitlementProposalService {
             }
             case NONE -> amount.setScale(2, RoundingMode.HALF_UP);
         };
+    }
+
+    static LocalDate evaluationDate(LocalDate periodStart, LocalDate periodEnd, LocalDate today) {
+        if (today.isBefore(periodStart)) {
+            return periodStart;
+        }
+        if (today.isAfter(periodEnd)) {
+            return periodEnd;
+        }
+        return today;
     }
 
     private String currentTenantId() {
