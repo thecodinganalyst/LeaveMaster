@@ -9,6 +9,7 @@ public interface LeaveEntitlementPolicyRepository extends JpaRepository<LeaveEnt
     List<LeaveEntitlementPolicy> findAllByTenantId(String tenantId);
     List<LeaveEntitlementPolicy> findAllByScope(ConfigurationScope scope);
     List<LeaveEntitlementPolicy> findAllByScopeAndJurisdictionIdAndActiveTrue(ConfigurationScope scope, String jurisdictionId);
+    List<LeaveEntitlementPolicy> findAllByScopeAndJurisdictionIdAndTenantIdIsNullAndActiveTrue(ConfigurationScope scope, String jurisdictionId);
     List<LeaveEntitlementPolicy> findAllByTenantIdAndLeaveTypeIdAndActiveTrue(String tenantId, String leaveTypeId);
     boolean existsByLeaveTypeId(String leaveTypeId);
     boolean existsByTenantIdAndSourceTemplateId(String tenantId, String sourceTemplateId);
