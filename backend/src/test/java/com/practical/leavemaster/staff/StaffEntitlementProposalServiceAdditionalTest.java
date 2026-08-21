@@ -146,7 +146,7 @@ class StaffEntitlementProposalServiceAdditionalTest {
                 .build();
         when(leaveCalendarService.getCalendarFor("SG", joinDate)).thenReturn(Optional.of(calendar));
         when(leaveTypeRepository.findAllByTenantId("tenant-a")).thenReturn(List.of(annual));
-        when(resolutionService.resolveTemplate(any(Staff.class), eq(SOURCE_LEAVE_TYPE_ID), eq(calendar.getStart())))
+        when(resolutionService.resolveTemplate(any(Staff.class), eq(SOURCE_LEAVE_TYPE_ID), any(LocalDate.class)))
                 .thenReturn(new PolicyResolutionResult("__preview__", SOURCE_LEAVE_TYPE_ID, policyId, false, "matched", List.of()));
     }
 
