@@ -77,6 +77,7 @@ public class LeaveEntitlementPolicyService {
         existing.setEventRequiresVerification(requested.isEventRequiresVerification());
         existing.setEventValidityDaysBefore(requested.getEventValidityDaysBefore());
         existing.setEventValidityDaysAfter(requested.getEventValidityDaysAfter());
+        existing.setEventEntitlementAmountMode(requested.getEventEntitlementAmountMode());
         existing.setEntitlementUnit(requested.getEntitlementUnit());
         existing.setEntitlementAmount(requested.getEntitlementAmount());
         existing.setAccrualMethod(requested.getAccrualMethod());
@@ -116,7 +117,11 @@ public class LeaveEntitlementPolicyService {
             policy.setEventRequiresVerification(false);
             policy.setEventValidityDaysBefore(null);
             policy.setEventValidityDaysAfter(null);
+            policy.setEventEntitlementAmountMode(EventEntitlementAmountMode.FIXED);
             return;
+        }
+        if (policy.getEventEntitlementAmountMode() == null) {
+            policy.setEventEntitlementAmountMode(EventEntitlementAmountMode.FIXED);
         }
         if (policy.getQualifyingEventTypeCode() != null) {
             String normalized = policy.getQualifyingEventTypeCode().trim().toUpperCase(Locale.ROOT);
@@ -184,6 +189,9 @@ public class LeaveEntitlementPolicyService {
 
     private void validatePolicyModelConfiguration(LeaveEntitlementPolicy policy) {
         if (policy.getPolicyModel() != LeavePolicyModel.EVENT_BASED) {
+            if (policy.getEntitlementUnit() == EntitlementUnit.WEEKS) {
+                throw new LeaveEntitlementPolicyValidationException("WEEKS is supported only for EVENT_BASED policies");
+            }
             return;
         }
         if (policy.getAccrualMethod() != AccrualMethod.NONE) {
@@ -201,6 +209,20 @@ public class LeaveEntitlementPolicyService {
         }
         if (policy.getEntitlementAmount() == null || policy.getEntitlementAmount().signum() <= 0) {
             throw new LeaveEntitlementPolicyValidationException("EVENT_BASED policies require a positive entitlementAmount");
+        }
+        if (policy.getEntitlementUnit() == EntitlementUnit.HOURS) {
+            throw new LeaveEntitlementPolicyValidationException("EVENT_BASED policies cannot use HOURS while leave applications consume day-equivalent units");
+        }
+        if (policy.getEventEntitlementAmountMode() == null) {
+            throw new LeaveEntitlementPolicyValidationException("eventEntitlementAmountMode is required for EVENT_BASED policies");
+        }
+        if (policy.getEventEntitlementAmountMode() == EventEntitlementAmountMode.APPROVED_EVENT_AMOUNT
+                && !policy.isEventRequiresVerification()) {
+            throw new LeaveEntitlementPolicyValidationException("APPROVED_EVENT_AMOUNT requires event verification");
+        }
+        if (policy.getEventEntitlementAmountMode() == EventEntitlementAmountMode.EVENT_PERIOD_WORKING_DAYS
+                && policy.getEntitlementUnit() != EntitlementUnit.DAYS) {
+            throw new LeaveEntitlementPolicyValidationException("EVENT_PERIOD_WORKING_DAYS requires DAYS entitlement unit");
         }
         requireNonNegativeInteger(policy.getEventValidityDaysBefore(), "eventValidityDaysBefore");
         requireNonNegativeInteger(policy.getEventValidityDaysAfter(), "eventValidityDaysAfter");
