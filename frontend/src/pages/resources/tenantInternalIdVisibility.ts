@@ -1,5 +1,8 @@
-const tenantResourcesWithHiddenInternalIds = new Set([
+const resourcesWithHiddenInternalIds = new Set([
   'leave-types',
+]);
+
+const tenantResourcesWithHiddenInternalIds = new Set([
   'leave-entitlement-policies',
   'leave-entitlement-policy-eligibility-rules',
 ]);
@@ -9,10 +12,11 @@ export const shouldHideTenantInternalId = (
   idField: string,
   fieldName: string,
   platformAdmin: boolean,
-) => !platformAdmin
-  && tenantResourcesWithHiddenInternalIds.has(resourceName)
-  && fieldName === idField;
+) => fieldName === idField
+  && (resourcesWithHiddenInternalIds.has(resourceName)
+    || (!platformAdmin && tenantResourcesWithHiddenInternalIds.has(resourceName)));
 
 export const shouldShowResourceIdSubtitle = (resourceName: string, platformAdmin: boolean) => (
-  platformAdmin || !tenantResourcesWithHiddenInternalIds.has(resourceName)
+  !resourcesWithHiddenInternalIds.has(resourceName)
+  && (platformAdmin || !tenantResourcesWithHiddenInternalIds.has(resourceName))
 );
