@@ -3,12 +3,18 @@ import { describe, expect, it } from 'vitest';
 import { shouldHideTenantInternalId, shouldShowResourceIdSubtitle } from './tenantInternalIdVisibility.ts';
 
 const tenantResources = [
-  'leave-types',
   'leave-entitlement-policies',
   'leave-entitlement-policy-eligibility-rules',
 ];
 
 describe('tenant internal id visibility', () => {
+  it('hides the leave type id for every user', () => {
+    expect(shouldHideTenantInternalId('leave-types', 'id', 'id', false)).toBe(true);
+    expect(shouldHideTenantInternalId('leave-types', 'id', 'id', true)).toBe(true);
+    expect(shouldShowResourceIdSubtitle('leave-types', false)).toBe(false);
+    expect(shouldShowResourceIdSubtitle('leave-types', true)).toBe(false);
+  });
+
   it.each(tenantResources)('hides the own internal id for tenant users on %s', (resourceName) => {
     expect(shouldHideTenantInternalId(resourceName, 'id', 'id', false)).toBe(true);
     expect(shouldShowResourceIdSubtitle(resourceName, false)).toBe(false);
