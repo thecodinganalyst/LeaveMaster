@@ -90,6 +90,7 @@ public class JurisdictionCatalogInitializer implements ApplicationRunner {
                 new LeaveSeed(SINGAPORE, "MATERNITY_LEAVE", "Maternity Leave", true, true, "Ministry of Manpower Singapore", "https://www.mom.gov.sg/employment-practices/leave/maternity-leave"),
                 new LeaveSeed(SINGAPORE, "PATERNITY_LEAVE", "Paternity Leave", true, true, "Ministry of Manpower Singapore", "https://www.mom.gov.sg/employment-practices/leave/paternity-leave"),
                 new LeaveSeed(SINGAPORE, "SHARED_PARENTAL_LEAVE", "Shared Parental Leave", true, true, "Ministry of Manpower Singapore", "https://www.mom.gov.sg/employment-practices/leave/shared-parental-leave"),
+                new LeaveSeed(SINGAPORE, "ADOPTION_LEAVE", "Adoption Leave", true, true, "Ministry of Manpower Singapore", "https://www.mom.gov.sg/employment-practices/leave/adoption-leave"),
                 new LeaveSeed(SINGAPORE, "CHILDCARE_LEAVE", "Childcare Leave", true, true, "Ministry of Manpower Singapore", "https://www.mom.gov.sg/employment-practices/leave/childcare-leave"),
                 new LeaveSeed(SINGAPORE, "EXTENDED_CHILDCARE_LEAVE", "Extended Childcare Leave", true, true, "Ministry of Manpower Singapore", "https://www.mom.gov.sg/employment-practices/leave/childcare-leave"),
                 new LeaveSeed(SINGAPORE, "UNPAID_INFANT_CARE_LEAVE", "Unpaid Infant Care Leave", true, false, "Ministry of Manpower Singapore", "https://www.mom.gov.sg/employment-practices/leave/unpaid-infant-care-leave"),
