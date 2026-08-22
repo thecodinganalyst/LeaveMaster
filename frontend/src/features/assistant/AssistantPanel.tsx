@@ -3,6 +3,7 @@ import { Alert, Button, Card, Divider, Empty, Input, Space, Spin, Tag, Typograph
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { ApiError } from '../../api/http.ts';
+import { AssistantMarkdown } from './AssistantMarkdown.tsx';
 import { confirmAssistantAction, sendAssistantMessage, type PendingAction, type StructuredResult } from './assistantApi.ts';
 import {
   actionEntries,
@@ -190,7 +191,11 @@ export const AssistantPanel = ({ onClose }: AssistantPanelProps) => {
             <div key={message.id} style={{ alignSelf: message.role === 'user' ? 'flex-end' : 'stretch', width: '100%' }}>
               <Card size="small" bordered={message.role !== 'user'} style={{ marginLeft: message.role === 'user' ? 48 : 0, marginRight: message.role === 'user' ? 0 : 24 }}>
                 <Typography.Text strong>{message.role === 'user' ? 'You' : message.role === 'assistant' ? 'LeaveMaestro' : 'Status'}</Typography.Text>
-                <Typography.Paragraph style={{ margin: '6px 0 0', whiteSpace: 'pre-wrap' }}>{message.text}</Typography.Paragraph>
+                {message.role === 'assistant' ? (
+                  <AssistantMarkdown>{message.text}</AssistantMarkdown>
+                ) : (
+                  <Typography.Paragraph style={{ margin: '6px 0 0', whiteSpace: 'pre-wrap' }}>{message.text}</Typography.Paragraph>
+                )}
               </Card>
 
               {message.results?.map((result, index) => (
