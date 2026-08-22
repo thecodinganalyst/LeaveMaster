@@ -195,7 +195,7 @@ export const EntitlementPolicyFormFields = ({ editing = false, platformAdmin = f
       <Form.Item
         name="accrualMethod"
         label="Accrual method"
-        extra="Controls when annual entitlement becomes available. Event-based policies do not use recurring accrual."
+        extra="Controls when annual entitlement becomes available. Proration is separate from accrual. Event-based policies do not use recurring accrual."
         rules={[{ required: true, message: 'Accrual method is required' }]}
       >
         <Select disabled={eventBased} options={accrualMethods} />
