@@ -62,6 +62,11 @@ public class LeaveEntitlementPolicy {
     private int priority;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "policy_model", nullable = false, length = 48)
+    @Builder.Default
+    private LeavePolicyModel policyModel = LeavePolicyModel.ANNUAL_ENTITLEMENT;
+
+    @Enumerated(EnumType.STRING)
     @Column(name = "entitlement_unit", nullable = false, length = 32)
     private EntitlementUnit entitlementUnit;
 
@@ -104,9 +109,12 @@ public class LeaveEntitlementPolicy {
     private Instant updatedAt;
 
     @PrePersist
-    void ensureId() {
+    void ensureDefaults() {
         if (id == null || id.isBlank()) {
             id = UUID.randomUUID().toString();
+        }
+        if (policyModel == null) {
+            policyModel = LeavePolicyModel.ANNUAL_ENTITLEMENT;
         }
     }
 }
