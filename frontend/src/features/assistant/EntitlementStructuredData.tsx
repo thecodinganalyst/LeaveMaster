@@ -3,21 +3,21 @@ import { Card, Space, Table, Tag, Typography, type TableColumnsType } from 'antd
 import type { StructuredResult } from './assistantApi.ts';
 
 type PolicySummary = {
-  policyName?: string;
-  servicePeriod?: string;
-  eligibility?: string | null;
-  entitlement?: string;
-  accrual?: string | null;
-  proration?: string | null;
-  carryForward?: string | null;
+  policyName: string | undefined;
+  servicePeriod: string | undefined;
+  eligibility: string | null | undefined;
+  entitlement: string | undefined;
+  accrual: string | null | undefined;
+  proration: string | null | undefined;
+  carryForward: string | null | undefined;
 };
 
 type LeaveTypeSummary = {
-  leaveType?: string;
-  accrual?: string | null;
-  proration?: string | null;
-  carryForward?: string | null;
-  policies?: PolicySummary[];
+  leaveType: string | undefined;
+  accrual: string | null | undefined;
+  proration: string | null | undefined;
+  carryForward: string | null | undefined;
+  policies: PolicySummary[];
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -99,7 +99,7 @@ const columnsFor = (policies: PolicySummary[]): TableColumnsType<PolicySummary> 
   return columns;
 };
 
-const CommonSetting = ({ label, value }: { label: string; value?: string | null }) =>
+const CommonSetting = ({ label, value }: { label: string; value: string | null | undefined }) =>
   value ? (
     <Space size={4}>
       <Typography.Text type="secondary">{label}:</Typography.Text>
@@ -125,7 +125,7 @@ export const EntitlementStructuredData = ({ result }: { result: StructuredResult
       {groups.length === 0 ? <Typography.Text>No entitlement policies found.</Typography.Text> : null}
       <Space direction="vertical" size="middle" style={{ width: '100%' }}>
         {groups.map((group, groupIndex) => {
-          const policies = group.policies ?? [];
+          const policies = group.policies;
           return (
             <Card key={`${group.leaveType ?? 'leave-type'}-${groupIndex}`} size="small" type="inner" title={group.leaveType ?? 'Leave type'}>
               <Space direction="vertical" size="small" style={{ width: '100%' }}>
@@ -139,7 +139,7 @@ export const EntitlementStructuredData = ({ result }: { result: StructuredResult
                   pagination={false}
                   columns={columnsFor(policies)}
                   dataSource={policies}
-                  rowKey={(policy, index) => `${policy.policyName ?? 'policy'}-${index ?? 0}`}
+                  rowKey={(policy) => `${policy.policyName ?? 'policy'}-${policy.servicePeriod ?? 'all'}`}
                   scroll={{ x: 'max-content' }}
                   locale={{ emptyText: 'No policy tiers configured.' }}
                 />
