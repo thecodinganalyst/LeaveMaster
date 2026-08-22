@@ -58,10 +58,8 @@ class EventLeaveEntitlementServiceTest {
         LeaveType leaveType = leaveType();
         when(policyRepository.findAllByTenantIdAndLeaveTypeIdAndActiveTrue("tenant-1", "event-leave"))
                 .thenReturn(List.of(annualPolicy()));
-
         Optional<EventLeaveEntitlement> result = service.prepareForRequest(staff, leaveType,
                 LeaveApplicationRequest.builder().fromDate(LocalDate.of(2026, 8, 10)).build());
-
         assertThat(result).isEmpty();
         verify(factService, never()).createEvent(any(), any());
     }
@@ -75,14 +73,12 @@ class EventLeaveEntitlementServiceTest {
         QualifyingLeaveEvent event = event("event-1", QualifyingEventStatus.VERIFIED, callUp);
         EventLeaveEntitlement saved = entitlement("ent-1", EventLeaveEntitlementStatus.ACTIVE, BigDecimal.ZERO);
 
-        when(policyRepository.findAllByTenantIdAndLeaveTypeIdAndActiveTrue("tenant-1", "event-leave"))
-                .thenReturn(List.of(policy));
+        when(policyRepository.findAllByTenantIdAndLeaveTypeIdAndActiveTrue("tenant-1", "event-leave")).thenReturn(List.of(policy));
         when(resolutionService.resolve(staff, "event-leave", callUp)).thenReturn(selected());
         when(policyRepository.findById("policy-1")).thenReturn(Optional.of(policy));
         when(factService.findEvents("staff-1")).thenReturn(List.of());
         when(factService.createEvent(any(), any(QualifyingLeaveEventWriteRequest.class))).thenReturn(event);
-        when(entitlementRepository.findByQualifyingEventIdAndPolicyId("event-1", "policy-1"))
-                .thenReturn(Optional.empty());
+        when(entitlementRepository.findByQualifyingEventIdAndPolicyId("event-1", "policy-1")).thenReturn(Optional.empty());
         when(entitlementRepository.save(any(EventLeaveEntitlement.class))).thenAnswer(inv -> {
             EventLeaveEntitlement value = inv.getArgument(0);
             value.setId("ent-1");
@@ -99,26 +95,24 @@ class EventLeaveEntitlementServiceTest {
         assertThat(result.getValidTo()).isEqualTo(callUp.plusDays(4));
         assertThat(result.getStatus()).isEqualTo(EventLeaveEntitlementStatus.ACTIVE);
         verify(factService).createEvent("staff-1", new QualifyingLeaveEventWriteRequest(
-                null, "MILITARY_CALL_UP", callUp, callUp, callUp.plusDays(4), "CALL-1", null,
-                QualifyingEventStatus.VERIFIED));
+                null, "MILITARY_CALL_UP", callUp, callUp, callUp.plusDays(4), "CALL-1", null, QualifyingEventStatus.VERIFIED));
 
-        when(entitlementRepository.findByQualifyingEventIdAndPolicyId("event-1", "policy-1"))
-                .thenReturn(Optional.of(saved));
-        assertThat(service.generate("staff-1", "event-leave", "event-1").getId()).isEqualTo("ent-1");
+        when(staffRepository.findById("staff-1")).thenReturn(Optional.of(staff));
+        when(leaveTypeRepository.findById("event-leave")).thenReturn(Optional.of(leaveType));
+        when(factService.findEvent("staff-1", "event-1")).thenReturn(event);
+        when(entitlementRepository.findByQualifyingEventIdAndPolicyId("event-1", "policy-1")).thenReturn(Optional.of(saved));
+        assertThat(service.generate("staff-1", "event-leave", "event-1")).isSameAs(saved);
     }
 
     @Test
     void reservesAndReleasesOnlyWithinActiveEntitlement() {
         EventLeaveEntitlement entitlement = entitlement("ent-1", EventLeaveEntitlementStatus.ACTIVE, new BigDecimal("1.0"));
         when(entitlementRepository.save(entitlement)).thenReturn(entitlement);
-
         service.reserve(entitlement, new BigDecimal("1.5"), LocalDate.of(2026, 9, 10), LocalDate.of(2026, 9, 11));
         assertThat(entitlement.getUsedAmount()).isEqualByComparingTo("2.5");
-
         when(entitlementRepository.findById("ent-1")).thenReturn(Optional.of(entitlement));
         service.release("ent-1", new BigDecimal("0.5"));
         assertThat(entitlement.getUsedAmount()).isEqualByComparingTo("2.0");
-
         entitlement.setStatus(EventLeaveEntitlementStatus.PENDING_VERIFICATION);
         assertThatThrownBy(() -> service.reserve(entitlement, BigDecimal.ONE,
                 LocalDate.of(2026, 9, 10), LocalDate.of(2026, 9, 10)))
@@ -133,24 +127,18 @@ class EventLeaveEntitlementServiceTest {
         LocalDate eventDate = LocalDate.of(2026, 10, 1);
         QualifyingLeaveEvent event = event("event-1", QualifyingEventStatus.VERIFIED, eventDate);
         EventLeaveEntitlement pending = entitlement("ent-1", EventLeaveEntitlementStatus.PENDING_VERIFICATION, BigDecimal.ZERO);
-        LeaveApplication application = LeaveApplication.builder()
-                .id("app-1").leaveDate(eventDate).leaveDuration(LeaveDuration.FULL)
-                .status(LeaveStatus.PENDING_VERIFICATION).eventEntitlementId("ent-1").build();
-
+        LeaveApplication application = LeaveApplication.builder().id("app-1").leaveDate(eventDate)
+                .leaveDuration(LeaveDuration.FULL).status(LeaveStatus.PENDING_VERIFICATION).eventEntitlementId("ent-1").build();
         when(staffRepository.findById("staff-1")).thenReturn(Optional.of(staff));
         when(leaveTypeRepository.findById("event-leave")).thenReturn(Optional.of(leaveType));
         when(factService.findEvent("staff-1", "event-1")).thenReturn(event);
         when(resolutionService.resolve(staff, "event-leave", eventDate)).thenReturn(selected());
         when(policyRepository.findById("policy-1")).thenReturn(Optional.of(policy));
-        when(entitlementRepository.findByQualifyingEventIdAndPolicyId("event-1", "policy-1"))
-                .thenReturn(Optional.of(pending));
+        when(entitlementRepository.findByQualifyingEventIdAndPolicyId("event-1", "policy-1")).thenReturn(Optional.of(pending));
         when(entitlementRepository.save(any(EventLeaveEntitlement.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(applicationRepository.findAllByEventEntitlementIdAndStatus("ent-1", LeaveStatus.PENDING_VERIFICATION))
-                .thenReturn(List.of(application));
+        when(applicationRepository.findAllByEventEntitlementIdAndStatus("ent-1", LeaveStatus.PENDING_VERIFICATION)).thenReturn(List.of(application));
         when(applicationRepository.save(application)).thenReturn(application);
-
         EventLeaveEntitlement result = service.generate("staff-1", "event-leave", "event-1");
-
         assertThat(result.getStatus()).isEqualTo(EventLeaveEntitlementStatus.ACTIVE);
         assertThat(result.getUsedAmount()).isEqualByComparingTo("1");
         assertThat(application.getStatus()).isEqualTo(LeaveStatus.PENDING);
@@ -163,16 +151,13 @@ class EventLeaveEntitlementServiceTest {
         wrong.setEventTypeCode("BIRTH");
         Staff staff = staff();
         LeaveType leaveType = leaveType();
-
         when(staffRepository.findById("staff-1")).thenReturn(Optional.of(staff));
         when(leaveTypeRepository.findById("event-leave")).thenReturn(Optional.of(leaveType));
         when(factService.findEvent("staff-1", "event-1")).thenReturn(wrong);
         when(resolutionService.resolve(staff, "event-leave", wrong.getEventDate())).thenReturn(selected());
         when(policyRepository.findById("policy-1")).thenReturn(Optional.of(policy));
-
         assertThatThrownBy(() -> service.generate("staff-1", "event-leave", "event-1"))
                 .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("does not match");
-
         EventLeaveEntitlement full = entitlement("ent-2", EventLeaveEntitlementStatus.ACTIVE, new BigDecimal("5"));
         assertThatThrownBy(() -> service.reserve(full, BigDecimal.ONE,
                 LocalDate.of(2026, 9, 10), LocalDate.of(2026, 9, 10)))
@@ -180,8 +165,7 @@ class EventLeaveEntitlementServiceTest {
     }
 
     private Staff staff() {
-        return Staff.builder().id("staff-1").name("Alice").tenantId("tenant-1")
-                .joinDate(LocalDate.of(2025, 1, 1)).build();
+        return Staff.builder().id("staff-1").name("Alice").tenantId("tenant-1").joinDate(LocalDate.of(2025, 1, 1)).build();
     }
 
     private LeaveType leaveType() {
@@ -204,8 +188,7 @@ class EventLeaveEntitlementServiceTest {
 
     private QualifyingLeaveEvent event(String id, QualifyingEventStatus status, LocalDate date) {
         return QualifyingLeaveEvent.builder().id(id).tenantId("tenant-1").staffId("staff-1")
-                .eventTypeCode("MILITARY_CALL_UP").eventDate(date).startDate(date).endDate(date.plusDays(4))
-                .status(status).build();
+                .eventTypeCode("MILITARY_CALL_UP").eventDate(date).startDate(date).endDate(date.plusDays(4)).status(status).build();
     }
 
     private EventLeaveEntitlement entitlement(String id, EventLeaveEntitlementStatus status, BigDecimal used) {
