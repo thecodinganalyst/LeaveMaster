@@ -141,7 +141,7 @@ public class LeaveApplicationService {
                         .map(calendar -> !isPublicHoliday(date, calendar)).orElse(true))
                 .toList();
         if (leaveDates.isEmpty()) {
-            throw new IllegalArgumentException("The selected range does not contain any working leave days");
+            return List.of();
         }
 
         Optional<EventLeaveEntitlement> eventEntitlement = eventLeaveEntitlementService == null
