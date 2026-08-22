@@ -55,10 +55,10 @@ describe('EntitlementStructuredData', () => {
     expect(screen.getByText('Proration: Prorated by calendar days')).toBeInTheDocument();
 
     const table = screen.getByRole('table');
-    expect(within(table).getByText('Service period')).toBeInTheDocument();
-    expect(within(table).getByText('Entitlement')).toBeInTheDocument();
-    expect(within(table).getByText('Additional eligibility')).toBeInTheDocument();
-    expect(within(table).getByText('Policy exceptions')).toBeInTheDocument();
+    expect(within(table).getByRole('columnheader', { name: 'Service period' })).toBeInTheDocument();
+    expect(within(table).getByRole('columnheader', { name: 'Entitlement' })).toBeInTheDocument();
+    expect(within(table).getByRole('columnheader', { name: 'Additional eligibility' })).toBeInTheDocument();
+    expect(within(table).getByRole('columnheader', { name: 'Policy exceptions' })).toBeInTheDocument();
     expect(screen.queryByText(/Policy: 1st year · Eligibility:/)).not.toBeInTheDocument();
   });
 
