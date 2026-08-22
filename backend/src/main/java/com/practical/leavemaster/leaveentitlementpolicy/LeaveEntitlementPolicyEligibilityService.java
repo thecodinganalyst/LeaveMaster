@@ -106,6 +106,7 @@ public class LeaveEntitlementPolicyEligibilityService {
         switch (rule.getCriterionType()) {
             case JURISDICTION_CODE -> validateJurisdictionRule(rule);
             case SERVICE_MONTHS -> validateServiceMonthsRule(rule);
+            case HAS_DEPENDANT_MATCHING -> validateDependantRule(rule);
         }
     }
 
@@ -133,6 +134,18 @@ public class LeaveEntitlementPolicyEligibilityService {
         }
         if (values(rule.getValue()).size() != 1) {
             throw new LeaveEntitlementPolicyValidationException("SERVICE_MONTHS comparison operators require one value");
+        }
+    }
+
+    private void validateDependantRule(LeaveEntitlementPolicyEligibilityRule rule) {
+        if (rule.getOperator() != EligibilityOperator.EQUALS && rule.getOperator() != EligibilityOperator.NOT_EQUALS) {
+            throw new LeaveEntitlementPolicyValidationException(
+                    "HAS_DEPENDANT_MATCHING supports only EQUALS and NOT_EQUALS");
+        }
+        try {
+            DependantEligibilityMatcher.parse(rule.getValue());
+        } catch (IllegalArgumentException ex) {
+            throw new LeaveEntitlementPolicyValidationException(ex.getMessage());
         }
     }
 
