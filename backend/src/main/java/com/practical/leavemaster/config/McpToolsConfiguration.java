@@ -5,6 +5,7 @@ import com.practical.leavemaster.mcp.AppUserMcpTools;
 import com.practical.leavemaster.mcp.LeaveApplicationMcpTools;
 import com.practical.leavemaster.mcp.LeaveApproverMcpTools;
 import com.practical.leavemaster.mcp.LeaveCalendarMcpTools;
+import com.practical.leavemaster.mcp.LeaveEntitlementPolicyMcpTools;
 import com.practical.leavemaster.mcp.LeaveTypeMcpTools;
 import com.practical.leavemaster.mcp.StaffMcpTools;
 import com.practical.leavemaster.mcp.TenantMcpTools;
@@ -24,6 +25,7 @@ public class McpToolsConfiguration {
             LeaveApplicationMcpTools leaveApplicationMcpTools,
             LeaveApproverMcpTools leaveApproverMcpTools,
             LeaveCalendarMcpTools leaveCalendarMcpTools,
+            LeaveEntitlementPolicyMcpTools leaveEntitlementPolicyMcpTools,
             AppUserMcpTools appUserMcpTools,
             AppRoleMcpTools appRoleMcpTools
     ) {
@@ -35,6 +37,7 @@ public class McpToolsConfiguration {
                         leaveApplicationMcpTools,
                         leaveApproverMcpTools,
                         leaveCalendarMcpTools,
+                        leaveEntitlementPolicyMcpTools,
                         appUserMcpTools,
                         appRoleMcpTools
                 )
