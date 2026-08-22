@@ -1,7 +1,7 @@
 import { apiFetch } from '../../api/http.ts';
 
 export type LeaveDuration = 'FULL' | 'AM' | 'PM';
-export type LeaveStatus = 'DRAFT' | 'PENDING' | 'APPROVED' | 'CANCEL_REQUESTED' | 'CANCELLED' | 'DENIED';
+export type LeaveStatus = 'DRAFT' | 'PENDING_VERIFICATION' | 'PENDING' | 'APPROVED' | 'CANCEL_REQUESTED' | 'CANCELLED' | 'DENIED';
 
 export interface LeaveTypeSummary {
   id: string;
@@ -25,6 +25,7 @@ export interface LeaveApplication {
   approver?: StaffSummary | null;
   applicationDate: string;
   approvalDate?: string | null;
+  eventEntitlementId?: string | null;
 }
 
 export interface LeaveBalance {
@@ -41,6 +42,14 @@ export interface ApplyLeaveRequest {
   leaveTypeId: string;
   leaveDuration: LeaveDuration;
   status: 'PENDING' | 'DRAFT';
+  qualifyingEventId?: string;
+  eventTypeCode?: string;
+  eventDate?: string;
+  eventStartDate?: string;
+  eventEndDate?: string;
+  dependantId?: string;
+  eventExternalReference?: string;
+  eventSupportingDocumentReference?: string;
 }
 
 export const getVisibleLeave = (staffId: string) =>
