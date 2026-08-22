@@ -3,6 +3,7 @@ package com.practical.leavemaster.leaveentitlement;
 import com.practical.leavemaster.leaveapplication.LeaveApplication;
 import com.practical.leavemaster.leaveapplication.LeaveApplicationRepository;
 import com.practical.leavemaster.leaveapplication.LeaveApplicationRequest;
+import com.practical.leavemaster.leaveapplication.LeaveDuration;
 import com.practical.leavemaster.leaveapplication.LeaveStatus;
 import com.practical.leavemaster.leaveeligibility.LeaveEligibilityFactService;
 import com.practical.leavemaster.leaveeligibility.QualifyingEventStatus;
@@ -31,6 +32,8 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 public class EventLeaveEntitlementService {
+
+    private static final BigDecimal HALF_DAY = new BigDecimal("0.5");
 
     private final EventLeaveEntitlementRepository entitlementRepository;
     private final LeaveEntitlementPolicyRepository policyRepository;
@@ -82,18 +85,17 @@ public class EventLeaveEntitlementService {
     @Transactional
     public EventLeaveEntitlement reserve(EventLeaveEntitlement entitlement, BigDecimal amount,
                                          LocalDate requestFrom, LocalDate requestTo) {
-        if (entitlement.getStatus() != EventLeaveEntitlementStatus.ACTIVE) {
-            throw new IllegalArgumentException("Event-based entitlement is awaiting verification");
-        }
-        if (requestFrom.isBefore(entitlement.getValidFrom()) || requestTo.isAfter(entitlement.getValidTo())) {
-            throw new IllegalArgumentException("Requested leave is outside the qualifying event entitlement period");
-        }
-        BigDecimal available = entitlement.getGrantedAmount().subtract(entitlement.getUsedAmount());
-        if (amount.signum() <= 0 || available.compareTo(amount) < 0) {
-            throw new IllegalArgumentException("Requested leave exceeds the remaining event-based entitlement");
-        }
+        validateReservable(entitlement, amount, requestFrom, requestTo);
         entitlement.setUsedAmount(entitlement.getUsedAmount().add(amount));
         return entitlementRepository.save(entitlement);
+    }
+
+    @Transactional
+    public EventLeaveEntitlement reserve(String entitlementId, BigDecimal amount,
+                                         LocalDate requestFrom, LocalDate requestTo) {
+        EventLeaveEntitlement entitlement = entitlementRepository.findById(entitlementId)
+                .orElseThrow(() -> new IllegalArgumentException("Event entitlement not found: " + entitlementId));
+        return reserve(entitlement, amount, requestFrom, requestTo);
     }
 
     @Transactional
@@ -121,7 +123,7 @@ public class EventLeaveEntitlementService {
                     && desiredStatus == EventLeaveEntitlementStatus.ACTIVE) {
                 entitlement.setStatus(EventLeaveEntitlementStatus.ACTIVE);
                 EventLeaveEntitlement saved = entitlementRepository.save(entitlement);
-                activatePendingApplications(saved.getId());
+                activatePendingApplications(saved);
                 return saved;
             }
             return entitlement;
@@ -213,12 +215,39 @@ public class EventLeaveEntitlementService {
         return policy.isEventRequiresVerification() && event.getStatus() != QualifyingEventStatus.VERIFIED;
     }
 
-    private void activatePendingApplications(String eventEntitlementId) {
-        for (LeaveApplication application : applicationRepository
-                .findAllByEventEntitlementIdAndStatus(eventEntitlementId, LeaveStatus.PENDING_VERIFICATION)) {
+    private void activatePendingApplications(EventLeaveEntitlement entitlement) {
+        List<LeaveApplication> pending = applicationRepository
+                .findAllByEventEntitlementIdAndStatus(entitlement.getId(), LeaveStatus.PENDING_VERIFICATION);
+        BigDecimal amount = pending.stream().map(this::applicationAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+        if (amount.signum() > 0) {
+            validateReservable(entitlement, amount,
+                    pending.stream().map(LeaveApplication::getLeaveDate).min(LocalDate::compareTo).orElse(entitlement.getValidFrom()),
+                    pending.stream().map(LeaveApplication::getLeaveDate).max(LocalDate::compareTo).orElse(entitlement.getValidTo()));
+            entitlement.setUsedAmount(entitlement.getUsedAmount().add(amount));
+            entitlementRepository.save(entitlement);
+        }
+        for (LeaveApplication application : pending) {
             application.setStatus(LeaveStatus.PENDING);
             applicationRepository.save(application);
         }
+    }
+
+    private void validateReservable(EventLeaveEntitlement entitlement, BigDecimal amount,
+                                    LocalDate requestFrom, LocalDate requestTo) {
+        if (entitlement.getStatus() != EventLeaveEntitlementStatus.ACTIVE) {
+            throw new IllegalArgumentException("Event-based entitlement is awaiting verification");
+        }
+        if (requestFrom.isBefore(entitlement.getValidFrom()) || requestTo.isAfter(entitlement.getValidTo())) {
+            throw new IllegalArgumentException("Requested leave is outside the qualifying event entitlement period");
+        }
+        BigDecimal available = entitlement.getGrantedAmount().subtract(entitlement.getUsedAmount());
+        if (amount.signum() <= 0 || available.compareTo(amount) < 0) {
+            throw new IllegalArgumentException("Requested leave exceeds the remaining event-based entitlement");
+        }
+    }
+
+    private BigDecimal applicationAmount(LeaveApplication application) {
+        return application.getLeaveDuration() == LeaveDuration.FULL ? BigDecimal.ONE : HALF_DAY;
     }
 
     private void requireSameTenant(Staff staff, LeaveType leaveType) {
