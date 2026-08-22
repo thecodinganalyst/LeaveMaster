@@ -27,10 +27,15 @@ public class EventEntitlementAmountResolver {
         return switch (mode) {
             case FIXED -> toWorkingDays(staff, policy.getEntitlementAmount(), policy.getEntitlementUnit());
             case APPROVED_EVENT_AMOUNT -> {
-                if (event.getApprovedEntitlementAmount() == null || event.getApprovedEntitlementAmount().signum() <= 0) {
+                BigDecimal approvedAmount = event.getApprovedEntitlementAmount();
+                if (approvedAmount == null || approvedAmount.signum() <= 0) {
                     throw new IllegalArgumentException("A positive approved event entitlement amount is required");
                 }
-                yield toWorkingDays(staff, event.getApprovedEntitlementAmount(), policy.getEntitlementUnit());
+                if (policy.getEntitlementAmount() != null
+                        && approvedAmount.compareTo(policy.getEntitlementAmount()) > 0) {
+                    throw new IllegalArgumentException("Approved event entitlement amount exceeds the policy maximum");
+                }
+                yield toWorkingDays(staff, approvedAmount, policy.getEntitlementUnit());
             }
             case EVENT_PERIOD_WORKING_DAYS -> workingDaysInPeriod(staff, event);
         };
