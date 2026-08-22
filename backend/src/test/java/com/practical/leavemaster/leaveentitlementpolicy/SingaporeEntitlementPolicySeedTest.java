@@ -50,7 +50,7 @@ class SingaporeEntitlementPolicySeedTest {
                 LocalDate.of(2025, 4, 1), null);
         assertStatutoryTemplate("SG_SHARED_PARENTAL_EVENT_6W", EntitlementUnit.WEEKS, 6,
                 LocalDate.of(2025, 4, 1), LocalDate.of(2026, 3, 31));
-        assertStatutoryTemplate("SG_SHARED_PARENTAL_EVENT_10W", EntitlementUnit.WEEKS, 10,
+        assertStatutoryTemplate("SG_SHARED_PARENTAL_EVENT", EntitlementUnit.WEEKS, 10,
                 LocalDate.of(2026, 4, 1), null);
         assertStatutoryTemplate("SG_ADOPTION_EVENT", EntitlementUnit.WEEKS, 12,
                 LocalDate.of(2026, 1, 1), null);
