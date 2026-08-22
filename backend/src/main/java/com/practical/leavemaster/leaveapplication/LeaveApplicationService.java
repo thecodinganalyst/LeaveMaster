@@ -4,6 +4,9 @@ import com.practical.leavemaster.email.EmailService;
 import com.practical.leavemaster.leavecalendar.LeaveCalendar;
 import com.practical.leavemaster.leavecalendar.LeaveCalendarNotFoundException;
 import com.practical.leavemaster.leavecalendar.LeaveCalendarService;
+import com.practical.leavemaster.leaveentitlement.EventLeaveEntitlement;
+import com.practical.leavemaster.leaveentitlement.EventLeaveEntitlementService;
+import com.practical.leavemaster.leaveentitlement.EventLeaveEntitlementStatus;
 import com.practical.leavemaster.leaveentitlement.LeaveEntitlement;
 import com.practical.leavemaster.leaveapprover.LeaveApprover;
 import com.practical.leavemaster.leaveapprover.LeaveApproverRepository;
@@ -18,6 +21,7 @@ import com.practical.leavemaster.storage.StorageService;
 import com.practical.leavemaster.tenant.TenantActivityService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -27,10 +31,11 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -47,6 +52,7 @@ public class LeaveApplicationService {
     private final EmailService emailService;
     private final TenantActivityService tenantActivityService;
     private final StorageService storageService;
+    private final EventLeaveEntitlementService eventLeaveEntitlementService;
 
     public List<LeaveApplication> findAll() {
         return leaveApplicationRepository.findAll();
@@ -77,8 +83,6 @@ public class LeaveApplicationService {
     public List<LeaveApplication> findByStaffId(String staffId, LocalDate date) {
         Optional<Staff> staffResult = staffRepository.findById(staffId);
         if (staffResult.isEmpty()) {
-            // Preserve the existing API's validation precedence for unknown staff while
-            // using jurisdiction-aware resolution for every real staff record.
             if (leaveCalendarService.getCalendarFor(date).isEmpty()) {
                 throw new LeaveCalendarNotFoundException(date.toString());
             }
@@ -93,27 +97,22 @@ public class LeaveApplicationService {
     public List<LeaveBalance> getLeaveBalances(String staffId) {
         Staff staff = staffRepository.findById(staffId)
                 .orElseThrow(() -> new StaffNotFoundException(staffId));
-
         List<LeaveStatus> countedStatuses = List.of(LeaveStatus.APPROVED, LeaveStatus.PENDING);
         List<LeaveBalance> balances = new ArrayList<>();
-
         for (LeaveEntitlement entitlement : staff.getLeaveEntitlements()) {
             LeaveType leaveType = entitlement.getLeaveType();
             List<LeaveApplication> applications = leaveApplicationRepository
                     .findByStaffAndLeaveTypeAndLeaveDateBetweenAndStatusIn(
                             staff, leaveType, entitlement.getFrom(), entitlement.getTo(), countedStatuses);
-
-            BigDecimal used = applications.stream()
-                    .map(a -> a.getLeaveDuration() == LeaveDuration.FULL ? BigDecimal.ONE : HALF_DAY)
+            BigDecimal used = applications.stream().map(this::applicationAmount)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-            BigDecimal balance = entitlement.getEntitlement().subtract(used);
-            balances.add(new LeaveBalance(leaveType, entitlement.getEntitlement(), used, balance));
+            balances.add(new LeaveBalance(leaveType, entitlement.getEntitlement(), used,
+                    entitlement.getEntitlement().subtract(used)));
         }
-
         return balances;
     }
 
+    @Transactional
     public List<LeaveApplication> apply(LeaveApplicationRequest request, MultipartFile attachment) {
         if (request.getFromDate() == null || request.getToDate() == null) {
             throw new IllegalArgumentException("fromDate and toDate are required");
@@ -121,27 +120,43 @@ public class LeaveApplicationService {
         if (request.getFromDate().isAfter(request.getToDate())) {
             throw new IllegalArgumentException("fromDate must be on or before toDate");
         }
-
         Staff staff = staffRepository.findById(request.getStaffId())
                 .orElseThrow(() -> new StaffNotFoundException(request.getStaffId()));
-
         if (staff.getTermDate() != null && request.getToDate().isAfter(staff.getTermDate())) {
             throw new IllegalArgumentException("Cannot apply for leave after termination date " + staff.getTermDate());
         }
-
         LeaveType leaveType = leaveTypeRepository.findById(request.getLeaveTypeId())
                 .orElseThrow(() -> new LeaveTypeNotFoundException(request.getLeaveTypeId()));
+        if (leaveType.getTenantId() != null && !Objects.equals(staff.getTenantId(), leaveType.getTenantId())) {
+            throw new IllegalArgumentException("Leave type does not belong to the staff tenant");
+        }
 
         LeaveDuration leaveDuration = request.getLeaveDuration() != null ? request.getLeaveDuration() : LeaveDuration.FULL;
-        LeaveStatus status = request.getStatus() != null ? request.getStatus() : LeaveStatus.DRAFT;
-
+        LeaveStatus requestedStatus = request.getStatus() != null ? request.getStatus() : LeaveStatus.DRAFT;
         Map<DayOfWeek, WorkScheduleDay> workScheduleMap = staff.getWorkSchedule().stream()
                 .collect(Collectors.toMap(WorkScheduleDay::getDayOfWeek, Function.identity()));
+        List<LocalDate> leaveDates = getWorkingDatesInRange(workScheduleMap.keySet(), request.getFromDate(), request.getToDate())
+                .stream()
+                .filter(date -> calendarForStaff(staff, date)
+                        .map(calendar -> !isPublicHoliday(date, calendar)).orElse(true))
+                .toList();
+        if (leaveDates.isEmpty()) {
+            return List.of();
+        }
 
-        List<LocalDate> leaveDates = getWorkingDatesInRange(
-                workScheduleMap.keySet(), request.getFromDate(), request.getToDate());
+        Optional<EventLeaveEntitlement> eventEntitlement = eventLeaveEntitlementService == null
+                ? Optional.empty()
+                : eventLeaveEntitlementService.prepareForRequest(staff, leaveType, request);
+        LeaveStatus status = eventEntitlement
+                .filter(entitlement -> entitlement.getStatus() == EventLeaveEntitlementStatus.PENDING_VERIFICATION)
+                .map(entitlement -> LeaveStatus.PENDING_VERIFICATION)
+                .orElse(requestedStatus);
+        BigDecimal requestedAmount = applicationAmount(leaveDuration).multiply(BigDecimal.valueOf(leaveDates.size()));
+        if (eventLeaveEntitlementService != null && eventEntitlement.isPresent() && countsAgainstEntitlement(status)) {
+            eventLeaveEntitlementService.reserve(eventEntitlement.get(), requestedAmount,
+                    leaveDates.getFirst(), leaveDates.getLast());
+        }
 
-        List<LeaveApplication> applications = new ArrayList<>();
         String sharedAttachmentKey = null;
         if (attachment != null && !attachment.isEmpty()) {
             try {
@@ -150,12 +165,9 @@ public class LeaveApplicationService {
                 throw new RuntimeException("Failed to store attachment", e);
             }
         }
+        List<LeaveApplication> applications = new ArrayList<>();
         for (LocalDate date : leaveDates) {
-            Optional<LeaveCalendar> calendar = calendarForStaff(staff, date);
-            if (calendar.isPresent() && isPublicHoliday(date, calendar.get())) {
-                continue;
-            }
-            LeaveApplication application = LeaveApplication.builder()
+            LeaveApplication saved = leaveApplicationRepository.save(LeaveApplication.builder()
                     .staff(staff)
                     .leaveDate(date)
                     .leaveType(leaveType)
@@ -164,8 +176,8 @@ public class LeaveApplicationService {
                     .attachmentUrl(sharedAttachmentKey)
                     .applicationDate(LocalDate.now())
                     .tenantId(staff.getTenantId())
-                    .build();
-            LeaveApplication saved = leaveApplicationRepository.save(application);
+                    .eventEntitlementId(eventEntitlement.map(EventLeaveEntitlement::getId).orElse(null))
+                    .build());
             tenantActivityService.touch(resolveTenantId(saved));
             applications.add(saved);
         }
@@ -192,7 +204,8 @@ public class LeaveApplicationService {
         String storageKey = application.getAttachmentUrl();
         if (storageKey == null || storageKey.isBlank()) {
             try {
-                response.sendError(jakarta.servlet.http.HttpServletResponse.SC_NOT_FOUND, "No attachment for this leave application");
+                response.sendError(jakarta.servlet.http.HttpServletResponse.SC_NOT_FOUND,
+                        "No attachment for this leave application");
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -205,9 +218,12 @@ public class LeaveApplicationService {
         }
     }
 
+    @Transactional
     public LeaveApplication update(String id, LeaveApplication updated) {
         LeaveApplication existing = leaveApplicationRepository.findById(id)
                 .orElseThrow(() -> new LeaveApplicationNotFoundException(id));
+        reconcileEventReservation(existing, existing.getStatus(), existing.getLeaveDuration(),
+                updated.getStatus(), updated.getLeaveDuration());
         existing.setStatus(updated.getStatus());
         existing.setApprover(updated.getApprover());
         existing.setApprovalDate(updated.getApprovalDate());
@@ -217,18 +233,20 @@ public class LeaveApplicationService {
         return saved;
     }
 
+    @Transactional
     public void delete(String id) {
         LeaveApplication application = leaveApplicationRepository.findById(id)
                 .orElseThrow(() -> new LeaveApplicationNotFoundException(id));
-
         boolean isPast = application.getLeaveDate().isBefore(LocalDate.now());
-
         if (isPast && application.getStatus() == LeaveStatus.APPROVED) {
             application.setStatus(LeaveStatus.CANCEL_REQUESTED);
             LeaveApplication saved = leaveApplicationRepository.save(application);
             tenantActivityService.touch(resolveTenantId(saved));
             notifyApproverOfCancellationRequest(application);
         } else {
+            if (countsAgainstEntitlement(application.getStatus())) {
+                releaseEventReservation(application);
+            }
             application.setStatus(LeaveStatus.CANCELLED);
             LeaveApplication saved = leaveApplicationRepository.save(application);
             tenantActivityService.touch(resolveTenantId(saved));
@@ -251,6 +269,7 @@ public class LeaveApplicationService {
         return updated;
     }
 
+    @Transactional
     public LeaveApplication reject(String id, String approverId) {
         LeaveApplication application = leaveApplicationRepository.findById(id)
                 .orElseThrow(() -> new LeaveApplicationNotFoundException(id));
@@ -258,6 +277,7 @@ public class LeaveApplicationService {
         Staff approver = staffRepository.findById(approverId)
                 .orElseThrow(() -> new StaffNotFoundException(approverId));
         validateApproverAssignment(application, approverId);
+        releaseEventReservation(application);
         application.setStatus(LeaveStatus.DENIED);
         application.setApprover(approver);
         application.setApprovalDate(LocalDate.now());
@@ -267,12 +287,14 @@ public class LeaveApplicationService {
         return updated;
     }
 
+    @Transactional
     public LeaveApplication approveCancellation(String id) {
         LeaveApplication application = leaveApplicationRepository.findById(id)
                 .orElseThrow(() -> new LeaveApplicationNotFoundException(id));
         if (application.getStatus() != LeaveStatus.CANCEL_REQUESTED) {
             throw new IllegalArgumentException("Leave application is not pending cancellation approval");
         }
+        releaseEventReservation(application);
         application.setStatus(LeaveStatus.CANCELLED);
         LeaveApplication saved = leaveApplicationRepository.save(application);
         tenantActivityService.touch(resolveTenantId(saved));
@@ -291,6 +313,50 @@ public class LeaveApplicationService {
         return saved;
     }
 
+    private void reconcileEventReservation(LeaveApplication application,
+                                           LeaveStatus oldStatus, LeaveDuration oldDuration,
+                                           LeaveStatus newStatus, LeaveDuration newDuration) {
+        if (eventLeaveEntitlementService == null || application.getEventEntitlementId() == null) {
+            return;
+        }
+        boolean oldCounts = countsAgainstEntitlement(oldStatus);
+        boolean newCounts = countsAgainstEntitlement(newStatus);
+        BigDecimal oldAmount = applicationAmount(oldDuration);
+        BigDecimal newAmount = applicationAmount(newDuration);
+        if (oldCounts && !newCounts) {
+            eventLeaveEntitlementService.release(application.getEventEntitlementId(), oldAmount);
+        } else if (!oldCounts && newCounts) {
+            eventLeaveEntitlementService.reserve(application.getEventEntitlementId(), newAmount,
+                    application.getLeaveDate(), application.getLeaveDate());
+        } else if (oldCounts && newCounts) {
+            int comparison = newAmount.compareTo(oldAmount);
+            if (comparison > 0) {
+                eventLeaveEntitlementService.reserve(application.getEventEntitlementId(), newAmount.subtract(oldAmount),
+                        application.getLeaveDate(), application.getLeaveDate());
+            } else if (comparison < 0) {
+                eventLeaveEntitlementService.release(application.getEventEntitlementId(), oldAmount.subtract(newAmount));
+            }
+        }
+    }
+
+    private void releaseEventReservation(LeaveApplication application) {
+        if (eventLeaveEntitlementService != null && application.getEventEntitlementId() != null) {
+            eventLeaveEntitlementService.release(application.getEventEntitlementId(), applicationAmount(application));
+        }
+    }
+
+    private boolean countsAgainstEntitlement(LeaveStatus status) {
+        return status == LeaveStatus.PENDING || status == LeaveStatus.APPROVED;
+    }
+
+    private BigDecimal applicationAmount(LeaveApplication application) {
+        return applicationAmount(application.getLeaveDuration());
+    }
+
+    private BigDecimal applicationAmount(LeaveDuration duration) {
+        return duration == LeaveDuration.FULL ? BigDecimal.ONE : HALF_DAY;
+    }
+
     private void validatePendingApproval(LeaveApplication application) {
         if (application.getStatus() != LeaveStatus.PENDING) {
             throw new IllegalArgumentException("Leave application is not pending approval");
@@ -298,7 +364,8 @@ public class LeaveApplicationService {
     }
 
     private void validateApproverAssignment(LeaveApplication application, String approverId) {
-        boolean isAssignedApprover = leaveApproverRepository.findActiveApproversForStaff(application.getStaff(), application.getLeaveDate())
+        boolean isAssignedApprover = leaveApproverRepository
+                .findActiveApproversForStaff(application.getStaff(), application.getLeaveDate())
                 .stream()
                 .map(LeaveApprover::getApprover)
                 .anyMatch(approver -> approverId.equals(approver.getId()));
@@ -312,10 +379,9 @@ public class LeaveApplicationService {
                 .findActiveApproversForStaff(application.getStaff(), LocalDate.now());
         for (LeaveApprover leaveApprover : activeApprovers) {
             Staff approver = leaveApprover.getApprover();
-            if (approver == null) {
-                continue;
+            if (approver != null) {
+                emailService.sendCancellationRequestNotification(application, approver.getEmail());
             }
-            emailService.sendCancellationRequestNotification(application, approver.getEmail());
         }
     }
 

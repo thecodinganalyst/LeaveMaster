@@ -66,6 +66,19 @@ public class LeaveEntitlementPolicy {
     @Builder.Default
     private LeavePolicyModel policyModel = LeavePolicyModel.ANNUAL_ENTITLEMENT;
 
+    @Column(name = "qualifying_event_type_code", length = 100)
+    private String qualifyingEventTypeCode;
+
+    @Builder.Default
+    @Column(name = "event_requires_verification", nullable = false)
+    private boolean eventRequiresVerification = false;
+
+    @Column(name = "event_validity_days_before")
+    private Integer eventValidityDaysBefore;
+
+    @Column(name = "event_validity_days_after")
+    private Integer eventValidityDaysAfter;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "entitlement_unit", nullable = false, length = 32)
     private EntitlementUnit entitlementUnit;

@@ -2,6 +2,7 @@ import type { LeaveApplication, LeaveStatus } from './leaveApi.ts';
 
 export const statusLabel: Record<LeaveStatus, string> = {
   DRAFT: 'Draft',
+  PENDING_VERIFICATION: 'Awaiting event verification',
   PENDING: 'Pending',
   APPROVED: 'Approved',
   CANCEL_REQUESTED: 'Cancellation pending',
@@ -11,6 +12,7 @@ export const statusLabel: Record<LeaveStatus, string> = {
 
 export const statusColor: Record<LeaveStatus, string> = {
   DRAFT: 'default',
+  PENDING_VERIFICATION: 'warning',
   PENDING: 'processing',
   APPROVED: 'success',
   CANCEL_REQUESTED: 'warning',
@@ -19,7 +21,7 @@ export const statusColor: Record<LeaveStatus, string> = {
 };
 
 export const canEditApplication = (application: LeaveApplication) =>
-  ['DRAFT', 'PENDING'].includes(application.status);
+  ['DRAFT', 'PENDING_VERIFICATION', 'PENDING'].includes(application.status);
 
 export const canCancelApplication = (application: LeaveApplication) =>
   !['CANCELLED', 'DENIED', 'CANCEL_REQUESTED'].includes(application.status);

@@ -10,4 +10,5 @@ public interface QualifyingLeaveEventRepository extends JpaRepository<Qualifying
     List<QualifyingLeaveEvent> findAllByStaffId(String staffId);
     List<QualifyingLeaveEvent> findAllByTenantIdAndStaffId(String tenantId, String staffId);
     boolean existsByDependantId(String dependantId);
+    void deleteAllByTenantId(String tenantId);
 }

@@ -19,4 +19,13 @@ public class LeaveApplicationRequest {
     private String leaveTypeId;
     private LeaveDuration leaveDuration;
     private LeaveStatus status;
+
+    private String qualifyingEventId;
+    private String eventTypeCode;
+    private LocalDate eventDate;
+    private LocalDate eventStartDate;
+    private LocalDate eventEndDate;
+    private String dependantId;
+    private String eventExternalReference;
+    private String eventSupportingDocumentReference;
 }

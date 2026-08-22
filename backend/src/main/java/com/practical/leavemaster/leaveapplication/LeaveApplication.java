@@ -64,4 +64,7 @@ public class LeaveApplication {
 
     @Column(name = "tenant_id")
     private String tenantId;
+
+    @Column(name = "event_entitlement_id", length = 36)
+    private String eventEntitlementId;
 }

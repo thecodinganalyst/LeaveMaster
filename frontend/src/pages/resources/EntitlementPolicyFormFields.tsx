@@ -57,6 +57,7 @@ export const EntitlementPolicyFormFields = ({ editing = false, platformAdmin = f
     if (!form.getFieldValue('priority')) form.setFieldValue('priority', 10);
     if (!form.getFieldValue('accrualMethod')) form.setFieldValue('accrualMethod', 'NONE');
     if (form.getFieldValue('carryForwardAllowed') == null) form.setFieldValue('carryForwardAllowed', false);
+    if (form.getFieldValue('eventRequiresVerification') == null) form.setFieldValue('eventRequiresVerification', false);
   }, [editing, form]);
 
   useEffect(() => {
@@ -65,17 +66,24 @@ export const EntitlementPolicyFormFields = ({ editing = false, platformAdmin = f
   }, [editing, form]);
 
   useEffect(() => {
-    if (!eventBased) return;
-    form.setFieldsValue({
-      entitlementAmount: 0,
-      entitlementUnit: 'DAYS',
-      accrualMethod: 'NONE',
-      accrualRate: undefined,
-      prorationMethod: 'NONE',
-      carryForwardAllowed: false,
-      carryForwardLimit: undefined,
-      carryForwardExpiryMonths: undefined,
-    });
+    if (eventBased) {
+      form.setFieldsValue({
+        entitlementUnit: 'DAYS',
+        accrualMethod: 'NONE',
+        accrualRate: undefined,
+        prorationMethod: 'NONE',
+        carryForwardAllowed: false,
+        carryForwardLimit: undefined,
+        carryForwardExpiryMonths: undefined,
+      });
+    } else {
+      form.setFieldsValue({
+        qualifyingEventTypeCode: undefined,
+        eventRequiresVerification: false,
+        eventValidityDaysBefore: undefined,
+        eventValidityDaysAfter: undefined,
+      });
+    }
   }, [eventBased, form]);
 
   useEffect(() => {
@@ -108,7 +116,7 @@ export const EntitlementPolicyFormFields = ({ editing = false, platformAdmin = f
         showIcon
         style={{ marginBottom: 20 }}
         message="What an entitlement policy controls"
-        description="An entitlement policy defines how leave is made available. Annual policies create a leave-year balance, conditional annual policies do so only when eligibility rules match, and event-based policies are resolved against a qualifying event instead of an annual balance."
+        description="An entitlement policy defines how leave is made available. Annual policies create a leave-year balance, conditional annual policies do so only when eligibility rules match, and event-based policies create a separate entitlement for each qualifying event."
       />
 
       {platformAdmin ? (
@@ -117,10 +125,7 @@ export const EntitlementPolicyFormFields = ({ editing = false, platformAdmin = f
             <JurisdictionSelect disabled={editing} />
           </Form.Item>
           <Form.Item name="jurisdictionLeaveTypeId" label="Jurisdiction leave type" rules={[{ required: true, message: 'Jurisdiction leave type is required' }]}>
-            <JurisdictionLeaveTypeSelect
-              {...(jurisdictionId ? { jurisdictionId: String(jurisdictionId) } : {})}
-              disabled={editing}
-            />
+            <JurisdictionLeaveTypeSelect {...(jurisdictionId ? { jurisdictionId: String(jurisdictionId) } : {})} disabled={editing} />
           </Form.Item>
         </>
       ) : (
@@ -129,87 +134,68 @@ export const EntitlementPolicyFormFields = ({ editing = false, platformAdmin = f
         </Form.Item>
       )}
 
-      <Form.Item name="name" label="Name" rules={[{ required: true, message: 'Name is required' }]}>
-        <Input />
-      </Form.Item>
+      <Form.Item name="name" label="Name" rules={[{ required: true, message: 'Name is required' }]}><Input /></Form.Item>
+      <Form.Item name="id" hidden><Input /></Form.Item>
+      <Form.Item name="active" label="Active" valuePropName="checked"><Switch /></Form.Item>
 
-      <Form.Item name="id" hidden>
-        <Input />
-      </Form.Item>
-
-      <Form.Item name="active" label="Active" valuePropName="checked">
-        <Switch />
-      </Form.Item>
-
-      <Form.Item
-        name="policyModel"
-        label="Policy model"
-        extra="Choose how entitlement is represented. Event-based leave does not create a conventional annual balance."
-        rules={[{ required: true, message: 'Policy model is required' }]}
-      >
+      <Form.Item name="policyModel" label="Policy model" extra="Event-based leave creates event-specific entitlements but no conventional annual balance." rules={[{ required: true, message: 'Policy model is required' }]}>
         <Select options={policyModels} />
       </Form.Item>
 
       {eventBased ? (
-        <Alert
-          type="warning"
-          showIcon
-          style={{ marginBottom: 20 }}
-          message="Event-based leave has no annual balance"
-          description="This policy records the leave model only. Its duration and eligibility must be supplied by a qualifying-event workflow; annual accrual, proration, and carry-forward do not apply."
-        />
+        <>
+          <Alert
+            type="warning"
+            showIcon
+            style={{ marginBottom: 20 }}
+            message="Event-based leave has no annual balance"
+            description="The entitlement amount below is granted for each qualifying event. Annual accrual, proration and carry-forward do not apply."
+          />
+          <Form.Item name="qualifyingEventTypeCode" label="Qualifying event type" extra="Generic event code such as MILITARY_CALL_UP, BIRTH or ADOPTION." rules={[{ required: true, message: 'Qualifying event type is required' }]}>
+            <Input placeholder="e.g. MILITARY_CALL_UP" />
+          </Form.Item>
+          <Form.Item name="eventRequiresVerification" label="Requires verification before use" valuePropName="checked">
+            <Switch />
+          </Form.Item>
+          <Space.Compact block style={{ alignItems: 'flex-start' }}>
+            <div style={{ flex: 1 }}>
+              <Form.Item name="eventValidityDaysBefore" label="Validity days before event" rules={[{ type: 'integer', min: 0, message: 'Must be 0 or greater' }]}>
+                <InputNumber min={0} step={1} precision={0} inputMode="numeric" style={{ width: '100%' }} />
+              </Form.Item>
+            </div>
+            <div style={{ flex: 1 }}>
+              <Form.Item name="eventValidityDaysAfter" label="Validity days after event" rules={[{ type: 'integer', min: 0, message: 'Must be 0 or greater' }]}>
+                <InputNumber min={0} step={1} precision={0} inputMode="numeric" style={{ width: '100%' }} />
+              </Form.Item>
+            </div>
+          </Space.Compact>
+        </>
       ) : null}
 
-      <Form.Item
-        name="priority"
-        label="Priority (higher number wins)"
-        extra="Determines which policy wins when more than one policy matches. Start with 10 for the default policy and use 20 or 30 for more specific rules. Avoid equal highest priorities for overlapping policies."
-        rules={[{ required: true, message: 'Priority is required' }, { type: 'integer', min: 0, message: 'Priority must be a whole number of at least 0' }]}
-      >
+      <Form.Item name="priority" label="Priority (higher number wins)" extra="Determines which policy wins when more than one policy matches. Start with 10 for the default policy and use 20 or 30 for more specific rules. Avoid equal highest priorities for overlapping policies." rules={[{ required: true, message: 'Priority is required' }, { type: 'integer', min: 0, message: 'Priority must be a whole number of at least 0' }]}>
         <InputNumber min={0} step={1} precision={0} inputMode="numeric" onKeyDown={(event) => blockInvalidNumericKey(event, true)} style={{ width: '100%' }} />
       </Form.Item>
 
       <Space.Compact block style={{ alignItems: 'flex-start', marginBottom: 0 }}>
         <div style={{ flex: '1 1 auto', minWidth: 0 }}>
-          <Form.Item
-            name="entitlementAmount"
-            label="Entitlement amount"
-            extra={eventBased ? 'Not used for event-based policies.' : 'The total leave entitlement for the policy period. For example, enter 14 with unit DAYS for 14 days of annual leave.'}
-            rules={[{ required: true, message: 'Entitlement amount is required' }, { type: 'number', min: 0, message: 'Entitlement amount must be 0 or greater' }]}
-          >
-            <InputNumber disabled={eventBased} min={0} step={0.5} inputMode="decimal" onKeyDown={(event) => blockInvalidNumericKey(event, false)} style={{ width: '100%' }} />
+          <Form.Item name="entitlementAmount" label={eventBased ? 'Entitlement per event' : 'Entitlement amount'} extra={eventBased ? 'Amount granted for each qualifying event; this is not an annual balance.' : 'The total leave entitlement for the policy period. For example, enter 14 with unit DAYS for 14 days of annual leave.'} rules={[{ required: true, message: 'Entitlement amount is required' }, { type: 'number', min: eventBased ? 0.5 : 0, message: eventBased ? 'Event entitlement must be greater than 0' : 'Entitlement amount must be 0 or greater' }]}>
+            <InputNumber min={eventBased ? 0.5 : 0} step={0.5} inputMode="decimal" onKeyDown={(event) => blockInvalidNumericKey(event, false)} style={{ width: '100%' }} />
           </Form.Item>
         </div>
         <div style={{ flex: '0 0 118px' }}>
-          <Form.Item
-            name="entitlementUnit"
-            label="Unit"
-            extra="LeaveMaestro currently supports day-based entitlement only."
-            rules={[{ required: true, message: 'Unit is required' }]}
-          >
-            <Select disabled={eventBased} options={[{ label: 'Days', value: 'DAYS' }]} />
+          <Form.Item name="entitlementUnit" label="Unit" extra="LeaveMaestro currently supports day-based entitlement only." rules={[{ required: true, message: 'Unit is required' }]}>
+            <Select options={[{ label: 'Days', value: 'DAYS' }]} />
           </Form.Item>
         </div>
       </Space.Compact>
 
-      <Form.Item
-        name="accrualMethod"
-        label="Accrual method"
-        extra="Controls when annual entitlement becomes available. Proration is separate from accrual. Event-based policies do not use recurring accrual."
-        rules={[{ required: true, message: 'Accrual method is required' }]}
-      >
+      <Form.Item name="accrualMethod" label="Accrual method" extra="Controls when annual entitlement becomes available. Proration is separate from accrual. Event-based policies do not use recurring accrual." rules={[{ required: true, message: 'Accrual method is required' }]}>
         <Select disabled={eventBased} options={accrualMethods} />
       </Form.Item>
-
-      <Form.Item name="accrualRate" hidden>
-        <Input />
-      </Form.Item>
+      <Form.Item name="accrualRate" hidden><Input /></Form.Item>
 
       {!eventBased && accrualMethod === 'MONTHLY' ? (
-        <Form.Item
-          label="Calculated monthly accrual"
-          extra="Calculated automatically as entitlement amount ÷ 12. It cannot be edited directly. Monthly accrual already uses eligible months, so proration should not reduce the same period a second time."
-        >
+        <Form.Item label="Calculated monthly accrual" extra="Calculated automatically as entitlement amount ÷ 12. It cannot be edited directly. Monthly accrual already uses eligible months, so proration should not reduce the same period a second time.">
           <Input value={formatMonthlyAccrual(calculatedMonthlyRate)} readOnly aria-label="Calculated monthly accrual" />
         </Form.Item>
       ) : (
@@ -218,41 +204,18 @@ export const EntitlementPolicyFormFields = ({ editing = false, platformAdmin = f
         </Form.Item>
       )}
 
-      <Form.Item
-        name="prorationMethod"
-        label="Proration method"
-        extra="Proration adjusts annual entitlement when an employee is eligible for only part of the policy period. It does not apply to event-based policies."
-        rules={[{ required: true, message: 'Proration method is required' }]}
-      >
+      <Form.Item name="prorationMethod" label="Proration method" extra="Proration adjusts annual entitlement when an employee is eligible for only part of the policy period. It does not apply to event-based policies." rules={[{ required: true, message: 'Proration method is required' }]}>
         <Select disabled={eventBased} options={prorationMethods} />
       </Form.Item>
-
-      <Form.Item name="carryForwardAllowed" label="Carry forward allowed" valuePropName="checked">
-        <Switch disabled={eventBased} />
-      </Form.Item>
-
-      <Form.Item
-        name="carryForwardLimit"
-        label="Carry forward limit"
-        rules={[{ type: 'number', min: 0, message: 'Carry forward limit must be 0 or greater' }]}
-      >
+      <Form.Item name="carryForwardAllowed" label="Carry forward allowed" valuePropName="checked"><Switch disabled={eventBased} /></Form.Item>
+      <Form.Item name="carryForwardLimit" label="Carry forward limit" rules={[{ type: 'number', min: 0, message: 'Carry forward limit must be 0 or greater' }]}>
         <InputNumber disabled={eventBased} min={0} step={0.5} inputMode="decimal" onKeyDown={(event) => blockInvalidNumericKey(event, false)} style={{ width: '100%' }} />
       </Form.Item>
-
-      <Form.Item
-        name="carryForwardExpiryMonths"
-        label="Carry forward expiry (months)"
-        rules={[{ type: 'integer', min: 0, message: 'Carry forward expiry must be a whole number of at least 0' }]}
-      >
+      <Form.Item name="carryForwardExpiryMonths" label="Carry forward expiry (months)" rules={[{ type: 'integer', min: 0, message: 'Carry forward expiry must be a whole number of at least 0' }]}>
         <InputNumber disabled={eventBased} min={0} step={1} precision={0} inputMode="numeric" onKeyDown={(event) => blockInvalidNumericKey(event, true)} style={{ width: '100%' }} />
       </Form.Item>
-
-      <Form.Item name="effectiveFrom" label="Effective from" rules={[{ required: true, message: 'Effective from is required' }]}>
-        <Input type="date" />
-      </Form.Item>
-      <Form.Item name="effectiveTo" label="Effective to">
-        <Input type="date" />
-      </Form.Item>
+      <Form.Item name="effectiveFrom" label="Effective from" rules={[{ required: true, message: 'Effective from is required' }]}><Input type="date" /></Form.Item>
+      <Form.Item name="effectiveTo" label="Effective to"><Input type="date" /></Form.Item>
     </>
   );
 };

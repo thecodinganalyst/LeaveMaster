@@ -24,6 +24,8 @@ public interface LeaveApplicationRepository extends JpaRepository<LeaveApplicati
     List<LeaveApplication> findByStaffAndLeaveTypeAndLeaveDateBetweenAndStatusIn(
             Staff staff, LeaveType leaveType, LocalDate from, LocalDate to, List<LeaveStatus> statuses);
 
+    List<LeaveApplication> findAllByEventEntitlementIdAndStatus(String eventEntitlementId, LeaveStatus status);
+
     @Query("SELECT la FROM LeaveApplication la " +
            "JOIN LeaveApprover lap ON lap.staff = la.staff " +
            "WHERE lap.approver.id = :approverId " +
