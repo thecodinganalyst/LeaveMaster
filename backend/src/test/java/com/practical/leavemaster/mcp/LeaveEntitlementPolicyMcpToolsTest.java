@@ -37,7 +37,7 @@ class LeaveEntitlementPolicyMcpToolsTest {
             policyService, eligibilityService, policyRepository, jurisdictionLeaveTypeRepository, leaveTypeRepository);
 
     @Test
-    void shouldReturnHumanReadablePlatformPolicyAndEligibility() {
+    void shouldReturnExactServiceRangeAndCommonBusinessSettings() {
         LeaveEntitlementPolicy sg = template("sg-policy", "SG");
         sg.setName("1st year");
         sg.setJurisdictionLeaveTypeId("SG:ANNUAL_LEAVE");
@@ -46,18 +46,11 @@ class LeaveEntitlementPolicyMcpToolsTest {
         sg.setAccrualMethod(AccrualMethod.NONE);
         sg.setProrationMethod(ProrationMethod.MONTHS);
         sg.setCarryForwardAllowed(false);
-        LeaveEntitlementPolicyEligibilityRule rule = LeaveEntitlementPolicyEligibilityRule.builder()
-                .id("rule-1")
-                .policyId("sg-policy")
-                .criterionType(EligibilityCriterionType.SERVICE_MONTHS)
-                .operator(EligibilityOperator.GREATER_THAN_OR_EQUAL)
-                .value("3")
-                .active(true)
-                .sortOrder(1)
-                .build();
+        var lower = serviceRule("sg-policy", EligibilityOperator.GREATER_THAN_OR_EQUAL, "3", 1);
+        var upper = serviceRule("sg-policy", EligibilityOperator.LESS_THAN, "12", 2);
         when(policyRepository.findAllByScope(ConfigurationScope.PLATFORM_TEMPLATE)).thenReturn(List.of(sg));
         when(policyService.findAll()).thenReturn(List.of(sg));
-        when(eligibilityService.findAll("sg-policy")).thenReturn(List.of(rule));
+        when(eligibilityService.findAll("sg-policy")).thenReturn(List.of(lower, upper));
         when(jurisdictionLeaveTypeRepository.findById("SG:ANNUAL_LEAVE")).thenReturn(Optional.of(
                 JurisdictionLeaveType.builder().id("SG:ANNUAL_LEAVE").jurisdictionId("SG").code("ANNUAL_LEAVE")
                         .name("Annual Leave").active(true).build()));
@@ -66,25 +59,71 @@ class LeaveEntitlementPolicyMcpToolsTest {
 
         assertThat(result).singleElement().satisfies(group -> {
             assertThat(group.leaveType()).isEqualTo("Annual Leave");
+            assertThat(group.accrual()).isEqualTo("Granted upfront");
+            assertThat(group.proration()).isEqualTo("Prorated by completed months");
+            assertThat(group.carryForward()).isEqualTo("Unused leave cannot be carried forward");
             assertThat(group.policies()).singleElement().satisfies(policy -> {
                 assertThat(policy.policyName()).isEqualTo("1st year");
-                assertThat(policy.eligibility()).isEqualTo("At least 3 months of service");
+                assertThat(policy.servicePeriod()).isEqualTo("3–11 months");
+                assertThat(policy.eligibility()).isNull();
                 assertThat(policy.entitlement()).isEqualTo("7 days");
-                assertThat(policy.accrual()).isEqualTo("Granted upfront");
-                assertThat(policy.proration()).isEqualTo("Prorated by completed months");
-                assertThat(policy.carryForward()).isEqualTo("Unused leave cannot be carried forward");
+                assertThat(policy.accrual()).isNull();
+                assertThat(policy.proration()).isNull();
+                assertThat(policy.carryForward()).isNull();
             });
         });
     }
 
     @Test
-    void shouldGroupProgressiveTiersByLeaveType() {
-        LeaveEntitlementPolicy first = template("first", "SG");
-        first.setJurisdictionLeaveTypeId("SG:ANNUAL_LEAVE");
-        first.setName("1st year");
-        LeaveEntitlementPolicy second = template("second", "SG");
-        second.setJurisdictionLeaveTypeId("SG:ANNUAL_LEAVE");
-        second.setName("2nd year");
+    void shouldDeriveInclusiveExclusiveAndOpenEndedServiceRanges() {
+        LeaveEntitlementPolicy first = annualPolicy("first", "1st year", 7);
+        LeaveEntitlementPolicy second = annualPolicy("second", "2nd year", 8);
+        LeaveEntitlementPolicy eighth = annualPolicy("eighth", "8th year and later", 14);
+        when(policyRepository.findAllByScope(ConfigurationScope.PLATFORM_TEMPLATE)).thenReturn(List.of(first, second, eighth));
+        when(policyService.findAll()).thenReturn(List.of(eighth, second, first));
+        when(eligibilityService.findAll("first")).thenReturn(List.of(
+                serviceRule("first", EligibilityOperator.GREATER_THAN_OR_EQUAL, "3", 1),
+                serviceRule("first", EligibilityOperator.LESS_THAN, "12", 2)));
+        when(eligibilityService.findAll("second")).thenReturn(List.of(
+                serviceRule("second", EligibilityOperator.GREATER_THAN_OR_EQUAL, "12", 1),
+                serviceRule("second", EligibilityOperator.LESS_THAN_OR_EQUAL, "23", 2)));
+        when(eligibilityService.findAll("eighth")).thenReturn(List.of(
+                serviceRule("eighth", EligibilityOperator.GREATER_THAN_OR_EQUAL, "84", 1)));
+        when(jurisdictionLeaveTypeRepository.findById("SG:ANNUAL_LEAVE")).thenReturn(Optional.of(
+                JurisdictionLeaveType.builder().id("SG:ANNUAL_LEAVE").jurisdictionId("SG").code("ANNUAL_LEAVE")
+                        .name("Annual Leave").active(true).build()));
+
+        var policies = tools.getLeaveEntitlementConfigurationByJurisdiction("SG").getFirst().policies();
+
+        assertThat(policies)
+                .extracting(LeaveEntitlementPolicyMcpTools.EntitlementPolicySummary::servicePeriod)
+                .containsExactly("3–11 months", "12–23 months", "84+ months");
+    }
+
+    @Test
+    void shouldDeriveEqualityAndUpperOnlyServiceRanges() {
+        LeaveEntitlementPolicy exact = annualPolicy("exact", "Exact", 1);
+        LeaveEntitlementPolicy upper = annualPolicy("upper", "Upper", 2);
+        when(policyRepository.findAllByScope(ConfigurationScope.PLATFORM_TEMPLATE)).thenReturn(List.of(exact, upper));
+        when(policyService.findAll()).thenReturn(List.of(upper, exact));
+        when(eligibilityService.findAll("exact")).thenReturn(List.of(
+                serviceRule("exact", EligibilityOperator.EQUALS, "12", 1)));
+        when(eligibilityService.findAll("upper")).thenReturn(List.of(
+                serviceRule("upper", EligibilityOperator.LESS_THAN_OR_EQUAL, "5", 1)));
+        when(jurisdictionLeaveTypeRepository.findById("SG:ANNUAL_LEAVE")).thenReturn(Optional.empty());
+
+        var result = tools.getLeaveEntitlementConfigurationByJurisdiction("SG");
+
+        assertThat(result).hasSize(2);
+        assertThat(result.stream().flatMap(group -> group.policies().stream()).map(p -> p.servicePeriod()))
+                .containsExactlyInAnyOrder("12 months", "Up to 5 months");
+    }
+
+    @Test
+    void shouldOnlyShowTierSpecificSettingsWhenTheyDiffer() {
+        LeaveEntitlementPolicy first = annualPolicy("first", "1st year", 7);
+        LeaveEntitlementPolicy second = annualPolicy("second", "2nd year", 8);
+        second.setProrationMethod(ProrationMethod.CALENDAR_DAYS);
         when(policyRepository.findAllByScope(ConfigurationScope.PLATFORM_TEMPLATE)).thenReturn(List.of(first, second));
         when(policyService.findAll()).thenReturn(List.of(first, second));
         when(eligibilityService.findAll("first")).thenReturn(List.of());
@@ -93,11 +132,14 @@ class LeaveEntitlementPolicyMcpToolsTest {
                 JurisdictionLeaveType.builder().id("SG:ANNUAL_LEAVE").jurisdictionId("SG").code("ANNUAL_LEAVE")
                         .name("Annual Leave").active(true).build()));
 
-        assertThat(tools.getLeaveEntitlementConfigurationByJurisdiction("SG"))
-                .singleElement()
-                .satisfies(group -> assertThat(group.policies())
-                        .extracting(LeaveEntitlementPolicyMcpTools.EntitlementPolicySummary::policyName)
-                        .containsExactly("1st year", "2nd year"));
+        var group = tools.getLeaveEntitlementConfigurationByJurisdiction("SG").getFirst();
+
+        assertThat(group.accrual()).isEqualTo("Granted upfront");
+        assertThat(group.proration()).isNull();
+        assertThat(group.carryForward()).isEqualTo("Unused leave cannot be carried forward");
+        assertThat(group.policies())
+                .extracting(LeaveEntitlementPolicyMcpTools.EntitlementPolicySummary::proration)
+                .containsExactly("Not prorated", "Prorated by calendar days");
     }
 
     @Test
@@ -122,7 +164,7 @@ class LeaveEntitlementPolicyMcpToolsTest {
     }
 
     @Test
-    void shouldRenderJurisdictionAndCarryForwardRulesInBusinessLanguage() {
+    void shouldKeepNonServiceEligibilityAndCarryForwardInBusinessLanguage() {
         LeaveEntitlementPolicy policy = template("childcare", "SG");
         policy.setJurisdictionLeaveTypeId("SG:CHILDCARE");
         policy.setEntitlementAmount(BigDecimal.valueOf(6));
@@ -143,11 +185,13 @@ class LeaveEntitlementPolicyMcpToolsTest {
         when(eligibilityService.findAll("childcare")).thenReturn(List.of(jurisdictionRule));
         when(jurisdictionLeaveTypeRepository.findById("SG:CHILDCARE")).thenReturn(Optional.empty());
 
-        var summary = tools.getLeaveEntitlementConfigurationByJurisdiction("SG").getFirst().policies().getFirst();
+        var group = tools.getLeaveEntitlementConfigurationByJurisdiction("SG").getFirst();
+        var summary = group.policies().getFirst();
+        assertThat(summary.servicePeriod()).isEqualTo("All service periods");
         assertThat(summary.eligibility()).isEqualTo("Jurisdiction is one of: SG");
-        assertThat(summary.accrual()).isEqualTo("Accrued monthly");
-        assertThat(summary.proration()).isEqualTo("Prorated by calendar days");
-        assertThat(summary.carryForward()).isEqualTo("Carry forward allowed up to 3 days; expires after 12 months");
+        assertThat(group.accrual()).isEqualTo("Accrued monthly");
+        assertThat(group.proration()).isEqualTo("Prorated by calendar days");
+        assertThat(group.carryForward()).isEqualTo("Carry forward allowed up to 3 days; expires after 12 months");
     }
 
     @Test
@@ -158,6 +202,30 @@ class LeaveEntitlementPolicyMcpToolsTest {
         assertThatThrownBy(() -> tools.getEligibilityRulesByEntitlementPolicyId(null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("policyId");
+    }
+
+    private LeaveEntitlementPolicy annualPolicy(String id, String name, int days) {
+        LeaveEntitlementPolicy policy = template(id, "SG");
+        policy.setName(name);
+        policy.setJurisdictionLeaveTypeId("SG:ANNUAL_LEAVE");
+        policy.setEntitlementAmount(BigDecimal.valueOf(days));
+        policy.setEntitlementUnit(EntitlementUnit.DAYS);
+        policy.setAccrualMethod(AccrualMethod.NONE);
+        policy.setProrationMethod(ProrationMethod.NONE);
+        policy.setCarryForwardAllowed(false);
+        return policy;
+    }
+
+    private LeaveEntitlementPolicyEligibilityRule serviceRule(String policyId, EligibilityOperator operator, String value, int sortOrder) {
+        return LeaveEntitlementPolicyEligibilityRule.builder()
+                .id(policyId + "-" + sortOrder)
+                .policyId(policyId)
+                .criterionType(EligibilityCriterionType.SERVICE_MONTHS)
+                .operator(operator)
+                .value(value)
+                .active(true)
+                .sortOrder(sortOrder)
+                .build();
     }
 
     private LeaveEntitlementPolicy template(String id, String jurisdictionId) {
