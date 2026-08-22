@@ -10,6 +10,7 @@ import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicy;
 import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicyRepository;
 import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicyResolutionService;
 import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicyValidationException;
+import com.practical.leavemaster.leaveentitlementpolicy.LeavePolicyModel;
 import com.practical.leavemaster.leaveentitlementpolicy.PolicyResolutionResult;
 import com.practical.leavemaster.leaveentitlementpolicy.ProrationMethod;
 import com.practical.leavemaster.leavetype.LeaveType;
@@ -92,6 +93,12 @@ public class LeaveEntitlementGenerationService {
 
         LeaveEntitlementPolicy policy = policyRepository.findById(resolution.selectedPolicyId())
                 .orElseThrow(() -> new IllegalStateException("Resolved policy no longer exists: " + resolution.selectedPolicyId()));
+        if (policy.getPolicyModel() == LeavePolicyModel.EVENT_BASED) {
+            return result(staff, leaveType, null, policy.getId(),
+                    EntitlementGenerationResult.Status.EVENT_BASED_NO_ANNUAL_BALANCE,
+                    BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                    "Event-based policy is resolved through a qualifying event and does not generate an annual balance");
+        }
         if (policy.getEntitlementUnit() != EntitlementUnit.DAYS) {
             throw new LeaveEntitlementPolicyValidationException("Only DAYS entitlement policies can currently generate employee balances");
         }
