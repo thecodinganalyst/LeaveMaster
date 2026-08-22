@@ -80,7 +80,13 @@ class SingaporeEntitlementPolicySeedTest {
                             .isEqualTo(EligibilityCriterionType.SERVICE_MONTHS));
         });
 
-        assertRetiredHistoricalPolicy("SG_ANNUAL_03_11");
+        assertRemovedHistoricalPolicy("SG_ANNUAL_03_11");
+        assertRemovedHistoricalPolicy("SG_ANNUAL_12_23");
+        assertRemovedHistoricalPolicy("SG_ANNUAL_24_35");
+        assertRemovedHistoricalPolicy("SG_ANNUAL_36_47");
+        assertRemovedHistoricalPolicy("SG_ANNUAL_48_59");
+        assertRemovedHistoricalPolicy("SG_ANNUAL_60_71");
+        assertRetiredHistoricalPolicy("SG_ANNUAL_72_83");
         assertRetiredHistoricalPolicy("SG_ANNUAL_84_PLUS");
     }
 
@@ -125,6 +131,11 @@ class SingaporeEntitlementPolicySeedTest {
         assertThat(policy.getEntitlementAmount()).isEqualByComparingTo(BigDecimal.valueOf(amount));
         assertThat(policy.getEffectiveFrom()).isEqualTo(effectiveFrom);
         assertThat(policy.getEffectiveTo()).isEqualTo(effectiveTo);
+    }
+
+    private void assertRemovedHistoricalPolicy(String id) {
+        assertThat(policyRepository.findById(id)).isEmpty();
+        assertThat(eligibilityRepository.findAllByPolicyIdAndActiveTrueOrderBySortOrderAsc(id)).isEmpty();
     }
 
     private void assertRetiredHistoricalPolicy(String id) {
