@@ -161,6 +161,12 @@ export const StaffFormFields = ({ editing = false, staffId }: Props) => {
   );
 
   useEffect(() => {
+    if (editing || jurisdictionId || jurisdictionOptions.length !== 1) return;
+    form.setFieldValue('jurisdictionId', jurisdictionOptions[0].value);
+    setProposalEnabled(true);
+  }, [editing, form, jurisdictionId, jurisdictionOptions]);
+
+  useEffect(() => {
     if (!proposalEnabled || !jurisdictionId || !joinDate) {
       setProposalLoaded(false);
       setProposalStatus(undefined);
@@ -209,7 +215,9 @@ export const StaffFormFields = ({ editing = false, staffId }: Props) => {
         <Input disabled={editing} />
       </Form.Item>
       <Form.Item name="name" label="Name" rules={[{ required: true, message: 'Name is required' }]}><Input /></Form.Item>
-      <Form.Item name="email" label="Email"><Input type="email" /></Form.Item>
+      <Form.Item name="email" label="Email" rules={[{ type: 'email', message: 'Enter a valid email address' }]}>
+        <Input type="email" />
+      </Form.Item>
       <Form.Item name="joinDate" label="Join date" rules={[{ required: true, message: 'Join date is required' }]}><Input type="date" /></Form.Item>
       <Form.Item name="termDate" label="Termination date"><Input type="date" /></Form.Item>
       <Form.Item name="loginName" label="Login name"><Input /></Form.Item>
