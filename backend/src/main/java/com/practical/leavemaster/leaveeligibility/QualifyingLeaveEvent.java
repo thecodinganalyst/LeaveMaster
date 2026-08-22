@@ -11,6 +11,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Entity
@@ -51,6 +52,9 @@ public class QualifyingLeaveEvent {
 
     @Column(name = "supporting_document_reference")
     private String supportingDocumentReference;
+
+    @Column(name = "approved_entitlement_amount", precision = 12, scale = 4)
+    private BigDecimal approvedEntitlementAmount;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
