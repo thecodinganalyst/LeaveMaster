@@ -14,8 +14,8 @@ export interface AssistantActionItem extends PendingAction {
   id: string;
   state: ActionState;
   error?: string | undefined;
-  executionResult?: string | undefined;
   replayed?: boolean | undefined;
+  executionResult?: string | undefined;
 }
 
 export const actionTitle = (toolName: string) => {
@@ -59,14 +59,28 @@ export const dataEntries = (data: unknown): [string, unknown][] => {
     .map(([key, value]) => [fieldLabel(key), value]);
 };
 
-export const printableValue = (value: unknown) => {
+const printableObject = (value: Record<string, unknown>) =>
+  Object.entries(value)
+    .filter(([, nested]) => nested !== undefined && nested !== null)
+    .map(([key, nested]) => `${fieldLabel(key)}: ${printableValue(nested)}`)
+    .join(' · ');
+
+export const printableValue = (value: unknown): string => {
   if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
     return String(value);
   }
-  if (Array.isArray(value) && value.every((item) => typeof item === 'string' || typeof item === 'number')) {
-    return value.join('; ');
+  if (Array.isArray(value)) {
+    if (value.every((item) => typeof item === 'string' || typeof item === 'number')) {
+      return value.join('; ');
+    }
+    if (value.every((item) => item && typeof item === 'object' && !Array.isArray(item))) {
+      return value.map((item) => printableObject(item as Record<string, unknown>)).join('\n');
+    }
   }
-  return JSON.stringify(value);
+  if (value && typeof value === 'object') {
+    return printableObject(value as Record<string, unknown>);
+  }
+  return String(value ?? '');
 };
 
 export const canConfirmAction = (action: AssistantActionItem) =>
