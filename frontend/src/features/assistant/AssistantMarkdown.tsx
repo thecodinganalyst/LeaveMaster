@@ -58,7 +58,7 @@ interface Block {
   level?: number;
   text?: string;
   items?: string[];
-  language?: string;
+  language?: string | undefined;
   headers?: string[];
   rows?: string[][];
 }
