@@ -47,7 +47,8 @@ export const ResourceFormFields = ({ config, editing = false, platformAdmin = fa
       {config.fields.filter((field) => !field.hidden
         && !field.formHidden
         && isAdminFieldVisible(field, platformAdmin)
-        && !(editing && shouldHideTenantInternalId(config.name, config.idField, field.name, platformAdmin))).map((field) => {
+        && !((editing || config.name === 'leave-types')
+          && shouldHideTenantInternalId(config.name, config.idField, field.name, platformAdmin))).map((field) => {
         const required = field.required || (!editing && field.requiredOnCreate);
         const rules: Rule[] = required ? [{ required: true, message: `${field.label} is required` }] : [];
         if (field.type === 'number') {
