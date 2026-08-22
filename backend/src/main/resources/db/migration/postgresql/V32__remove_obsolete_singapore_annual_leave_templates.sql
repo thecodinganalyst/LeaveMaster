@@ -4,10 +4,9 @@
 -- their migration checksums valid. These platform templates are superseded by the 14-24 day
 -- company-default progression introduced in V29.
 --
--- Generated entitlements may still reference the historical platform policies through the
--- nullable policy_id foreign key. Clear only those obsolete references before deleting the
--- templates so upgrades remain referentially valid without pretending a new policy generated
--- historical entitlement data.
+-- Eligibility rows are deleted first so no stale or orphaned rules remain for the obsolete
+-- policy ids. Generated entitlement references are nullable and must be cleared before policy
+-- deletion to preserve the FK from leave_entitlement.policy_id during upgrades.
 
 UPDATE leave_entitlement
 SET policy_id = NULL
