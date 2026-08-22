@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -50,6 +51,7 @@ public class LeaveEntitlementPolicyService {
     public LeaveEntitlementPolicy create(LeaveEntitlementPolicy policy) {
         applyCurrentUsersScope(policy);
         normalisePolicyModel(policy);
+        normaliseEventConfiguration(policy);
         normaliseAccrualConfiguration(policy, false);
         validate(policy);
         if (policy.getId() != null && !policy.getId().isBlank() && policyRepository.existsById(policy.getId())) {
@@ -71,6 +73,10 @@ public class LeaveEntitlementPolicyService {
         existing.setActive(requested.isActive());
         existing.setPriority(requested.getPriority());
         existing.setPolicyModel(requested.getPolicyModel());
+        existing.setQualifyingEventTypeCode(requested.getQualifyingEventTypeCode());
+        existing.setEventRequiresVerification(requested.isEventRequiresVerification());
+        existing.setEventValidityDaysBefore(requested.getEventValidityDaysBefore());
+        existing.setEventValidityDaysAfter(requested.getEventValidityDaysAfter());
         existing.setEntitlementUnit(requested.getEntitlementUnit());
         existing.setEntitlementAmount(requested.getEntitlementAmount());
         existing.setAccrualMethod(requested.getAccrualMethod());
@@ -82,6 +88,7 @@ public class LeaveEntitlementPolicyService {
         existing.setEffectiveFrom(requested.getEffectiveFrom());
         existing.setEffectiveTo(requested.getEffectiveTo());
         normalisePolicyModel(existing);
+        normaliseEventConfiguration(existing);
         normaliseAccrualConfiguration(existing, true);
         validate(existing);
         LeaveEntitlementPolicy saved = policyRepository.save(existing);
@@ -100,6 +107,20 @@ public class LeaveEntitlementPolicyService {
     private void normalisePolicyModel(LeaveEntitlementPolicy policy) {
         if (policy.getPolicyModel() == null) {
             policy.setPolicyModel(LeavePolicyModel.ANNUAL_ENTITLEMENT);
+        }
+    }
+
+    private void normaliseEventConfiguration(LeaveEntitlementPolicy policy) {
+        if (policy.getPolicyModel() != LeavePolicyModel.EVENT_BASED) {
+            policy.setQualifyingEventTypeCode(null);
+            policy.setEventRequiresVerification(false);
+            policy.setEventValidityDaysBefore(null);
+            policy.setEventValidityDaysAfter(null);
+            return;
+        }
+        if (policy.getQualifyingEventTypeCode() != null) {
+            String normalized = policy.getQualifyingEventTypeCode().trim().toUpperCase(Locale.ROOT);
+            policy.setQualifyingEventTypeCode(normalized.isBlank() ? null : normalized);
         }
     }
 
@@ -175,6 +196,14 @@ public class LeaveEntitlementPolicyService {
                 || (policy.getCarryForwardExpiryMonths() != null && policy.getCarryForwardExpiryMonths() > 0)) {
             throw new LeaveEntitlementPolicyValidationException("EVENT_BASED policies cannot carry forward an annual balance");
         }
+        if (policy.getQualifyingEventTypeCode() == null || policy.getQualifyingEventTypeCode().isBlank()) {
+            throw new LeaveEntitlementPolicyValidationException("qualifyingEventTypeCode is required for EVENT_BASED policies");
+        }
+        if (policy.getEntitlementAmount() == null || policy.getEntitlementAmount().signum() <= 0) {
+            throw new LeaveEntitlementPolicyValidationException("EVENT_BASED policies require a positive entitlementAmount");
+        }
+        requireNonNegativeInteger(policy.getEventValidityDaysBefore(), "eventValidityDaysBefore");
+        requireNonNegativeInteger(policy.getEventValidityDaysAfter(), "eventValidityDaysAfter");
     }
 
     private void validateTemplateScope(LeaveEntitlementPolicy policy) {
@@ -214,6 +243,12 @@ public class LeaveEntitlementPolicyService {
             throw new LeaveEntitlementPolicyValidationException(field + " is required");
         }
         if (value != null && value.signum() < 0) {
+            throw new LeaveEntitlementPolicyValidationException(field + " cannot be negative");
+        }
+    }
+
+    private void requireNonNegativeInteger(Integer value, String field) {
+        if (value != null && value < 0) {
             throw new LeaveEntitlementPolicyValidationException(field + " cannot be negative");
         }
     }
