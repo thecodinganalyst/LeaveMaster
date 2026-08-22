@@ -3,6 +3,22 @@
 -- Do this in a new migration rather than editing V19 so existing Flyway installations keep
 -- their migration checksums valid. These platform templates are superseded by the 14-24 day
 -- company-default progression introduced in V29.
+--
+-- Generated entitlements may still reference the historical platform policies through the
+-- nullable policy_id foreign key. Clear only those obsolete references before deleting the
+-- templates so upgrades remain referentially valid without pretending a new policy generated
+-- historical entitlement data.
+
+UPDATE leave_entitlement
+SET policy_id = NULL
+WHERE policy_id IN (
+    'SG_ANNUAL_03_11',
+    'SG_ANNUAL_12_23',
+    'SG_ANNUAL_24_35',
+    'SG_ANNUAL_36_47',
+    'SG_ANNUAL_48_59',
+    'SG_ANNUAL_60_71'
+);
 
 DELETE FROM leave_entitlement_policy_eligibility
 WHERE policy_id IN (
