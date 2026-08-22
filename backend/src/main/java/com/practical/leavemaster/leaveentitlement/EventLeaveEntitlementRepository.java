@@ -9,4 +9,5 @@ public interface EventLeaveEntitlementRepository extends JpaRepository<EventLeav
     Optional<EventLeaveEntitlement> findByQualifyingEventIdAndPolicyId(String qualifyingEventId, String policyId);
     List<EventLeaveEntitlement> findAllByTenantIdAndStaffIdAndLeaveTypeIdOrderByValidFromAsc(
             String tenantId, String staffId, String leaveTypeId);
+    void deleteAllByTenantId(String tenantId);
 }
