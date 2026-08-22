@@ -52,7 +52,7 @@ describe('EntitlementStructuredData', () => {
     expect(screen.queryByText('3 to 12 months')).not.toBeInTheDocument();
     expect(screen.getByText('Granted upfront')).toBeInTheDocument();
     expect(screen.getAllByText('Not prorated')).toHaveLength(1);
-    expect(screen.getByText('Prorated by calendar days')).toBeInTheDocument();
+    expect(screen.getByText('Proration: Prorated by calendar days')).toBeInTheDocument();
 
     const table = screen.getByRole('table');
     expect(within(table).getByText('Service period')).toBeInTheDocument();
