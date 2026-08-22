@@ -9,4 +9,5 @@ import java.util.List;
 public interface StaffDependantRepository extends JpaRepository<StaffDependant, String> {
     List<StaffDependant> findAllByStaffId(String staffId);
     List<StaffDependant> findAllByTenantIdAndStaffId(String tenantId, String staffId);
+    void deleteAllByTenantId(String tenantId);
 }
