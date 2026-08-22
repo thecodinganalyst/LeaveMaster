@@ -45,6 +45,7 @@ class EventLeaveEntitlementServiceCoverageTest {
     @Mock StaffRepository staffRepository;
     @Mock LeaveTypeRepository leaveTypeRepository;
     @Mock LeaveApplicationRepository applicationRepository;
+    @Mock EventEntitlementAmountResolver amountResolver;
 
     @InjectMocks EventLeaveEntitlementService service;
 
@@ -232,10 +233,12 @@ class EventLeaveEntitlementServiceCoverageTest {
         when(policyRepository.findById("policy-1")).thenReturn(Optional.of(policy));
         when(entitlementRepository.findByQualifyingEventIdAndPolicyId("event-1", "policy-1"))
                 .thenReturn(Optional.empty());
+        when(amountResolver.resolve(staff, policy, event)).thenReturn(new BigDecimal("5"));
         when(entitlementRepository.save(any(EventLeaveEntitlement.class))).thenAnswer(inv -> inv.getArgument(0));
 
         EventLeaveEntitlement generated = service.generate("staff-1", "event-leave", "event-1");
 
+        assertThat(generated.getGrantedAmount()).isEqualByComparingTo("5");
         assertThat(generated.getValidFrom()).isEqualTo(event.getEventDate().minusDays(2));
         assertThat(generated.getValidTo()).isEqualTo(event.getEventDate().plusDays(3));
     }

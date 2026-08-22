@@ -9,6 +9,7 @@ import com.practical.leavemaster.leaveeligibility.LeaveEligibilityFactService;
 import com.practical.leavemaster.leaveeligibility.QualifyingEventStatus;
 import com.practical.leavemaster.leaveeligibility.QualifyingLeaveEvent;
 import com.practical.leavemaster.leaveeligibility.QualifyingLeaveEventWriteRequest;
+import com.practical.leavemaster.leaveentitlementpolicy.EventEntitlementAmountMode;
 import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicy;
 import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicyRepository;
 import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicyResolutionService;
@@ -42,6 +43,7 @@ public class EventLeaveEntitlementService {
     private final StaffRepository staffRepository;
     private final LeaveTypeRepository leaveTypeRepository;
     private final LeaveApplicationRepository applicationRepository;
+    private final EventEntitlementAmountResolver amountResolver;
 
     public List<EventLeaveEntitlement> findForStaff(String staffId, String leaveTypeId) {
         Staff staff = staffRepository.findById(staffId)
@@ -121,6 +123,7 @@ public class EventLeaveEntitlementService {
             EventLeaveEntitlement entitlement = existing.get();
             if (entitlement.getStatus() == EventLeaveEntitlementStatus.PENDING_VERIFICATION
                     && desiredStatus == EventLeaveEntitlementStatus.ACTIVE) {
+                entitlement.setGrantedAmount(amountResolver.resolve(staff, policy, event));
                 entitlement.setStatus(EventLeaveEntitlementStatus.ACTIVE);
                 EventLeaveEntitlement saved = entitlementRepository.save(entitlement);
                 activatePendingApplications(saved);
@@ -139,6 +142,9 @@ public class EventLeaveEntitlementService {
             throw new IllegalArgumentException("Qualifying event entitlement period is invalid");
         }
 
+        BigDecimal grantedAmount = pendingApprovedAllocation(policy, event, desiredStatus)
+                ? BigDecimal.ZERO
+                : amountResolver.resolve(staff, policy, event);
         return entitlementRepository.save(EventLeaveEntitlement.builder()
                 .tenantId(staff.getTenantId())
                 .staffId(staff.getId())
@@ -147,11 +153,18 @@ public class EventLeaveEntitlementService {
                 .qualifyingEventId(event.getId())
                 .validFrom(validFrom)
                 .validTo(validTo)
-                .grantedAmount(policy.getEntitlementAmount())
+                .grantedAmount(grantedAmount)
                 .usedAmount(BigDecimal.ZERO)
                 .status(desiredStatus)
                 .generatedAt(Instant.now())
                 .build());
+    }
+
+    private boolean pendingApprovedAllocation(LeaveEntitlementPolicy policy, QualifyingLeaveEvent event,
+                                              EventLeaveEntitlementStatus desiredStatus) {
+        return desiredStatus == EventLeaveEntitlementStatus.PENDING_VERIFICATION
+                && policy.getEventEntitlementAmountMode() == EventEntitlementAmountMode.APPROVED_EVENT_AMOUNT
+                && (event.getApprovedEntitlementAmount() == null || event.getApprovedEntitlementAmount().signum() <= 0);
     }
 
     private QualifyingLeaveEvent resolveOrCreateEvent(

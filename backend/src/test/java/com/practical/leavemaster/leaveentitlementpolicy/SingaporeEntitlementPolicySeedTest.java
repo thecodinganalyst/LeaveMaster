@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,24 +24,38 @@ class SingaporeEntitlementPolicySeedTest {
     private LeaveEntitlementPolicyEligibilityRepository eligibilityRepository;
 
     @Test
-    void seedsSingaporeTemplatesWithPlatformScopeAndOpenEndedValidity() {
+    void seedsSingaporeTemplatesWithPlatformScopeAndStatutoryEffectiveDates() {
         List<LeaveEntitlementPolicy> templates = policyRepository
                 .findAllByScopeAndJurisdictionIdAndActiveTrue(ConfigurationScope.PLATFORM_TEMPLATE, "SG");
 
-        assertThat(templates).hasSize(17);
+        assertThat(templates).hasSize(27);
         assertThat(templates).allSatisfy(policy -> {
             assertThat(policy.getTenantId()).isNull();
             assertThat(policy.getLeaveTypeId()).isNull();
             assertThat(policy.getJurisdictionId()).isEqualTo("SG");
             assertThat(policy.getJurisdictionLeaveTypeId()).startsWith("SG:");
-            assertThat(policy.getEntitlementUnit()).isEqualTo(EntitlementUnit.DAYS);
-            assertThat(policy.getEffectiveFrom())
-                    .as("current templates must not use the software seed date")
-                    .isNull();
-            assertThat(policy.getEffectiveTo())
-                    .as("current templates remain valid until superseded")
-                    .isNull();
         });
+
+        assertStatutoryTemplate("SG_CHILDCARE_CITIZEN_U7", EntitlementUnit.DAYS, 6,
+                LocalDate.of(2026, 1, 1), null);
+        assertStatutoryTemplate("SG_CHILDCARE_EA_U7", EntitlementUnit.DAYS, 2,
+                LocalDate.of(2026, 1, 1), null);
+        assertStatutoryTemplate("SG_EXTENDED_CHILDCARE_7_12", EntitlementUnit.DAYS, 2,
+                LocalDate.of(2026, 1, 1), null);
+        assertStatutoryTemplate("SG_UNPAID_INFANT_CARE_U2", EntitlementUnit.DAYS, 12,
+                LocalDate.of(2024, 1, 1), null);
+        assertStatutoryTemplate("SG_MATERNITY_EVENT", EntitlementUnit.WEEKS, 16,
+                LocalDate.of(2026, 1, 1), null);
+        assertStatutoryTemplate("SG_PATERNITY_EVENT", EntitlementUnit.WEEKS, 4,
+                LocalDate.of(2025, 4, 1), null);
+        assertStatutoryTemplate("SG_SHARED_PARENTAL_EVENT_6W", EntitlementUnit.WEEKS, 6,
+                LocalDate.of(2025, 4, 1), LocalDate.of(2026, 3, 31));
+        assertStatutoryTemplate("SG_SHARED_PARENTAL_EVENT", EntitlementUnit.WEEKS, 10,
+                LocalDate.of(2026, 4, 1), null);
+        assertStatutoryTemplate("SG_ADOPTION_EVENT", EntitlementUnit.WEEKS, 12,
+                LocalDate.of(2026, 1, 1), null);
+        assertStatutoryTemplate("SG_NS_CALL_UP_EVENT", EntitlementUnit.DAYS, 1,
+                LocalDate.of(2026, 1, 1), null);
     }
 
     @Test
@@ -100,6 +115,16 @@ class SingaporeEntitlementPolicySeedTest {
     void preservesSickAndHospitalisationServiceProgression() {
         assertEntitlements("SG_SICK_", List.of("03", "04", "05", "06_PLUS"), List.of(5, 8, 11, 14));
         assertEntitlements("SG_HOSP_", List.of("03", "04", "05", "06_PLUS"), List.of(15, 30, 45, 60));
+    }
+
+    private void assertStatutoryTemplate(String id, EntitlementUnit unit, int amount,
+                                         LocalDate effectiveFrom, LocalDate effectiveTo) {
+        LeaveEntitlementPolicy policy = policyRepository.findById(id).orElseThrow();
+        assertThat(policy.getScope()).isEqualTo(ConfigurationScope.PLATFORM_TEMPLATE);
+        assertThat(policy.getEntitlementUnit()).isEqualTo(unit);
+        assertThat(policy.getEntitlementAmount()).isEqualByComparingTo(BigDecimal.valueOf(amount));
+        assertThat(policy.getEffectiveFrom()).isEqualTo(effectiveFrom);
+        assertThat(policy.getEffectiveTo()).isEqualTo(effectiveTo);
     }
 
     private void assertRetiredHistoricalPolicy(String id) {

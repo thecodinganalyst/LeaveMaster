@@ -1,0 +1,70 @@
+-- Singapore statutory leave reference templates verified against official sources on 2026-08-22.
+-- Jurisdiction-specific thresholds live in template data; the entitlement engine remains jurisdiction-neutral.
+-- Event-based schemes requiring statutory facts that LeaveMaster cannot safely infer are verification-gated.
+
+INSERT INTO leave_entitlement_policy (
+    id, tenant_id, leave_type_id, name, active, priority,
+    entitlement_unit, entitlement_amount, accrual_method, accrual_rate,
+    proration_method, carry_forward_allowed, carry_forward_limit,
+    carry_forward_expiry_months, effective_from, effective_to,
+    scope, jurisdiction_id, jurisdiction_leave_type_id, source_template_id,
+    policy_model, qualifying_event_type_code, event_requires_verification,
+    event_validity_days_before, event_validity_days_after, event_entitlement_amount_mode
+) VALUES
+    ('SG_CHILDCARE_CITIZEN_U7', NULL, NULL, 'Singapore Childcare Leave - Singapore citizen child under 7', TRUE, 60,
+     'DAYS', 6, 'NONE', NULL, 'NONE', FALSE, NULL, NULL, DATE '2026-01-01', NULL,
+     'PLATFORM_TEMPLATE', 'SG', 'SG:CHILDCARE_LEAVE', NULL,
+     'CONDITIONAL_ANNUAL_ENTITLEMENT', NULL, FALSE, NULL, NULL, 'FIXED'),
+    ('SG_CHILDCARE_EA_U7', NULL, NULL, 'Singapore Childcare Leave - Employment Act child under 7', TRUE, 50,
+     'DAYS', 2, 'NONE', NULL, 'NONE', FALSE, NULL, NULL, DATE '2026-01-01', NULL,
+     'PLATFORM_TEMPLATE', 'SG', 'SG:CHILDCARE_LEAVE', NULL,
+     'CONDITIONAL_ANNUAL_ENTITLEMENT', NULL, FALSE, NULL, NULL, 'FIXED'),
+    ('SG_EXTENDED_CHILDCARE_7_12', NULL, NULL, 'Singapore Extended Childcare Leave - youngest Singapore citizen child 7 to 12', TRUE, 60,
+     'DAYS', 2, 'NONE', NULL, 'NONE', FALSE, NULL, NULL, DATE '2026-01-01', NULL,
+     'PLATFORM_TEMPLATE', 'SG', 'SG:EXTENDED_CHILDCARE_LEAVE', NULL,
+     'CONDITIONAL_ANNUAL_ENTITLEMENT', NULL, FALSE, NULL, NULL, 'FIXED'),
+    ('SG_UNPAID_INFANT_CARE_U2', NULL, NULL, 'Singapore Unpaid Infant Care Leave - Singapore citizen child under 2', TRUE, 60,
+     'DAYS', 12, 'NONE', NULL, 'NONE', FALSE, NULL, NULL, DATE '2024-01-01', NULL,
+     'PLATFORM_TEMPLATE', 'SG', 'SG:UNPAID_INFANT_CARE_LEAVE', NULL,
+     'CONDITIONAL_ANNUAL_ENTITLEMENT', NULL, FALSE, NULL, NULL, 'FIXED'),
+    ('SG_MATERNITY_EVENT', NULL, NULL, 'Singapore Maternity Leave - verified birth entitlement', TRUE, 60,
+     'WEEKS', 16, 'NONE', NULL, 'NONE', FALSE, NULL, NULL, DATE '2026-01-01', NULL,
+     'PLATFORM_TEMPLATE', 'SG', 'SG:MATERNITY_LEAVE', NULL,
+     'EVENT_BASED', 'BIRTH', TRUE, 0, 365, 'APPROVED_EVENT_AMOUNT'),
+    ('SG_PATERNITY_EVENT', NULL, NULL, 'Singapore Government-Paid Paternity Leave - verified parenthood event', TRUE, 60,
+     'WEEKS', 4, 'NONE', NULL, 'NONE', FALSE, NULL, NULL, DATE '2025-04-01', NULL,
+     'PLATFORM_TEMPLATE', 'SG', 'SG:PATERNITY_LEAVE', NULL,
+     'EVENT_BASED', 'CHILD_ARRIVAL', TRUE, 0, 365, 'FIXED'),
+    ('SG_SHARED_PARENTAL_EVENT_6W', NULL, NULL, 'Singapore Shared Parental Leave - 6 week shared pool', TRUE, 60,
+     'WEEKS', 6, 'NONE', NULL, 'NONE', FALSE, NULL, NULL, DATE '2025-04-01', DATE '2026-03-31',
+     'PLATFORM_TEMPLATE', 'SG', 'SG:SHARED_PARENTAL_LEAVE', NULL,
+     'EVENT_BASED', 'CHILD_ARRIVAL', TRUE, 0, 365, 'APPROVED_EVENT_AMOUNT'),
+    ('SG_SHARED_PARENTAL_EVENT', NULL, NULL, 'Singapore Shared Parental Leave - 10 week shared pool', TRUE, 60,
+     'WEEKS', 10, 'NONE', NULL, 'NONE', FALSE, NULL, NULL, DATE '2026-04-01', NULL,
+     'PLATFORM_TEMPLATE', 'SG', 'SG:SHARED_PARENTAL_LEAVE', NULL,
+     'EVENT_BASED', 'CHILD_ARRIVAL', TRUE, 0, 365, 'APPROVED_EVENT_AMOUNT'),
+    ('SG_ADOPTION_EVENT', NULL, NULL, 'Singapore Adoption Leave - verified adoption event', TRUE, 60,
+     'WEEKS', 12, 'NONE', NULL, 'NONE', FALSE, NULL, NULL, DATE '2026-01-01', NULL,
+     'PLATFORM_TEMPLATE', 'SG', 'SG:ADOPTION_LEAVE', NULL,
+     'EVENT_BASED', 'ADOPTION', TRUE, 0, 365, 'FIXED'),
+    ('SG_NS_CALL_UP_EVENT', NULL, NULL, 'Singapore National Service Leave - verified call-up period', TRUE, 60,
+     'DAYS', 1, 'NONE', NULL, 'NONE', FALSE, NULL, NULL, DATE '2026-01-01', NULL,
+     'PLATFORM_TEMPLATE', 'SG', 'SG:NS_LEAVE', NULL,
+     'EVENT_BASED', 'MILITARY_CALL_UP', TRUE, 0, 0, 'EVENT_PERIOD_WORKING_DAYS');
+
+INSERT INTO leave_entitlement_policy_eligibility (
+    id, policy_id, criterion_type, operator, criterion_value, active, sort_order
+) VALUES
+    ('SG_CHILDCARE_CITIZEN_SERVICE', 'SG_CHILDCARE_CITIZEN_U7', 'SERVICE_MONTHS', 'GREATER_THAN_OR_EQUAL', '3', TRUE, 10),
+    ('SG_CHILDCARE_CITIZEN_CHILD', 'SG_CHILDCARE_CITIZEN_U7', 'HAS_DEPENDANT_MATCHING', 'EQUALS', 'relationship=CHILD;citizenship=SG;age_lt=7', TRUE, 20),
+    ('SG_CHILDCARE_EA_SERVICE', 'SG_CHILDCARE_EA_U7', 'SERVICE_MONTHS', 'GREATER_THAN_OR_EQUAL', '3', TRUE, 10),
+    ('SG_CHILDCARE_EA_CHILD', 'SG_CHILDCARE_EA_U7', 'HAS_DEPENDANT_MATCHING', 'EQUALS', 'relationship=CHILD;age_lt=7', TRUE, 20),
+    ('SG_EXT_CHILDCARE_SERVICE', 'SG_EXTENDED_CHILDCARE_7_12', 'SERVICE_MONTHS', 'GREATER_THAN_OR_EQUAL', '3', TRUE, 10),
+    ('SG_EXT_CHILDCARE_CHILD', 'SG_EXTENDED_CHILDCARE_7_12', 'HAS_DEPENDANT_MATCHING', 'EQUALS', 'relationship=CHILD;citizenship=SG;youngest=true;age_gte=7;age_lte=12', TRUE, 20),
+    ('SG_INFANT_CARE_SERVICE', 'SG_UNPAID_INFANT_CARE_U2', 'SERVICE_MONTHS', 'GREATER_THAN_OR_EQUAL', '3', TRUE, 10),
+    ('SG_INFANT_CARE_CHILD', 'SG_UNPAID_INFANT_CARE_U2', 'HAS_DEPENDANT_MATCHING', 'EQUALS', 'relationship=CHILD;citizenship=SG;age_lt=2', TRUE, 20),
+    ('SG_MATERNITY_SERVICE', 'SG_MATERNITY_EVENT', 'SERVICE_MONTHS', 'GREATER_THAN_OR_EQUAL', '3', TRUE, 10),
+    ('SG_PATERNITY_SERVICE', 'SG_PATERNITY_EVENT', 'SERVICE_MONTHS', 'GREATER_THAN_OR_EQUAL', '3', TRUE, 10),
+    ('SG_SHARED_PARENTAL_6W_SERVICE', 'SG_SHARED_PARENTAL_EVENT_6W', 'SERVICE_MONTHS', 'GREATER_THAN_OR_EQUAL', '3', TRUE, 10),
+    ('SG_SHARED_PARENTAL_SERVICE', 'SG_SHARED_PARENTAL_EVENT', 'SERVICE_MONTHS', 'GREATER_THAN_OR_EQUAL', '3', TRUE, 10),
+    ('SG_ADOPTION_SERVICE', 'SG_ADOPTION_EVENT', 'SERVICE_MONTHS', 'GREATER_THAN_OR_EQUAL', '3', TRUE, 10);

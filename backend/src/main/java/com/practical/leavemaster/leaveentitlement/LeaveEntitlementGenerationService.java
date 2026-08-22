@@ -79,7 +79,7 @@ public class LeaveEntitlementGenerationService {
 
     private EntitlementGenerationResult generateForLeaveType(
             Staff staff, LeaveType leaveType, LocalDate periodStart, LocalDate periodEnd) {
-        PolicyResolutionResult resolution = resolutionService.resolve(staff.getId(), leaveType.getId(), periodStart);
+        PolicyResolutionResult resolution = resolveAnnualPolicyForPeriod(staff, leaveType, periodStart, periodEnd);
         if (resolution.ambiguous()) {
             return result(staff, leaveType, null, null, EntitlementGenerationResult.Status.AMBIGUOUS_POLICY,
                     BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
@@ -160,6 +160,28 @@ public class LeaveEntitlementGenerationService {
                 existingOpt.isPresent() ? EntitlementGenerationResult.Status.UPDATED : EntitlementGenerationResult.Status.CREATED,
                 base, carriedForward, adjustment, usage.used(), usage.reserved(), total,
                 existingOpt.isPresent() ? "Existing generated entitlement reconciled" : "Entitlement generated from policy");
+    }
+
+    private PolicyResolutionResult resolveAnnualPolicyForPeriod(
+            Staff staff, LeaveType leaveType, LocalDate periodStart, LocalDate periodEnd) {
+        PolicyResolutionResult resolution = resolutionService.resolve(staff.getId(), leaveType.getId(), periodStart);
+        if (resolution.ambiguous() || resolution.selectedPolicyId() != null) {
+            return resolution;
+        }
+        boolean hasConditionalPolicy = policyRepository
+                .findAllByTenantIdAndLeaveTypeIdAndActiveTrue(staff.getTenantId(), leaveType.getId()).stream()
+                .anyMatch(policy -> policy.getPolicyModel() == LeavePolicyModel.CONDITIONAL_ANNUAL_ENTITLEMENT);
+        if (!hasConditionalPolicy) {
+            return resolution;
+        }
+        LocalDate today = LocalDate.now();
+        LocalDate evaluationDate = today.isBefore(periodStart)
+                ? periodStart
+                : today.isAfter(periodEnd) ? periodEnd : today;
+        if (evaluationDate.equals(periodStart)) {
+            return resolution;
+        }
+        return resolutionService.resolve(staff.getId(), leaveType.getId(), evaluationDate);
     }
 
     private BigDecimal calculateBase(LeaveEntitlementPolicy policy, Staff staff, LocalDate periodStart, LocalDate periodEnd) {

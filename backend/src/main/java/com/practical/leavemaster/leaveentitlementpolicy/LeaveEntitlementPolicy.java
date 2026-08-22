@@ -80,6 +80,11 @@ public class LeaveEntitlementPolicy {
     private Integer eventValidityDaysAfter;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "event_entitlement_amount_mode", nullable = false, length = 48)
+    @Builder.Default
+    private EventEntitlementAmountMode eventEntitlementAmountMode = EventEntitlementAmountMode.FIXED;
+
+    @Enumerated(EnumType.STRING)
     @Column(name = "entitlement_unit", nullable = false, length = 32)
     private EntitlementUnit entitlementUnit;
 
@@ -128,6 +133,9 @@ public class LeaveEntitlementPolicy {
         }
         if (policyModel == null) {
             policyModel = LeavePolicyModel.ANNUAL_ENTITLEMENT;
+        }
+        if (eventEntitlementAmountMode == null) {
+            eventEntitlementAmountMode = EventEntitlementAmountMode.FIXED;
         }
     }
 }

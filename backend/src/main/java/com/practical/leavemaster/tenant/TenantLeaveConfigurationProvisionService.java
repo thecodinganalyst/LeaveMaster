@@ -131,6 +131,7 @@ public class TenantLeaveConfigurationProvisionService {
                     .eventRequiresVerification(template.isEventRequiresVerification())
                     .eventValidityDaysBefore(template.getEventValidityDaysBefore())
                     .eventValidityDaysAfter(template.getEventValidityDaysAfter())
+                    .eventEntitlementAmountMode(template.getEventEntitlementAmountMode())
                     .entitlementUnit(template.getEntitlementUnit())
                     .entitlementAmount(template.getEntitlementAmount())
                     .accrualMethod(accrualMethod)
