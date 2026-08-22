@@ -68,17 +68,15 @@ class EventEntitlementAmountResolverTest {
 
     private Staff fiveDayStaff() {
         return Staff.builder().id("staff-1").tenantId("tenant-1").workSchedule(List.of(
-                day(DayOfWeek.MONDAY, DaySchedule.FULL),
-                day(DayOfWeek.TUESDAY, DaySchedule.FULL),
-                day(DayOfWeek.WEDNESDAY, DaySchedule.FULL),
-                day(DayOfWeek.THURSDAY, DaySchedule.FULL),
-                day(DayOfWeek.FRIDAY, DaySchedule.FULL),
-                day(DayOfWeek.SATURDAY, DaySchedule.OFF),
-                day(DayOfWeek.SUNDAY, DaySchedule.OFF)
+                day(DayOfWeek.MONDAY),
+                day(DayOfWeek.TUESDAY),
+                day(DayOfWeek.WEDNESDAY),
+                day(DayOfWeek.THURSDAY),
+                day(DayOfWeek.FRIDAY)
         )).build();
     }
 
-    private WorkScheduleDay day(DayOfWeek day, DaySchedule schedule) {
-        return WorkScheduleDay.builder().dayOfWeek(day).daySchedule(schedule).build();
+    private WorkScheduleDay day(DayOfWeek day) {
+        return WorkScheduleDay.builder().dayOfWeek(day).daySchedule(DaySchedule.FULL).build();
     }
 }
