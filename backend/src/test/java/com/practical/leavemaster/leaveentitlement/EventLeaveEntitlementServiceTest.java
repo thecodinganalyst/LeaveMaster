@@ -49,6 +49,7 @@ class EventLeaveEntitlementServiceTest {
     @Mock StaffRepository staffRepository;
     @Mock LeaveTypeRepository leaveTypeRepository;
     @Mock LeaveApplicationRepository applicationRepository;
+    @Mock EventEntitlementAmountResolver amountResolver;
 
     @InjectMocks EventLeaveEntitlementService service;
 
@@ -79,6 +80,7 @@ class EventLeaveEntitlementServiceTest {
         when(factService.findEvents("staff-1")).thenReturn(List.of());
         when(factService.createEvent(any(), any(QualifyingLeaveEventWriteRequest.class))).thenReturn(event);
         when(entitlementRepository.findByQualifyingEventIdAndPolicyId("event-1", "policy-1")).thenReturn(Optional.empty());
+        when(amountResolver.resolve(staff, policy, event)).thenReturn(new BigDecimal("5"));
         when(entitlementRepository.save(any(EventLeaveEntitlement.class))).thenAnswer(inv -> {
             EventLeaveEntitlement value = inv.getArgument(0);
             value.setId("ent-1");
@@ -135,6 +137,7 @@ class EventLeaveEntitlementServiceTest {
         when(resolutionService.resolve(staff, "event-leave", eventDate)).thenReturn(selected());
         when(policyRepository.findById("policy-1")).thenReturn(Optional.of(policy));
         when(entitlementRepository.findByQualifyingEventIdAndPolicyId("event-1", "policy-1")).thenReturn(Optional.of(pending));
+        when(amountResolver.resolve(staff, policy, event)).thenReturn(new BigDecimal("5"));
         when(entitlementRepository.save(any(EventLeaveEntitlement.class))).thenAnswer(inv -> inv.getArgument(0));
         when(applicationRepository.findAllByEventEntitlementIdAndStatus("ent-1", LeaveStatus.PENDING_VERIFICATION)).thenReturn(List.of(application));
         when(applicationRepository.save(application)).thenReturn(application);
