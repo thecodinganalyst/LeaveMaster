@@ -1,18 +1,29 @@
 package com.practical.leavemaster.mcp;
 
 import com.practical.leavemaster.config.ConfigurationScope;
+import com.practical.leavemaster.jurisdiction.JurisdictionLeaveTypeRepository;
+import com.practical.leavemaster.leaveentitlementpolicy.AccrualMethod;
+import com.practical.leavemaster.leaveentitlementpolicy.EligibilityCriterionType;
+import com.practical.leavemaster.leaveentitlementpolicy.EligibilityOperator;
+import com.practical.leavemaster.leaveentitlementpolicy.EntitlementUnit;
 import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicy;
 import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicyEligibilityRule;
 import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicyEligibilityService;
 import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicyRepository;
 import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicyService;
+import com.practical.leavemaster.leaveentitlementpolicy.ProrationMethod;
+import com.practical.leavemaster.leavetype.LeaveTypeRepository;
 import com.practical.leavemaster.rbac.RbacPermissions;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -24,8 +35,10 @@ public class LeaveEntitlementPolicyMcpTools {
     private final LeaveEntitlementPolicyService policyService;
     private final LeaveEntitlementPolicyEligibilityService eligibilityService;
     private final LeaveEntitlementPolicyRepository policyRepository;
+    private final JurisdictionLeaveTypeRepository jurisdictionLeaveTypeRepository;
+    private final LeaveTypeRepository leaveTypeRepository;
 
-    @Tool(description = "Get leave entitlement policies configured for a jurisdiction. Use this instead of tenant tools for entitlement-policy questions.")
+    @Tool(description = "Get the raw leave entitlement policy configuration for a jurisdiction. Use only when the user explicitly asks for policy IDs, technical configuration, or raw details.")
     @PreAuthorize("hasAuthority('" + RbacPermissions.LEAVE_ENTITLEMENT_POLICY_READ + "')")
     public List<LeaveEntitlementPolicy> getEntitlementPoliciesByJurisdiction(String jurisdictionId) {
         String jurisdiction = requireJurisdiction(jurisdictionId);
@@ -35,7 +48,7 @@ public class LeaveEntitlementPolicyMcpTools {
                 .toList();
     }
 
-    @Tool(description = "Get eligibility rules for an accessible leave entitlement policy by policy ID.")
+    @Tool(description = "Get the raw eligibility rules for an accessible leave entitlement policy by policy ID. Use for explicit technical/detail requests.")
     @PreAuthorize("hasAuthority('" + RbacPermissions.LEAVE_ENTITLEMENT_POLICY_READ + "')")
     public List<LeaveEntitlementPolicyEligibilityRule> getEligibilityRulesByEntitlementPolicyId(String policyId) {
         if (policyId == null || policyId.isBlank()) {
@@ -44,12 +57,131 @@ public class LeaveEntitlementPolicyMcpTools {
         return eligibilityService.findAll(policyId.trim());
     }
 
-    @Tool(description = "Get leave entitlement policies and their eligibility rules for a jurisdiction in one call. Prefer this tool when the user asks about entitlement policies, eligibility, or both for a jurisdiction such as Singapore (SG).")
+    @Tool(description = "Get a concise, human-readable summary of leave entitlement policies and eligibility for a jurisdiction in one call. Prefer this for normal user questions about entitlement policies, eligibility, service tiers, accrual, proration or carry forward. Do not expose raw IDs unless the user explicitly asks for technical details.")
     @PreAuthorize("hasAuthority('" + RbacPermissions.LEAVE_ENTITLEMENT_POLICY_READ + "')")
-    public List<EntitlementConfiguration> getLeaveEntitlementConfigurationByJurisdiction(String jurisdictionId) {
-        return getEntitlementPoliciesByJurisdiction(jurisdictionId).stream()
-                .map(policy -> new EntitlementConfiguration(policy, eligibilityService.findAll(policy.getId())))
+    public List<LeaveTypeEntitlementSummary> getLeaveEntitlementConfigurationByJurisdiction(String jurisdictionId) {
+        Map<String, List<EntitlementPolicySummary>> grouped = new LinkedHashMap<>();
+        for (LeaveEntitlementPolicy policy : getEntitlementPoliciesByJurisdiction(jurisdictionId)) {
+            String leaveType = leaveTypeName(policy);
+            List<LeaveEntitlementPolicyEligibilityRule> rules = eligibilityService.findAll(policy.getId());
+            grouped.computeIfAbsent(leaveType, ignored -> new ArrayList<>())
+                    .add(toSummary(policy, rules));
+        }
+        return grouped.entrySet().stream()
+                .map(entry -> new LeaveTypeEntitlementSummary(entry.getKey(), List.copyOf(entry.getValue())))
                 .toList();
+    }
+
+    private EntitlementPolicySummary toSummary(LeaveEntitlementPolicy policy,
+                                               List<LeaveEntitlementPolicyEligibilityRule> rules) {
+        String eligibility = rules.stream()
+                .filter(LeaveEntitlementPolicyEligibilityRule::isActive)
+                .map(this::eligibilityDescription)
+                .collect(Collectors.joining("; "));
+        if (eligibility.isBlank()) {
+            eligibility = "No additional eligibility conditions configured";
+        }
+        return new EntitlementPolicySummary(
+                policy.getName(),
+                eligibility,
+                entitlementDescription(policy.getEntitlementAmount(), policy.getEntitlementUnit()),
+                accrualDescription(policy.getAccrualMethod()),
+                prorationDescription(policy.getProrationMethod()),
+                carryForwardDescription(policy));
+    }
+
+    private String leaveTypeName(LeaveEntitlementPolicy policy) {
+        if (policy.getScope() == ConfigurationScope.PLATFORM_TEMPLATE && policy.getJurisdictionLeaveTypeId() != null) {
+            return jurisdictionLeaveTypeRepository.findById(policy.getJurisdictionLeaveTypeId())
+                    .map(type -> type.getName())
+                    .orElse(policy.getName());
+        }
+        if (policy.getLeaveTypeId() != null) {
+            return leaveTypeRepository.findById(policy.getLeaveTypeId())
+                    .map(type -> type.getName())
+                    .orElse(policy.getName());
+        }
+        return policy.getName();
+    }
+
+    private String eligibilityDescription(LeaveEntitlementPolicyEligibilityRule rule) {
+        if (rule.getCriterionType() == EligibilityCriterionType.SERVICE_MONTHS) {
+            return serviceMonthsDescription(rule.getOperator(), rule.getValue());
+        }
+        if (rule.getCriterionType() == EligibilityCriterionType.JURISDICTION_CODE) {
+            return setDescription("Jurisdiction", rule.getOperator(), rule.getValue());
+        }
+        return "Eligibility condition: " + rule.getValue();
+    }
+
+    private String serviceMonthsDescription(EligibilityOperator operator, String value) {
+        String months = value == null ? "" : value.trim();
+        return switch (operator) {
+            case EQUALS -> months + " months of service";
+            case NOT_EQUALS -> "Service period other than " + months + " months";
+            case GREATER_THAN -> "More than " + months + " months of service";
+            case GREATER_THAN_OR_EQUAL -> "At least " + months + " months of service";
+            case LESS_THAN -> "Less than " + months + " months of service";
+            case LESS_THAN_OR_EQUAL -> "Up to " + months + " months of service";
+            case IN -> "Service months are one of: " + months;
+            case NOT_IN -> "Service months are not one of: " + months;
+        };
+    }
+
+    private String setDescription(String label, EligibilityOperator operator, String value) {
+        String values = value == null ? "" : value.trim();
+        return switch (operator) {
+            case EQUALS -> label + " is " + values;
+            case NOT_EQUALS -> label + " is not " + values;
+            case IN -> label + " is one of: " + values;
+            case NOT_IN -> label + " is not one of: " + values;
+            default -> label + " condition: " + values;
+        };
+    }
+
+    private String entitlementDescription(BigDecimal amount, EntitlementUnit unit) {
+        if (amount == null) return "Not configured";
+        String value = amount.stripTrailingZeros().toPlainString();
+        if (unit == null) return value;
+        String label = unit.name().toLowerCase().replace('_', ' ');
+        if (BigDecimal.ONE.compareTo(amount.stripTrailingZeros()) == 0 && label.endsWith("s")) {
+            label = label.substring(0, label.length() - 1);
+        }
+        return value + " " + label;
+    }
+
+    private String accrualDescription(AccrualMethod method) {
+        if (method == null) return "Accrual not configured";
+        return switch (method) {
+            case NONE -> "Granted upfront";
+            case ANNUAL -> "Granted annually";
+            case MONTHLY -> "Accrued monthly";
+            case PER_PAY_PERIOD -> "Accrued each pay period";
+        };
+    }
+
+    private String prorationDescription(ProrationMethod method) {
+        if (method == null) return "Proration not configured";
+        return switch (method) {
+            case NONE -> "Not prorated";
+            case CALENDAR_DAYS -> "Prorated by calendar days";
+            case MONTHS -> "Prorated by completed months";
+        };
+    }
+
+    private String carryForwardDescription(LeaveEntitlementPolicy policy) {
+        if (!policy.isCarryForwardAllowed()) return "Unused leave cannot be carried forward";
+        StringBuilder description = new StringBuilder("Carry forward allowed");
+        if (policy.getCarryForwardLimit() != null) {
+            description.append(" up to ")
+                    .append(policy.getCarryForwardLimit().stripTrailingZeros().toPlainString())
+                    .append(' ')
+                    .append(policy.getEntitlementUnit() == null ? "units" : policy.getEntitlementUnit().name().toLowerCase().replace('_', ' '));
+        }
+        if (policy.getCarryForwardExpiryMonths() != null) {
+            description.append("; expires after ").append(policy.getCarryForwardExpiryMonths()).append(" months");
+        }
+        return description.toString();
     }
 
     private Set<String> templateIdsForJurisdiction(String jurisdictionId) {
@@ -75,9 +207,19 @@ public class LeaveEntitlementPolicyMcpTools {
         return jurisdictionId.trim();
     }
 
-    public record EntitlementConfiguration(
-            LeaveEntitlementPolicy policy,
-            List<LeaveEntitlementPolicyEligibilityRule> eligibilityRules
+    public record LeaveTypeEntitlementSummary(
+            String leaveType,
+            List<EntitlementPolicySummary> policies
+    ) {
+    }
+
+    public record EntitlementPolicySummary(
+            String policyName,
+            String eligibility,
+            String entitlement,
+            String accrual,
+            String proration,
+            String carryForward
     ) {
     }
 }

@@ -14,8 +14,8 @@ export interface AssistantActionItem extends PendingAction {
   id: string;
   state: ActionState;
   error?: string | undefined;
-  executionResult?: string | undefined;
   replayed?: boolean | undefined;
+  executionResult?: string | undefined;
 }
 
 export const actionTitle = (toolName: string) => {
@@ -27,8 +27,26 @@ export const actionTitle = (toolName: string) => {
 };
 
 export const resultTitle = (toolName: string) => {
+  if (toolName === 'getLeaveEntitlementConfigurationByJurisdiction') return 'Leave entitlement summary';
   const readable = actionTitle(toolName).replace(/^Get\s+/i, '');
   return readable || 'LeaveMaster result';
+};
+
+const FIELD_LABELS: Record<string, string> = {
+  leaveType: 'Leave type',
+  policies: 'Policies',
+  policyName: 'Policy',
+  eligibility: 'Eligibility',
+  entitlement: 'Entitlement',
+  accrual: 'Accrual',
+  proration: 'Proration',
+  carryForward: 'Carry forward',
+};
+
+export const fieldLabel = (key: string) => {
+  if (FIELD_LABELS[key]) return FIELD_LABELS[key];
+  const spaced = key.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ').trim();
+  return spaced ? spaced.charAt(0).toUpperCase() + spaced.slice(1) : key;
 };
 
 export const actionEntries = (action: PendingAction) =>
@@ -36,14 +54,33 @@ export const actionEntries = (action: PendingAction) =>
 
 export const dataEntries = (data: unknown): [string, unknown][] => {
   if (!data || Array.isArray(data) || typeof data !== 'object') return [];
-  return Object.entries(data as Record<string, unknown>).filter(([, value]) => value !== undefined && value !== null);
+  return Object.entries(data as Record<string, unknown>)
+    .filter(([, value]) => value !== undefined && value !== null)
+    .map(([key, value]) => [fieldLabel(key), value]);
 };
 
-export const printableValue = (value: unknown) => {
+const printableObject = (value: Record<string, unknown>) =>
+  Object.entries(value)
+    .filter(([, nested]) => nested !== undefined && nested !== null)
+    .map(([key, nested]) => `${fieldLabel(key)}: ${printableValue(nested)}`)
+    .join(' · ');
+
+export const printableValue = (value: unknown): string => {
   if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
     return String(value);
   }
-  return JSON.stringify(value);
+  if (Array.isArray(value)) {
+    if (value.every((item) => typeof item === 'string' || typeof item === 'number')) {
+      return value.join('; ');
+    }
+    if (value.every((item) => item && typeof item === 'object' && !Array.isArray(item))) {
+      return value.map((item) => printableObject(item as Record<string, unknown>)).join('\n');
+    }
+  }
+  if (value && typeof value === 'object') {
+    return printableObject(value as Record<string, unknown>);
+  }
+  return String(value ?? '');
 };
 
 export const canConfirmAction = (action: AssistantActionItem) =>
