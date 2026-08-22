@@ -134,6 +134,7 @@ public class LeaveEligibilityFactService {
                 .endDate(request.endDate())
                 .externalReference(trimToNull(request.externalReference()))
                 .supportingDocumentReference(trimToNull(request.supportingDocumentReference()))
+                .approvedEntitlementAmount(request.approvedEntitlementAmount())
                 .status(request.status() == null ? QualifyingEventStatus.RECORDED : request.status())
                 .build();
         QualifyingLeaveEvent saved = eventRepository.save(event);
@@ -154,6 +155,7 @@ public class LeaveEligibilityFactService {
         existing.setEndDate(request.endDate());
         existing.setExternalReference(trimToNull(request.externalReference()));
         existing.setSupportingDocumentReference(trimToNull(request.supportingDocumentReference()));
+        existing.setApprovedEntitlementAmount(request.approvedEntitlementAmount());
         existing.setStatus(request.status() == null ? QualifyingEventStatus.RECORDED : request.status());
         QualifyingLeaveEvent saved = eventRepository.save(existing);
         tenantActivityService.touch(saved.getTenantId());
@@ -240,6 +242,9 @@ public class LeaveEligibilityFactService {
             throw new IllegalArgumentException("eventDate is required");
         }
         validateRange(request.startDate(), request.endDate(), "event period");
+        if (request.approvedEntitlementAmount() != null && request.approvedEntitlementAmount().signum() <= 0) {
+            throw new IllegalArgumentException("approvedEntitlementAmount must be positive when supplied");
+        }
     }
 
     private void validateRange(LocalDate from, LocalDate to, String label) {
