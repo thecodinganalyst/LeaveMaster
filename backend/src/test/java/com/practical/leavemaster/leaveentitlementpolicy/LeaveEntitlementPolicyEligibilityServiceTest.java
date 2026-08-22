@@ -54,6 +54,38 @@ class LeaveEntitlementPolicyEligibilityServiceTest {
     }
 
     @Test
+    void coversConvenienceCreateUpdateDeleteAndFindById() {
+        LeaveEntitlementPolicy policy = policy("p1", "tenant-a");
+        LeaveEntitlementPolicyEligibilityRule existing = rule(EligibilityCriterionType.SERVICE_MONTHS, EligibilityOperator.EQUALS, "3");
+        existing.setId("r1");
+        existing.setPolicyId("p1");
+        when(policyService.findById("p1")).thenReturn(Optional.of(policy));
+        when(ruleRepository.findById("r1")).thenReturn(Optional.of(existing));
+        when(ruleRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        assertThat(service.findById("r1")).contains(existing);
+
+        LeaveEntitlementPolicyEligibilityRule toCreate = rule(EligibilityCriterionType.SERVICE_MONTHS, EligibilityOperator.EQUALS, "6");
+        toCreate.setPolicyId("p1");
+        assertThat(service.create(toCreate).getPolicyId()).isEqualTo("p1");
+
+        LeaveEntitlementPolicyEligibilityRule requested = rule(EligibilityCriterionType.SERVICE_MONTHS, EligibilityOperator.LESS_THAN, "24");
+        assertThat(service.update("r1", requested).getValue()).isEqualTo("24");
+        service.delete("r1");
+        verify(ruleRepository).delete(existing);
+    }
+
+    @Test
+    void findByIdFiltersRulesWhosePolicyIsNotAccessible() {
+        LeaveEntitlementPolicyEligibilityRule existing = rule(EligibilityCriterionType.SERVICE_MONTHS, EligibilityOperator.EQUALS, "3");
+        existing.setId("r1");
+        existing.setPolicyId("p1");
+        when(ruleRepository.findById("r1")).thenReturn(Optional.of(existing));
+        when(policyService.findById("p1")).thenReturn(Optional.empty());
+        assertThat(service.findById("r1")).isEmpty();
+    }
+
+    @Test
     void listsRulesForAllAccessiblePolicies() {
         LeaveEntitlementPolicy firstPolicy = policy("p1", "tenant-a");
         LeaveEntitlementPolicy secondPolicy = policy("p2", "tenant-a");
@@ -107,12 +139,16 @@ class LeaveEntitlementPolicyEligibilityServiceTest {
         LeaveEntitlementPolicy policy = policy("p1", "tenant-a");
         when(policyService.findById("p1")).thenReturn(Optional.of(policy));
         when(jurisdictionRepository.findByCode("SG")).thenReturn(Optional.of(Jurisdiction.builder().id("SG").code("SG").build()));
+        when(jurisdictionRepository.findByCode("MY")).thenReturn(Optional.of(Jurisdiction.builder().id("MY").code("MY").build()));
         when(jurisdictionRepository.findByCode("UNKNOWN")).thenReturn(Optional.empty());
 
         when(ruleRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         LeaveEntitlementPolicyEligibilityRule jurisdiction = service.create("p1",
                 rule(EligibilityCriterionType.JURISDICTION_CODE, EligibilityOperator.IN, "SG"));
         assertThat(jurisdiction.getValue()).isEqualTo("SG");
+        assertThat(service.create("p1",
+                rule(EligibilityCriterionType.JURISDICTION_CODE, EligibilityOperator.NOT_IN, "SG, MY")).getValue())
+                .isEqualTo("SG, MY");
 
         assertThatThrownBy(() -> service.create("p1",
                 rule(EligibilityCriterionType.JURISDICTION_CODE, EligibilityOperator.EQUALS, "UNKNOWN")))
@@ -121,14 +157,40 @@ class LeaveEntitlementPolicyEligibilityServiceTest {
                 rule(EligibilityCriterionType.SERVICE_MONTHS, EligibilityOperator.GREATER_THAN, "-1")))
                 .hasMessageContaining("non-negative integers");
         assertThatThrownBy(() -> service.create("p1",
+                rule(EligibilityCriterionType.SERVICE_MONTHS, EligibilityOperator.EQUALS, "abc")))
+                .hasMessageContaining("non-negative integers");
+        assertThatThrownBy(() -> service.create("p1",
                 rule(EligibilityCriterionType.SERVICE_MONTHS, EligibilityOperator.GREATER_THAN, "12,24")))
                 .hasMessageContaining("require one value");
         assertThat(service.create("p1",
                 rule(EligibilityCriterionType.SERVICE_MONTHS, EligibilityOperator.IN, "12,24")).getValue()).isEqualTo("12,24");
+        assertThat(service.create("p1",
+                rule(EligibilityCriterionType.SERVICE_MONTHS, EligibilityOperator.NOT_IN, "0,3")).getValue()).isEqualTo("0,3");
     }
 
     @Test
-    void rejectsMissingRuleFieldsAndWrongPolicyRule() {
+    void validatesDependantMatchingRules() {
+        LeaveEntitlementPolicy policy = policy("p1", "tenant-a");
+        when(policyService.findById("p1")).thenReturn(Optional.of(policy));
+        when(ruleRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        assertThat(service.create("p1", rule(EligibilityCriterionType.HAS_DEPENDANT_MATCHING,
+                EligibilityOperator.EQUALS, "relationship=CHILD;citizenship=SG;age_lt=7")).getValue())
+                .contains("relationship=CHILD");
+        assertThat(service.create("p1", rule(EligibilityCriterionType.HAS_DEPENDANT_MATCHING,
+                EligibilityOperator.NOT_EQUALS, "relationship=CHILD;youngest=true")).getOperator())
+                .isEqualTo(EligibilityOperator.NOT_EQUALS);
+
+        assertThatThrownBy(() -> service.create("p1", rule(EligibilityCriterionType.HAS_DEPENDANT_MATCHING,
+                EligibilityOperator.IN, "relationship=CHILD")))
+                .hasMessageContaining("supports only EQUALS and NOT_EQUALS");
+        assertThatThrownBy(() -> service.create("p1", rule(EligibilityCriterionType.HAS_DEPENDANT_MATCHING,
+                EligibilityOperator.EQUALS, "age_lt=bad")))
+                .hasMessageContaining("non-negative integer");
+    }
+
+    @Test
+    void rejectsMissingRuleFieldsWrongPolicyRuleAndMissingPolicyId() {
         when(policyService.findById("p1")).thenReturn(Optional.of(policy("p1", "tenant-a")));
         LeaveEntitlementPolicyEligibilityRule missing = LeaveEntitlementPolicyEligibilityRule.builder().active(true).build();
         assertThatThrownBy(() -> service.create("p1", missing)).hasMessageContaining("criterionType");
@@ -136,9 +198,21 @@ class LeaveEntitlementPolicyEligibilityServiceTest {
         LeaveEntitlementPolicyEligibilityRule blank = rule(EligibilityCriterionType.SERVICE_MONTHS, EligibilityOperator.EQUALS, " ");
         assertThatThrownBy(() -> service.create("p1", blank)).hasMessageContaining("criterion value");
 
+        assertThatThrownBy(() -> service.create(LeaveEntitlementPolicyEligibilityRule.builder().build()))
+                .hasMessageContaining("policyId is required");
+
         when(ruleRepository.findById("r1")).thenReturn(Optional.of(
                 LeaveEntitlementPolicyEligibilityRule.builder().id("r1").policyId("other").build()));
         assertThatThrownBy(() -> service.delete("p1", "r1")).isInstanceOf(LeaveEntitlementPolicyNotFoundException.class);
+        assertThatThrownBy(() -> service.update("p1", "r1",
+                rule(EligibilityCriterionType.SERVICE_MONTHS, EligibilityOperator.EQUALS, "3")))
+                .isInstanceOf(LeaveEntitlementPolicyNotFoundException.class);
+    }
+
+    @Test
+    void reportsMissingPolicies() {
+        when(policyService.findById("missing")).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service.findAll("missing")).isInstanceOf(LeaveEntitlementPolicyNotFoundException.class);
     }
 
     private LeaveEntitlementPolicy policy(String id, String tenantId) {
