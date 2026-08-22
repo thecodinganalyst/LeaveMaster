@@ -135,7 +135,7 @@ class SingaporeEntitlementPolicySeedTest {
 
     private void assertRemovedHistoricalPolicy(String id) {
         assertThat(policyRepository.findById(id)).isEmpty();
-        assertThat(eligibilityRepository.findAllByPolicyIdAndActiveTrueOrderBySortOrderAsc(id)).isEmpty();
+        assertThat(eligibilityRepository.existsByPolicyId(id)).isFalse();
     }
 
     private void assertRetiredHistoricalPolicy(String id) {
