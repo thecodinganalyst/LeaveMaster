@@ -161,8 +161,9 @@ export const StaffFormFields = ({ editing = false, staffId }: Props) => {
   );
 
   useEffect(() => {
-    if (editing || jurisdictionId || jurisdictionOptions.length !== 1) return;
-    form.setFieldValue('jurisdictionId', jurisdictionOptions[0].value);
+    const onlyJurisdiction = jurisdictionOptions.length === 1 ? jurisdictionOptions[0] : undefined;
+    if (editing || jurisdictionId || !onlyJurisdiction) return;
+    form.setFieldValue('jurisdictionId', onlyJurisdiction.value);
     setProposalEnabled(true);
   }, [editing, form, jurisdictionId, jurisdictionOptions]);
 
