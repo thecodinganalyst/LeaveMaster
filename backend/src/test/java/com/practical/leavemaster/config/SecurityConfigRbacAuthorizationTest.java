@@ -23,6 +23,8 @@ class SecurityConfigRbacAuthorizationTest {
                 .andExpect(status().isUnauthorized());
         mockMvc.perform(get("/api/tenants"))
                 .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/staff/missing/dependants"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -31,6 +33,8 @@ class SecurityConfigRbacAuthorizationTest {
                 .andExpect(status().isOk());
         mockMvc.perform(get("/api/tenants").with(user("alice").authorities(() -> "TENANT_READ")))
                 .andExpect(status().isOk());
+        mockMvc.perform(get("/api/staff/missing/dependants").with(user("alice").authorities(() -> "STAFF_READ")))
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -38,6 +42,8 @@ class SecurityConfigRbacAuthorizationTest {
         mockMvc.perform(get("/tenants").with(user("bob").authorities(() -> "STAFF_READ")))
                 .andExpect(status().isForbidden());
         mockMvc.perform(get("/api/tenants").with(user("bob").authorities(() -> "STAFF_READ")))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/staff/missing/qualifying-events").with(user("bob").authorities(() -> "TENANT_READ")))
                 .andExpect(status().isForbidden());
     }
 }
