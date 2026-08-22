@@ -24,24 +24,29 @@ vi.mock('../../api/http.ts', () => ({
   }),
 }));
 
-const renderStaffForm = () => {
+const renderStaffForm = (extraInitialValues: Record<string, unknown> = {}) => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  const onFinish = vi.fn();
+  const result = render(
     <QueryClientProvider client={queryClient}>
       <Form
+        noValidate
         initialValues={{
           id: 'S1',
           name: 'Staff One',
           joinDate: '2026-07-01',
-          jurisdictionId: 'SG',
           workSchedule: DEFAULT_STAFF_WORK_SCHEDULE,
           leaveEntitlements: [],
+          ...extraInitialValues,
         }}
+        onFinish={onFinish}
       >
         <StaffFormFields />
+        <button type="submit">Save</button>
       </Form>
     </QueryClientProvider>,
   );
+  return { ...result, onFinish };
 };
 
 describe('staff entitlement template proposals', () => {
@@ -51,7 +56,7 @@ describe('staff entitlement template proposals', () => {
     vi.mocked(apiFetch).mockClear();
   });
 
-  it('automatically populates editable entitlements from the proposal analysis endpoint', async () => {
+  it('preselects the only jurisdiction and automatically populates editable entitlements', async () => {
     mockState.status = 'AVAILABLE';
     mockState.proposals = [{
       leaveType: { id: 'tenant-a:ANNUAL_LEAVE', name: 'Annual Leave' },
@@ -73,9 +78,24 @@ describe('staff entitlement template proposals', () => {
         body: JSON.stringify({ jurisdictionId: 'SG', joinDate: '2026-07-01' }),
       }),
     ));
+    expect(await screen.findByText('Singapore')).toBeInTheDocument();
     expect(await screen.findByDisplayValue('template-sg-annual')).toBeInTheDocument();
     expect(document.getElementById('leaveEntitlements_0_from')).toHaveAttribute('value', '2026-11-03');
     expect(document.getElementById('leaveEntitlements_0_entitlement')).toHaveAttribute('value', '2.0');
+  });
+
+  it('rejects an invalid email and allows submission after the email is corrected', async () => {
+    const { onFinish } = renderStaffForm({ email: 'not-an-email' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText('Enter a valid email address')).toBeInTheDocument();
+    expect(onFinish).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'staff@example.com' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(onFinish).toHaveBeenCalledTimes(1));
   });
 
   it('distinguishes missing templates from not eligible in the current period', async () => {
