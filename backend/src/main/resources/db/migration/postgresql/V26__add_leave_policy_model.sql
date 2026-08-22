@@ -1,0 +1,2 @@
+ALTER TABLE leave_entitlement_policy
+    ADD COLUMN policy_model VARCHAR(48) NOT NULL DEFAULT 'ANNUAL_ENTITLEMENT';
