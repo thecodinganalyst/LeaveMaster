@@ -86,6 +86,12 @@ class AssistantServiceTest {
         assertThat(result.message()).isEqualTo("You have access.");
         assertThat(result.conversationId()).isNotBlank();
         assertThat(result.pendingActions()).isEmpty();
+        assertThat(formattedLogs())
+                .contains("Ask LeaveMaestro request started")
+                .contains("Ask LeaveMaestro provider workflow completed")
+                .contains("Ask LeaveMaestro request completed")
+                .contains("toolCallCount=0")
+                .contains("status=SUCCESS");
     }
 
     @Test
@@ -103,15 +109,19 @@ class AssistantServiceTest {
         assertThatThrownBy(() -> service.chat(
                 new AssistantDtos.ChatRequest("Hello", "conversation-provider-failure"),
                 authentication(RbacPermissions.TENANT_READ)))
-                .isInstanceOf(AssistantProviderException.class)
+                .isInstanceOfSatisfying(AssistantProviderException.class, exception ->
+                        assertThat(exception.getConversationId()).isEqualTo("conversation-provider-failure"))
                 .hasMessageContaining("could not complete");
 
         String logs = formattedLogs();
         assertThat(logs)
+                .contains("Ask LeaveMaestro provider workflow completed")
+                .contains("status=FAILED")
                 .contains("Ask LeaveMaestro provider request failed")
                 .contains("provider=gemini")
                 .contains("model=gemini-3.6-flash")
                 .contains("conversationId=conversation-provider-failure")
+                .contains("toolCallCount=0")
                 .contains("exceptionType=java.lang.RuntimeException")
                 .contains("rootCauseType=java.lang.RuntimeException")
                 .contains("[REDACTED]")
@@ -119,7 +129,7 @@ class AssistantServiceTest {
     }
 
     @Test
-    void shouldLogTimeoutWithProviderContext() {
+    void shouldLogTimeoutWithProviderContextAndConversationId() {
         ReflectionTestUtils.setField(service, "timeoutSeconds", 0L);
         when(chatModel.call(any(Prompt.class))).thenAnswer(invocation -> {
             Thread.sleep(5_000);
@@ -129,7 +139,8 @@ class AssistantServiceTest {
         assertThatThrownBy(() -> service.chat(
                 new AssistantDtos.ChatRequest("Hello", "conversation-timeout"),
                 authentication(RbacPermissions.TENANT_READ)))
-                .isInstanceOf(AssistantProviderException.class)
+                .isInstanceOfSatisfying(AssistantProviderException.class, exception ->
+                        assertThat(exception.getConversationId()).isEqualTo("conversation-timeout"))
                 .hasMessageContaining("timed out");
 
         assertThat(formattedLogs())
@@ -137,7 +148,12 @@ class AssistantServiceTest {
                 .contains("provider=gemini")
                 .contains("model=gemini-3.6-flash")
                 .contains("conversationId=conversation-timeout")
-                .contains("timeoutSeconds=0");
+                .contains("timeoutSeconds=0")
+                .contains("elapsedMs=")
+                .contains("toolCallCount=0")
+                .contains("lastStartedTool=<none>")
+                .contains("lastCompletedTool=<none>")
+                .contains("status=TIMED_OUT");
     }
 
     @Test

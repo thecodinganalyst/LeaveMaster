@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ApiError } from '../../api/http.ts';
 import { AssistantPanel } from './AssistantPanel.tsx';
 import { confirmAssistantAction, sendAssistantMessage } from './assistantApi.ts';
 
@@ -40,6 +41,21 @@ describe('AssistantPanel', () => {
     expect(screen.getByText('Authoritative LeaveMaestro data')).toBeInTheDocument();
     expect(screen.getByText('Annual Leave')).toBeInTheDocument();
     expect(screen.getByText('12.5')).toBeInTheDocument();
+  });
+
+  it('shows the conversation id when an assistant provider request fails', async () => {
+    vi.mocked(sendAssistantMessage).mockRejectedValue(new ApiError(
+      'The AI provider timed out',
+      502,
+      { conversationId: 'conversation-timeout' },
+    ));
+
+    render(<AssistantPanel />);
+    fireEvent.change(screen.getByLabelText('Message Ask LeaveMaestro'), { target: { value: 'Show Singapore policies' } });
+    fireEvent.click(screen.getByLabelText('Send message'));
+
+    expect(await screen.findByText('The AI provider timed out')).toBeInTheDocument();
+    expect(screen.getByText('Conversation ID: conversation-timeout')).toBeInTheDocument();
   });
 
   it('confirms the exact server token once and displays the authoritative execution result', async () => {

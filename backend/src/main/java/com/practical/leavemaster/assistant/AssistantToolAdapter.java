@@ -1,6 +1,7 @@
 package com.practical.leavemaster.assistant;
 
 import com.practical.leavemaster.user.AppUser;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.model.ToolContext;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.tool.definition.ToolDefinition;
@@ -14,6 +15,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 final class AssistantToolAdapter {
     private AssistantToolAdapter() {
     }
@@ -29,7 +31,7 @@ final class AssistantToolAdapter {
             AssistantAuditService auditService
     ) {
         return forUser(callbacks, authentication, user, objectMapper, pendingActions, new ArrayList<>(),
-                conversationId, confirmationService, auditService);
+                conversationId, confirmationService, auditService, new AssistantRequestTrace());
     }
 
     static ToolCallback[] forUser(
@@ -43,11 +45,28 @@ final class AssistantToolAdapter {
             AssistantConfirmationService confirmationService,
             AssistantAuditService auditService
     ) {
+        return forUser(callbacks, authentication, user, objectMapper, pendingActions, structuredResults,
+                conversationId, confirmationService, auditService, new AssistantRequestTrace());
+    }
+
+    static ToolCallback[] forUser(
+            ToolCallback[] callbacks,
+            Authentication authentication,
+            AppUser user,
+            ObjectMapper objectMapper,
+            List<AssistantDtos.PendingAction> pendingActions,
+            List<AssistantDtos.StructuredResult> structuredResults,
+            String conversationId,
+            AssistantConfirmationService confirmationService,
+            AssistantAuditService auditService,
+            AssistantRequestTrace trace
+    ) {
         return Arrays.stream(callbacks)
                 .filter(callback -> isAuthorized(callback, authentication))
                 .map(callback -> AssistantToolPolicy.WRITE_TOOLS.contains(toolName(callback))
-                        ? pendingWrite(callback, authentication, user, objectMapper, pendingActions, conversationId, confirmationService)
-                        : auditedRead(callback, user, objectMapper, structuredResults, conversationId, auditService))
+                        ? pendingWrite(callback, authentication, user, objectMapper, pendingActions, conversationId,
+                        confirmationService, trace)
+                        : auditedRead(callback, user, objectMapper, structuredResults, conversationId, auditService, trace))
                 .toArray(ToolCallback[]::new);
     }
 
@@ -68,9 +87,10 @@ final class AssistantToolAdapter {
             ObjectMapper objectMapper,
             List<AssistantDtos.PendingAction> pendingActions,
             String conversationId,
-            AssistantConfirmationService confirmationService
+            AssistantConfirmationService confirmationService,
+            AssistantRequestTrace trace
     ) {
-        return wrapper(delegate, (toolInput, context) -> {
+        return wrapper(delegate, (toolInput, context) -> timedCall(delegate, conversationId, trace, () -> {
             String name = toolName(delegate);
             String required = AssistantToolPolicy.REQUIRED_AUTHORITY.get(name);
             if (authentication.getAuthorities().stream().noneMatch(a -> required.equals(a.getAuthority()))) {
@@ -79,13 +99,14 @@ final class AssistantToolAdapter {
             Map<String, Object> arguments = parseArguments(objectMapper, toolInput);
             pendingActions.add(confirmationService.issue(name, arguments, required, user, conversationId));
             return "Action requires explicit user confirmation and has not been executed.";
-        });
+        }));
     }
 
     private static ToolCallback auditedRead(ToolCallback delegate, AppUser user, ObjectMapper objectMapper,
                                              List<AssistantDtos.StructuredResult> structuredResults,
-                                             String conversationId, AssistantAuditService auditService) {
-        return wrapper(delegate, (toolInput, context) -> {
+                                             String conversationId, AssistantAuditService auditService,
+                                             AssistantRequestTrace trace) {
+        return wrapper(delegate, (toolInput, context) -> timedCall(delegate, conversationId, trace, () -> {
             Map<String, Object> arguments = parseArguments(objectMapper, toolInput);
             try {
                 String result = context == null ? delegate.call(toolInput) : delegate.call(toolInput, context);
@@ -100,7 +121,32 @@ final class AssistantToolAdapter {
                         conversationId, toolName(delegate), arguments, "FAILED", e.getClass().getSimpleName());
                 throw e;
             }
-        });
+        }));
+    }
+
+    private static String timedCall(ToolCallback delegate, String conversationId, AssistantRequestTrace trace,
+                                    ToolInvocation invocation) {
+        String name = toolName(delegate);
+        int callNumber = trace.toolStarted(name);
+        long startedAtNanos = System.nanoTime();
+        log.info("Ask LeaveMaestro tool started: conversationId={}, tool={}, toolCallNumber={}",
+                conversationId, name, callNumber);
+        try {
+            String result = invocation.call();
+            trace.toolCompleted(name);
+            log.info("Ask LeaveMaestro tool completed: conversationId={}, tool={}, toolCallNumber={}, durationMs={}, status=SUCCESS",
+                    conversationId, name, callNumber, elapsedMillis(startedAtNanos));
+            return result;
+        } catch (RuntimeException e) {
+            trace.toolCompleted(name);
+            log.warn("Ask LeaveMaestro tool completed: conversationId={}, tool={}, toolCallNumber={}, durationMs={}, status=FAILED, exceptionType={}",
+                    conversationId, name, callNumber, elapsedMillis(startedAtNanos), e.getClass().getName());
+            throw e;
+        }
+    }
+
+    private static long elapsedMillis(long startedAtNanos) {
+        return (System.nanoTime() - startedAtNanos) / 1_000_000L;
     }
 
     private static Map<String, Object> parseArguments(ObjectMapper objectMapper, String toolInput) {
@@ -134,5 +180,10 @@ final class AssistantToolAdapter {
     @FunctionalInterface
     private interface CallbackCall {
         String invoke(String input, ToolContext context);
+    }
+
+    @FunctionalInterface
+    private interface ToolInvocation {
+        String call();
     }
 }
