@@ -21,10 +21,12 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.OptionalInt;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -57,37 +59,136 @@ public class LeaveEntitlementPolicyMcpTools {
         return eligibilityService.findAll(policyId.trim());
     }
 
-    @Tool(description = "Get a concise, human-readable summary of leave entitlement policies and eligibility for a jurisdiction in one call. Prefer this for normal user questions about entitlement policies, eligibility, service tiers, accrual, proration or carry forward. Do not expose raw IDs unless the user explicitly asks for technical details.")
+    @Tool(description = "Get a concise, human-readable summary of leave entitlement policies and eligibility for a jurisdiction in one call. Prefer this for normal user questions. Use each servicePeriod label exactly as returned; it is derived deterministically from the configured operators. Common accrual, proration and carry-forward settings are returned once per leave type.")
     @PreAuthorize("hasAuthority('" + RbacPermissions.LEAVE_ENTITLEMENT_POLICY_READ + "')")
     public List<LeaveTypeEntitlementSummary> getLeaveEntitlementConfigurationByJurisdiction(String jurisdictionId) {
-        Map<String, List<EntitlementPolicySummary>> grouped = new LinkedHashMap<>();
+        Map<String, List<PolicyDetails>> grouped = new LinkedHashMap<>();
         for (LeaveEntitlementPolicy policy : getEntitlementPoliciesByJurisdiction(jurisdictionId)) {
             String leaveType = leaveTypeName(policy);
             List<LeaveEntitlementPolicyEligibilityRule> rules = eligibilityService.findAll(policy.getId());
             grouped.computeIfAbsent(leaveType, ignored -> new ArrayList<>())
-                    .add(toSummary(policy, rules));
+                    .add(toPolicyDetails(policy, rules));
         }
+
         return grouped.entrySet().stream()
-                .map(entry -> new LeaveTypeEntitlementSummary(entry.getKey(), List.copyOf(entry.getValue())))
+                .map(entry -> toLeaveTypeSummary(entry.getKey(), entry.getValue()))
                 .toList();
     }
 
-    private EntitlementPolicySummary toSummary(LeaveEntitlementPolicy policy,
-                                               List<LeaveEntitlementPolicyEligibilityRule> rules) {
-        String eligibility = rules.stream()
+    private LeaveTypeEntitlementSummary toLeaveTypeSummary(String leaveType, List<PolicyDetails> details) {
+        String commonAccrual = commonValue(details.stream().map(PolicyDetails::accrual).toList());
+        String commonProration = commonValue(details.stream().map(PolicyDetails::proration).toList());
+        String commonCarryForward = commonValue(details.stream().map(PolicyDetails::carryForward).toList());
+
+        List<EntitlementPolicySummary> policies = details.stream()
+                .sorted(Comparator.comparingInt(this::serviceRangeSortKey))
+                .map(detail -> new EntitlementPolicySummary(
+                        detail.policyName(),
+                        detail.servicePeriod(),
+                        detail.eligibility(),
+                        detail.entitlement(),
+                        Objects.equals(detail.accrual(), commonAccrual) ? null : detail.accrual(),
+                        Objects.equals(detail.proration(), commonProration) ? null : detail.proration(),
+                        Objects.equals(detail.carryForward(), commonCarryForward) ? null : detail.carryForward()))
+                .toList();
+
+        return new LeaveTypeEntitlementSummary(
+                leaveType,
+                commonAccrual,
+                commonProration,
+                commonCarryForward,
+                policies);
+    }
+
+    private int serviceRangeSortKey(PolicyDetails details) {
+        return details.serviceRange().lowerBound().orElse(Integer.MIN_VALUE);
+    }
+
+    private String commonValue(List<String> values) {
+        if (values.isEmpty()) return null;
+        String first = values.getFirst();
+        return values.stream().allMatch(value -> Objects.equals(first, value)) ? first : null;
+    }
+
+    private PolicyDetails toPolicyDetails(LeaveEntitlementPolicy policy,
+                                          List<LeaveEntitlementPolicyEligibilityRule> rules) {
+        List<LeaveEntitlementPolicyEligibilityRule> activeRules = rules.stream()
                 .filter(LeaveEntitlementPolicyEligibilityRule::isActive)
+                .toList();
+        ServiceRange serviceRange = serviceRange(activeRules);
+        String eligibility = activeRules.stream()
+                .filter(rule -> rule.getCriterionType() != EligibilityCriterionType.SERVICE_MONTHS)
                 .map(this::eligibilityDescription)
                 .collect(Collectors.joining("; "));
         if (eligibility.isBlank()) {
-            eligibility = "No additional eligibility conditions configured";
+            eligibility = null;
         }
-        return new EntitlementPolicySummary(
+        return new PolicyDetails(
                 policy.getName(),
+                serviceRange.label(),
+                serviceRange,
                 eligibility,
                 entitlementDescription(policy.getEntitlementAmount(), policy.getEntitlementUnit()),
                 accrualDescription(policy.getAccrualMethod()),
                 prorationDescription(policy.getProrationMethod()),
                 carryForwardDescription(policy));
+    }
+
+    private ServiceRange serviceRange(List<LeaveEntitlementPolicyEligibilityRule> rules) {
+        Integer lower = null;
+        Integer upper = null;
+        boolean hasServiceRule = false;
+
+        for (LeaveEntitlementPolicyEligibilityRule rule : rules) {
+            if (rule.getCriterionType() != EligibilityCriterionType.SERVICE_MONTHS) continue;
+            Integer value = parseInteger(rule.getValue());
+            if (value == null) continue;
+            hasServiceRule = true;
+            switch (rule.getOperator()) {
+                case EQUALS -> {
+                    lower = strongerLower(lower, value);
+                    upper = strongerUpper(upper, value);
+                }
+                case GREATER_THAN -> lower = strongerLower(lower, value + 1);
+                case GREATER_THAN_OR_EQUAL -> lower = strongerLower(lower, value);
+                case LESS_THAN -> upper = strongerUpper(upper, value - 1);
+                case LESS_THAN_OR_EQUAL -> upper = strongerUpper(upper, value);
+                case IN, NOT_EQUALS, NOT_IN -> {
+                    // These operators do not form a safe contiguous display range. Keep descriptive eligibility instead.
+                }
+            }
+        }
+
+        if (!hasServiceRule || (lower == null && upper == null)) {
+            return new ServiceRange(null, null, "All service periods");
+        }
+        if (lower != null && upper != null && Objects.equals(lower, upper)) {
+            return new ServiceRange(lower, upper, lower + " months");
+        }
+        if (lower != null && upper != null) {
+            return new ServiceRange(lower, upper, lower + "–" + upper + " months");
+        }
+        if (lower != null) {
+            return new ServiceRange(lower, null, lower + "+ months");
+        }
+        return new ServiceRange(null, upper, "Up to " + upper + " months");
+    }
+
+    private Integer strongerLower(Integer current, int candidate) {
+        return current == null ? candidate : Math.max(current, candidate);
+    }
+
+    private Integer strongerUpper(Integer current, int candidate) {
+        return current == null ? candidate : Math.min(current, candidate);
+    }
+
+    private Integer parseInteger(String value) {
+        if (value == null || value.isBlank()) return null;
+        try {
+            return Integer.valueOf(value.trim());
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
     }
 
     private String leaveTypeName(LeaveEntitlementPolicy policy) {
@@ -207,14 +308,36 @@ public class LeaveEntitlementPolicyMcpTools {
         return jurisdictionId.trim();
     }
 
+    private record PolicyDetails(
+            String policyName,
+            String servicePeriod,
+            ServiceRange serviceRange,
+            String eligibility,
+            String entitlement,
+            String accrual,
+            String proration,
+            String carryForward
+    ) {
+    }
+
+    private record ServiceRange(Integer lower, Integer upper, String label) {
+        OptionalInt lowerBound() {
+            return lower == null ? OptionalInt.empty() : OptionalInt.of(lower);
+        }
+    }
+
     public record LeaveTypeEntitlementSummary(
             String leaveType,
+            String accrual,
+            String proration,
+            String carryForward,
             List<EntitlementPolicySummary> policies
     ) {
     }
 
     public record EntitlementPolicySummary(
             String policyName,
+            String servicePeriod,
             String eligibility,
             String entitlement,
             String accrual,
