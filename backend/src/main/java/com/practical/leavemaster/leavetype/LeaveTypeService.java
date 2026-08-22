@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -41,6 +42,9 @@ public class LeaveTypeService {
 
     public LeaveType save(LeaveType leaveType) {
         applyCurrentUsersTenant(leaveType);
+        if (leaveType.getId() == null || leaveType.getId().isBlank()) {
+            leaveType.setId(UUID.randomUUID().toString());
+        }
         leaveType.setUsed(false);
         LeaveType saved = leaveTypeRepository.save(leaveType);
         tenantActivityService.touch(saved.getTenantId());
