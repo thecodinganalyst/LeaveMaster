@@ -5,6 +5,7 @@ import com.practical.leavemaster.user.AppUserRepository;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.tool.ToolCallback;
@@ -68,6 +69,9 @@ public class AssistantService {
     @Value("${app.assistant.timeout-seconds:60}")
     private long timeoutSeconds;
 
+    @Value("${spring.ai.retry.max-attempts:3}")
+    private int providerRetryMaxAttempts;
+
     public AssistantDtos.ChatResponse chat(AssistantDtos.ChatRequest request, Authentication authentication) {
         if (!enabled) throw new AssistantUnavailableException("AI assistant is disabled");
         if (request == null || request.message() == null || request.message().isBlank()) {
@@ -92,13 +96,17 @@ public class AssistantService {
                 leaveMasterTools.getToolCallbacks(), authentication, user, objectMapper, pendingActions, structuredResults,
                 conversationId, confirmationService, auditService, trace);
 
-        log.info("Ask LeaveMaestro request started: provider={}, model={}, conversationId={}, timeoutSeconds={}",
-                provider, model, conversationId, timeoutSeconds);
+        log.info("Ask LeaveMaestro request started: provider={}, model={}, conversationId={}, actorLogin={}, tenantId={}, timeoutSeconds={}, providerRetryMaxAttempts={}",
+                provider, model, conversationId, user.getLoginName(), user.getTenantId(), timeoutSeconds,
+                providerRetryMaxAttempts);
 
         Future<String> providerCall = providerExecutor.submit(() -> {
             SecurityContext context = SecurityContextHolder.createEmptyContext();
             context.setAuthentication(authentication);
             SecurityContextHolder.setContext(context);
+            MDC.put(AssistantRetryObservabilityConfiguration.MDC_CONVERSATION_ID, conversationId);
+            MDC.put(AssistantRetryObservabilityConfiguration.MDC_PROVIDER, provider);
+            MDC.put(AssistantRetryObservabilityConfiguration.MDC_MODEL, model);
             long providerStartedAtNanos = System.nanoTime();
             log.info("Ask LeaveMaestro provider workflow started: provider={}, model={}, conversationId={}",
                     provider, model, conversationId);
@@ -118,6 +126,9 @@ public class AssistantService {
                         provider, model, conversationId, elapsedMillis(providerStartedAtNanos), e.getClass().getName());
                 throw e;
             } finally {
+                MDC.remove(AssistantRetryObservabilityConfiguration.MDC_CONVERSATION_ID);
+                MDC.remove(AssistantRetryObservabilityConfiguration.MDC_PROVIDER);
+                MDC.remove(AssistantRetryObservabilityConfiguration.MDC_MODEL);
                 SecurityContextHolder.clearContext();
             }
         });
@@ -132,9 +143,9 @@ public class AssistantService {
         } catch (TimeoutException e) {
             providerCall.cancel(true);
             providerGuard.failure();
-            log.error("Ask LeaveMaestro provider request timed out: provider={}, model={}, conversationId={}, timeoutSeconds={}, elapsedMs={}, toolCallCount={}, lastStartedTool={}, lastCompletedTool={}, status=TIMED_OUT",
-                    provider, model, conversationId, timeoutSeconds, trace.elapsedMillis(), trace.toolCallCount(),
-                    trace.lastStartedTool(), trace.lastCompletedTool());
+            log.error("Ask LeaveMaestro provider request timed out: provider={}, model={}, conversationId={}, timeoutSeconds={}, providerRetryMaxAttempts={}, elapsedMs={}, toolCallCount={}, lastStartedTool={}, lastCompletedTool={}, status=TIMED_OUT",
+                    provider, model, conversationId, timeoutSeconds, providerRetryMaxAttempts, trace.elapsedMillis(),
+                    trace.toolCallCount(), trace.lastStartedTool(), trace.lastCompletedTool());
             throw new AssistantProviderException("The AI provider timed out", conversationId, e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -152,10 +163,11 @@ public class AssistantService {
             Throwable failure = cause == null ? e : cause;
             Throwable rootCause = rootCause(failure);
             log.error(
-                    "Ask LeaveMaestro provider request failed: provider={}, model={}, conversationId={}, elapsedMs={}, toolCallCount={}, lastStartedTool={}, lastCompletedTool={}, exceptionType={}, rootCauseType={}, message={}",
+                    "Ask LeaveMaestro provider request failed: provider={}, model={}, conversationId={}, providerRetryMaxAttempts={}, elapsedMs={}, toolCallCount={}, lastStartedTool={}, lastCompletedTool={}, exceptionType={}, rootCauseType={}, message={}",
                     provider,
                     model,
                     conversationId,
+                    providerRetryMaxAttempts,
                     trace.elapsedMillis(),
                     trace.toolCallCount(),
                     trace.lastStartedTool(),
