@@ -4,6 +4,9 @@ import com.practical.leavemaster.jurisdiction.JurisdictionRepository;
 import com.practical.leavemaster.leaveapplication.LeaveApplicationRepository;
 import com.practical.leavemaster.leaveapprover.LeaveApproverRepository;
 import com.practical.leavemaster.leavecalendar.LeaveCalendarRepository;
+import com.practical.leavemaster.leaveeligibility.QualifyingLeaveEventRepository;
+import com.practical.leavemaster.leaveeligibility.StaffDependantRepository;
+import com.practical.leavemaster.leaveentitlement.EventLeaveEntitlementRepository;
 import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicyRepository;
 import com.practical.leavemaster.leavetype.LeaveTypeRepository;
 import com.practical.leavemaster.staff.Staff;
@@ -32,6 +35,9 @@ class TenantServiceTest {
     @Mock private TenantRepository tenantRepository;
     @Mock private LeaveApplicationRepository leaveApplicationRepository;
     @Mock private LeaveApproverRepository leaveApproverRepository;
+    @Mock private EventLeaveEntitlementRepository eventLeaveEntitlementRepository;
+    @Mock private QualifyingLeaveEventRepository qualifyingLeaveEventRepository;
+    @Mock private StaffDependantRepository staffDependantRepository;
     @Mock private StaffRepository staffRepository;
     @Mock private LeaveEntitlementPolicyRepository leaveEntitlementPolicyRepository;
     @Mock private LeaveTypeRepository leaveTypeRepository;
@@ -70,9 +76,7 @@ class TenantServiceTest {
         when(tenantRepository.save(any(Tenant.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(tenantJurisdictionRepository.findById("t1:SG")).thenReturn(Optional.empty());
         when(tenantJurisdictionRepository.save(any(TenantJurisdiction.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
         Tenant result = tenantService.save(tenant);
-
         assertThat(result.getId()).isEqualTo("t1");
         assertThat(result.getLastModified()).isNotNull();
         verify(tenantJurisdictionRepository).save(any(TenantJurisdiction.class));
@@ -86,50 +90,29 @@ class TenantServiceTest {
         LocalDate calendarEnd = LocalDate.of(2026, 12, 31);
         TenantJurisdictionProvisionRequest sg = new TenantJurisdictionProvisionRequest("SG", true, true, null, null);
         TenantJurisdictionProvisionRequest my = new TenantJurisdictionProvisionRequest("MY", false, true, null, null);
-        Tenant tenant = Tenant.builder()
-                .id("t1")
-                .name("Tenant 1")
-                .startDate(LocalDate.of(2026, 1, 1))
-                .status(TenantStatus.ACTIVE)
-                .jurisdictions(List.of(sg, my))
-                .calendarStart(calendarStart)
-                .calendarEnd(calendarEnd)
-                .build();
-
+        Tenant tenant = Tenant.builder().id("t1").name("Tenant 1").startDate(LocalDate.of(2026, 1, 1)).status(TenantStatus.ACTIVE)
+                .jurisdictions(List.of(sg, my)).calendarStart(calendarStart).calendarEnd(calendarEnd).build();
         when(jurisdictionRepository.existsById("SG")).thenReturn(true);
         when(jurisdictionRepository.existsById("MY")).thenReturn(true);
         when(tenantRepository.save(any(Tenant.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(tenantJurisdictionRepository.findById(any())).thenReturn(Optional.empty());
         when(tenantJurisdictionRepository.save(any(TenantJurisdiction.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
         Tenant result = tenantService.save(tenant);
-
         assertThat(result.getJurisdictionId()).isEqualTo("SG");
         verify(tenantJurisdictionRepository, times(2)).save(any(TenantJurisdiction.class));
-        verify(tenantLeaveConfigurationProvisionService).provision(
-                result,
-                new TenantJurisdictionProvisionRequest("SG", true, true, calendarStart, calendarEnd)
-        );
+        verify(tenantLeaveConfigurationProvisionService).provision(result,
+                new TenantJurisdictionProvisionRequest("SG", true, true, calendarStart, calendarEnd));
         verify(tenantLeaveConfigurationProvisionService).provision(result, my);
         verify(tenantAdminProvisionService).provision("t1");
     }
 
     @Test
     void shouldRejectDuplicateJurisdictionsDuringTenantCreation() {
-        Tenant tenant = Tenant.builder()
-                .id("t1")
-                .name("Tenant 1")
-                .startDate(LocalDate.now())
-                .status(TenantStatus.ACTIVE)
-                .jurisdictions(List.of(
-                        new TenantJurisdictionProvisionRequest("SG", true, true, null, null),
-                        new TenantJurisdictionProvisionRequest("SG", false, false, null, null)))
-                .build();
+        Tenant tenant = Tenant.builder().id("t1").name("Tenant 1").startDate(LocalDate.now()).status(TenantStatus.ACTIVE)
+                .jurisdictions(List.of(new TenantJurisdictionProvisionRequest("SG", true, true, null, null),
+                        new TenantJurisdictionProvisionRequest("SG", false, false, null, null))).build();
         when(jurisdictionRepository.existsById("SG")).thenReturn(true);
-
-        assertThatThrownBy(() -> tenantService.save(tenant))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Duplicate jurisdiction");
+        assertThatThrownBy(() -> tenantService.save(tenant)).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Duplicate jurisdiction");
         verify(tenantRepository, never()).save(any());
     }
 
@@ -144,17 +127,12 @@ class TenantServiceTest {
         when(tenantJurisdictionRepository.existsByTenantIdAndJurisdictionId("ACME", "MY")).thenReturn(false);
         when(tenantJurisdictionRepository.findById("ACME:MY")).thenReturn(Optional.empty());
         when(tenantJurisdictionRepository.save(any(TenantJurisdiction.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
         TenantJurisdiction result = tenantService.addJurisdictionForUser("ACME_Admin", request);
-
         assertThat(result.getTenantId()).isEqualTo("ACME");
         assertThat(result.getJurisdictionId()).isEqualTo("MY");
         verify(tenantLeaveConfigurationProvisionService).provision(eq(tenant), argThat(normalized ->
-                normalized.jurisdictionId().equals("MY")
-                        && normalized.shouldIncludePublicHolidays()
-                        && !normalized.shouldIncludeLeaveConfiguration()
-                        && normalized.calendarStart() != null
-                        && normalized.calendarEnd() != null));
+                normalized.jurisdictionId().equals("MY") && normalized.shouldIncludePublicHolidays()
+                        && !normalized.shouldIncludeLeaveConfiguration() && normalized.calendarStart() != null && normalized.calendarEnd() != null));
     }
 
     @Test
@@ -170,9 +148,7 @@ class TenantServiceTest {
         Tenant updated = Tenant.builder().id("t1").name("New Name").jurisdictionId("AU").startDate(LocalDate.of(2024, 1, 1)).endDate(LocalDate.of(2025, 12, 31)).status(TenantStatus.DORMANT).build();
         when(tenantRepository.findById("t1")).thenReturn(Optional.of(existing));
         when(tenantRepository.save(existing)).thenReturn(existing);
-
         Tenant result = tenantService.update("t1", updated);
-
         assertThat(result.getName()).isEqualTo("New Name");
         assertThat(result.getStatus()).isEqualTo(TenantStatus.DORMANT);
         assertThat(result.getEndDate()).isEqualTo(LocalDate.of(2025, 12, 31));
@@ -204,6 +180,9 @@ class TenantServiceTest {
         tenantService.delete("t1");
         verify(leaveApplicationRepository).deleteAllByTenantId("t1");
         verify(leaveApproverRepository).deleteAllByTenantId("t1");
+        verify(eventLeaveEntitlementRepository).deleteAllByTenantId("t1");
+        verify(qualifyingLeaveEventRepository).deleteAllByTenantId("t1");
+        verify(staffDependantRepository).deleteAllByTenantId("t1");
         verify(staffRepository).deleteAll(List.of(staff));
         verify(leaveEntitlementPolicyRepository).deleteAllByTenantId("t1");
         verify(leaveTypeRepository).deleteAllByTenantId("t1");
