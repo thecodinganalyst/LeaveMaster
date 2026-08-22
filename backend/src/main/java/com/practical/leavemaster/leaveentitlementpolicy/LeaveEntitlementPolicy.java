@@ -109,7 +109,7 @@ public class LeaveEntitlementPolicy {
     private Instant updatedAt;
 
     @PrePersist
-    void ensureDefaults() {
+    void ensureId() {
         if (id == null || id.isBlank()) {
             id = UUID.randomUUID().toString();
         }
