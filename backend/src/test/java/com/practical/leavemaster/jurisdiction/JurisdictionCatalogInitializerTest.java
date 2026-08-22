@@ -51,7 +51,7 @@ class JurisdictionCatalogInitializerTest {
         initializer.seedLeaveTypes();
 
         Map<String, JurisdictionLeaveType> singapore = singaporeLeaveTypes();
-        assertThat(singapore).hasSize(14);
+        assertThat(singapore).hasSize(15);
         assertThat(singapore.keySet()).containsExactlyInAnyOrder(
                 "ANNUAL_LEAVE",
                 "SICK_LEAVE",
@@ -62,6 +62,7 @@ class JurisdictionCatalogInitializerTest {
                 "CHILDCARE_LEAVE",
                 "EXTENDED_CHILDCARE_LEAVE",
                 "UNPAID_INFANT_CARE_LEAVE",
+                "ADOPTION_LEAVE",
                 "UNPAID_LEAVE",
                 "COMPASSIONATE_LEAVE",
                 "MARRIAGE_LEAVE",
@@ -73,6 +74,8 @@ class JurisdictionCatalogInitializerTest {
         assertThat(singapore.get("SICK_LEAVE").getName()).isEqualTo("Sick Leave");
         assertThat(singapore.get("UNPAID_INFANT_CARE_LEAVE").getName()).isEqualTo("Unpaid Infant Care Leave");
         assertThat(singapore.get("UNPAID_INFANT_CARE_LEAVE").getPaid()).isFalse();
+        assertThat(singapore.get("ADOPTION_LEAVE").getName()).isEqualTo("Adoption Leave");
+        assertThat(singapore.get("ADOPTION_LEAVE").isStatutory()).isTrue();
         assertThat(singapore.get("EXTENDED_CHILDCARE_LEAVE").isStatutory()).isTrue();
         assertThat(singapore.get("UNPAID_LEAVE").isStatutory()).isFalse();
         assertThat(singapore.get("COMPASSIONATE_LEAVE").isStatutory()).isFalse();
@@ -118,7 +121,7 @@ class JurisdictionCatalogInitializerTest {
         assertThat(infantCare.getName()).isEqualTo("Unpaid Infant Care Leave");
         assertThat(infantCare.getDescription()).isEqualTo("Existing infant care description");
         assertThat(infantCare.getPaid()).isFalse();
-        assertThat(singaporeLeaveTypes()).hasSize(14);
+        assertThat(singaporeLeaveTypes()).hasSize(15);
     }
 
     @Test
@@ -129,8 +132,8 @@ class JurisdictionCatalogInitializerTest {
         initializer.seedLeaveTypes();
 
         assertThat(stored.keySet()).containsExactlyInAnyOrderElementsOf(idsAfterFirstRun);
-        assertThat(singaporeLeaveTypes()).hasSize(14);
-        assertThat(stored.keySet().stream().filter(id -> id.startsWith("SG:")).collect(Collectors.toSet())).hasSize(14);
+        assertThat(singaporeLeaveTypes()).hasSize(15);
+        assertThat(stored.keySet().stream().filter(id -> id.startsWith("SG:")).collect(Collectors.toSet())).hasSize(15);
     }
 
     private Map<String, JurisdictionLeaveType> singaporeLeaveTypes() {
