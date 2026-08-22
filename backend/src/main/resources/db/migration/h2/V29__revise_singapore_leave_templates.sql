@@ -2,14 +2,12 @@
 -- Annual leave is granted upfront, prorated by inclusive calendar days for joiners,
 -- and increases by 2 days for every 2 completed years of service up to 24 days.
 -- Compassionate, marriage and unpaid leave are company defaults, not MOM statutory entitlements.
+--
+-- Historical platform policies are intentionally retained and marked inactive because generated
+-- leave_entitlement rows keep a foreign-key reference to their source policy for audit/provenance.
 
-DELETE FROM leave_entitlement_policy_eligibility
-WHERE policy_id IN (
-    'SG_ANNUAL_03_11', 'SG_ANNUAL_12_23', 'SG_ANNUAL_24_35', 'SG_ANNUAL_36_47',
-    'SG_ANNUAL_48_59', 'SG_ANNUAL_60_71', 'SG_ANNUAL_72_83', 'SG_ANNUAL_84_PLUS'
-);
-
-DELETE FROM leave_entitlement_policy
+UPDATE leave_entitlement_policy
+SET active = FALSE
 WHERE scope = 'PLATFORM_TEMPLATE'
   AND jurisdiction_id = 'SG'
   AND id IN (
