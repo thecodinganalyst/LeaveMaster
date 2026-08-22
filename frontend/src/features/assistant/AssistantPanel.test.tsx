@@ -43,6 +43,25 @@ describe('AssistantPanel', () => {
     expect(screen.getByText('12.5')).toBeInTheDocument();
   });
 
+  it('renders markdown only for assistant messages while keeping user text literal', async () => {
+    vi.mocked(sendAssistantMessage).mockResolvedValue({
+      conversationId: 'markdown-1',
+      message: '### Annual Leave\n\nEmployees receive **7 days**.\n\n| Service | Entitlement |\n| --- | --- |\n| 3–11 months | 7 days |',
+      pendingActions: [],
+      structuredResults: [],
+    });
+
+    render(<AssistantPanel />);
+    fireEvent.change(screen.getByLabelText('Message Ask LeaveMaestro'), { target: { value: '**show** annual leave' } });
+    fireEvent.click(screen.getByLabelText('Send message'));
+
+    expect(await screen.findByRole('heading', { level: 3, name: 'Annual Leave' })).toBeInTheDocument();
+    expect(screen.getByRole('table')).toBeInTheDocument();
+    expect(screen.getByText('7 days', { selector: 'strong' })).toBeInTheDocument();
+    expect(screen.getByText('**show** annual leave')).toBeInTheDocument();
+    expect(screen.queryByText('show', { selector: 'strong' })).not.toBeInTheDocument();
+  });
+
   it('shows the conversation id when an assistant provider request fails', async () => {
     vi.mocked(sendAssistantMessage).mockRejectedValue(new ApiError(
       'The AI provider timed out',
