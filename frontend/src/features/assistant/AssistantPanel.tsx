@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ApiError } from '../../api/http.ts';
 import { AssistantMarkdown } from './AssistantMarkdown.tsx';
 import { confirmAssistantAction, sendAssistantMessage, type PendingAction, type StructuredResult } from './assistantApi.ts';
+import { EntitlementStructuredData, isEntitlementStructuredResult } from './EntitlementStructuredData.tsx';
 import {
   actionEntries,
   actionTitle,
@@ -39,6 +40,10 @@ const conversationIdFromError = (error: unknown) => {
 };
 
 const StructuredData = ({ result }: { result: StructuredResult }) => {
+  if (isEntitlementStructuredResult(result)) {
+    return <EntitlementStructuredData result={result} />;
+  }
+
   const items = Array.isArray(result.data) ? result.data : [result.data];
 
   return (
