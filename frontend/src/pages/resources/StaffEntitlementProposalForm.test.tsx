@@ -30,6 +30,7 @@ const renderStaffForm = (extraInitialValues: Record<string, unknown> = {}) => {
   const result = render(
     <QueryClientProvider client={queryClient}>
       <Form
+        noValidate
         initialValues={{
           id: 'S1',
           name: 'Staff One',
