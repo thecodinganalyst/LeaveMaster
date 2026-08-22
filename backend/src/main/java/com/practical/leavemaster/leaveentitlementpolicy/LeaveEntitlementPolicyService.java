@@ -49,6 +49,7 @@ public class LeaveEntitlementPolicyService {
     @Transactional
     public LeaveEntitlementPolicy create(LeaveEntitlementPolicy policy) {
         applyCurrentUsersScope(policy);
+        normalisePolicyModel(policy);
         normaliseAccrualConfiguration(policy, false);
         validate(policy);
         if (policy.getId() != null && !policy.getId().isBlank() && policyRepository.existsById(policy.getId())) {
@@ -69,6 +70,7 @@ public class LeaveEntitlementPolicyService {
         existing.setName(requested.getName());
         existing.setActive(requested.isActive());
         existing.setPriority(requested.getPriority());
+        existing.setPolicyModel(requested.getPolicyModel());
         existing.setEntitlementUnit(requested.getEntitlementUnit());
         existing.setEntitlementAmount(requested.getEntitlementAmount());
         existing.setAccrualMethod(requested.getAccrualMethod());
@@ -79,6 +81,7 @@ public class LeaveEntitlementPolicyService {
         existing.setCarryForwardExpiryMonths(requested.getCarryForwardExpiryMonths());
         existing.setEffectiveFrom(requested.getEffectiveFrom());
         existing.setEffectiveTo(requested.getEffectiveTo());
+        normalisePolicyModel(existing);
         normaliseAccrualConfiguration(existing, true);
         validate(existing);
         LeaveEntitlementPolicy saved = policyRepository.save(existing);
@@ -92,6 +95,12 @@ public class LeaveEntitlementPolicyService {
                 .orElseThrow(() -> new LeaveEntitlementPolicyNotFoundException(id));
         policyRepository.delete(existing);
         touchTenant(existing);
+    }
+
+    private void normalisePolicyModel(LeaveEntitlementPolicy policy) {
+        if (policy.getPolicyModel() == null) {
+            policy.setPolicyModel(LeavePolicyModel.ANNUAL_ENTITLEMENT);
+        }
     }
 
     private void normaliseAccrualConfiguration(LeaveEntitlementPolicy policy, boolean migrateLegacyAnnual) {
@@ -128,6 +137,9 @@ public class LeaveEntitlementPolicyService {
         if (policy.getName() == null || policy.getName().isBlank()) {
             throw new LeaveEntitlementPolicyValidationException("name is required");
         }
+        if (policy.getPolicyModel() == null) {
+            throw new LeaveEntitlementPolicyValidationException("policyModel is required");
+        }
         if (policy.getEntitlementUnit() == null || policy.getAccrualMethod() == null || policy.getProrationMethod() == null) {
             throw new LeaveEntitlementPolicyValidationException("entitlementUnit, accrualMethod and prorationMethod are required");
         }
@@ -145,6 +157,23 @@ public class LeaveEntitlementPolicyService {
         }
         if (!policy.isCarryForwardAllowed() && (positive(policy.getCarryForwardLimit()) || (policy.getCarryForwardExpiryMonths() != null && policy.getCarryForwardExpiryMonths() > 0))) {
             throw new LeaveEntitlementPolicyValidationException("carry-forward limit/expiry require carryForwardAllowed=true");
+        }
+        validatePolicyModelConfiguration(policy);
+    }
+
+    private void validatePolicyModelConfiguration(LeaveEntitlementPolicy policy) {
+        if (policy.getPolicyModel() != LeavePolicyModel.EVENT_BASED) {
+            return;
+        }
+        if (policy.getAccrualMethod() != AccrualMethod.NONE) {
+            throw new LeaveEntitlementPolicyValidationException("EVENT_BASED policies cannot use recurring accrual");
+        }
+        if (policy.getProrationMethod() != ProrationMethod.NONE) {
+            throw new LeaveEntitlementPolicyValidationException("EVENT_BASED policies cannot use annual proration");
+        }
+        if (policy.isCarryForwardAllowed() || positive(policy.getCarryForwardLimit())
+                || (policy.getCarryForwardExpiryMonths() != null && policy.getCarryForwardExpiryMonths() > 0)) {
+            throw new LeaveEntitlementPolicyValidationException("EVENT_BASED policies cannot carry forward an annual balance");
         }
     }
 

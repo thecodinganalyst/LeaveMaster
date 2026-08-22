@@ -21,6 +21,7 @@ public record EntitlementGenerationResult(
         UPDATED,
         NO_MATCHING_POLICY,
         AMBIGUOUS_POLICY,
+        EVENT_BASED_NO_ANNUAL_BALANCE,
         LEGACY_PROTECTED,
         HISTORICAL_PROTECTED
     }
