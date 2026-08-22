@@ -21,6 +21,21 @@ let csrfToken: CsrfResponse | undefined;
 
 const buildUrl = (path: string) => `${env.apiUrl}${path.startsWith('/') ? path : `/${path}`}`;
 
+const fetchWithNetworkDiagnostics = async (input: RequestInfo | URL, init?: RequestInit) => {
+  try {
+    return await fetch(input, init);
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw new ApiError(
+        'The connection to LeaveMaestro was interrupted or timed out. Please try again.',
+        0,
+        { networkFailure: true },
+      );
+    }
+    throw error;
+  }
+};
+
 const parseBody = async (response: Response) => {
   if (response.status === 204) {
     return undefined;
@@ -57,7 +72,7 @@ export const getCsrfToken = async (forceRefresh = false) => {
     return csrfToken;
   }
 
-  const response = await fetch(buildUrl('/auth/csrf'), {
+  const response = await fetchWithNetworkDiagnostics(buildUrl('/auth/csrf'), {
     credentials: 'include',
     headers: { Accept: 'application/json' },
   });
@@ -87,7 +102,7 @@ export const apiFetch = async <T>(path: string, init: RequestInit = {}): Promise
     headers.set(csrf.headerName, csrf.token);
   }
 
-  const response = await fetch(buildUrl(path), {
+  const response = await fetchWithNetworkDiagnostics(buildUrl(path), {
     ...init,
     method,
     headers,
@@ -105,7 +120,7 @@ export const apiFetch = async <T>(path: string, init: RequestInit = {}): Promise
 export const loginWithSession = async (loginName: string, password: string) => {
   const csrf = await getCsrfToken();
   const form = new URLSearchParams({ username: loginName, password });
-  const response = await fetch(buildUrl('/auth/login'), {
+  const response = await fetchWithNetworkDiagnostics(buildUrl('/auth/login'), {
     method: 'POST',
     credentials: 'include',
     headers: {

@@ -119,7 +119,7 @@ app:
     enabled: ${ASSISTANT_ENABLED:false}
     provider: ${ASSISTANT_PROVIDER:openai}
     model: ${ASSISTANT_MODEL:}
-    timeout-seconds: ${ASSISTANT_TIMEOUT_SECONDS:60}
+    timeout-seconds: ${ASSISTANT_TIMEOUT_SECONDS:55}
     confirmation-ttl-seconds: ${ASSISTANT_CONFIRMATION_TTL_SECONDS:300}
     max-message-chars: ${ASSISTANT_MAX_MESSAGE_CHARS:4000}
     rate-limit:

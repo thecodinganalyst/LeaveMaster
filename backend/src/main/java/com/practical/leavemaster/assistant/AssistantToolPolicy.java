@@ -19,6 +19,9 @@ final class AssistantToolPolicy {
             Map.entry("getAllRoles", RbacPermissions.ROLE_MANAGE), Map.entry("getRolesByTenantId", RbacPermissions.ROLE_MANAGE), Map.entry("getAllPermissions", RbacPermissions.ROLE_MANAGE), Map.entry("getRoleById", RbacPermissions.ROLE_MANAGE),
             Map.entry("createRole", RbacPermissions.ROLE_MANAGE), Map.entry("updateRole", RbacPermissions.ROLE_MANAGE), Map.entry("disableRole", RbacPermissions.ROLE_MANAGE), Map.entry("enableRole", RbacPermissions.ROLE_MANAGE), Map.entry("addUserToRole", RbacPermissions.ROLE_MANAGE), Map.entry("removeUserFromRole", RbacPermissions.ROLE_MANAGE),
             Map.entry("getAllLeaveTypes", RbacPermissions.LEAVE_TYPE_READ), Map.entry("getLeaveTypeById", RbacPermissions.LEAVE_TYPE_READ), Map.entry("createLeaveType", RbacPermissions.LEAVE_TYPE_WRITE), Map.entry("updateLeaveType", RbacPermissions.LEAVE_TYPE_WRITE), Map.entry("deleteLeaveType", RbacPermissions.LEAVE_TYPE_WRITE),
+            Map.entry("getEntitlementPoliciesByJurisdiction", RbacPermissions.LEAVE_ENTITLEMENT_POLICY_READ),
+            Map.entry("getEligibilityRulesByEntitlementPolicyId", RbacPermissions.LEAVE_ENTITLEMENT_POLICY_READ),
+            Map.entry("getLeaveEntitlementConfigurationByJurisdiction", RbacPermissions.LEAVE_ENTITLEMENT_POLICY_READ),
             Map.entry("getAllLeaveCalendars", RbacPermissions.LEAVE_CALENDAR_READ), Map.entry("getLeaveCalendarById", RbacPermissions.LEAVE_CALENDAR_READ), Map.entry("createLeaveCalendar", RbacPermissions.LEAVE_CALENDAR_WRITE),
             Map.entry("getAllLeaveApprovers", RbacPermissions.LEAVE_APPROVER_READ), Map.entry("getLeaveApproversByStaffId", RbacPermissions.LEAVE_APPROVER_READ), Map.entry("getLeaveApproverById", RbacPermissions.LEAVE_APPROVER_READ), Map.entry("createLeaveApprover", RbacPermissions.LEAVE_APPROVER_WRITE), Map.entry("updateLeaveApprover", RbacPermissions.LEAVE_APPROVER_WRITE), Map.entry("deleteLeaveApprover", RbacPermissions.LEAVE_APPROVER_WRITE),
             Map.entry("getAllLeaveApplications", RbacPermissions.LEAVE_APPLICATION_READ), Map.entry("getLeaveApplicationById", RbacPermissions.LEAVE_APPLICATION_READ), Map.entry("getLeaveApplicationsByStaffId", RbacPermissions.LEAVE_APPLICATION_READ), Map.entry("getVisibleLeaveApplicationsForStaff", RbacPermissions.LEAVE_APPLICATION_READ), Map.entry("getPendingLeaveApplicationsByApproverId", RbacPermissions.LEAVE_APPLICATION_READ), Map.entry("getLeaveBalances", RbacPermissions.LEAVE_APPLICATION_READ),
@@ -38,6 +41,8 @@ final class AssistantToolPolicy {
     static final Set<String> STRUCTURED_RESULT_TOOLS = Set.of(
             "getAllStaff", "getStaffById",
             "getAllLeaveTypes", "getLeaveTypeById",
+            "getEntitlementPoliciesByJurisdiction", "getEligibilityRulesByEntitlementPolicyId",
+            "getLeaveEntitlementConfigurationByJurisdiction",
             "getAllLeaveApprovers", "getLeaveApproversByStaffId", "getLeaveApproverById",
             "getAllLeaveApplications", "getLeaveApplicationById", "getLeaveApplicationsByStaffId",
             "getVisibleLeaveApplicationsForStaff", "getPendingLeaveApplicationsByApproverId", "getLeaveBalances"

@@ -65,6 +65,17 @@ describe('http client', () => {
     }));
   });
 
+  it('turns browser network failures into a useful interrupted-connection error', async () => {
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('Load failed'));
+
+    await expect(apiFetch('/api/assistant/chat')).rejects.toMatchObject({
+      name: 'ApiError',
+      statusCode: 0,
+      message: 'The connection to LeaveMaestro was interrupted or timed out. Please try again.',
+      details: { networkFailure: true },
+    });
+  });
+
   it('posts form credentials under the auth namespace then refreshes csrf', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(jsonResponse({ token: 'csrf-login', headerName: 'X-CSRF-TOKEN', parameterName: '_csrf' }))
