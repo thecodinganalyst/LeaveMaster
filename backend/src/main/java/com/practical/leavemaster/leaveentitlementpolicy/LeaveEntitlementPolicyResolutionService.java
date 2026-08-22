@@ -34,6 +34,7 @@ public class LeaveEntitlementPolicyResolutionService {
     private final LeaveEntitlementPolicyEligibilityRepository ruleRepository;
     private final JurisdictionRepository jurisdictionRepository;
     private final AppUserRepository appUserRepository;
+    private final DependantEligibilityMatcher dependantEligibilityMatcher;
 
     public PolicyResolutionResult resolve(String staffId, String leaveTypeId, LocalDate effectiveDate) {
         Staff staff = staffRepository.findById(staffId)
@@ -50,11 +51,6 @@ public class LeaveEntitlementPolicyResolutionService {
         return evaluatePolicies(staff, leaveTypeId, date, policies);
     }
 
-    /**
-     * Resolves platform template policies for a preview staff profile. Template policies are
-     * intentionally tenantless and are selected from the staff jurisdiction, walking up the
-     * jurisdiction hierarchy so inherited templates continue to work.
-     */
     public PolicyResolutionResult resolveTemplate(
             Staff staff, String jurisdictionLeaveTypeId, LocalDate effectiveDate) {
         validateStaff(staff);
@@ -68,12 +64,6 @@ public class LeaveEntitlementPolicyResolutionService {
                 effectiveTemplatePolicies(staff.getJurisdictionId(), jurisdictionLeaveTypeId));
     }
 
-    /**
-     * Finds the first date in the supplied period on which a platform template resolves.
-     * Candidate dates are limited to the dates on which current policy semantics can change:
-     * policy validity boundaries and monthly service anniversaries. This avoids a daily scan
-     * while supporting future SERVICE_MONTHS eligibility deterministically.
-     */
     public PolicyPeriodResolutionResult resolveTemplateInPeriod(
             Staff staff,
             String jurisdictionLeaveTypeId,
@@ -234,9 +224,18 @@ public class LeaveEntitlementPolicyResolutionService {
         boolean matched = switch (rule.getCriterionType()) {
             case JURISDICTION_CODE -> evaluateStringSet(jurisdictionCodes(staff.getJurisdictionId()), rule);
             case SERVICE_MONTHS -> evaluateNumber(serviceMonths(staff, date), rule);
+            case HAS_DEPENDANT_MATCHING -> evaluateDependant(staff, date, rule);
         };
         return new PolicyResolutionResult.RuleEvaluation(rule.getId(), rule.getCriterionType(), rule.getOperator(), matched,
                 matched ? "Criterion matched" : "Criterion did not match");
+    }
+
+    private boolean evaluateDependant(Staff staff, LocalDate date, LeaveEntitlementPolicyEligibilityRule rule) {
+        if (rule.getOperator() != EligibilityOperator.EQUALS && rule.getOperator() != EligibilityOperator.NOT_EQUALS) {
+            return false;
+        }
+        boolean found = dependantEligibilityMatcher.matches(staff, date, rule.getValue());
+        return rule.getOperator() == EligibilityOperator.EQUALS ? found : !found;
     }
 
     private boolean evaluateStringSet(Set<String> actualValues, LeaveEntitlementPolicyEligibilityRule rule) {
