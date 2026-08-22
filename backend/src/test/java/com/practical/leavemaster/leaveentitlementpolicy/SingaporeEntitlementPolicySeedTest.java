@@ -65,8 +65,8 @@ class SingaporeEntitlementPolicySeedTest {
                             .isEqualTo(EligibilityCriterionType.SERVICE_MONTHS));
         });
 
-        assertThat(policyRepository.findById("SG_ANNUAL_03_11")).isEmpty();
-        assertThat(policyRepository.findById("SG_ANNUAL_84_PLUS")).isEmpty();
+        assertRetiredHistoricalPolicy("SG_ANNUAL_03_11");
+        assertRetiredHistoricalPolicy("SG_ANNUAL_84_PLUS");
     }
 
     @Test
@@ -100,6 +100,12 @@ class SingaporeEntitlementPolicySeedTest {
     void preservesSickAndHospitalisationServiceProgression() {
         assertEntitlements("SG_SICK_", List.of("03", "04", "05", "06_PLUS"), List.of(5, 8, 11, 14));
         assertEntitlements("SG_HOSP_", List.of("03", "04", "05", "06_PLUS"), List.of(15, 30, 45, 60));
+    }
+
+    private void assertRetiredHistoricalPolicy(String id) {
+        LeaveEntitlementPolicy policy = policyRepository.findById(id).orElseThrow();
+        assertThat(policy.isActive()).isFalse();
+        assertThat(eligibilityRepository.findAllByPolicyIdAndActiveTrueOrderBySortOrderAsc(id)).isNotEmpty();
     }
 
     private void assertCompanyDefault(String id, String jurisdictionLeaveTypeId, int amount) {
