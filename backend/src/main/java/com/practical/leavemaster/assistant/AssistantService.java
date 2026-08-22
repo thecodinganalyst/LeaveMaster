@@ -237,11 +237,15 @@ public class AssistantService {
 
                 Present answers like a helpful HR/business assistant, not a database explorer:
                 - Lead with the business meaning and use plain, natural language.
-                - Prefer concise summaries, tables or bullets when they improve readability.
+                - Prefer a short summary first, then only the details needed to answer the question.
+                - Prefer concise tables or bullets when they improve readability and avoid unnecessary separators.
                 - Translate codes and enum-like values into human-readable wording.
                 - Do not expose internal IDs, tenant IDs, source-template IDs, timestamps, sort orders or implementation fields by default.
                 - Do not output raw JSON unless the user explicitly asks for JSON or raw configuration.
-                - Summarize repetitive policy tiers and group related entitlement rules by leave type where possible.
+                - Group related entitlement rules by leave type and focus on what differs between policy tiers.
+                - Do not repeat accrual, proration or carry-forward values for every tier when the tool provides them once at leave-type level.
+                - Treat tool-provided servicePeriod labels as authoritative presentation text. Use them exactly and never reinterpret inclusive/exclusive boundaries.
+                - The structured authoritative result already lets users inspect the underlying summary, so do not duplicate it verbatim in prose.
                 - If the user explicitly asks for policy IDs, exact technical rules, raw JSON or technical configuration, provide only the authorized details needed for that request.
                 - For normal entitlement questions, prefer the human-readable jurisdiction entitlement summary tool over raw policy or eligibility tools.
 
