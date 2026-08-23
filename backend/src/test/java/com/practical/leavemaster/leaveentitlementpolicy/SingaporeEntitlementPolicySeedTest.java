@@ -79,13 +79,19 @@ class SingaporeEntitlementPolicySeedTest {
                     .allSatisfy(rule -> assertThat(rule.getCriterionType())
                             .isEqualTo(EligibilityCriterionType.SERVICE_MONTHS));
         });
+    }
 
-        assertRemovedHistoricalPolicy("SG_ANNUAL_03_11");
-        assertRemovedHistoricalPolicy("SG_ANNUAL_12_23");
-        assertRemovedHistoricalPolicy("SG_ANNUAL_24_35");
-        assertRemovedHistoricalPolicy("SG_ANNUAL_36_47");
-        assertRemovedHistoricalPolicy("SG_ANNUAL_48_59");
-        assertRemovedHistoricalPolicy("SG_ANNUAL_60_71");
+    @Test
+    void removesObsoleteAnnualLeavePoliciesAndAllTheirEligibilityRules() {
+        List.of(
+                "SG_ANNUAL_03_11",
+                "SG_ANNUAL_12_23",
+                "SG_ANNUAL_24_35",
+                "SG_ANNUAL_36_47",
+                "SG_ANNUAL_48_59",
+                "SG_ANNUAL_60_71"
+        ).forEach(this::assertRemovedHistoricalPolicy);
+
         assertRetiredHistoricalPolicy("SG_ANNUAL_72_83");
         assertRetiredHistoricalPolicy("SG_ANNUAL_84_PLUS");
     }
@@ -135,7 +141,7 @@ class SingaporeEntitlementPolicySeedTest {
 
     private void assertRemovedHistoricalPolicy(String id) {
         assertThat(policyRepository.findById(id)).isEmpty();
-        assertThat(eligibilityRepository.findAllByPolicyIdAndActiveTrueOrderBySortOrderAsc(id)).isEmpty();
+        assertThat(eligibilityRepository.existsByPolicyId(id)).isFalse();
     }
 
     private void assertRetiredHistoricalPolicy(String id) {
