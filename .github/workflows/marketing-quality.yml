@@ -1,0 +1,53 @@
+name: Marketing CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'marketing/**'
+      - '.github/workflows/marketing-quality.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'marketing/**'
+      - '.github/workflows/marketing-quality.yml'
+  workflow_dispatch:
+
+jobs:
+  quality:
+    name: Lint, typecheck, test, coverage and build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: marketing
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: marketing/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Run tests
+        run: npm test
+
+      - name: Enforce calculator coverage gate
+        run: npm run coverage
+
+      - name: Production build
+        run: npm run build
