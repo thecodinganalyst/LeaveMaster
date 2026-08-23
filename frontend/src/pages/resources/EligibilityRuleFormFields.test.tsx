@@ -16,8 +16,14 @@ beforeEach(() => {
   useQueryMock.mockImplementation(({ queryKey }: { queryKey: string[] }) => {
     if (queryKey[0] === 'leave-entitlement-policies') {
       return queryResult([
-        { id: 'SG_ANNUAL', name: 'Singapore Annual Leave' },
-        { id: 'SG_TEMPLATE', name: 'Singapore Template' },
+        { id: 'SG_ANNUAL', name: 'Singapore Annual Leave', leaveTypeId: 'LT_ANNUAL', entitlementAmount: 14, entitlementUnit: 'DAYS' },
+        { id: 'SG_SICK', name: 'Singapore Sick Leave', leaveTypeId: 'LT_SICK', entitlementAmount: 14, entitlementUnit: 'DAYS' },
+      ]);
+    }
+    if (queryKey[0] === 'leave-types') {
+      return queryResult([
+        { id: 'LT_ANNUAL', name: 'Annual Leave' },
+        { id: 'LT_SICK', name: 'Sick Leave' },
       ]);
     }
     return queryResult([
@@ -28,15 +34,16 @@ beforeEach(() => {
 });
 
 describe('EligibilityRuleFormFields', () => {
-  it('uses a readable policy dropdown and initializes sort order to 10', async () => {
+  it('shows policy name, leave type, amount and unit without exposing policy id', async () => {
     render(
       <Form initialValues={{ policyId: 'SG_ANNUAL' }}>
         <EligibilityRuleFormFields />
       </Form>,
     );
 
-    expect(screen.getByRole('combobox', { name: 'Policy' })).toBeInTheDocument();
-    expect(screen.getByText(/Singapore Annual Leave/)).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Entitlement policy' })).toBeInTheDocument();
+    expect(screen.getByText('Singapore Annual Leave — Annual Leave · 14 Days')).toBeInTheDocument();
+    expect(screen.queryByText(/SG_ANNUAL/)).not.toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole('spinbutton', { name: 'Sort order' })).toHaveValue('10'));
     expect(screen.getByText(/does not change the result while all rules use AND logic/i)).toBeInTheDocument();
   });
