@@ -9,8 +9,8 @@
 body {
   @apply bg-slate-950 text-slate-100 antialiased;
   background-image:
-    radial-gradient(circle at top, rgba(79, 70, 229, 0.25), transparent 35%),
-    linear-gradient(180deg, #020617 0%, #0f172a 50%, #ffffff 50%, #ffffff 100%);
+    radial-gradient(circle at top, rgba(45, 156, 143, 0.25), transparent 35%),
+    linear-gradient(180deg, #0f2740 0%, #112f4d 50%, #f4f7fb 50%, #f4f7fb 100%);
 }
 
 @layer base {
@@ -32,7 +32,7 @@ body {
 
 @layer components {
   .page-shell {
-    @apply min-h-screen bg-white/95;
+    @apply min-h-screen bg-slate-50/95;
   }
 
   .section {
