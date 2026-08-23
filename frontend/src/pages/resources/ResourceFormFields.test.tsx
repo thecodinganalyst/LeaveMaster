@@ -66,7 +66,7 @@ describe('ResourceFormFields numeric fields', () => {
   });
 });
 
-describe('ResourceFormFields tenant internal ids', () => {
+describe('ResourceFormFields leave type ids', () => {
   it('hides the leave type id from tenant edit forms while keeping editable fields', () => {
     render(
       <Form initialValues={{ id: 'ANNUAL_LEAVE', name: 'Annual Leave' }}>
@@ -78,24 +78,25 @@ describe('ResourceFormFields tenant internal ids', () => {
     expect(screen.getByLabelText('Name')).toHaveValue('Annual Leave');
   });
 
-  it('keeps the leave type id available during tenant creation because it is required by the API', () => {
+  it('hides the leave type id during tenant creation', () => {
     render(
       <Form>
         <ResourceFormFields config={leaveTypeConfig} />
       </Form>,
     );
 
-    expect(screen.getByLabelText('ID')).toBeInTheDocument();
+    expect(screen.queryByLabelText('ID')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Name')).toBeInTheDocument();
   });
 
-  it('preserves the leave type id on platform-admin edit forms', () => {
+  it('hides the leave type id from platform-admin edit forms', () => {
     render(
       <Form initialValues={{ id: 'ANNUAL_LEAVE', name: 'Annual Leave' }}>
         <ResourceFormFields config={leaveTypeConfig} editing platformAdmin />
       </Form>,
     );
 
-    expect(screen.getByLabelText('ID')).toHaveValue('ANNUAL_LEAVE');
-    expect(screen.getByLabelText('ID')).toBeDisabled();
+    expect(screen.queryByLabelText('ID')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Name')).toHaveValue('Annual Leave');
   });
 });
