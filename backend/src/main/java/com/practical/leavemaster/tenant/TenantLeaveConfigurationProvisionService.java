@@ -212,10 +212,6 @@ public class TenantLeaveConfigurationProvisionService {
         }
     }
 
-    private LeaveCalendar copyTemplateCalendar(Tenant tenant, String jurisdictionId, LeaveCalendar template) {
-        return copyTemplateCalendar(tenant.getId(), jurisdictionId, template);
-    }
-
     private LeaveCalendar copyTemplateCalendar(String tenantId, String jurisdictionId, LeaveCalendar template) {
         List<PublicHoliday> holidays = template.getPublicHolidays().stream()
                 .map(this::copyHoliday)
