@@ -33,6 +33,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -54,7 +55,10 @@ class TenantLeaveConfigurationProvisionServiceTest {
         Tenant tenant = Tenant.builder().id("acme").jurisdictionId("SG").build();
         Jurisdiction sg = Jurisdiction.builder().id("SG").code("SG").name("Singapore").active(true).build();
         JurisdictionLeaveType annual = JurisdictionLeaveType.builder()
-                .id("SG:ANNUAL_LEAVE").jurisdictionId("SG").code("ANNUAL_LEAVE").name("Annual Leave").active(true).build();
+                .id("SG:ANNUAL_LEAVE").jurisdictionId("SG").code("ANNUAL_LEAVE").name("Annual Leave")
+                .active(true).statutory(true).paid(true).sourceName("MOM")
+                .sourceUrl("https://www.mom.gov.sg/annual-leave")
+                .effectiveFrom(LocalDate.of(2026, 1, 1)).effectiveTo(LocalDate.of(2026, 12, 31)).build();
         LeaveEntitlementPolicy template = LeaveEntitlementPolicy.builder()
                 .id("template-annual").scope(ConfigurationScope.PLATFORM_TEMPLATE).jurisdictionId("SG")
                 .jurisdictionLeaveTypeId(annual.getId()).name("Standard Annual Leave").active(true).priority(10)
@@ -88,7 +92,16 @@ class TenantLeaveConfigurationProvisionServiceTest {
 
         service.provision(tenant);
 
-        verify(leaveTypeRepository).save(any(LeaveType.class));
+        verify(leaveTypeRepository).save(argThat(leaveType ->
+                leaveType.getName().equals("Annual Leave")
+                        && leaveType.isActive()
+                        && leaveType.isStatutory()
+                        && Boolean.TRUE.equals(leaveType.getPaid())
+                        && "MOM".equals(leaveType.getSourceName())
+                        && "https://www.mom.gov.sg/annual-leave".equals(leaveType.getSourceUrl())
+                        && LocalDate.of(2026, 1, 1).equals(leaveType.getEffectiveFrom())
+                        && LocalDate.of(2026, 12, 31).equals(leaveType.getEffectiveTo())
+                        && annual.getId().equals(leaveType.getSourceJurisdictionLeaveTypeId())));
         verify(policyRepository).save(any(LeaveEntitlementPolicy.class));
         verify(eligibilityRepository).save(any(LeaveEntitlementPolicyEligibilityRule.class));
         verify(leaveCalendarRepository).save(any(LeaveCalendar.class));
@@ -99,9 +112,11 @@ class TenantLeaveConfigurationProvisionServiceTest {
         Tenant tenant = Tenant.builder().id("acme").jurisdictionId("SG").build();
         Jurisdiction sg = Jurisdiction.builder().id("SG").code("SG").name("Singapore").build();
         JurisdictionLeaveType annual = JurisdictionLeaveType.builder()
-                .id("SG:ANNUAL_LEAVE").jurisdictionId("SG").code("ANNUAL_LEAVE").name("Annual Leave").active(true).build();
+                .id("SG:ANNUAL_LEAVE").jurisdictionId("SG").code("ANNUAL_LEAVE").name("Platform Annual Leave")
+                .active(true).statutory(true).paid(true).sourceName("Platform source").build();
         LeaveType existing = LeaveType.builder().id("acme:ANNUAL_LEAVE").tenantId("acme")
-                .sourceJurisdictionLeaveTypeId(annual.getId()).name("Annual Leave").build();
+                .sourceJurisdictionLeaveTypeId(annual.getId()).name("Tenant Customized Annual Leave")
+                .active(false).statutory(false).paid(false).sourceName("Tenant source").build();
         LeaveEntitlementPolicy template = LeaveEntitlementPolicy.builder()
                 .id("template-annual").scope(ConfigurationScope.PLATFORM_TEMPLATE).jurisdictionId("SG")
                 .jurisdictionLeaveTypeId(annual.getId()).name("Standard Annual Leave").active(true).build();
