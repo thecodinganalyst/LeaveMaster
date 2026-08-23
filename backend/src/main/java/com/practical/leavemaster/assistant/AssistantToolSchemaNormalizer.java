@@ -35,8 +35,9 @@ final class AssistantToolSchemaNormalizer {
     }
 
     private static ToolCallback normalize(ToolCallback delegate, ObjectMapper objectMapper) {
-        ToolDefinition definition = normalize(delegate.getToolDefinition(), objectMapper);
-        if (definition == delegate.getToolDefinition()) return delegate;
+        ToolDefinition originalDefinition = delegate.getToolDefinition();
+        ToolDefinition definition = normalize(originalDefinition, objectMapper);
+        if (definition == originalDefinition) return delegate;
 
         return new ToolCallback() {
             @Override
