@@ -13,6 +13,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -162,16 +163,35 @@ class LeaveTypeServiceTest {
     }
 
     @Test
-    void shouldUpdateLeaveType() {
-        LeaveType existing = LeaveType.builder().id("annual").name("Annual Leave").used(false).build();
-        LeaveType updated = LeaveType.builder().id("annual").name("Annual Leave Updated").used(true).build();
+    void shouldUpdateTenantOwnedLeaveTypeMetadataWithoutChangingLineage() {
+        LeaveType existing = LeaveType.builder()
+                .id("annual").name("Annual Leave").used(false).tenantId("TENANT_A")
+                .sourceJurisdictionLeaveTypeId("SG:ANNUAL_LEAVE")
+                .active(true).statutory(true).paid(true).sourceName("MOM")
+                .sourceUrl("https://old.example").effectiveFrom(LocalDate.of(2026, 1, 1)).build();
+        LeaveType updated = LeaveType.builder()
+                .id("different-id").name("Annual Leave Updated").used(true).tenantId("TENANT_B")
+                .sourceJurisdictionLeaveTypeId("OTHER")
+                .active(false).statutory(false).paid(false).sourceName("Tenant handbook")
+                .sourceUrl("https://tenant.example/leave")
+                .effectiveFrom(LocalDate.of(2026, 2, 1)).effectiveTo(LocalDate.of(2026, 12, 31)).build();
         when(leaveTypeRepository.findById("annual")).thenReturn(Optional.of(existing));
         when(leaveTypeRepository.save(existing)).thenReturn(existing);
 
         LeaveType result = leaveTypeService.update("annual", updated);
 
         assertThat(result.getName()).isEqualTo("Annual Leave Updated");
+        assertThat(result.isActive()).isFalse();
+        assertThat(result.isStatutory()).isFalse();
+        assertThat(result.getPaid()).isFalse();
+        assertThat(result.getSourceName()).isEqualTo("Tenant handbook");
+        assertThat(result.getSourceUrl()).isEqualTo("https://tenant.example/leave");
+        assertThat(result.getEffectiveFrom()).isEqualTo(LocalDate.of(2026, 2, 1));
+        assertThat(result.getEffectiveTo()).isEqualTo(LocalDate.of(2026, 12, 31));
         assertThat(result.isUsed()).isFalse();
+        assertThat(result.getTenantId()).isEqualTo("TENANT_A");
+        assertThat(result.getSourceJurisdictionLeaveTypeId()).isEqualTo("SG:ANNUAL_LEAVE");
+        verify(tenantActivityService).touch("TENANT_A");
     }
 
     @Test
