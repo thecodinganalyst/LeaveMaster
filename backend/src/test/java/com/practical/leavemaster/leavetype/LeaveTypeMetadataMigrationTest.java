@@ -26,14 +26,30 @@ class LeaveTypeMetadataMigrationTest {
 
         try (var connection = DriverManager.getConnection(url, "sa", "")) {
             try (var statement = connection.prepareStatement("""
+                    INSERT INTO jurisdiction (
+                        id, code, name, jurisdiction_type, parent_id, country_code, subdivision_code, active
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """)) {
+                statement.setString(1, "TEST");
+                statement.setString(2, "TEST");
+                statement.setString(3, "Migration Test Jurisdiction");
+                statement.setString(4, "COUNTRY");
+                statement.setString(5, null);
+                statement.setString(6, "TT");
+                statement.setString(7, null);
+                statement.setBoolean(8, true);
+                statement.executeUpdate();
+            }
+
+            try (var statement = connection.prepareStatement("""
                     INSERT INTO jurisdiction_leave_type (
                         id, jurisdiction_id, code, name, description, statutory, paid, active,
                         source_url, source_name, effective_from, effective_to
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """)) {
-                statement.setString(1, "SG:TEST_METADATA_BACKFILL");
-                statement.setString(2, "SG");
-                statement.setString(3, "TEST_METADATA_BACKFILL");
+                statement.setString(1, "TEST:METADATA_BACKFILL");
+                statement.setString(2, "TEST");
+                statement.setString(3, "METADATA_BACKFILL");
                 statement.setString(4, "Test Metadata Backfill");
                 statement.setString(5, "Migration test source");
                 statement.setBoolean(6, true);
@@ -53,7 +69,7 @@ class LeaveTypeMetadataMigrationTest {
                 statement.setString(1, "tenant:test-metadata-backfill");
                 statement.setString(2, "Tenant Test Leave");
                 statement.setBoolean(3, false);
-                statement.setString(4, "SG:TEST_METADATA_BACKFILL");
+                statement.setString(4, "TEST:METADATA_BACKFILL");
                 statement.executeUpdate();
             }
         }
