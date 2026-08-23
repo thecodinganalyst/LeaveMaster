@@ -28,6 +28,12 @@ const displayValue = (field: AdminField, value: unknown) => {
   return String(value ?? '—');
 };
 
+const tenantLeaveTypeSourceLink = (value: unknown) => {
+  const url = typeof value === 'string' ? value.trim() : '';
+  if (!url) return <span>—</span>;
+  return <a href={url} target="_blank" rel="noopener noreferrer">{url}</a>;
+};
+
 export const ResourceShowPage = () => {
   const { resource } = useResource();
   const { id } = useParams();
@@ -59,6 +65,8 @@ export const ResourceShowPage = () => {
                 <RolePermissionCheckboxList value={(record[field.name] as string[] | undefined) ?? []} disabled />
               ) : field.type === 'holiday-list' ? (
                 <PublicHolidayTable value={record[field.name]} />
+              ) : config.name === 'leave-types' && field.name === 'sourceUrl' && !platformAdmin ? (
+                tenantLeaveTypeSourceLink(record[field.name])
               ) : config.name === 'leave-entitlement-policies' && field.name === 'leaveTypeId' && !platformAdmin ? (
                 <TenantLeaveTypeName leaveTypeId={String(record[field.name] ?? '')} />
               ) : config.name === 'leave-entitlement-policy-eligibility-rules' && field.name === 'policyId' && !platformAdmin ? (
