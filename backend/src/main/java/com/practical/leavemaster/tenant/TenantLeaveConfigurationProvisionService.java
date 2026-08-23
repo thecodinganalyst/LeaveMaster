@@ -94,6 +94,13 @@ public class TenantLeaveConfigurationProvisionService {
                         .id(tenant.getId() + ":" + source.getCode())
                         .name(source.getName())
                         .used(false)
+                        .active(source.isActive())
+                        .statutory(source.isStatutory())
+                        .paid(source.getPaid())
+                        .sourceName(source.getSourceName())
+                        .sourceUrl(source.getSourceUrl())
+                        .effectiveFrom(source.getEffectiveFrom())
+                        .effectiveTo(source.getEffectiveTo())
                         .tenantId(tenant.getId())
                         .sourceJurisdictionLeaveTypeId(source.getId())
                         .build();
@@ -203,6 +210,10 @@ public class TenantLeaveConfigurationProvisionService {
             if (leaveCalendarRepository.existsByTenantIdAndSourceTemplateId(tenant.getId(), template.getId())) continue;
             leaveCalendarRepository.save(copyTemplateCalendar(tenant.getId(), jurisdictionId, template));
         }
+    }
+
+    private LeaveCalendar copyTemplateCalendar(Tenant tenant, String jurisdictionId, LeaveCalendar template) {
+        return copyTemplateCalendar(tenant.getId(), jurisdictionId, template);
     }
 
     private LeaveCalendar copyTemplateCalendar(String tenantId, String jurisdictionId, LeaveCalendar template) {
