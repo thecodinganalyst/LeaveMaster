@@ -9,6 +9,7 @@ import com.practical.leavemaster.leaveentitlementpolicy.EntitlementUnit;
 import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicy;
 import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicyRepository;
 import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicyResolutionService;
+import com.practical.leavemaster.leaveentitlementpolicy.LeavePolicyModel;
 import com.practical.leavemaster.leaveentitlementpolicy.PolicyResolutionResult;
 import com.practical.leavemaster.leaveentitlementpolicy.ProrationMethod;
 import com.practical.leavemaster.leavetype.LeaveType;
@@ -137,6 +138,46 @@ class StaffEntitlementProposalServiceAdditionalTest {
     }
 
     @Test
+    void shouldSkipWeeksPolicyAndStillProposeSupportedDaysPolicy() {
+        authenticateTenantUser();
+        LeaveType annual = leaveType("annual", "Annual Leave", SOURCE_LEAVE_TYPE_ID);
+        LeaveType maternity = leaveType("maternity", "Maternity Leave", "sg-maternity");
+        when(leaveCalendarService.getCalendarFor("SG", joinDate)).thenReturn(Optional.of(calendar));
+        when(leaveTypeRepository.findAllByTenantId("tenant-a")).thenReturn(List.of(annual, maternity));
+        when(resolutionService.resolveTemplate(any(Staff.class), eq(SOURCE_LEAVE_TYPE_ID), any(LocalDate.class)))
+                .thenReturn(new PolicyResolutionResult("__preview__", SOURCE_LEAVE_TYPE_ID, "policy-annual", false, "matched", List.of()));
+        when(resolutionService.resolveTemplate(any(Staff.class), eq("sg-maternity"), any(LocalDate.class)))
+                .thenReturn(new PolicyResolutionResult("__preview__", "sg-maternity", "policy-maternity", false, "matched", List.of()));
+
+        LeaveEntitlementPolicy annualPolicy = policy("policy-annual", ProrationMethod.NONE);
+        LeaveEntitlementPolicy maternityPolicy = policy("policy-maternity", ProrationMethod.NONE);
+        maternityPolicy.setJurisdictionLeaveTypeId("sg-maternity");
+        maternityPolicy.setPolicyModel(LeavePolicyModel.EVENT_BASED);
+        maternityPolicy.setEntitlementUnit(EntitlementUnit.WEEKS);
+        when(policyRepository.findById("policy-annual")).thenReturn(Optional.of(annualPolicy));
+        when(policyRepository.findById("policy-maternity")).thenReturn(Optional.of(maternityPolicy));
+
+        List<LeaveEntitlement> proposals = proposalService.propose(request(null));
+
+        assertThat(proposals).hasSize(1);
+        assertThat(proposals.getFirst().getLeaveType().getName()).isEqualTo("Annual Leave");
+        assertThat(proposals.getFirst().getPolicyId()).isEqualTo("policy-annual");
+    }
+
+    @Test
+    void shouldSkipEventBasedPolicyEvenWhenUnitIsDays() {
+        setupResolvedTemplate("policy-event");
+        LeaveEntitlementPolicy eventPolicy = policy("policy-event", ProrationMethod.NONE);
+        eventPolicy.setPolicyModel(LeavePolicyModel.EVENT_BASED);
+        when(policyRepository.findById("policy-event")).thenReturn(Optional.of(eventPolicy));
+
+        StaffEntitlementProposalAnalysis analysis = proposalService.analyze(request(null));
+
+        assertThat(analysis.proposals()).isEmpty();
+        assertThat(analysis.status()).isEqualTo(StaffEntitlementProposalAnalysis.Status.NOT_ELIGIBLE_IN_PERIOD);
+    }
+
+    @Test
     void shouldUseTodayWhenEvaluationFallsInsideEntitlementPeriod() {
         LocalDate periodStart = LocalDate.of(2026, 1, 1);
         LocalDate periodEnd = LocalDate.of(2026, 12, 31);
@@ -169,11 +210,15 @@ class StaffEntitlementProposalServiceAdditionalTest {
     }
 
     private LeaveType annualLeaveType() {
+        return leaveType("annual", "Annual Leave", SOURCE_LEAVE_TYPE_ID);
+    }
+
+    private LeaveType leaveType(String id, String name, String sourceLeaveTypeId) {
         return LeaveType.builder()
-                .id("annual")
-                .name("Annual Leave")
+                .id(id)
+                .name(name)
                 .tenantId("tenant-a")
-                .sourceJurisdictionLeaveTypeId(SOURCE_LEAVE_TYPE_ID)
+                .sourceJurisdictionLeaveTypeId(sourceLeaveTypeId)
                 .build();
     }
 
@@ -187,6 +232,7 @@ class StaffEntitlementProposalServiceAdditionalTest {
                 .name(id)
                 .active(true)
                 .priority(10)
+                .policyModel(LeavePolicyModel.ANNUAL_ENTITLEMENT)
                 .entitlementUnit(EntitlementUnit.DAYS)
                 .entitlementAmount(new BigDecimal("24.00"))
                 .accrualMethod(AccrualMethod.ANNUAL)
