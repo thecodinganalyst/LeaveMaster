@@ -9,6 +9,7 @@ import com.practical.leavemaster.leaveentitlementpolicy.EntitlementUnit;
 import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicy;
 import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicyRepository;
 import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicyResolutionService;
+import com.practical.leavemaster.leaveentitlementpolicy.LeavePolicyModel;
 import com.practical.leavemaster.leaveentitlementpolicy.PolicyPeriodResolutionResult;
 import com.practical.leavemaster.leaveentitlementpolicy.PolicyResolutionResult;
 import com.practical.leavemaster.leaveentitlementpolicy.ProrationMethod;
@@ -82,7 +83,10 @@ public class StaffEntitlementProposalService {
             LeaveEntitlementPolicy policy = policyRepository.findById(resolved.policyId())
                     .orElseThrow(() -> new IllegalStateException(
                             "Resolved policy template no longer exists: " + resolved.policyId()));
-            validateTemplatePolicy(policy, sourceLeaveTypeId);
+            validateTemplatePolicyIdentity(policy, sourceLeaveTypeId);
+            if (!supportsOnboardingBalance(policy)) {
+                continue;
+            }
 
             LocalDate entitlementStart = resolved.futureEligibility()
                     ? resolved.eligibleFrom()
@@ -161,7 +165,7 @@ public class StaffEntitlementProposalService {
         }
     }
 
-    private void validateTemplatePolicy(LeaveEntitlementPolicy policy, String sourceLeaveTypeId) {
+    private void validateTemplatePolicyIdentity(LeaveEntitlementPolicy policy, String sourceLeaveTypeId) {
         if (policy.getTenantId() != null) {
             throw new IllegalArgumentException("Resolved entitlement policy must be a platform template without a tenant id");
         }
@@ -171,12 +175,12 @@ public class StaffEntitlementProposalService {
         if (!sourceLeaveTypeId.equals(policy.getJurisdictionLeaveTypeId())) {
             throw new IllegalArgumentException("Resolved entitlement policy template does not match the tenant leave type source");
         }
-        if (policy.getEntitlementUnit() != EntitlementUnit.DAYS) {
-            throw new IllegalArgumentException("Only DAYS entitlement policies can currently generate employee balances");
-        }
-        if (policy.getAccrualMethod() == AccrualMethod.PER_PAY_PERIOD) {
-            throw new IllegalArgumentException("PER_PAY_PERIOD entitlement generation requires a payroll schedule and is not supported yet");
-        }
+    }
+
+    private boolean supportsOnboardingBalance(LeaveEntitlementPolicy policy) {
+        return policy.getPolicyModel() != LeavePolicyModel.EVENT_BASED
+                && policy.getEntitlementUnit() == EntitlementUnit.DAYS
+                && policy.getAccrualMethod() != AccrualMethod.PER_PAY_PERIOD;
     }
 
     private Staff previewProfile(StaffEntitlementProposalRequest request, String tenantId, String jurisdictionId) {
