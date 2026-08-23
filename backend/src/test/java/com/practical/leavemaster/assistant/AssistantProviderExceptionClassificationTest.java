@@ -57,7 +57,8 @@ class AssistantProviderExceptionClassificationTest {
         when(chatModel.getOptions()).thenReturn(ChatOptions.builder().build());
         when(userRepository.findById("dennis")).thenReturn(Optional.of(AppUser.builder()
                 .loginName("dennis").staffId("S1").tenantId("T1").active(true).build()));
-        when(toolProvider.getToolCallbacks()).thenReturn(new ToolCallback[]{callback("getAllTenants")});
+        ToolCallback tenantReadCallback = callback("getAllTenants");
+        when(toolProvider.getToolCallbacks()).thenReturn(new ToolCallback[]{tenantReadCallback});
     }
 
     @AfterEach
