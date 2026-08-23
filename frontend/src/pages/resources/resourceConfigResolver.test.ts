@@ -52,6 +52,27 @@ describe('resourceConfigResolver staff write normalization', () => {
     });
   });
 
+  it('exposes tenant-maintainable leave type metadata while hiding source lineage', () => {
+    const config = getAdminResourceConfig('leave-types');
+    expect(config).toBeDefined();
+
+    expect(config!.fields.find((field) => field.name === 'sourceJurisdictionLeaveTypeId')).toMatchObject({
+      hidden: true,
+      formHidden: true,
+    });
+    expect(config!.fields.map((field) => field.name)).toEqual(expect.arrayContaining([
+      'active',
+      'statutory',
+      'paid',
+      'sourceName',
+      'sourceUrl',
+      'effectiveFrom',
+      'effectiveTo',
+    ]));
+    expect(config!.fields.find((field) => field.name === 'effectiveFrom')?.type).toBe('date');
+    expect(config!.fields.find((field) => field.name === 'effectiveTo')?.type).toBe('date');
+  });
+
   it('uses tenant-friendly entitlement policy fields and ordering', () => {
     const config = getAdminResourceConfig('leave-entitlement-policies');
     expect(config).toBeDefined();
