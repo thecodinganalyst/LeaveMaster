@@ -10,6 +10,7 @@ import { PageContainer } from '../../components/common/PageContainer.tsx';
 import { PageHeader } from '../../components/common/PageHeader.tsx';
 import type { AdminField } from './resourceConfigResolver.ts';
 import { getAdminResourceConfig, isAdminFieldVisible, toFormValues } from './resourceConfigResolver.ts';
+import { TenantEntitlementPolicySummary } from './TenantEntitlementPolicySummary.tsx';
 import { TenantLeaveTypeName } from './TenantLeaveTypeName.tsx';
 import { shouldHideTenantInternalId } from './tenantInternalIdVisibility.ts';
 
@@ -71,7 +72,9 @@ export const ResourceListPage = () => {
       sorter: (a, b) => String(a[field.name] ?? '').localeCompare(String(b[field.name] ?? ''), undefined, { numeric: true }),
       render: (value: unknown) => config.name === 'leave-entitlement-policies' && field.name === 'leaveTypeId' && !platformAdmin
         ? <TenantLeaveTypeName leaveTypeId={String(value ?? '')} />
-        : displayValue(field, value),
+        : config.name === 'leave-entitlement-policy-eligibility-rules' && field.name === 'policyId' && !platformAdmin
+          ? <TenantEntitlementPolicySummary policyId={String(value ?? '')} />
+          : displayValue(field, value),
     }));
 
   columns?.push({
