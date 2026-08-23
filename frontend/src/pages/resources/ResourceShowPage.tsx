@@ -28,7 +28,7 @@ const displayValue = (field: AdminField, value: unknown) => {
   return String(value ?? '—');
 };
 
-const tenantLeaveTypeSourceLink = (value: unknown) => {
+export const tenantLeaveTypeSourceLink = (value: unknown) => {
   const url = typeof value === 'string' ? value.trim() : '';
   if (!url) return <span>—</span>;
   return <a href={url} target="_blank" rel="noopener noreferrer">{url}</a>;
