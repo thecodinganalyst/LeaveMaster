@@ -10,6 +10,7 @@ import { getAdminResourceConfig, isAdminFieldVisible, toFormValues } from './res
 import { PublicHolidayTable } from './PublicHolidayTable.tsx';
 import { RoleMembershipCard } from './RoleMembershipCard.tsx';
 import { RolePermissionCheckboxList } from './RolePermissionCheckboxList.tsx';
+import { TenantEntitlementPolicySummary } from './TenantEntitlementPolicySummary.tsx';
 import { TenantLeaveTypeName } from './TenantLeaveTypeName.tsx';
 import { shouldHideTenantInternalId, shouldShowResourceIdSubtitle } from './tenantInternalIdVisibility.ts';
 
@@ -60,6 +61,8 @@ export const ResourceShowPage = () => {
                 <PublicHolidayTable value={record[field.name]} />
               ) : config.name === 'leave-entitlement-policies' && field.name === 'leaveTypeId' && !platformAdmin ? (
                 <TenantLeaveTypeName leaveTypeId={String(record[field.name] ?? '')} />
+              ) : config.name === 'leave-entitlement-policy-eligibility-rules' && field.name === 'policyId' && !platformAdmin ? (
+                <TenantEntitlementPolicySummary policyId={String(record[field.name] ?? '')} />
               ) : (
                 <span style={{ whiteSpace: field.type === 'json' ? 'pre-wrap' : 'normal' }}>{displayValue(field, record[field.name])}</span>
               )}
