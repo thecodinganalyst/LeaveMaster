@@ -9,6 +9,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
+
 @Entity
 @Table(name = "leave_type")
 @Data
@@ -26,6 +28,26 @@ public class LeaveType {
 
     @Column(nullable = false)
     private boolean used;
+
+    @Column(nullable = false)
+    private boolean active;
+
+    @Column(nullable = false)
+    private boolean statutory;
+
+    private Boolean paid;
+
+    @Column(name = "source_name")
+    private String sourceName;
+
+    @Column(name = "source_url", length = 1000)
+    private String sourceUrl;
+
+    @Column(name = "effective_from")
+    private LocalDate effectiveFrom;
+
+    @Column(name = "effective_to")
+    private LocalDate effectiveTo;
 
     @Column(name = "tenant_id")
     private String tenantId;

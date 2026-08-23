@@ -55,6 +55,26 @@ const tenantJurisdictionConfig: AdminResourceConfig = {
   ],
 };
 
+const leaveTypeConfig = () => {
+  const base = getBaseAdminResourceConfig('leave-types');
+  if (!base) return undefined;
+  return {
+    ...base,
+    fields: [
+      ...base.fields.map((field) => field.name === 'sourceJurisdictionLeaveTypeId'
+        ? { ...field, hidden: true, formHidden: true }
+        : { ...field }),
+      { name: 'active', label: 'Active', type: 'boolean' as const, list: true },
+      { name: 'statutory', label: 'Statutory', type: 'boolean' as const, list: true },
+      { name: 'paid', label: 'Paid', type: 'boolean' as const, list: true },
+      { name: 'sourceName', label: 'Source name' },
+      { name: 'sourceUrl', label: 'Source URL' },
+      { name: 'effectiveFrom', label: 'Effective from', type: 'date' as const },
+      { name: 'effectiveTo', label: 'Effective to', type: 'date' as const },
+    ],
+  };
+};
+
 const entitlementPolicyConfig = () => {
   const base = getBaseAdminResourceConfig('leave-entitlement-policies');
   if (!base) return undefined;
@@ -85,6 +105,7 @@ const eligibilityRuleConfig = () => {
 export const getAdminResourceConfig = (name?: string) => {
   if (name === 'public-holidays') return publicHolidayConfig;
   if (name === 'tenant-jurisdictions') return tenantJurisdictionConfig;
+  if (name === 'leave-types') return leaveTypeConfig();
   if (name === 'leave-entitlement-policies') return entitlementPolicyConfig();
   if (name === 'leave-entitlement-policy-eligibility-rules') return eligibilityRuleConfig();
   return getBaseAdminResourceConfig(name);

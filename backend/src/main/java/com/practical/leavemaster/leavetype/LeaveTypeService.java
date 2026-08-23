@@ -55,6 +55,13 @@ public class LeaveTypeService {
         LeaveType existing = findById(id)
                 .orElseThrow(() -> new LeaveTypeNotFoundException(id));
         existing.setName(updated.getName());
+        existing.setActive(updated.isActive());
+        existing.setStatutory(updated.isStatutory());
+        existing.setPaid(updated.getPaid());
+        existing.setSourceName(updated.getSourceName());
+        existing.setSourceUrl(updated.getSourceUrl());
+        existing.setEffectiveFrom(updated.getEffectiveFrom());
+        existing.setEffectiveTo(updated.getEffectiveTo());
         LeaveType saved = leaveTypeRepository.save(existing);
         tenantActivityService.touch(saved.getTenantId());
         return saved;

@@ -94,6 +94,13 @@ public class TenantLeaveConfigurationProvisionService {
                         .id(tenant.getId() + ":" + source.getCode())
                         .name(source.getName())
                         .used(false)
+                        .active(source.isActive())
+                        .statutory(source.isStatutory())
+                        .paid(source.getPaid())
+                        .sourceName(source.getSourceName())
+                        .sourceUrl(source.getSourceUrl())
+                        .effectiveFrom(source.getEffectiveFrom())
+                        .effectiveTo(source.getEffectiveTo())
                         .tenantId(tenant.getId())
                         .sourceJurisdictionLeaveTypeId(source.getId())
                         .build();
