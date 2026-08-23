@@ -73,10 +73,20 @@ const entitlementPolicyConfig = () => {
   return { ...base, fields: reorderedFields };
 };
 
+const eligibilityRuleConfig = () => {
+  const base = getBaseAdminResourceConfig('leave-entitlement-policy-eligibility-rules');
+  if (!base) return undefined;
+  return {
+    ...base,
+    fields: base.fields.map((field) => field.name === 'policyId' ? { ...field, label: 'Entitlement policy' } : { ...field }),
+  };
+};
+
 export const getAdminResourceConfig = (name?: string) => {
   if (name === 'public-holidays') return publicHolidayConfig;
   if (name === 'tenant-jurisdictions') return tenantJurisdictionConfig;
   if (name === 'leave-entitlement-policies') return entitlementPolicyConfig();
+  if (name === 'leave-entitlement-policy-eligibility-rules') return eligibilityRuleConfig();
   return getBaseAdminResourceConfig(name);
 };
 
