@@ -238,20 +238,18 @@ class StaffEntitlementProposalServiceTest {
     }
 
     @Test
-    void shouldRejectUnsupportedTemplatePolicyShapes() {
+    void shouldSkipUnsupportedTemplatePolicyShapes() {
         LeaveType annual = leaveType();
         setupResolution(annual, "policy");
 
         LeaveEntitlementPolicy hours = templatePolicy("policy", BigDecimal.TEN, AccrualMethod.ANNUAL, ProrationMethod.NONE);
         hours.setEntitlementUnit(EntitlementUnit.HOURS);
         when(policyRepository.findById("policy")).thenReturn(Optional.of(hours));
-        assertThatThrownBy(() -> proposalService.propose(new StaffEntitlementProposalRequest(null, "SG", joinDate, null)))
-                .hasMessageContaining("Only DAYS");
+        assertThat(proposalService.propose(new StaffEntitlementProposalRequest(null, "SG", joinDate, null))).isEmpty();
 
         LeaveEntitlementPolicy perPayPeriod = templatePolicy("policy", BigDecimal.TEN, AccrualMethod.PER_PAY_PERIOD, ProrationMethod.NONE);
         when(policyRepository.findById("policy")).thenReturn(Optional.of(perPayPeriod));
-        assertThatThrownBy(() -> proposalService.propose(new StaffEntitlementProposalRequest(null, "SG", joinDate, null)))
-                .hasMessageContaining("PER_PAY_PERIOD");
+        assertThat(proposalService.propose(new StaffEntitlementProposalRequest(null, "SG", joinDate, null))).isEmpty();
     }
 
     private void setupResolution(LeaveType leaveType, String policyId) {
