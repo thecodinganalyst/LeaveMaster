@@ -24,7 +24,7 @@ export const TenantLeaveTypeSelect = ({ value, onChange, disabled = false }: Pro
   });
 
   const options = (leaveTypesQuery.data ?? []).map((leaveType) => ({
-    label: `${leaveType.name} (${leaveType.id})`,
+    label: leaveType.name,
     value: leaveType.id,
   }));
 

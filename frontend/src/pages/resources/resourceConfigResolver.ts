@@ -55,9 +55,28 @@ const tenantJurisdictionConfig: AdminResourceConfig = {
   ],
 };
 
+const entitlementPolicyConfig = () => {
+  const base = getBaseAdminResourceConfig('leave-entitlement-policies');
+  if (!base) return undefined;
+
+  const fields = base.fields.map((field) => {
+    if (field.name === 'scope' || field.name === 'sourceTemplateId') return { ...field, audience: 'platform' as const };
+    if (field.name === 'leaveTypeId') return { ...field, label: 'Leave type' };
+    return { ...field };
+  });
+
+  const unit = fields.find((field) => field.name === 'entitlementUnit');
+  const reorderedFields = fields.filter((field) => field.name !== 'entitlementUnit');
+  const amountIndex = reorderedFields.findIndex((field) => field.name === 'entitlementAmount');
+  if (unit && amountIndex >= 0) reorderedFields.splice(amountIndex + 1, 0, unit);
+
+  return { ...base, fields: reorderedFields };
+};
+
 export const getAdminResourceConfig = (name?: string) => {
   if (name === 'public-holidays') return publicHolidayConfig;
   if (name === 'tenant-jurisdictions') return tenantJurisdictionConfig;
+  if (name === 'leave-entitlement-policies') return entitlementPolicyConfig();
   return getBaseAdminResourceConfig(name);
 };
 

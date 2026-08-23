@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { getAdminResourceConfig, normaliseFormValues } from './resourceConfigResolver.ts';
+import { getAdminResourceConfig, isAdminFieldVisible, normaliseFormValues } from './resourceConfigResolver.ts';
 
 describe('resourceConfigResolver staff write normalization', () => {
   it('submits entitlement leaveTypeId without nested leave type persistence fields', () => {
@@ -50,5 +50,22 @@ describe('resourceConfigResolver staff write normalization', () => {
       name: 'Annual',
       used: false,
     });
+  });
+
+  it('uses tenant-friendly entitlement policy fields and ordering', () => {
+    const config = getAdminResourceConfig('leave-entitlement-policies');
+    expect(config).toBeDefined();
+
+    const scope = config!.fields.find((field) => field.name === 'scope');
+    const sourceTemplateId = config!.fields.find((field) => field.name === 'sourceTemplateId');
+    const leaveType = config!.fields.find((field) => field.name === 'leaveTypeId');
+    expect(scope).toMatchObject({ label: 'Policy type', audience: 'platform' });
+    expect(sourceTemplateId).toMatchObject({ label: 'Source template ID', audience: 'platform' });
+    expect(isAdminFieldVisible(scope!, false)).toBe(false);
+    expect(isAdminFieldVisible(sourceTemplateId!, false)).toBe(false);
+    expect(leaveType?.label).toBe('Leave type');
+
+    const visibleOrder = config!.fields.map((field) => field.name);
+    expect(visibleOrder.indexOf('entitlementUnit')).toBe(visibleOrder.indexOf('entitlementAmount') + 1);
   });
 });
