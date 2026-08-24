@@ -9,6 +9,7 @@ import { JurisdictionSelect } from './JurisdictionSelect.tsx';
 import { PublicHolidayListField } from './PublicHolidayListField.tsx';
 import { RolePermissionCheckboxList } from './RolePermissionCheckboxList.tsx';
 import { StaffFormFields } from './StaffFormFields.tsx';
+import { StaffRoleSelect } from './StaffRoleSelect.tsx';
 import { TenantJurisdictionFormFields } from './TenantJurisdictionFormFields.tsx';
 import { TenantOnboardingFormFields } from './TenantOnboardingFormFields.tsx';
 import { shouldHideTenantInternalId } from './tenantInternalIdVisibility.ts';
@@ -31,7 +32,12 @@ export const ResourceFormFields = ({ config, editing = false, platformAdmin = fa
   }
 
   if (config.name === 'employees') {
-    return <StaffFormFields editing={editing} {...(recordId ? { staffId: recordId } : {})} />;
+    return (
+      <>
+        <StaffFormFields editing={editing} {...(recordId ? { staffId: recordId } : {})} />
+        <StaffRoleSelect />
+      </>
+    );
   }
 
   if (config.name === 'leave-entitlement-policies') {
