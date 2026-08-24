@@ -219,8 +219,8 @@ export const StaffFormFields = ({ editing = false, staffId }: Props) => {
       <Form.Item name="email" label="Email" rules={[{ type: 'email', message: 'Enter a valid email address' }]}>
         <Input type="email" />
       </Form.Item>
-      <Form.Item name="joinDate" label="Join date" rules={[{ required: true, message: 'Join date is required' }]}><Input type="date" /></Form.Item>
-      <Form.Item name="termDate" label="Termination date"><Input type="date" /></Form.Item>
+      <Form.Item name="joinDate" label="Join date" rules={[{ required: true, message: 'Join date is required' }]}><Input type="date" allowClear /></Form.Item>
+      <Form.Item name="termDate" label="Termination date"><Input type="date" allowClear /></Form.Item>
       <Form.Item name="loginName" label="Login name"><Input /></Form.Item>
 
       {noJurisdictions && (
@@ -285,12 +285,12 @@ export const StaffFormFields = ({ editing = false, staffId }: Props) => {
                     </Col>
                     <Col xs={12} md={5}>
                       <Form.Item {...field} name={[field.name, 'from']} label="From" rules={[{ required: true }]}>
-                        <Input type="date" />
+                        <Input type="date" allowClear />
                       </Form.Item>
                     </Col>
                     <Col xs={12} md={5}>
                       <Form.Item {...field} name={[field.name, 'to']} label="To" rules={[{ required: true }]}>
-                        <Input type="date" />
+                        <Input type="date" allowClear />
                       </Form.Item>
                     </Col>
                     <Col xs={18} md={5}>
