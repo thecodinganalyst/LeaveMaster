@@ -77,7 +77,6 @@ public class StaffService {
         Staff existing = staffRepository.findById(id)
                 .orElseThrow(() -> new StaffNotFoundException(id));
         existing.setName(updated.getName());
-        existing.setEmail(updated.getEmail());
         existing.setJoinDate(updated.getJoinDate());
         if (updated.getWorkSchedule() != null) {
             existing.setWorkSchedule(new ArrayList<>(updated.getWorkSchedule()));
