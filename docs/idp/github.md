@@ -5,8 +5,8 @@
 3. Set **Authorization callback URL**:
    - `http://localhost:8080/login/oauth2/code/github`
 4. Create the app and copy:
-   - `Client ID` → `GITHUB_CLIENT_ID`
-   - `Client secret` → `GITHUB_CLIENT_SECRET`
+   - `Client ID` → `GH_CLIENT_ID`
+   - `Client secret` → `GH_CLIENT_SECRET`
 
 Default authorization endpoint in LeaveMaster:
 
