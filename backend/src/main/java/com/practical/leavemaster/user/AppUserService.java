@@ -1,5 +1,7 @@
 package com.practical.leavemaster.user;
 
+import com.practical.leavemaster.rbac.AppRole;
+import com.practical.leavemaster.rbac.AppRoleRepository;
 import com.practical.leavemaster.tenant.TenantActivityService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -7,9 +9,13 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -19,6 +25,7 @@ public class AppUserService {
     private static final String PLATFORM_ADMIN_ROLE_ID = "PLATFORM_ADMIN";
 
     private final AppUserRepository appUserRepository;
+    private final AppRoleRepository appRoleRepository;
     private final PasswordEncoder passwordEncoder;
     private final TenantActivityService tenantActivityService;
 
@@ -117,10 +124,20 @@ public class AppUserService {
     }
 
     public AppUser createForStaff(String staffId, String loginName, String password, boolean active) {
-        return createForStaff(staffId, loginName, password, active, null);
+        return createForStaff(staffId, loginName, password, active, null, Set.of());
     }
 
     public AppUser createForStaff(String staffId, String loginName, String password, boolean active, String tenantId) {
+        return createForStaff(staffId, loginName, password, active, tenantId, Set.of());
+    }
+
+    public AppUser createForStaff(
+            String staffId,
+            String loginName,
+            String password,
+            boolean active,
+            String tenantId,
+            Set<String> roleIds) {
         if (appUserRepository.existsById(loginName)) {
             throw new DuplicateLoginNameException(loginName);
         }
@@ -132,7 +149,29 @@ public class AppUserService {
                 .oidcProvider(null)
                 .oidcSubject(null)
                 .tenantId(tenantId)
+                .roles(resolveStaffRoles(roleIds, tenantId))
                 .build();
+        AppUser saved = appUserRepository.save(user);
+        tenantActivityService.touch(saved.getTenantId());
+        return saved;
+    }
+
+    public Set<String> findRoleIdsByStaffId(String staffId) {
+        return appUserRepository.findByStaffId(staffId)
+                .map(user -> user.getRoles().stream()
+                        .filter(Objects::nonNull)
+                        .map(AppRole::getId)
+                        .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new)))
+                .orElseGet(LinkedHashSet::new);
+    }
+
+    public AppUser updateRolesByStaffId(String staffId, Set<String> roleIds, String tenantId) {
+        AppUser user = appUserRepository.findByStaffId(staffId)
+                .orElseThrow(() -> new AppUserNotFoundException(staffId));
+        if (!Objects.equals(user.getTenantId(), tenantId)) {
+            throw new IllegalArgumentException("Staff user does not belong to the staff tenant");
+        }
+        user.setRoles(resolveStaffRoles(roleIds, tenantId));
         AppUser saved = appUserRepository.save(user);
         tenantActivityService.touch(saved.getTenantId());
         return saved;
@@ -156,6 +195,33 @@ public class AppUserService {
             throw new IllegalArgumentException("Invalid credentials");
         }
         return user;
+    }
+
+    private Set<AppRole> resolveStaffRoles(Set<String> roleIds, String tenantId) {
+        Set<String> normalizedRoleIds = new LinkedHashSet<>();
+        if (roleIds != null) {
+            for (String roleId : roleIds) {
+                if (roleId == null || roleId.isBlank()) {
+                    throw new IllegalArgumentException("Role id must not be blank");
+                }
+                String normalizedRoleId = roleId.trim();
+                if (PLATFORM_ADMIN_ROLE_ID.equalsIgnoreCase(normalizedRoleId)) {
+                    throw new IllegalArgumentException("Platform administrator role cannot be assigned to staff");
+                }
+                normalizedRoleIds.add(normalizedRoleId);
+            }
+        }
+
+        Set<AppRole> roles = new HashSet<>();
+        for (String roleId : normalizedRoleIds) {
+            AppRole role = appRoleRepository.findById(roleId)
+                    .orElseThrow(() -> new IllegalArgumentException("Role not found: " + roleId));
+            if (!Objects.equals(tenantId, role.getTenantId())) {
+                throw new IllegalArgumentException("Role does not belong to the staff tenant: " + roleId);
+            }
+            roles.add(role);
+        }
+        return roles;
     }
 
     private void validateSelfServicePassword(String newPassword) {

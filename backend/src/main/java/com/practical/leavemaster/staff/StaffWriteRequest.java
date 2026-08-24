@@ -7,6 +7,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Explicit API contract for creating and updating staff.
@@ -23,7 +24,8 @@ public record StaffWriteRequest(
         LocalDate termDate,
         String jurisdictionId,
         List<EntitlementInput> leaveEntitlements,
-        String loginName) {
+        String loginName,
+        Set<String> roleIds) {
 
     public Staff toStaff() {
         return Staff.builder()
@@ -36,6 +38,7 @@ public record StaffWriteRequest(
                 .jurisdictionId(jurisdictionId)
                 .leaveEntitlements(toEntitlements(leaveEntitlements))
                 .loginName(loginName)
+                .roleIds(roleIds)
                 .build();
     }
 

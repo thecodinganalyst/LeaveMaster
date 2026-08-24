@@ -20,7 +20,9 @@ import lombok.ToString;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 @Entity
 @Table(name = "staff")
@@ -63,6 +65,13 @@ public class Staff {
     @Transient
     private String loginName;
 
+    @Transient
+    private Set<String> roleIds;
+
     @Column(name = "tenant_id")
     private String tenantId;
+
+    public void setRoleIds(Set<String> roleIds) {
+        this.roleIds = roleIds == null ? null : new LinkedHashSet<>(roleIds);
+    }
 }
