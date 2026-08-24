@@ -302,9 +302,7 @@ export const StaffFormFields = ({ editing = false, staffId }: Props) => {
                       <Button danger type="link" onClick={() => remove(field.name)}>Remove</Button>
                     </Col>
                   </Row>
-                  <Form.Item {...field} name={[field.name, 'policyId']} label="Source policy">
-                    <Input readOnly placeholder="Manual entitlement" />
-                  </Form.Item>
+                  <Form.Item {...field} name={[field.name, 'policyId']} hidden><Input /></Form.Item>
                   <Form.Item {...field} name={[field.name, 'id']} hidden><Input /></Form.Item>
                   <Form.Item {...field} name={[field.name, 'baseEntitlementAmount']} hidden><InputNumber /></Form.Item>
                   <Form.Item {...field} name={[field.name, 'carriedForwardAmount']} hidden><InputNumber /></Form.Item>
