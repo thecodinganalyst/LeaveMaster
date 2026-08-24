@@ -20,7 +20,7 @@ describe('Staff detail structured fields', () => {
     expect(screen.queryByText(/dayOfWeek/)).not.toBeInTheDocument();
   });
 
-  it('renders leave entitlements with business-facing data and hides internal ids', () => {
+  it('groups leave entitlements by period and hides internal ids', () => {
     render(<StaffLeaveEntitlementsField value={JSON.stringify([
       {
         id: 'entitlement-123',
@@ -33,11 +33,30 @@ describe('Staff detail structured fields', () => {
         carriedForwardAmount: 1,
         adjustmentAmount: 1,
       },
+      {
+        id: 'entitlement-456',
+        leaveType: { id: 'leave-type-456', name: 'Marriage Leave' },
+        from: '2026-01-01',
+        to: '2026-12-31',
+        entitlement: 2,
+        baseEntitlementAmount: 2,
+        carriedForwardAmount: 0,
+        adjustmentAmount: 0,
+      },
+      {
+        leaveType: { name: 'Sick Leave' },
+        from: '2026-11-10',
+        to: '2026-12-31',
+        entitlement: 5,
+      },
     ])} />);
 
     expect(screen.getByText('Annual Leave')).toBeInTheDocument();
+    expect(screen.getByText('Marriage Leave')).toBeInTheDocument();
+    expect(screen.getByText('Sick Leave')).toBeInTheDocument();
     expect(screen.getByText('2026-01-01 to 2026-12-31')).toBeInTheDocument();
-    expect(screen.getByText('14')).toBeInTheDocument();
+    expect(screen.getByText('2026-11-10 to 2026-12-31')).toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: 'Period' })).not.toBeInTheDocument();
     expect(screen.getByText('Base 12 · Carry forward 1 · Adjustment 1')).toBeInTheDocument();
     expect(screen.queryByText('entitlement-123')).not.toBeInTheDocument();
     expect(screen.queryByText('leave-type-123')).not.toBeInTheDocument();
