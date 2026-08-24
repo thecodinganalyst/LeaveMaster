@@ -16,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -45,31 +46,38 @@ public class StaffService {
     private final AppUserRepository appUserRepository;
 
     public List<Staff> findAll() {
-        return staffRepository.findAll();
+        List<Staff> staff = staffRepository.findAll();
+        staff.forEach(this::hydrateRoleIds);
+        return staff;
     }
 
     public Optional<Staff> findById(String id) {
-        return staffRepository.findById(id);
+        return staffRepository.findById(id).map(this::hydrateRoleIds);
     }
 
+    @Transactional
     public Staff save(Staff staff) {
         enforceCurrentTenantAndJurisdiction(staff, false);
         if (staff.getLeaveEntitlements() != null) {
             staff.setLeaveEntitlements(normalizeLeaveEntitlements(staff, staff.getLeaveEntitlements()));
         }
+        Set<String> roleIds = staff.getRoleIds() == null ? Set.of() : new HashSet<>(staff.getRoleIds());
         Staff saved = staffRepository.save(staff);
         String loginName = (staff.getLoginName() != null && !staff.getLoginName().isBlank())
                 ? staff.getLoginName() : staff.getId();
         boolean active = staff.getJoinDate() != null && !staff.getJoinDate().isAfter(LocalDate.now());
-        appUserService.createForStaff(saved.getId(), loginName, loginName, active, saved.getTenantId());
+        appUserService.createForStaff(saved.getId(), loginName, loginName, active, saved.getTenantId(), roleIds);
+        saved.setRoleIds(roleIds);
         tenantActivityService.touch(saved.getTenantId());
         return saved;
     }
 
+    @Transactional
     public Staff update(String id, Staff updated) {
         Staff existing = staffRepository.findById(id)
                 .orElseThrow(() -> new StaffNotFoundException(id));
         existing.setName(updated.getName());
+        existing.setEmail(updated.getEmail());
         existing.setJoinDate(updated.getJoinDate());
         if (updated.getWorkSchedule() != null) {
             existing.setWorkSchedule(new ArrayList<>(updated.getWorkSchedule()));
@@ -82,7 +90,11 @@ public class StaffService {
             existing.getLeaveEntitlements().clear();
             existing.getLeaveEntitlements().addAll(normalized);
         }
+        if (updated.getRoleIds() != null) {
+            appUserService.updateRolesByStaffId(id, new HashSet<>(updated.getRoleIds()), existing.getTenantId());
+        }
         Staff saved = staffRepository.save(existing);
+        hydrateRoleIds(saved);
         tenantActivityService.touch(saved.getTenantId());
         return saved;
     }
@@ -154,6 +166,11 @@ public class StaffService {
         }
         tenantActivityService.touch(saved.getTenantId());
         return new TerminationResult(saved, staffWithNoApprover);
+    }
+
+    private Staff hydrateRoleIds(Staff staff) {
+        staff.setRoleIds(appUserService.findRoleIdsByStaffId(staff.getId()));
+        return staff;
     }
 
     private void enforceCurrentTenantAndJurisdiction(Staff staff, boolean existingStaff) {
