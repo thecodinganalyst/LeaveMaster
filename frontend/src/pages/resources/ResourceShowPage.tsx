@@ -34,6 +34,10 @@ export const tenantLeaveTypeSourceLink = (value: unknown) => {
   return <a href={url} target="_blank" rel="noopener noreferrer">{url}</a>;
 };
 
+const staffRoles = (value: unknown) => Array.isArray(value) && value.length > 0
+  ? value.map(String).join(', ')
+  : '—';
+
 export const ResourceShowPage = () => {
   const { resource } = useResource();
   const { id } = useParams();
@@ -76,6 +80,9 @@ export const ResourceShowPage = () => {
               )}
             </Descriptions.Item>
           ))}
+          {config.name === 'employees' ? (
+            <Descriptions.Item label="Roles">{staffRoles(record.roleIds)}</Descriptions.Item>
+          ) : null}
         </Descriptions>
       </Card>
       {config.name === 'roles' && canEdit?.can ? <RoleMembershipCard roleId={id} /> : null}
