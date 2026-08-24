@@ -81,7 +81,7 @@ class TenantServiceTest {
         assertThat(result.getLastModified()).isNotNull();
         verify(tenantJurisdictionRepository).save(any(TenantJurisdiction.class));
         verify(tenantLeaveConfigurationProvisionService).provision(result);
-        verify(tenantAdminProvisionService).provision("t1");
+        verify(tenantAdminProvisionService).provision("t1", "Tenant 1");
     }
 
     @Test
@@ -103,7 +103,7 @@ class TenantServiceTest {
         verify(tenantLeaveConfigurationProvisionService).provision(result,
                 new TenantJurisdictionProvisionRequest("SG", true, true, calendarStart, calendarEnd));
         verify(tenantLeaveConfigurationProvisionService).provision(result, my);
-        verify(tenantAdminProvisionService).provision("t1");
+        verify(tenantAdminProvisionService).provision("t1", "Tenant 1");
     }
 
     @Test
