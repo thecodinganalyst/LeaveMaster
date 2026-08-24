@@ -5,11 +5,12 @@ import { Link, useParams } from 'react-router-dom';
 import { LoadingState } from '../../components/common/LoadingState.tsx';
 import { PageContainer } from '../../components/common/PageContainer.tsx';
 import { PageHeader } from '../../components/common/PageHeader.tsx';
+import { PublicHolidayTable } from './PublicHolidayTable.tsx';
 import type { AdminField } from './resourceConfigResolver.ts';
 import { getAdminResourceConfig, isAdminFieldVisible, toFormValues } from './resourceConfigResolver.ts';
-import { PublicHolidayTable } from './PublicHolidayTable.tsx';
 import { RoleMembershipCard } from './RoleMembershipCard.tsx';
 import { RolePermissionCheckboxList } from './RolePermissionCheckboxList.tsx';
+import { StaffLeaveEntitlementsField, StaffWorkScheduleField } from './StaffDetailStructuredFields.tsx';
 import { TenantEntitlementPolicySummary } from './TenantEntitlementPolicySummary.tsx';
 import { TenantLeaveTypeName } from './TenantLeaveTypeName.tsx';
 import { shouldHideTenantInternalId, shouldShowResourceIdSubtitle } from './tenantInternalIdVisibility.ts';
@@ -69,6 +70,10 @@ export const ResourceShowPage = () => {
                 <RolePermissionCheckboxList value={(record[field.name] as string[] | undefined) ?? []} disabled />
               ) : field.type === 'holiday-list' ? (
                 <PublicHolidayTable value={record[field.name]} />
+              ) : config.name === 'employees' && field.name === 'workSchedule' ? (
+                <StaffWorkScheduleField value={record[field.name]} />
+              ) : config.name === 'employees' && field.name === 'leaveEntitlements' ? (
+                <StaffLeaveEntitlementsField value={record[field.name]} />
               ) : config.name === 'leave-types' && field.name === 'sourceUrl' && !platformAdmin ? (
                 tenantLeaveTypeSourceLink(record[field.name])
               ) : config.name === 'leave-entitlement-policies' && field.name === 'leaveTypeId' && !platformAdmin ? (
