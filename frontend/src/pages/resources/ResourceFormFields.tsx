@@ -136,7 +136,7 @@ export const ResourceFormFields = ({ config, editing = false, platformAdmin = fa
         const inputType = field.type === 'date' ? 'date' : field.type === 'email' ? 'email' : 'text';
         const input = field.type === 'password'
           ? <Input.Password disabled={disabled} autoComplete="new-password" />
-          : <Input type={inputType} disabled={disabled} />;
+          : <Input type={inputType} disabled={disabled} allowClear={field.type === 'date'} />;
 
         return (
           <Form.Item key={field.name} {...itemProps}>
