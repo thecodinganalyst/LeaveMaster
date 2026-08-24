@@ -90,7 +90,7 @@ export const ApplyLeavePage = () => {
             <Select options={leaveTypes.map((leaveType) => ({ value: leaveType.id, label: leaveType.name }))} placeholder="Select leave type" />
           </Form.Item>
           <Form.Item name="fromDate" label="From date" rules={[{ required: true, message: 'Select a start date' }]}>
-            <Input type="date" />
+            <Input type="date" allowClear />
           </Form.Item>
           <Form.Item
             name="toDate"
@@ -108,7 +108,7 @@ export const ApplyLeavePage = () => {
               }),
             ]}
           >
-            <Input type="date" />
+            <Input type="date" allowClear />
           </Form.Item>
           <Form.Item name="leaveDuration" label="Duration" rules={[{ required: true }]}>
             <Select options={[
@@ -127,11 +127,11 @@ export const ApplyLeavePage = () => {
             style={{ marginBottom: 16 }}
           />
           <Form.Item name="eventDate" label="Event date">
-            <Input type="date" />
+            <Input type="date" allowClear />
           </Form.Item>
           <Space.Compact block style={{ alignItems: 'flex-start' }}>
-            <div style={{ flex: 1 }}><Form.Item name="eventStartDate" label="Event start date"><Input type="date" /></Form.Item></div>
-            <div style={{ flex: 1 }}><Form.Item name="eventEndDate" label="Event end date"><Input type="date" /></Form.Item></div>
+            <div style={{ flex: 1 }}><Form.Item name="eventStartDate" label="Event start date"><Input type="date" allowClear /></Form.Item></div>
+            <div style={{ flex: 1 }}><Form.Item name="eventEndDate" label="Event end date"><Input type="date" allowClear /></Form.Item></div>
           </Space.Compact>
           <Form.Item name="eventExternalReference" label="Event reference" extra="Optional reference such as a call-up notice or case number.">
             <Input />
