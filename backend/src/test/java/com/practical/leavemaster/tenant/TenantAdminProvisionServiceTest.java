@@ -47,6 +47,7 @@ class TenantAdminProvisionServiceTest {
     @Test
     void shouldCreateTenantAdminAndThreeDefaultTenantRoles() {
         String tenantId = "ACME";
+        String tenantName = "Acme Corporation";
         when(appRoleRepository.findById(anyString())).thenReturn(Optional.empty());
         when(appPermissionRepository.findAllById(anyCollection())).thenAnswer(invocation -> {
             Iterable<String> codes = invocation.getArgument(0);
@@ -59,16 +60,16 @@ class TenantAdminProvisionServiceTest {
         when(passwordEncoder.encode("test-password")).thenReturn("$2a$encoded");
         when(appUserRepository.save(any(AppUser.class))).thenAnswer(i -> i.getArgument(0));
 
-        service.provision(tenantId);
+        service.provision(tenantId, tenantName);
 
         ArgumentCaptor<AppRole> roleCaptor = ArgumentCaptor.forClass(AppRole.class);
         verify(appRoleRepository, times(4)).save(roleCaptor.capture());
         Map<String, AppRole> rolesById = new HashMap<>();
         roleCaptor.getAllValues().forEach(role -> rolesById.put(role.getId(), role));
-        assertRole(rolesById.get("ACME_Staff"), tenantId, TenantAdminProvisionService.STAFF_PERMISSION_CODES);
-        assertRole(rolesById.get("ACME_Manager"), tenantId, TenantAdminProvisionService.MANAGER_PERMISSION_CODES);
-        assertRole(rolesById.get("ACME_HR"), tenantId, TenantAdminProvisionService.HR_PERMISSION_CODES);
-        assertRole(rolesById.get("ACME_Admin"), tenantId, TenantAdminProvisionService.TENANT_ADMIN_PERMISSION_CODES);
+        assertRole(rolesById.get("ACME_Staff"), tenantId, "Acme Corporation Staff", TenantAdminProvisionService.STAFF_PERMISSION_CODES);
+        assertRole(rolesById.get("ACME_Manager"), tenantId, "Acme Corporation Manager", TenantAdminProvisionService.MANAGER_PERMISSION_CODES);
+        assertRole(rolesById.get("ACME_HR"), tenantId, "Acme Corporation HR", TenantAdminProvisionService.HR_PERMISSION_CODES);
+        assertRole(rolesById.get("ACME_Admin"), tenantId, "Acme Corporation Tenant Admin", TenantAdminProvisionService.TENANT_ADMIN_PERMISSION_CODES);
 
         ArgumentCaptor<AppUser> userCaptor = ArgumentCaptor.forClass(AppUser.class);
         verify(appUserRepository).save(userCaptor.capture());
@@ -123,7 +124,7 @@ class TenantAdminProvisionServiceTest {
             return Optional.of(AppRole.builder().id(roleId).description(roleId).active(true).tenantId(tenantId).build());
         });
         when(appUserRepository.existsById("ACME_Admin")).thenReturn(true);
-        service.provision(tenantId);
+        service.provision(tenantId, "Acme Corporation");
         verify(appRoleRepository, never()).save(any());
         verify(appPermissionRepository, never()).findAllById(anyCollection());
         verify(appUserRepository, never()).save(any());
@@ -135,9 +136,10 @@ class TenantAdminProvisionServiceTest {
         verify(appRoleRepository).deleteAllByTenantId("ACME");
     }
 
-    private static void assertRole(AppRole role, String tenantId, Set<String> expectedPermissionCodes) {
+    private static void assertRole(AppRole role, String tenantId, String expectedDescription, Set<String> expectedPermissionCodes) {
         assertThat(role).isNotNull();
         assertThat(role.getTenantId()).isEqualTo(tenantId);
+        assertThat(role.getDescription()).isEqualTo(expectedDescription);
         assertThat(role.isActive()).isTrue();
         assertThat(role.getPermissions()).extracting(AppPermission::getCode)
                 .containsExactlyInAnyOrderElementsOf(expectedPermissionCodes);

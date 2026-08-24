@@ -79,7 +79,7 @@ public class TenantService {
             }
         }
 
-        tenantAdminProvisionService.provision(saved.getId());
+        tenantAdminProvisionService.provision(saved.getId(), saved.getName());
         return saved;
     }
 
