@@ -26,17 +26,23 @@ class AppUserDetailsServiceTest {
     private AppUserDetailsService appUserDetailsService;
 
     @Test
-    void shouldLoadAuthoritiesFromActiveRolesOnly() {
+    void shouldLoadDistinctUnionOfAuthoritiesFromAllActiveRoles() {
         AppPermission tenantRead = AppPermission.builder().code("TENANT_READ").description("Read tenant data").build();
         AppPermission staffWrite = AppPermission.builder().code("STAFF_WRITE").description("Write staff data").build();
+        AppPermission leaveApprove = AppPermission.builder().code("LEAVE_APPROVE").description("Approve leave").build();
 
-        AppRole activeRole = AppRole.builder()
+        AppRole managerRole = AppRole.builder()
                 .id("MANAGER")
                 .description("Manager")
                 .active(true)
                 .permissions(Set.of(tenantRead, staffWrite))
                 .build();
-
+        AppRole approverRole = AppRole.builder()
+                .id("APPROVER")
+                .description("Approver")
+                .active(true)
+                .permissions(Set.of(tenantRead, leaveApprove))
+                .build();
         AppRole disabledRole = AppRole.builder()
                 .id("OLD")
                 .description("Disabled")
@@ -48,7 +54,7 @@ class AppUserDetailsServiceTest {
                 .loginName("alice")
                 .password("{noop}password")
                 .active(true)
-                .roles(Set.of(activeRole, disabledRole))
+                .roles(Set.of(managerRole, approverRole, disabledRole))
                 .build();
 
         when(appUserRepository.findById("alice")).thenReturn(Optional.of(user));
@@ -57,7 +63,7 @@ class AppUserDetailsServiceTest {
 
         assertThat(details.getAuthorities())
                 .extracting("authority")
-                .containsExactlyInAnyOrder("TENANT_READ", "STAFF_WRITE")
+                .containsExactlyInAnyOrder("TENANT_READ", "STAFF_WRITE", "LEAVE_APPROVE")
                 .doesNotContain("USER_WRITE");
     }
 
