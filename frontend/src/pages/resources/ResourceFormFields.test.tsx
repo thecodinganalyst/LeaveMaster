@@ -35,6 +35,16 @@ const leaveTypeConfig: AdminResourceConfig = {
   ],
 };
 
+const dateConfig: AdminResourceConfig = {
+  name: 'test-dates',
+  label: 'Test dates',
+  singular: 'Test date',
+  idField: 'id',
+  fields: [
+    { name: 'effectiveTo', label: 'Optional date', type: 'date' },
+  ],
+};
+
 describe('ResourceFormFields numeric fields', () => {
   it('renders integer number input with configured minimum, step, default, and guidance', () => {
     render(
@@ -63,6 +73,23 @@ describe('ResourceFormFields numeric fields', () => {
 
     await waitFor(() => expect(screen.getByText(/must be a whole number of at least 0/)).toBeInTheDocument());
     expect(onFinish).not.toHaveBeenCalled();
+  });
+});
+
+describe('ResourceFormFields date fields', () => {
+  it('provides a clear action after a date has been selected', () => {
+    const { container } = render(
+      <Form initialValues={{ effectiveTo: '2026-12-31' }}>
+        <ResourceFormFields config={dateConfig} />
+      </Form>,
+    );
+
+    const input = screen.getByLabelText('Optional date');
+    expect(input).toHaveValue('2026-12-31');
+    const clear = container.querySelector('.ant-input-clear-icon');
+    expect(clear).not.toBeNull();
+    fireEvent.click(clear!);
+    expect(input).toHaveValue('');
   });
 });
 
