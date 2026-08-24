@@ -92,9 +92,11 @@ public class AssistantService {
 
         List<AssistantDtos.PendingAction> pendingActions = new ArrayList<>();
         List<AssistantDtos.StructuredResult> structuredResults = new ArrayList<>();
-        ToolCallback[] tools = AssistantToolAdapter.forUser(
-                leaveMasterTools.getToolCallbacks(), authentication, user, objectMapper, pendingActions, structuredResults,
-                conversationId, confirmationService, auditService, trace);
+        ToolCallback[] tools = AssistantToolSchemaNormalizer.normalize(
+                AssistantToolAdapter.forUser(
+                        leaveMasterTools.getToolCallbacks(), authentication, user, objectMapper, pendingActions, structuredResults,
+                        conversationId, confirmationService, auditService, trace),
+                objectMapper);
 
         log.info("Ask LeaveMaestro request started: provider={}, model={}, conversationId={}, actorLogin={}, tenantId={}, timeoutSeconds={}, providerRetryMaxAttempts={}",
                 provider, model, conversationId, user.getLoginName(), user.getTenantId(), timeoutSeconds,
@@ -157,7 +159,6 @@ public class AssistantService {
         } catch (ExecutionException e) {
             Throwable cause = e.getCause();
             if (cause instanceof AccessDeniedException accessDenied) throw accessDenied;
-            if (cause instanceof IllegalArgumentException illegalArgument) throw illegalArgument;
 
             providerGuard.failure();
             Throwable failure = cause == null ? e : cause;
