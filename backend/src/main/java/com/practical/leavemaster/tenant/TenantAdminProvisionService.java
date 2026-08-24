@@ -88,20 +88,20 @@ public class TenantAdminProvisionService {
     private String tenantAdminDefaultPassword;
 
     @Transactional
-    public void provision(String tenantId) {
+    public void provision(String tenantId, String tenantName) {
         String tenantAdminId = tenantRoleId(tenantId, ADMIN_ROLE_SUFFIX);
         AppRole tenantAdminRole = provisionRole(
                 tenantAdminId,
-                "Tenant administrator for tenant " + tenantId,
+                tenantName + " Tenant Admin",
                 tenantId,
                 TENANT_ADMIN_PERMISSION_CODES
         );
 
-        provisionRole(tenantRoleId(tenantId, STAFF_ROLE_SUFFIX), "Standard staff role for tenant " + tenantId,
+        provisionRole(tenantRoleId(tenantId, STAFF_ROLE_SUFFIX), tenantName + " Staff",
                 tenantId, STAFF_PERMISSION_CODES);
-        provisionRole(tenantRoleId(tenantId, MANAGER_ROLE_SUFFIX), "Manager and leave approver role for tenant " + tenantId,
+        provisionRole(tenantRoleId(tenantId, MANAGER_ROLE_SUFFIX), tenantName + " Manager",
                 tenantId, MANAGER_PERMISSION_CODES);
-        provisionRole(tenantRoleId(tenantId, HR_ROLE_SUFFIX), "HR operations role for tenant " + tenantId,
+        provisionRole(tenantRoleId(tenantId, HR_ROLE_SUFFIX), tenantName + " HR",
                 tenantId, HR_PERMISSION_CODES);
 
         if (!appUserRepository.existsById(tenantAdminId)) {
