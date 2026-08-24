@@ -52,10 +52,10 @@ export const TenantJurisdictionFormFields = () => {
         <Switch />
       </Form.Item>
       <Form.Item name="calendarStart" label="Calendar start" rules={[{ required: true, message: 'Calendar start is required' }]}>
-        <Input type="date" />
+        <Input type="date" allowClear />
       </Form.Item>
       <Form.Item name="calendarEnd" label="Calendar end" rules={[{ required: true, message: 'Calendar end is required' }]}>
-        <Input type="date" />
+        <Input type="date" allowClear />
       </Form.Item>
     </>
   );
