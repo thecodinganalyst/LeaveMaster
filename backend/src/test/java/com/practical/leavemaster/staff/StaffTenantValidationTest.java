@@ -24,6 +24,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -62,7 +63,7 @@ class StaffTenantValidationTest {
 
         assertThat(saved.getTenantId()).isEqualTo("tenant-a");
         assertThat(saved.getJurisdictionId()).isEqualTo("SG");
-        verify(appUserService).createForStaff("S1", "S1", "S1", true, "tenant-a");
+        verify(appUserService).createForStaff("S1", "S1", "S1", true, "tenant-a", Set.of());
         verify(tenantActivityService).touch("tenant-a");
     }
 
