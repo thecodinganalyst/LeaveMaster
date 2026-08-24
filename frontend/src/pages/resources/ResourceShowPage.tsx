@@ -29,6 +29,12 @@ const displayValue = (field: AdminField, value: unknown) => {
   return String(value ?? '—');
 };
 
+const staffDetailFieldLabel = (field: AdminField) => {
+  if (field.name === 'workSchedule') return 'Work schedule';
+  if (field.name === 'leaveEntitlements') return 'Leave entitlements';
+  return field.label;
+};
+
 export const tenantLeaveTypeSourceLink = (value: unknown) => {
   const url = typeof value === 'string' ? value.trim() : '';
   if (!url) return <span>—</span>;
@@ -65,7 +71,7 @@ export const ResourceShowPage = () => {
             && !field.hidden
             && isAdminFieldVisible(field, platformAdmin)
             && !shouldHideTenantInternalId(config.name, config.idField, field.name, platformAdmin)).map((field) => (
-            <Descriptions.Item key={field.name} label={field.label}>
+            <Descriptions.Item key={field.name} label={config.name === 'employees' ? staffDetailFieldLabel(field) : field.label}>
               {field.type === 'permissions' ? (
                 <RolePermissionCheckboxList value={(record[field.name] as string[] | undefined) ?? []} disabled />
               ) : field.type === 'holiday-list' ? (
