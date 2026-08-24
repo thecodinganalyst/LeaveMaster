@@ -121,6 +121,9 @@ export const toFormValues = (config: AdminResourceConfig, record: Record<string,
 
 export const normaliseFormValues = (config: AdminResourceConfig, values: Record<string, unknown>) => {
   const result = normaliseBaseFormValues(config, values);
+  for (const field of config.fields) {
+    if (field.type === 'date' && values[field.name] === '') result[field.name] = null;
+  }
   if (config.name !== 'employees' || !Array.isArray(result.leaveEntitlements)) return result;
 
   result.leaveEntitlements = (result.leaveEntitlements as Array<Record<string, unknown>>).map((entitlement) => {
