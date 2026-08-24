@@ -1,4 +1,4 @@
-import { Table, Tag, Typography } from 'antd';
+import { Space, Table, Tag, Typography } from 'antd';
 
 import { STAFF_SCHEDULE_DAYS, type DaySchedule, type WorkScheduleDayValue } from './staffFormHelpers.ts';
 
@@ -54,9 +54,9 @@ export const StaffWorkScheduleField = ({ value }: { value: unknown }) => {
       pagination={false}
       dataSource={rows}
       rowKey="key"
-      scroll={{ x: 360 }}
+      tableLayout="fixed"
       columns={[
-        { title: 'Day', dataIndex: 'day', key: 'day' },
+        { title: 'Day', dataIndex: 'day', key: 'day', width: '45%' },
         {
           title: 'Schedule',
           dataIndex: 'schedule',
@@ -81,48 +81,64 @@ const entitlementBreakdown = (entitlement: LeaveEntitlementValue) => {
   return parts.length > 0 ? parts.join(' · ') : '—';
 };
 
+const entitlementPeriod = (entitlement: LeaveEntitlementValue) => entitlement.from || entitlement.to
+  ? `${entitlement.from ?? '—'} to ${entitlement.to ?? '—'}`
+  : 'Period not specified';
+
 export const StaffLeaveEntitlementsField = ({ value }: { value: unknown }) => {
   const entitlements = parseStructuredArray(value).filter((entry): entry is LeaveEntitlementValue => Boolean(entry && typeof entry === 'object'));
 
   if (entitlements.length === 0) return <Typography.Text type="secondary">No leave entitlements configured.</Typography.Text>;
 
-  const rows = entitlements.map((entitlement, index) => ({
-    ...entitlement,
-    key: `${entitlement.leaveType?.name ?? 'entitlement'}-${entitlement.from ?? index}-${index}`,
-  }));
+  const grouped = new Map<string, Array<LeaveEntitlementValue & { key: string }>>();
+  entitlements.forEach((entitlement, index) => {
+    const period = entitlementPeriod(entitlement);
+    const rows = grouped.get(period) ?? [];
+    rows.push({
+      ...entitlement,
+      key: `${entitlement.leaveType?.name ?? 'entitlement'}-${entitlement.from ?? index}-${index}`,
+    });
+    grouped.set(period, rows);
+  });
 
   return (
-    <Table
-      size="small"
-      pagination={false}
-      dataSource={rows}
-      rowKey="key"
-      scroll={{ x: 720 }}
-      columns={[
-        {
-          title: 'Leave type',
-          key: 'leaveType',
-          render: (_, entitlement) => entitlement.leaveType?.name || '—',
-        },
-        {
-          title: 'Period',
-          key: 'period',
-          render: (_, entitlement) => entitlement.from || entitlement.to
-            ? `${entitlement.from ?? '—'} to ${entitlement.to ?? '—'}`
-            : '—',
-        },
-        {
-          title: 'Entitlement',
-          dataIndex: 'entitlement',
-          key: 'entitlement',
-          render: displayNumber,
-        },
-        {
-          title: 'Breakdown',
-          key: 'breakdown',
-          render: (_, entitlement) => entitlementBreakdown(entitlement),
-        },
-      ]}
-    />
+    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+      {[...grouped.entries()].map(([period, rows]) => (
+        <div key={period}>
+          <Typography.Text strong style={{ display: 'block', marginBottom: 8 }}>
+            {period}
+          </Typography.Text>
+          <Table
+            size="small"
+            pagination={false}
+            dataSource={rows}
+            rowKey="key"
+            tableLayout="fixed"
+            columns={[
+              {
+                title: 'Leave type',
+                key: 'leaveType',
+                width: '32%',
+                render: (_, entitlement) => entitlement.leaveType?.name || '—',
+              },
+              {
+                title: 'Entitlement',
+                dataIndex: 'entitlement',
+                key: 'entitlement',
+                width: '22%',
+                render: displayNumber,
+              },
+              {
+                title: 'Breakdown',
+                key: 'breakdown',
+                render: (_, entitlement) => (
+                  <span style={{ overflowWrap: 'anywhere' }}>{entitlementBreakdown(entitlement)}</span>
+                ),
+              },
+            ]}
+          />
+        </div>
+      ))}
+    </Space>
   );
 };
