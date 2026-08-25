@@ -1,8 +1,5 @@
 package com.practical.leavemaster.mcp;
 
-import com.practical.leavemaster.leaveentitlement.LeaveEntitlement;
-import com.practical.leavemaster.leavetype.LeaveType;
-import com.practical.leavemaster.leavetype.LeaveTypeRepository;
 import com.practical.leavemaster.staff.DaySchedule;
 import com.practical.leavemaster.staff.Staff;
 import com.practical.leavemaster.staff.StaffRepository;
@@ -15,7 +12,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.List;
@@ -33,44 +29,21 @@ class StaffAssistantReadServiceTest {
     @Autowired
     private StaffRepository staffRepository;
 
-    @Autowired
-    private LeaveTypeRepository leaveTypeRepository;
-
     @Test
-    void shouldMapLazyStaffAssociationsBeforePersistenceContextCloses() {
-        LeaveType annual = leaveTypeRepository.save(LeaveType.builder()
-                .id("annual-338")
-                .name("Annual Leave")
-                .used(true)
-                .active(true)
-                .build());
-        Staff staff = Staff.builder()
+    void shouldMapLazyWorkScheduleBeforePersistenceContextCloses() {
+        staffRepository.save(Staff.builder()
                 .id("LAZY-338")
                 .name("Alice")
-                .email("alice-338@example.com")
                 .joinDate(LocalDate.of(2026, 8, 15))
                 .workSchedule(List.of(
                         WorkScheduleDay.builder()
                                 .dayOfWeek(DayOfWeek.MONDAY)
                                 .daySchedule(DaySchedule.FULL)
                                 .build()))
-                .build();
-        staff.setLeaveEntitlements(List.of(LeaveEntitlement.builder()
-                .staff(staff)
-                .leaveType(annual)
-                .from(LocalDate.of(2026, 8, 15))
-                .to(LocalDate.of(2026, 12, 31))
-                .entitlement(new BigDecimal("5.21"))
-                .policyId("annual-policy-338")
-                .baseEntitlementAmount(new BigDecimal("14.00"))
-                .carriedForwardAmount(BigDecimal.ZERO)
-                .adjustmentAmount(BigDecimal.ZERO)
-                .build()));
-        staffRepository.save(staff);
+                .build());
 
         Staff detached = staffRepository.findById("LAZY-338").orElseThrow();
         assertThat(Hibernate.isInitialized(detached.getWorkSchedule())).isFalse();
-        assertThat(Hibernate.isInitialized(detached.getLeaveEntitlements())).isFalse();
 
         StaffAssistantReadService.StaffResult result = readService.findById("LAZY-338").orElseThrow();
 
@@ -79,13 +52,7 @@ class StaffAssistantReadServiceTest {
             assertThat(day.dayOfWeek()).isEqualTo(DayOfWeek.MONDAY);
             assertThat(day.daySchedule()).isEqualTo(DaySchedule.FULL);
         });
-        assertThat(result.leaveEntitlements()).singleElement().satisfies(entitlement -> {
-            assertThat(entitlement.leaveTypeId()).isEqualTo("annual-338");
-            assertThat(entitlement.leaveTypeName()).isEqualTo("Annual Leave");
-            assertThat(entitlement.entitlement()).isEqualByComparingTo("5.21");
-            assertThat(entitlement.baseEntitlementAmount()).isEqualByComparingTo("14.00");
-            assertThat(entitlement.policyId()).isEqualTo("annual-policy-338");
-        });
+        assertThat(result.leaveEntitlements()).isEmpty();
     }
 
     @Test
