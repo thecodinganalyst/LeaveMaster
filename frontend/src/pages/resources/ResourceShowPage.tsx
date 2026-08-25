@@ -8,6 +8,7 @@ import { LoadingState } from '../../components/common/LoadingState.tsx';
 import { PageContainer } from '../../components/common/PageContainer.tsx';
 import { PageHeader } from '../../components/common/PageHeader.tsx';
 import { getJurisdictionOptions, type JurisdictionOptionSource } from './jurisdictions.ts';
+import { LeaveTypeEntitlementsTable } from './LeaveTypeEntitlementsTable.tsx';
 import { PublicHolidayTable } from './PublicHolidayTable.tsx';
 import type { AdminField } from './resourceConfigResolver.ts';
 import { getAdminResourceConfig, isAdminFieldVisible, toFormValues } from './resourceConfigResolver.ts';
@@ -63,6 +64,7 @@ export const ResourceShowPage = () => {
   if (recordQuery.isLoading) return <LoadingState />;
   const record = toFormValues(config, (recordQuery.data?.data ?? {}) as Record<string, unknown>);
   const isStaff = config.name === 'employees';
+  const isTenantLeaveType = config.name === 'leave-types' && !platformAdmin;
   const visibleFields = config.fields.filter((field) => field.type !== 'password'
     && !field.hidden
     && isAdminFieldVisible(field, platformAdmin)
@@ -97,7 +99,7 @@ export const ResourceShowPage = () => {
         {...(shouldShowResourceIdSubtitle(config.name, platformAdmin) ? { subtitle: id } : {})}
         extra={canEdit?.can && config.editable !== false ? <Button type="primary"><Link to={`/${config.name}/edit/${encodeURIComponent(id)}`}>Edit</Link></Button> : undefined}
       />
-      <Card style={{ marginBottom: isStaff ? 16 : undefined }}>
+      <Card style={{ marginBottom: isStaff || isTenantLeaveType ? 16 : undefined }}>
         <Descriptions
           bordered
           column={1}
@@ -125,6 +127,11 @@ export const ResourceShowPage = () => {
             <StaffLeaveEntitlementsField value={record.leaveEntitlements} />
           </Card>
         </>
+      ) : null}
+      {isTenantLeaveType ? (
+        <Card title="Entitlements" style={{ marginBottom: 16 }}>
+          <LeaveTypeEntitlementsTable leaveTypeId={id} canEdit={Boolean(canEdit?.can)} />
+        </Card>
       ) : null}
       {config.name === 'roles' && canEdit?.can ? <RoleMembershipCard roleId={id} /> : null}
       <Space><Link to={`/${config.name}`}>Back to {config.label}</Link></Space>
