@@ -39,18 +39,16 @@ class StaffAssistantReadServiceTest {
     @Test
     void shouldMapLazyStaffAssociationsBeforePersistenceContextCloses() {
         LeaveType annual = leaveTypeRepository.save(LeaveType.builder()
-                .id("annual")
+                .id("annual-338")
                 .name("Annual Leave")
                 .used(true)
                 .active(true)
                 .build());
         Staff staff = Staff.builder()
-                .id("001")
+                .id("LAZY-338")
                 .name("Alice")
-                .email("alice@example.com")
+                .email("alice-338@example.com")
                 .joinDate(LocalDate.of(2026, 8, 15))
-                .jurisdictionId("SG")
-                .tenantId("Bravo")
                 .workSchedule(List.of(
                         WorkScheduleDay.builder()
                                 .dayOfWeek(DayOfWeek.MONDAY)
@@ -63,44 +61,44 @@ class StaffAssistantReadServiceTest {
                 .from(LocalDate.of(2026, 8, 15))
                 .to(LocalDate.of(2026, 12, 31))
                 .entitlement(new BigDecimal("5.21"))
-                .policyId("annual-policy")
+                .policyId("annual-policy-338")
                 .baseEntitlementAmount(new BigDecimal("14.00"))
                 .carriedForwardAmount(BigDecimal.ZERO)
                 .adjustmentAmount(BigDecimal.ZERO)
                 .build()));
         staffRepository.save(staff);
 
-        Staff detached = staffRepository.findById("001").orElseThrow();
+        Staff detached = staffRepository.findById("LAZY-338").orElseThrow();
         assertThat(Hibernate.isInitialized(detached.getWorkSchedule())).isFalse();
         assertThat(Hibernate.isInitialized(detached.getLeaveEntitlements())).isFalse();
 
-        StaffAssistantReadService.StaffResult result = readService.findById("001").orElseThrow();
+        StaffAssistantReadService.StaffResult result = readService.findById("LAZY-338").orElseThrow();
 
-        assertThat(result.id()).isEqualTo("001");
+        assertThat(result.id()).isEqualTo("LAZY-338");
         assertThat(result.workSchedule()).singleElement().satisfies(day -> {
             assertThat(day.dayOfWeek()).isEqualTo(DayOfWeek.MONDAY);
             assertThat(day.daySchedule()).isEqualTo(DaySchedule.FULL);
         });
         assertThat(result.leaveEntitlements()).singleElement().satisfies(entitlement -> {
-            assertThat(entitlement.leaveTypeId()).isEqualTo("annual");
+            assertThat(entitlement.leaveTypeId()).isEqualTo("annual-338");
             assertThat(entitlement.leaveTypeName()).isEqualTo("Annual Leave");
             assertThat(entitlement.entitlement()).isEqualByComparingTo("5.21");
             assertThat(entitlement.baseEntitlementAmount()).isEqualByComparingTo("14.00");
-            assertThat(entitlement.policyId()).isEqualTo("annual-policy");
+            assertThat(entitlement.policyId()).isEqualTo("annual-policy-338");
         });
     }
 
     @Test
     void shouldReturnSafeDtosForAllStaffAndEmptyForUnknownId() {
         staffRepository.save(Staff.builder()
-                .id("002")
+                .id("ALL-338")
                 .name("Bob")
                 .joinDate(LocalDate.of(2025, 1, 1))
                 .build());
 
         assertThat(readService.findAll()).singleElement()
                 .extracting(StaffAssistantReadService.StaffResult::id)
-                .isEqualTo("002");
-        assertThat(readService.findById("missing")).isEmpty();
+                .isEqualTo("ALL-338");
+        assertThat(readService.findById("missing-338")).isEmpty();
     }
 }
