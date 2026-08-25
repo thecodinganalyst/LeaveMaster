@@ -1,5 +1,6 @@
+import { useCan } from '@refinedev/core';
 import { useQuery } from '@tanstack/react-query';
-import { Alert, Table, Tag } from 'antd';
+import { Alert, Button, Space, Table, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { Link } from 'react-router-dom';
 
@@ -93,6 +94,8 @@ export const formatEffectivePeriod = (policy: LeaveEntitlementPolicySummary) => 
 };
 
 export const LeaveTypeEntitlementsTable = ({ leaveTypeId, canEdit = false }: Props) => {
+  const { data: canCreatePolicy } = useCan({ resource: 'leave-entitlement-policies', action: 'create' });
+  const { data: canCreateRule } = useCan({ resource: 'leave-entitlement-policy-eligibility-rules', action: 'create' });
   const policiesQuery = useQuery({
     queryKey: ['leave-entitlement-policies', 'leave-type-details', leaveTypeId],
     queryFn: loadPolicies,
@@ -145,13 +148,22 @@ export const LeaveTypeEntitlementsTable = ({ leaveTypeId, canEdit = false }: Pro
   ];
 
   return (
-    <Table
-      rowKey="id"
-      columns={columns}
-      dataSource={rows}
-      loading={policiesQuery.isLoading || eligibilityQuery.isLoading}
-      pagination={false}
-      locale={{ emptyText: 'No entitlements configured for this leave type' }}
-    />
+    <>
+      {canCreatePolicy?.can && canCreateRule?.can ? (
+        <Space style={{ width: '100%', justifyContent: 'flex-end', marginBottom: 12 }}>
+          <Button type="primary">
+            <Link to={`/leave-types/${encodeURIComponent(leaveTypeId)}/entitlements/create`}>Add Entitlement</Link>
+          </Button>
+        </Space>
+      ) : null}
+      <Table
+        rowKey="id"
+        columns={columns}
+        dataSource={rows}
+        loading={policiesQuery.isLoading || eligibilityQuery.isLoading}
+        pagination={false}
+        locale={{ emptyText: 'No entitlements configured for this leave type' }}
+      />
+    </>
   );
 };
