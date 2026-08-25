@@ -1,7 +1,7 @@
 import type { PropsWithChildren } from 'react';
 import { useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useCan, useLogout } from '@refinedev/core';
+import { useCan, useGetIdentity, useLogout } from '@refinedev/core';
 import {
   AppstoreOutlined,
   AuditOutlined,
@@ -24,6 +24,10 @@ import { AssistantPanel } from '../../features/assistant/AssistantPanel.tsx';
 
 const { Header, Sider, Content } = Layout;
 
+interface LeaveMasterIdentity {
+  platformAdmin?: boolean;
+}
+
 export const AppLayout = ({ children }: PropsWithChildren) => {
   const screens = Grid.useBreakpoint();
   const isDesktop = Boolean(screens.lg);
@@ -32,6 +36,8 @@ export const AppLayout = ({ children }: PropsWithChildren) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { mutate: logout } = useLogout();
+  const { data: identity } = useGetIdentity<LeaveMasterIdentity>();
+  const platformAdmin = Boolean(identity?.platformAdmin);
   const { data: leaveAccess } = useCan({ resource: 'leave-requests', action: 'list' });
   const { data: approvalAccess } = useCan({ resource: 'leave-requests', action: 'approve' });
   const { data: employeeAccess } = useCan({ resource: 'employees', action: 'list' });
@@ -60,12 +66,12 @@ export const AppLayout = ({ children }: PropsWithChildren) => {
       ...(userAccess?.can ? [{ key: '/users', icon: <UserOutlined />, label: <Link to="/users">App Users</Link> }] : []),
       ...(roleAccess?.can ? [{ key: '/roles', icon: <SafetyCertificateOutlined />, label: <Link to="/roles">Roles</Link> }] : []),
       ...(leaveTypeAccess?.can ? [{ key: '/leave-types', icon: <TagsOutlined />, label: <Link to="/leave-types">Leave Types</Link> }] : []),
-      ...(entitlementPolicyAccess?.can ? [{ key: '/leave-entitlement-policies', icon: <SolutionOutlined />, label: <Link to="/leave-entitlement-policies">Entitlement Policies</Link> }] : []),
-      ...(eligibilityRuleAccess?.can ? [{ key: '/leave-entitlement-policy-eligibility-rules', icon: <SolutionOutlined />, label: <Link to="/leave-entitlement-policy-eligibility-rules">Eligibility Rules</Link> }] : []),
+      ...(platformAdmin && entitlementPolicyAccess?.can ? [{ key: '/leave-entitlement-policies', icon: <SolutionOutlined />, label: <Link to="/leave-entitlement-policies">Entitlement Policies</Link> }] : []),
+      ...(platformAdmin && eligibilityRuleAccess?.can ? [{ key: '/leave-entitlement-policy-eligibility-rules', icon: <SolutionOutlined />, label: <Link to="/leave-entitlement-policy-eligibility-rules">Eligibility Rules</Link> }] : []),
       ...(calendarAccess?.can ? [{ key: '/leave-calendars', icon: <CalendarOutlined />, label: <Link to="/leave-calendars">Leave Calendars</Link> }] : []),
       ...(approverAccess?.can ? [{ key: '/leave-approvers', icon: <AuditOutlined />, label: <Link to="/leave-approvers">Leave Approvers</Link> }] : []),
     ],
-    [approvalAccess?.can, approverAccess?.can, calendarAccess?.can, eligibilityRuleAccess?.can, employeeAccess?.can, entitlementPolicyAccess?.can, jurisdictionAccess?.can, jurisdictionLeaveTypeAccess?.can, leaveAccess?.can, leaveTypeAccess?.can, publicHolidayAccess?.can, roleAccess?.can, tenantAccess?.can, userAccess?.can],
+    [approvalAccess?.can, approverAccess?.can, calendarAccess?.can, eligibilityRuleAccess?.can, employeeAccess?.can, entitlementPolicyAccess?.can, jurisdictionAccess?.can, jurisdictionLeaveTypeAccess?.can, leaveAccess?.can, leaveTypeAccess?.can, platformAdmin, publicHolidayAccess?.can, roleAccess?.can, tenantAccess?.can, userAccess?.can],
   );
 
   const selectedKeys = useMemo(() => {
