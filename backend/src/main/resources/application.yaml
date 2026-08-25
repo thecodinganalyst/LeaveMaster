@@ -28,8 +28,8 @@ spring:
               - profile
               - email
           github:
-            client-id: ${GITHUB_CLIENT_ID:replace-me}
-            client-secret: ${GITHUB_CLIENT_SECRET:replace-me}
+            client-id: ${GH_CLIENT_ID:replace-me}
+            client-secret: ${GH_CLIENT_SECRET:replace-me}
             redirect-uri: "${OAUTH_REDIRECT_BASE_URL:http://localhost:8080}/login/oauth2/code/{registrationId}"
             scope:
               - read:user
