@@ -12,6 +12,7 @@ import { ApplyLeavePage } from '../pages/leave/ApplyLeavePage.tsx';
 import { ApprovalInboxPage } from '../pages/leave/ApprovalInboxPage.tsx';
 import { LeaveDetailsPage } from '../pages/leave/LeaveDetailsPage.tsx';
 import { MyLeavePage } from '../pages/leave/MyLeavePage.tsx';
+import { EntitlementWorkflowPage } from '../pages/resources/EntitlementWorkflowPage.tsx';
 import { ResourceCreatePage } from '../pages/resources/ResourceCreatePage.tsx';
 import { ResourceEditPage } from '../pages/resources/ResourceEditPage.tsx';
 import { ResourceListPage } from '../pages/resources/ResourceListPage.tsx';
@@ -49,6 +50,8 @@ export const AppRoutes = () => {
         <Route path="/leave-requests/show/:id" element={<LeaveDetailsPage />} />
         <Route path="/leave-requests/edit/:id" element={<LeaveDetailsPage />} />
         <Route path="/approvals" element={<ApprovalInboxPage />} />
+        <Route path="/leave-types/:leaveTypeId/entitlements/create" element={<EntitlementWorkflowPage />} />
+        <Route path="/leave-types/:leaveTypeId/entitlements/:policyId/edit" element={<EntitlementWorkflowPage />} />
         <Route path="/:resource">
           <Route index element={<ResourceListPage />} />
           <Route path="create" element={<ResourceCreatePage />} />
