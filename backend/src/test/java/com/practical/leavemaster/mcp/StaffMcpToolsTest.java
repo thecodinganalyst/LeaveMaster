@@ -14,7 +14,9 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class StaffMcpToolsTest {
@@ -22,29 +24,34 @@ class StaffMcpToolsTest {
     @Mock
     private StaffService staffService;
 
+    @Mock
+    private StaffAssistantReadService staffAssistantReadService;
+
     @InjectMocks
     private StaffMcpTools staffMcpTools;
 
     @Test
     void shouldGetAllStaff() {
-        List<Staff> staff = List.of(Staff.builder().id("s1").name("Alice").build());
-        when(staffService.findAll()).thenReturn(staff);
+        var staff = new StaffAssistantReadService.StaffResult(
+                "s1", "Alice", null, LocalDate.of(2025, 1, 1), null, "SG", "tenant-1", List.of(), List.of());
+        when(staffAssistantReadService.findAll()).thenReturn(List.of(staff));
 
-        List<Staff> result = staffMcpTools.getAllStaff();
+        List<StaffAssistantReadService.StaffResult> result = staffMcpTools.getAllStaff();
 
-        assertThat(result).hasSize(1);
-        verify(staffService).findAll();
+        assertThat(result).singleElement().extracting(StaffAssistantReadService.StaffResult::id).isEqualTo("s1");
+        verify(staffAssistantReadService).findAll();
     }
 
     @Test
     void shouldGetStaffById() {
-        Staff staff = Staff.builder().id("s1").name("Alice").build();
-        when(staffService.findById("s1")).thenReturn(Optional.of(staff));
+        var staff = new StaffAssistantReadService.StaffResult(
+                "s1", "Alice", null, LocalDate.of(2025, 1, 1), null, "SG", "tenant-1", List.of(), List.of());
+        when(staffAssistantReadService.findById("s1")).thenReturn(Optional.of(staff));
 
-        Optional<Staff> result = staffMcpTools.getStaffById("s1");
+        Optional<StaffAssistantReadService.StaffResult> result = staffMcpTools.getStaffById("s1");
 
-        assertThat(result).isPresent();
-        verify(staffService).findById("s1");
+        assertThat(result).isPresent().get().extracting(StaffAssistantReadService.StaffResult::name).isEqualTo("Alice");
+        verify(staffAssistantReadService).findById("s1");
     }
 
     @Test
