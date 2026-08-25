@@ -138,7 +138,7 @@ final class AssistantToolAdapter {
                     conversationId, name, callNumber, elapsedMillis(startedAtNanos));
             return result;
         } catch (RuntimeException e) {
-            trace.toolCompleted(name);
+            trace.toolFailed(name);
             log.warn("Ask LeaveMaestro tool completed: conversationId={}, tool={}, toolCallNumber={}, durationMs={}, status=FAILED, exceptionType={}",
                     conversationId, name, callNumber, elapsedMillis(startedAtNanos), e.getClass().getName());
             throw e;
