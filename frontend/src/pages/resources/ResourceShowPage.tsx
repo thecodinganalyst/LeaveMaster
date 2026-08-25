@@ -53,6 +53,7 @@ export const ResourceShowPage = () => {
   const platformAdmin = Boolean(identity?.platformAdmin);
   const recordQuery = useOne({ resource: config?.name ?? '', id: id ?? '', queryOptions: { enabled: Boolean(config && id) } });
   const { data: canEdit } = useCan({ resource: config?.name ?? '', action: 'edit' });
+  const { data: canEditEntitlementPolicy } = useCan({ resource: 'leave-entitlement-policies', action: 'edit' });
   const jurisdictionsQuery = useQuery({
     queryKey: ['jurisdictions', 'staff-detail'],
     queryFn: loadJurisdictions,
@@ -130,7 +131,7 @@ export const ResourceShowPage = () => {
       ) : null}
       {isTenantLeaveType ? (
         <Card title="Entitlements" style={{ marginBottom: 16 }}>
-          <LeaveTypeEntitlementsTable leaveTypeId={id} canEdit={Boolean(canEdit?.can)} />
+          <LeaveTypeEntitlementsTable leaveTypeId={id} canEdit={Boolean(canEditEntitlementPolicy?.can)} />
         </Card>
       ) : null}
       {config.name === 'roles' && canEdit?.can ? <RoleMembershipCard roleId={id} /> : null}
