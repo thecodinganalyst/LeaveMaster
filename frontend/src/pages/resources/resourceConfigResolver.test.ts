@@ -41,6 +41,34 @@ describe('resourceConfigResolver staff write normalization', () => {
     expect(JSON.stringify(result)).not.toContain('"tenantId"');
   });
 
+  it('submits a cleared optional staff date as null so edits remove the persisted date', () => {
+    const config = getAdminResourceConfig('employees');
+    expect(config).toBeDefined();
+
+    expect(normaliseFormValues(config!, {
+      id: 'S001',
+      name: 'Alice',
+      joinDate: '2025-01-01',
+      termDate: '',
+    })).toMatchObject({
+      termDate: null,
+    });
+  });
+
+  it('submits cleared optional dates as null for non-staff resources too', () => {
+    const config = getAdminResourceConfig('leave-types');
+    expect(config).toBeDefined();
+
+    expect(normaliseFormValues(config!, {
+      id: 'LT-1',
+      name: 'Annual',
+      effectiveFrom: '2026-01-01',
+      effectiveTo: '',
+    })).toMatchObject({
+      effectiveTo: null,
+    });
+  });
+
   it('leaves non-staff resources on the base normalization path', () => {
     const config = getAdminResourceConfig('leave-types');
     expect(config).toBeDefined();

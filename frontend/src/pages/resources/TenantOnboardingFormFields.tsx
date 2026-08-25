@@ -18,10 +18,10 @@ export const TenantOnboardingFormFields = () => (
       <Input />
     </Form.Item>
     <Form.Item name="startDate" label="Tenant start date" rules={[{ required: true, message: 'Start date is required' }]}>
-      <Input type="date" />
+      <Input type="date" allowClear />
     </Form.Item>
     <Form.Item name="endDate" label="Tenant end date">
-      <Input type="date" />
+      <Input type="date" allowClear />
     </Form.Item>
     <Form.Item name="status" label="Status" rules={[{ required: true, message: 'Status is required' }]}>
       <Select options={tenantStatus} />
@@ -87,10 +87,10 @@ export const TenantOnboardingFormFields = () => (
     </Typography.Paragraph>
     <Space size="middle" style={{ width: '100%' }} align="start">
       <Form.Item name="calendarStart" label="Calendar start" rules={[{ required: true, message: 'Calendar start is required' }]} style={{ flex: 1 }}>
-        <Input type="date" />
+        <Input type="date" allowClear />
       </Form.Item>
       <Form.Item name="calendarEnd" label="Calendar end" rules={[{ required: true, message: 'Calendar end is required' }]} style={{ flex: 1 }}>
-        <Input type="date" />
+        <Input type="date" allowClear />
       </Form.Item>
     </Space>
   </>

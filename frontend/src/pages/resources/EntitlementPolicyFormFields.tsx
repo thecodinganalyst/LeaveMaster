@@ -214,8 +214,8 @@ export const EntitlementPolicyFormFields = ({ editing = false, platformAdmin = f
       <Form.Item name="carryForwardExpiryMonths" label="Carry forward expiry (months)" rules={[{ type: 'integer', min: 0, message: 'Carry forward expiry must be a whole number of at least 0' }]}>
         <InputNumber disabled={eventBased} min={0} step={1} precision={0} inputMode="numeric" onKeyDown={(event) => blockInvalidNumericKey(event, true)} style={{ width: '100%' }} />
       </Form.Item>
-      <Form.Item name="effectiveFrom" label="Effective from" rules={[{ required: true, message: 'Effective from is required' }]}><Input type="date" /></Form.Item>
-      <Form.Item name="effectiveTo" label="Effective to"><Input type="date" /></Form.Item>
+      <Form.Item name="effectiveFrom" label="Effective from" rules={[{ required: true, message: 'Effective from is required' }]}><Input type="date" allowClear /></Form.Item>
+      <Form.Item name="effectiveTo" label="Effective to"><Input type="date" allowClear /></Form.Item>
     </>
   );
 };
