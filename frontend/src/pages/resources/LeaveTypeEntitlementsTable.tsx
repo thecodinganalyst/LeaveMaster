@@ -139,7 +139,7 @@ export const LeaveTypeEntitlementsTable = ({ leaveTypeId, canEdit = false }: Pro
       title: 'Actions',
       key: 'actions',
       render: (_: unknown, policy: LeaveEntitlementPolicySummary) => (
-        <Link to={`/leave-entitlement-policies/edit/${encodeURIComponent(policy.id)}`}>Edit</Link>
+        <Link to={`/leave-types/${encodeURIComponent(leaveTypeId)}/entitlements/${encodeURIComponent(policy.id)}/edit`}>Edit</Link>
       ),
     }] : []),
   ];
