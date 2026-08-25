@@ -5,6 +5,7 @@ import com.practical.leavemaster.staff.Staff;
 import com.practical.leavemaster.staff.StaffRepository;
 import com.practical.leavemaster.staff.WorkScheduleDay;
 import org.hibernate.Hibernate;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
@@ -28,6 +29,11 @@ class StaffAssistantReadServiceTest {
 
     @Autowired
     private StaffRepository staffRepository;
+
+    @AfterEach
+    void cleanUp() {
+        staffRepository.deleteAll();
+    }
 
     @Test
     void shouldMapLazyWorkScheduleBeforePersistenceContextCloses() {
