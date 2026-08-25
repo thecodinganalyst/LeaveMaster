@@ -41,6 +41,10 @@ vi.mock('../pages/leave/MyLeavePage.tsx', () => ({
   MyLeavePage: () => <div>My leave page</div>,
 }));
 
+vi.mock('../pages/resources/EntitlementWorkflowPage.tsx', () => ({
+  EntitlementWorkflowPage: () => <div>Entitlement workflow page</div>,
+}));
+
 vi.mock('../pages/resources/ResourceCreatePage.tsx', () => ({
   ResourceCreatePage: () => <div>Resource create page</div>,
 }));
@@ -130,6 +134,20 @@ describe('AppRoutes authentication guard', () => {
     await waitFor(() => expect(screen.getByText('Leave details page')).toBeInTheDocument());
     expect(screen.getByTestId('location-path')).toHaveTextContent('/leave-requests/show/42');
     expect(screen.queryByText('Login page')).not.toBeInTheDocument();
+  });
+
+  it('routes leave-type entitlement actions through the combined workflow', async () => {
+    renderRoutes('/leave-types/ANNUAL_LEAVE/entitlements/policy-1/edit', true);
+
+    await waitFor(() => expect(screen.getByText('Entitlement workflow page')).toBeInTheDocument());
+    expect(screen.getByTestId('location-path')).toHaveTextContent('/leave-types/ANNUAL_LEAVE/entitlements/policy-1/edit');
+  });
+
+  it('keeps standalone entitlement routes available for direct deep links', async () => {
+    renderRoutes('/leave-entitlement-policies/edit/policy-1', true);
+
+    await waitFor(() => expect(screen.getByText('Resource edit page')).toBeInTheDocument());
+    expect(screen.getByTestId('location-path')).toHaveTextContent('/leave-entitlement-policies/edit/policy-1');
   });
 
   it('keeps the login page public for unauthenticated users', async () => {
