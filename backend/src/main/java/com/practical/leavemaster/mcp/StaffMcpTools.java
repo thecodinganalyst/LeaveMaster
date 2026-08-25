@@ -18,17 +18,18 @@ import java.util.Optional;
 public class StaffMcpTools {
 
     private final StaffService staffService;
+    private final StaffAssistantReadService staffAssistantReadService;
 
     @Tool(description = "Get all staff members")
     @PreAuthorize("hasAuthority('" + RbacPermissions.STAFF_READ + "')")
-    public List<Staff> getAllStaff() {
-        return staffService.findAll();
+    public List<StaffAssistantReadService.StaffResult> getAllStaff() {
+        return staffAssistantReadService.findAll();
     }
 
     @Tool(description = "Get a staff member by ID")
     @PreAuthorize("hasAuthority('" + RbacPermissions.STAFF_READ + "')")
-    public Optional<Staff> getStaffById(String id) {
-        return staffService.findById(id);
+    public Optional<StaffAssistantReadService.StaffResult> getStaffById(String id) {
+        return staffAssistantReadService.findById(id);
     }
 
     @Tool(description = "Create a new staff member")

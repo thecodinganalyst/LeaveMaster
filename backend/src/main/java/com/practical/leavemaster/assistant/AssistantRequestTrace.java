@@ -7,6 +7,7 @@ final class AssistantRequestTrace {
     private final AtomicInteger toolCallCount = new AtomicInteger();
     private volatile String lastStartedTool;
     private volatile String lastCompletedTool;
+    private volatile String lastFailedTool;
 
     long elapsedMillis() {
         return (System.nanoTime() - startedAtNanos) / 1_000_000L;
@@ -21,6 +22,11 @@ final class AssistantRequestTrace {
         lastCompletedTool = toolName;
     }
 
+    void toolFailed(String toolName) {
+        lastCompletedTool = toolName;
+        lastFailedTool = toolName;
+    }
+
     int toolCallCount() {
         return toolCallCount.get();
     }
@@ -31,5 +37,13 @@ final class AssistantRequestTrace {
 
     String lastCompletedTool() {
         return lastCompletedTool == null ? "<none>" : lastCompletedTool;
+    }
+
+    boolean hasToolFailure() {
+        return lastFailedTool != null;
+    }
+
+    String lastFailedTool() {
+        return lastFailedTool == null ? "<none>" : lastFailedTool;
     }
 }
