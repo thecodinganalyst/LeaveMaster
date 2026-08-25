@@ -107,4 +107,24 @@ describe('entitlement workflow', () => {
       expect.objectContaining({ method: 'DELETE' }),
     );
   });
+
+  it('surfaces a partial-save warning if rule reconciliation fails after a policy update', async () => {
+    const mock = vi.fn(async (path: string) => {
+      if (path === '/api/leave-entitlement-policies/policy-1') return { id: 'policy-1' };
+      throw new Error('rule update failed');
+    });
+    const request = mock as unknown as EntitlementRequest;
+
+    await expect(updateEntitlementConfiguration(
+      request,
+      'policy-1',
+      'annual',
+      { name: 'Updated' },
+      [{ id: 'rule-1', policyId: 'policy-1', criterionType: 'SERVICE_MONTHS', operator: 'EQUALS', value: '12' }],
+      [{ id: 'rule-1', policyId: 'policy-1', criterionType: 'SERVICE_MONTHS', operator: 'EQUALS', value: '24' }],
+    )).rejects.toMatchObject({
+      name: 'EntitlementPartialSaveError',
+      message: expect.stringContaining('eligibility changes could not be saved completely'),
+    });
+  });
 });
