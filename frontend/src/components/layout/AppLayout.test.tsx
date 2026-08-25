@@ -8,10 +8,12 @@ const mocks = vi.hoisted(() => ({
   useCan: vi.fn(),
   logout: vi.fn(),
   breakpoint: { lg: true },
+  identity: { platformAdmin: false },
 }));
 
 vi.mock('@refinedev/core', () => ({
   useCan: mocks.useCan,
+  useGetIdentity: () => ({ data: mocks.identity }),
   useLogout: () => ({ mutate: mocks.logout }),
 }));
 
@@ -31,6 +33,7 @@ describe('AppLayout navigation', () => {
     mocks.useCan.mockReset();
     mocks.logout.mockReset();
     mocks.breakpoint.lg = true;
+    mocks.identity.platformAdmin = false;
   });
 
   it('shows Tenants navigation when TENANT_READ access is available', () => {
@@ -61,6 +64,39 @@ describe('AppLayout navigation', () => {
 
     expect(screen.getByRole('link', { name: 'Public Holiday Templates' })).toHaveAttribute('href', '/public-holidays');
     expect(screen.queryByRole('link', { name: 'Leave Calendars' })).not.toBeInTheDocument();
+  });
+
+  it('makes Leave Types the tenant entitlement entry point', () => {
+    mocks.useCan.mockImplementation(({ resource }: { resource: string }) => ({
+      data: { can: ['leave-types', 'leave-entitlement-policies', 'leave-entitlement-policy-eligibility-rules'].includes(resource) },
+    }));
+
+    render(
+      <MemoryRouter>
+        <AppLayout><div>Page content</div></AppLayout>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('link', { name: 'Leave Types' })).toHaveAttribute('href', '/leave-types');
+    expect(screen.queryByRole('link', { name: 'Entitlement Policies' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Eligibility Rules' })).not.toBeInTheDocument();
+  });
+
+  it('retains standalone entitlement navigation for platform administrators', () => {
+    mocks.identity.platformAdmin = true;
+    mocks.useCan.mockImplementation(({ resource }: { resource: string }) => ({
+      data: { can: ['leave-types', 'leave-entitlement-policies', 'leave-entitlement-policy-eligibility-rules'].includes(resource) },
+    }));
+
+    render(
+      <MemoryRouter>
+        <AppLayout><div>Page content</div></AppLayout>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('link', { name: 'Leave Types' })).toHaveAttribute('href', '/leave-types');
+    expect(screen.getByRole('link', { name: 'Entitlement Policies' })).toHaveAttribute('href', '/leave-entitlement-policies');
+    expect(screen.getByRole('link', { name: 'Eligibility Rules' })).toHaveAttribute('href', '/leave-entitlement-policy-eligibility-rules');
   });
 
   it('hides Tenants navigation when tenant access is absent', () => {
