@@ -3,7 +3,7 @@ export interface EligibilityRuleValues {
   policyId?: string;
   criterionType?: string;
   operator?: string;
-  value?: unknown;
+  value?: string | number | string[];
   active?: boolean;
   sortOrder?: number;
 }
