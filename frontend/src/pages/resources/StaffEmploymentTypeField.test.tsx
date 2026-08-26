@@ -4,15 +4,9 @@ import { describe, expect, it } from 'vitest';
 
 import { StaffEmploymentTypeField } from './StaffEmploymentTypeField.tsx';
 
-const FormProbe = () => {
-  const form = Form.useFormInstance();
-  return <button type="button" onClick={() => form.submit()}>Submit</button>;
-};
-
-const renderField = (initialValue?: string | null, onFinish = (_values: Record<string, unknown>) => undefined) => render(
-  <Form initialValues={{ employmentType: initialValue }} onFinish={onFinish}>
+const renderField = (initialValue?: string | null) => render(
+  <Form initialValues={{ employmentType: initialValue }}>
     <StaffEmploymentTypeField />
-    <FormProbe />
   </Form>,
 );
 
