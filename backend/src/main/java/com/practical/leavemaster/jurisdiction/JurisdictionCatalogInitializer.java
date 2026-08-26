@@ -14,6 +14,10 @@ import java.util.Locale;
 public class JurisdictionCatalogInitializer implements ApplicationRunner {
     private static final String SINGAPORE = "SG";
     private static final String AUSTRALIA = "AU";
+    private static final String MALAYSIA = "MY";
+    private static final String MALAYSIA_EMPLOYMENT_ACT_URL = "https://jtksm.mohr.gov.my/sites/default/files/2023-11/Akta%20Kerja%201955%20%28Akta%20265%29.pdf";
+    private static final String SABAH_LABOUR_URL = "https://www.jtksabah.gov.my/utama/en/perkhidmatan-kami/aduan-buruh-dan-khidmat-nasihat/";
+    private static final String SARAWAK_LABOUR_URL = "https://www.jtkswk.gov.my/v2/?lang=en&page_id=3817";
 
     private final JurisdictionRepository jurisdictionRepository;
     private final JurisdictionLeaveTypeRepository leaveTypeRepository;
@@ -52,6 +56,22 @@ public class JurisdictionCatalogInitializer implements ApplicationRunner {
                 new Subdivision("AU-TAS", "Tasmania", JurisdictionType.STATE, "AU"),
                 new Subdivision("AU-ACT", "Australian Capital Territory", JurisdictionType.TERRITORY, "AU"),
                 new Subdivision("AU-NT", "Northern Territory", JurisdictionType.TERRITORY, "AU"),
+                new Subdivision("MY-JHR", "Johor", JurisdictionType.STATE, MALAYSIA),
+                new Subdivision("MY-KDH", "Kedah", JurisdictionType.STATE, MALAYSIA),
+                new Subdivision("MY-KTN", "Kelantan", JurisdictionType.STATE, MALAYSIA),
+                new Subdivision("MY-MLK", "Melaka", JurisdictionType.STATE, MALAYSIA),
+                new Subdivision("MY-NSN", "Negeri Sembilan", JurisdictionType.STATE, MALAYSIA),
+                new Subdivision("MY-PHG", "Pahang", JurisdictionType.STATE, MALAYSIA),
+                new Subdivision("MY-PNG", "Pulau Pinang", JurisdictionType.STATE, MALAYSIA),
+                new Subdivision("MY-PRK", "Perak", JurisdictionType.STATE, MALAYSIA),
+                new Subdivision("MY-PLS", "Perlis", JurisdictionType.STATE, MALAYSIA),
+                new Subdivision("MY-SBH", "Sabah", JurisdictionType.STATE, MALAYSIA),
+                new Subdivision("MY-SWK", "Sarawak", JurisdictionType.STATE, MALAYSIA),
+                new Subdivision("MY-SGR", "Selangor", JurisdictionType.STATE, MALAYSIA),
+                new Subdivision("MY-TRG", "Terengganu", JurisdictionType.STATE, MALAYSIA),
+                new Subdivision("MY-KUL", "Kuala Lumpur", JurisdictionType.TERRITORY, MALAYSIA),
+                new Subdivision("MY-LBN", "Labuan", JurisdictionType.TERRITORY, MALAYSIA),
+                new Subdivision("MY-PJY", "Putrajaya", JurisdictionType.TERRITORY, MALAYSIA),
                 new Subdivision("CA-ON", "Ontario", JurisdictionType.PROVINCE, "CA"),
                 new Subdivision("CA-BC", "British Columbia", JurisdictionType.PROVINCE, "CA"),
                 new Subdivision("CA-AB", "Alberta", JurisdictionType.PROVINCE, "CA"),
@@ -115,6 +135,21 @@ public class JurisdictionCatalogInitializer implements ApplicationRunner {
                 new LeaveSeed("AU-TAS", "LONG_SERVICE_LEAVE", "Long Service Leave", true, true, "WorkSafe Tasmania", "https://worksafe.tas.gov.au/topics/laws-and-compliance/industrial-relations/long-service-leave"),
                 new LeaveSeed("AU-ACT", "LONG_SERVICE_LEAVE", "Long Service Leave", true, true, "ACT Government", "https://www.accesscanberra.act.gov.au/business-and-work/industrial-relations/long-service-leave"),
                 new LeaveSeed("AU-NT", "LONG_SERVICE_LEAVE", "Long Service Leave", true, true, "NT Government", "https://nt.gov.au/employ/for-employees-in-nt/long-service-leave"),
+                new LeaveSeed(MALAYSIA, "ANNUAL_LEAVE", "Annual Leave", true, true, "Jabatan Tenaga Kerja Semenanjung Malaysia", MALAYSIA_EMPLOYMENT_ACT_URL),
+                new LeaveSeed(MALAYSIA, "SICK_LEAVE", "Sick Leave", true, true, "Jabatan Tenaga Kerja Semenanjung Malaysia", MALAYSIA_EMPLOYMENT_ACT_URL),
+                new LeaveSeed(MALAYSIA, "HOSPITALISATION_LEAVE", "Hospitalisation Leave", true, true, "Jabatan Tenaga Kerja Semenanjung Malaysia", MALAYSIA_EMPLOYMENT_ACT_URL),
+                new LeaveSeed(MALAYSIA, "MATERNITY_LEAVE", "Maternity Leave", true, true, "Jabatan Tenaga Kerja Semenanjung Malaysia", MALAYSIA_EMPLOYMENT_ACT_URL),
+                new LeaveSeed(MALAYSIA, "PATERNITY_LEAVE", "Paternity Leave", true, true, "Jabatan Tenaga Kerja Semenanjung Malaysia", MALAYSIA_EMPLOYMENT_ACT_URL),
+                new LeaveSeed("MY-SBH", "ANNUAL_LEAVE", "Annual Leave", true, true, "Jabatan Tenaga Kerja Sabah", SABAH_LABOUR_URL),
+                new LeaveSeed("MY-SBH", "SICK_LEAVE", "Sick Leave", true, true, "Jabatan Tenaga Kerja Sabah", SABAH_LABOUR_URL),
+                new LeaveSeed("MY-SBH", "HOSPITALISATION_LEAVE", "Hospitalisation Leave", true, true, "Jabatan Tenaga Kerja Sabah", SABAH_LABOUR_URL),
+                new LeaveSeed("MY-SBH", "MATERNITY_LEAVE", "Maternity Leave", true, true, "Jabatan Tenaga Kerja Sabah", SABAH_LABOUR_URL),
+                new LeaveSeed("MY-SBH", "PATERNITY_LEAVE", "Paternity Leave", true, true, "Jabatan Tenaga Kerja Sabah", SABAH_LABOUR_URL),
+                new LeaveSeed("MY-SWK", "ANNUAL_LEAVE", "Annual Leave", true, true, "Jabatan Tenaga Kerja Sarawak", SARAWAK_LABOUR_URL),
+                new LeaveSeed("MY-SWK", "SICK_LEAVE", "Sick Leave", true, true, "Jabatan Tenaga Kerja Sarawak", SARAWAK_LABOUR_URL),
+                new LeaveSeed("MY-SWK", "HOSPITALISATION_LEAVE", "Hospitalisation Leave", true, true, "Jabatan Tenaga Kerja Sarawak", SARAWAK_LABOUR_URL),
+                new LeaveSeed("MY-SWK", "MATERNITY_LEAVE", "Maternity Leave", true, true, "Jabatan Tenaga Kerja Sarawak", SARAWAK_LABOUR_URL),
+                new LeaveSeed("MY-SWK", "PATERNITY_LEAVE", "Paternity Leave", true, true, "Jabatan Tenaga Kerja Sarawak", SARAWAK_LABOUR_URL),
                 new LeaveSeed("CA", "ANNUAL_VACATION", "Vacation Leave", true, true, "Government of Canada", "https://www.canada.ca/en/services/jobs/workplace/federal-labour-standards/leaves.html"),
                 new LeaveSeed("CA", "MEDICAL_LEAVE", "Medical Leave", true, null, "Government of Canada", "https://www.canada.ca/en/services/jobs/workplace/federal-labour-standards/leaves.html"),
                 new LeaveSeed("CA", "PARENTAL_LEAVE", "Parental Leave", true, false, "Government of Canada", "https://www.canada.ca/en/services/jobs/workplace/federal-labour-standards/leaves.html"),
