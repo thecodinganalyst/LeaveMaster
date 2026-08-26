@@ -65,7 +65,6 @@ class LeaveBalanceAssistantReadServiceTest {
                 .from(LocalDate.of(2026, 1, 1))
                 .to(LocalDate.of(2026, 12, 31))
                 .entitlement(new BigDecimal("5.79"))
-                .policyId("policy-366")
                 .baseEntitlementAmount(new BigDecimal("14.00"))
                 .carriedForwardAmount(BigDecimal.ZERO)
                 .adjustmentAmount(new BigDecimal("-8.21"))
@@ -84,7 +83,7 @@ class LeaveBalanceAssistantReadServiceTest {
             assertThat(result.entitlement()).isEqualByComparingTo("5.79");
             assertThat(result.used()).isEqualByComparingTo("0");
             assertThat(result.balance()).isEqualByComparingTo("5.79");
-            assertThat(result.policyId()).isEqualTo("policy-366");
+            assertThat(result.policyId()).isNull();
             assertThat(result.baseEntitlementAmount()).isEqualByComparingTo("14.00");
             assertThat(result.adjustmentAmount()).isEqualByComparingTo("-8.21");
         });
