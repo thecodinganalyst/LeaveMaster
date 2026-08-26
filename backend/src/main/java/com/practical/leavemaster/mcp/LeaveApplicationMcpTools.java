@@ -3,7 +3,6 @@ package com.practical.leavemaster.mcp;
 import com.practical.leavemaster.leaveapplication.LeaveApplication;
 import com.practical.leavemaster.leaveapplication.LeaveApplicationRequest;
 import com.practical.leavemaster.leaveapplication.LeaveApplicationService;
-import com.practical.leavemaster.leaveapplication.LeaveBalance;
 import com.practical.leavemaster.rbac.RbacPermissions;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.tool.annotation.Tool;
@@ -18,6 +17,7 @@ import java.util.Optional;
 public class LeaveApplicationMcpTools {
 
     private final LeaveApplicationService leaveApplicationService;
+    private final LeaveBalanceAssistantReadService leaveBalanceAssistantReadService;
 
     @Tool(description = "Get all leave applications")
     @PreAuthorize("hasAuthority('" + RbacPermissions.LEAVE_APPLICATION_READ + "')")
@@ -51,8 +51,8 @@ public class LeaveApplicationMcpTools {
 
     @Tool(description = "Get leave balances for a staff member by staff ID")
     @PreAuthorize("hasAuthority('" + RbacPermissions.LEAVE_APPLICATION_READ + "')")
-    public List<LeaveBalance> getLeaveBalances(String staffId) {
-        return leaveApplicationService.getLeaveBalances(staffId);
+    public List<LeaveBalanceAssistantReadService.LeaveBalanceResult> getLeaveBalances(String staffId) {
+        return leaveBalanceAssistantReadService.findByStaffId(staffId);
     }
 
     @Tool(description = "Apply for leave (without attachment)")
