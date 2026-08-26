@@ -6,6 +6,8 @@ import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
@@ -55,6 +57,10 @@ public class Staff {
 
     @Column(name = "jurisdiction_id", length = 32)
     private String jurisdictionId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "employment_type", length = 32)
+    private EmploymentType employmentType;
 
     @Builder.Default
     @OneToMany(mappedBy = "staff", cascade = CascadeType.ALL, orphanRemoval = true)

@@ -83,6 +83,7 @@ public class StaffService {
         }
         existing.setTermDate(updated.getTermDate());
         existing.setJurisdictionId(updated.getJurisdictionId());
+        existing.setEmploymentType(updated.getEmploymentType());
         enforceCurrentTenantAndJurisdiction(existing, true);
         if (updated.getLeaveEntitlements() != null) {
             List<LeaveEntitlement> normalized = normalizeLeaveEntitlements(existing, updated.getLeaveEntitlements());
