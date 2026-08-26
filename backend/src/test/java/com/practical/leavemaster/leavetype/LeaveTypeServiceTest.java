@@ -1,5 +1,7 @@
 package com.practical.leavemaster.leavetype;
 
+import com.practical.leavemaster.jurisdiction.JurisdictionLeaveType;
+import com.practical.leavemaster.jurisdiction.JurisdictionLeaveTypeRepository;
 import com.practical.leavemaster.rbac.AppRole;
 import com.practical.leavemaster.tenant.TenantActivityService;
 import com.practical.leavemaster.user.AppUser;
@@ -27,6 +29,9 @@ class LeaveTypeServiceTest {
 
     @Mock
     private LeaveTypeRepository leaveTypeRepository;
+
+    @Mock
+    private JurisdictionLeaveTypeRepository jurisdictionLeaveTypeRepository;
 
     @Mock
     private TenantActivityService tenantActivityService;
@@ -73,6 +78,30 @@ class LeaveTypeServiceTest {
     }
 
     @Test
+    void shouldExposeDerivedJurisdictionForTenantLeaveTypesWithoutChangingCatalogueAuthorization() {
+        authenticate("tenant-admin");
+        AppUser user = AppUser.builder().loginName("tenant-admin").active(true).tenantId("TENANT_A").build();
+        LeaveType leaveType = LeaveType.builder()
+                .id("annual")
+                .name("Annual Leave")
+                .tenantId("TENANT_A")
+                .sourceJurisdictionLeaveTypeId("SG:ANNUAL_LEAVE")
+                .build();
+        JurisdictionLeaveType source = JurisdictionLeaveType.builder()
+                .id("SG:ANNUAL_LEAVE")
+                .jurisdictionId("SG")
+                .build();
+        when(appUserRepository.findById("tenant-admin")).thenReturn(Optional.of(user));
+        when(leaveTypeRepository.findAllByTenantId("TENANT_A")).thenReturn(List.of(leaveType));
+        when(jurisdictionLeaveTypeRepository.findAllById(Set.of("SG:ANNUAL_LEAVE"))).thenReturn(List.of(source));
+
+        List<LeaveType> result = leaveTypeService.findAll();
+
+        assertThat(result).singleElement().extracting(LeaveType::getJurisdictionId).isEqualTo("SG");
+        verify(jurisdictionLeaveTypeRepository).findAllById(Set.of("SG:ANNUAL_LEAVE"));
+    }
+
+    @Test
     void shouldReturnNoLeaveTypesWhenTenantUserHasNoTenantId() {
         authenticate("tenant-admin");
         AppUser user = AppUser.builder().loginName("tenant-admin").active(true).tenantId(" ").build();
@@ -80,6 +109,7 @@ class LeaveTypeServiceTest {
 
         assertThat(leaveTypeService.findAll()).isEmpty();
         verifyNoInteractions(leaveTypeRepository);
+        verifyNoInteractions(jurisdictionLeaveTypeRepository);
     }
 
     @Test
