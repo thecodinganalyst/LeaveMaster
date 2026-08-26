@@ -24,6 +24,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -174,8 +175,12 @@ public class TenantLeaveConfigurationProvisionService {
 
     private Map<String, LeaveEntitlementPolicy> effectivePolicyTemplates(String jurisdictionId) {
         Map<String, LeaveEntitlementPolicy> effective = new LinkedHashMap<>();
+        Set<String> visited = new HashSet<>();
         String current = jurisdictionId;
         while (current != null && !current.isBlank()) {
+            if (!visited.add(current)) {
+                throw new IllegalStateException("Jurisdiction hierarchy contains a cycle");
+            }
             String currentId = current;
             for (LeaveEntitlementPolicy template : policyRepository.findAllByScopeAndJurisdictionIdAndActiveTrue(ConfigurationScope.PLATFORM_TEMPLATE, currentId)) {
                 JurisdictionLeaveType leaveType = jurisdictionLeaveTypeRepository.findById(template.getJurisdictionLeaveTypeId()).orElse(null);
@@ -191,24 +196,74 @@ public class TenantLeaveConfigurationProvisionService {
     }
 
     private List<LeaveCalendar> effectiveCalendarTemplates(String jurisdictionId) {
-        Map<String, LeaveCalendar> effective = new LinkedHashMap<>();
+        List<LeaveCalendar> effective = new ArrayList<>();
+        Set<String> visited = new HashSet<>();
         String current = jurisdictionId;
         while (current != null && !current.isBlank()) {
-            String currentId = current;
-            for (LeaveCalendar template : leaveCalendarRepository.findAllByScopeAndJurisdictionId(ConfigurationScope.PLATFORM_TEMPLATE, currentId)) {
-                effective.putIfAbsent(template.getStart() + "|" + template.getEnd(), template);
+            if (!visited.add(current)) {
+                throw new IllegalStateException("Jurisdiction hierarchy contains a cycle");
             }
+            String currentId = current;
+            effective.addAll(leaveCalendarRepository.findAllByScopeAndJurisdictionId(ConfigurationScope.PLATFORM_TEMPLATE, currentId));
             Jurisdiction jurisdiction = jurisdictionRepository.findById(currentId)
                     .orElseThrow(() -> new IllegalArgumentException("Jurisdiction not found: " + currentId));
             current = jurisdiction.getParentId();
         }
-        return List.copyOf(effective.values());
+        return List.copyOf(effective);
     }
 
     private void seedLegacyCalendars(Tenant tenant, String jurisdictionId) {
-        for (LeaveCalendar template : effectiveCalendarTemplates(jurisdictionId)) {
-            if (leaveCalendarRepository.existsByTenantIdAndSourceTemplateId(tenant.getId(), template.getId())) continue;
-            leaveCalendarRepository.save(copyTemplateCalendar(tenant.getId(), jurisdictionId, template));
+        Map<String, List<LeaveCalendar>> templatesByRange = effectiveCalendarTemplates(jurisdictionId).stream()
+                .collect(Collectors.groupingBy(
+                        template -> template.getStart() + "|" + template.getEnd(),
+                        LinkedHashMap::new,
+                        Collectors.toList()));
+
+        for (List<LeaveCalendar> templates : templatesByRange.values()) {
+            if (templates.size() == 1) {
+                LeaveCalendar template = templates.getFirst();
+                if (leaveCalendarRepository.existsByTenantIdAndSourceTemplateId(tenant.getId(), template.getId())) continue;
+                leaveCalendarRepository.save(copyTemplateCalendar(tenant.getId(), jurisdictionId, template));
+                continue;
+            }
+            mergeTemplateCalendars(tenant.getId(), jurisdictionId, templates);
+        }
+    }
+
+    private void mergeTemplateCalendars(String tenantId, String jurisdictionId, List<LeaveCalendar> templates) {
+        LeaveCalendar first = templates.getFirst();
+        LeaveCalendar calendar = leaveCalendarRepository
+                .findByTenantIdAndJurisdictionIdAndStartAndEnd(tenantId, jurisdictionId, first.getStart(), first.getEnd())
+                .orElseGet(() -> LeaveCalendar.builder()
+                        .id(UUID.randomUUID().toString())
+                        .start(first.getStart())
+                        .end(first.getEnd())
+                        .publicHolidays(new ArrayList<>())
+                        .tenantId(tenantId)
+                        .scope(ConfigurationScope.TENANT)
+                        .jurisdictionId(jurisdictionId)
+                        .build());
+
+        Set<String> existingKeys = calendar.getPublicHolidays().stream()
+                .map(this::holidayKey)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        boolean changed = false;
+        for (LeaveCalendar template : templates) {
+            for (PublicHoliday holiday : template.getPublicHolidays()) {
+                if (existingKeys.add(holidayKey(holiday))) {
+                    calendar.getPublicHolidays().add(copyHoliday(holiday));
+                    changed = true;
+                }
+            }
+        }
+
+        String lineage = sourceTemplateLineage(templates);
+        if (!java.util.Objects.equals(lineage, calendar.getSourceTemplateId())) {
+            calendar.setSourceTemplateId(lineage);
+            changed = true;
+        }
+        if (leaveCalendarRepository.findById(calendar.getId()).isEmpty() || changed) {
+            leaveCalendarRepository.save(calendar);
         }
     }
 

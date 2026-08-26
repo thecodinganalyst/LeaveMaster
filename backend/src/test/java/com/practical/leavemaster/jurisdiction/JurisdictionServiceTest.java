@@ -130,6 +130,30 @@ class JurisdictionServiceTest {
     }
 
     @Test
+    void shouldRejectUpdateThatCreatesHierarchyCycle() {
+        Jurisdiction au = country("AU");
+        Jurisdiction nsw = Jurisdiction.builder()
+                .id("AU-NSW")
+                .code("AU-NSW")
+                .name("New South Wales")
+                .jurisdictionType(JurisdictionType.STATE)
+                .parentId("AU")
+                .countryCode("AU")
+                .active(true)
+                .build();
+        Jurisdiction incoming = country("AU");
+        incoming.setParentId("AU-NSW");
+
+        when(jurisdictionRepository.findById("AU")).thenReturn(Optional.of(au));
+        when(jurisdictionRepository.findById("AU-NSW")).thenReturn(Optional.of(nsw));
+
+        assertThatThrownBy(() -> service.update("AU", incoming))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("cycle");
+        verify(jurisdictionRepository, never()).save(any());
+    }
+
+    @Test
     void shouldUpdateJurisdiction() {
         Jurisdiction existing = country("SG");
         Jurisdiction incoming = country("SG");

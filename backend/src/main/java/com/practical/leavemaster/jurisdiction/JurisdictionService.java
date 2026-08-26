@@ -4,9 +4,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -77,6 +79,26 @@ public class JurisdictionService {
                 .orElseThrow(() -> new IllegalArgumentException("Parent jurisdiction not found"));
         if (!parent.getCountryCode().equalsIgnoreCase(jurisdiction.getCountryCode())) {
             throw new IllegalArgumentException("Parent jurisdiction must belong to the same country");
+        }
+        validateNoCycle(jurisdiction.getId(), parent);
+    }
+
+    private void validateNoCycle(String jurisdictionId, Jurisdiction parent) {
+        Set<String> visited = new HashSet<>();
+        Jurisdiction current = parent;
+        while (current != null) {
+            if (jurisdictionId.equals(current.getId())) {
+                throw new IllegalArgumentException("Jurisdiction hierarchy cannot contain a cycle");
+            }
+            if (!visited.add(current.getId())) {
+                throw new IllegalArgumentException("Jurisdiction hierarchy contains an existing cycle");
+            }
+            String parentId = current.getParentId();
+            if (parentId == null || parentId.isBlank()) {
+                return;
+            }
+            current = jurisdictionRepository.findById(parentId)
+                    .orElseThrow(() -> new IllegalArgumentException("Parent jurisdiction not found"));
         }
     }
 
