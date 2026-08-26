@@ -120,9 +120,16 @@ public class AssistantService {
                         .toolCallbacks(tools)
                         .call()
                         .content();
+                if (trace.hasToolFailure()) {
+                    throw toolExecutionFailure(conversationId, trace);
+                }
                 log.info("Ask LeaveMaestro provider workflow completed: provider={}, model={}, conversationId={}, durationMs={}, status=SUCCESS",
                         provider, model, conversationId, elapsedMillis(providerStartedAtNanos));
                 return result;
+            } catch (AssistantToolExecutionException e) {
+                log.warn("Ask LeaveMaestro provider workflow completed: provider={}, model={}, conversationId={}, durationMs={}, status=TOOL_FAILED, tool={}",
+                        provider, model, conversationId, elapsedMillis(providerStartedAtNanos), e.getToolName());
+                throw e;
             } catch (RuntimeException e) {
                 log.warn("Ask LeaveMaestro provider workflow completed: provider={}, model={}, conversationId={}, durationMs={}, status=FAILED, exceptionType={}",
                         provider, model, conversationId, elapsedMillis(providerStartedAtNanos), e.getClass().getName());
@@ -159,6 +166,24 @@ public class AssistantService {
         } catch (ExecutionException e) {
             Throwable cause = e.getCause();
             if (cause instanceof AccessDeniedException accessDenied) throw accessDenied;
+            if (cause instanceof AssistantToolExecutionException toolFailure) {
+                Throwable rootCause = rootCause(toolFailure);
+                log.error(
+                        "Ask LeaveMaestro tool request failed: provider={}, model={}, conversationId={}, elapsedMs={}, toolCallCount={}, lastStartedTool={}, lastCompletedTool={}, failedTool={}, exceptionType={}, rootCauseType={}, message={}",
+                        provider,
+                        model,
+                        conversationId,
+                        trace.elapsedMillis(),
+                        trace.toolCallCount(),
+                        trace.lastStartedTool(),
+                        trace.lastCompletedTool(),
+                        toolFailure.getToolName(),
+                        toolFailure.getClass().getName(),
+                        rootCause.getClass().getName(),
+                        safeProviderMessage(rootCause),
+                        toolFailure);
+                throw toolFailure;
+            }
 
             providerGuard.failure();
             Throwable failure = cause == null ? e : cause;
@@ -189,6 +214,14 @@ public class AssistantService {
                 content == null ? "" : content,
                 List.copyOf(pendingActions),
                 List.copyOf(structuredResults));
+    }
+
+    private AssistantToolExecutionException toolExecutionFailure(String conversationId, AssistantRequestTrace trace) {
+        return new AssistantToolExecutionException(
+                "LeaveMaster could not complete an assistant data lookup",
+                conversationId,
+                trace.lastFailedTool(),
+                trace.lastToolFailure());
     }
 
     @PreDestroy
