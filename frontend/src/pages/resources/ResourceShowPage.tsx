@@ -7,6 +7,7 @@ import { apiFetch } from '../../api/http.ts';
 import { LoadingState } from '../../components/common/LoadingState.tsx';
 import { PageContainer } from '../../components/common/PageContainer.tsx';
 import { PageHeader } from '../../components/common/PageHeader.tsx';
+import { employmentTypeLabel } from './employmentTypes.ts';
 import { getJurisdictionOptions, type JurisdictionOptionSource } from './jurisdictions.ts';
 import { LeaveTypeEntitlementsTable } from './LeaveTypeEntitlementsTable.tsx';
 import { PublicHolidayTable } from './PublicHolidayTable.tsx';
@@ -83,6 +84,7 @@ export const ResourceShowPage = () => {
     }
     if (field.type === 'holiday-list') return <PublicHolidayTable value={record[field.name]} />;
     if (isStaff && field.name === 'jurisdictionId') return jurisdictionName ?? displayValue(field, record[field.name]);
+    if (isStaff && field.name === 'employmentType') return employmentTypeLabel(record[field.name]);
     if (config.name === 'leave-types' && field.name === 'sourceUrl' && !platformAdmin) return tenantLeaveTypeSourceLink(record[field.name]);
     if (config.name === 'leave-entitlement-policies' && field.name === 'leaveTypeId' && !platformAdmin) {
       return <TenantLeaveTypeName leaveTypeId={String(record[field.name] ?? '')} />;
