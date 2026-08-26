@@ -3,13 +3,14 @@ package com.practical.leavemaster.mcp;
 import com.practical.leavemaster.leaveapplication.LeaveApplication;
 import com.practical.leavemaster.leaveapplication.LeaveApplicationRequest;
 import com.practical.leavemaster.leaveapplication.LeaveApplicationService;
-import com.practical.leavemaster.leaveapplication.LeaveBalance;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -21,6 +22,9 @@ class LeaveApplicationMcpToolsTest {
 
     @Mock
     private LeaveApplicationService leaveApplicationService;
+
+    @Mock
+    private LeaveBalanceAssistantReadService leaveBalanceAssistantReadService;
 
     @InjectMocks
     private LeaveApplicationMcpTools leaveApplicationMcpTools;
@@ -81,14 +85,21 @@ class LeaveApplicationMcpToolsTest {
     }
 
     @Test
-    void shouldGetLeaveBalances() {
-        List<LeaveBalance> balances = List.of(new LeaveBalance(null, null, null, null));
-        when(leaveApplicationService.getLeaveBalances("s1")).thenReturn(balances);
+    void shouldGetLeaveBalancesFromAssistantReadService() {
+        LeaveBalanceAssistantReadService.LeaveBalanceResult balance =
+                new LeaveBalanceAssistantReadService.LeaveBalanceResult(
+                        "annual", "Annual Leave",
+                        LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31),
+                        new BigDecimal("14.00"), BigDecimal.ONE, new BigDecimal("13.00"),
+                        "policy-1", new BigDecimal("14.00"), BigDecimal.ZERO, BigDecimal.ZERO, null);
+        when(leaveBalanceAssistantReadService.findByStaffId("s1")).thenReturn(List.of(balance));
 
-        List<LeaveBalance> result = leaveApplicationMcpTools.getLeaveBalances("s1");
+        List<LeaveBalanceAssistantReadService.LeaveBalanceResult> result =
+                leaveApplicationMcpTools.getLeaveBalances("s1");
 
-        assertThat(result).hasSize(1);
-        verify(leaveApplicationService).getLeaveBalances("s1");
+        assertThat(result).containsExactly(balance);
+        verify(leaveBalanceAssistantReadService).findByStaffId("s1");
+        verify(leaveApplicationService, never()).getLeaveBalances(anyString());
     }
 
     @Test
