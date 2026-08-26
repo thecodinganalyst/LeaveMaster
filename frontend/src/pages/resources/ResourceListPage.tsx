@@ -11,7 +11,6 @@ import { PageHeader } from '../../components/common/PageHeader.tsx';
 import type { AdminField } from './resourceConfigResolver.ts';
 import { getAdminResourceConfig, isAdminFieldVisible, toFormValues } from './resourceConfigResolver.ts';
 import {
-  buildLeaveTypeJurisdictionMap,
   filterRecordsByJurisdiction,
   supportsJurisdictionFilter,
 } from './jurisdictionListFilter.ts';
@@ -57,20 +56,10 @@ export const ResourceListPage = () => {
     pagination: { mode: 'off' },
     queryOptions: { enabled: jurisdictionFilterEnabled && !platformAdmin },
   });
-  const jurisdictionLeaveTypesQuery = useList({
-    resource: 'jurisdiction-leave-types',
-    pagination: { mode: 'off' },
-    queryOptions: { enabled: config?.name === 'leave-types' },
-  });
   const { data: canCreate } = useCan({ resource: config?.name ?? '', action: 'create' });
   const { data: canEdit } = useCan({ resource: config?.name ?? '', action: 'edit' });
   const { data: canDelete } = useCan({ resource: config?.name ?? '', action: 'delete' });
   const { mutateAsync: deleteRecord } = useDelete();
-
-  const leaveTypeJurisdictions = useMemo(
-    () => buildLeaveTypeJurisdictionMap((jurisdictionLeaveTypesQuery.data?.data ?? []) as Record<string, unknown>[]),
-    [jurisdictionLeaveTypesQuery.data],
-  );
 
   const jurisdictionOptions = useMemo(() => {
     if (!jurisdictionFilterEnabled) return [];
@@ -90,12 +79,12 @@ export const ResourceListPage = () => {
     if (!config) return [];
     const records = ((listQuery.data?.data ?? []) as Record<string, unknown>[]).map((record) => toFormValues(config, record));
     const jurisdictionFiltered = supportsJurisdictionFilter(config.name)
-      ? filterRecordsByJurisdiction(config.name, records, jurisdictionFilter, leaveTypeJurisdictions)
+      ? filterRecordsByJurisdiction(config.name, records, jurisdictionFilter)
       : records;
     if (!search.trim()) return jurisdictionFiltered;
     const needle = search.toLowerCase();
     return jurisdictionFiltered.filter((record) => Object.values(record).some((value) => String(value ?? '').toLowerCase().includes(needle)));
-  }, [config, jurisdictionFilter, leaveTypeJurisdictions, listQuery.data, search]);
+  }, [config, jurisdictionFilter, listQuery.data, search]);
 
   if (!config) return <EmptyState title="Resource unavailable" description="No administration configuration exists for this resource." />;
   if (listQuery.isLoading) return <LoadingState />;
@@ -154,8 +143,8 @@ export const ResourceListPage = () => {
         setJurisdictionFilter(value === '__ALL__' ? undefined : value);
         setCurrentPage(1);
       }}
-      loading={jurisdictionsQuery.isLoading || (!platformAdmin && tenantJurisdictionsQuery.isLoading) || (config.name === 'leave-types' && jurisdictionLeaveTypesQuery.isLoading)}
-      disabled={jurisdictionsQuery.isError || (!platformAdmin && tenantJurisdictionsQuery.isError) || (config.name === 'leave-types' && jurisdictionLeaveTypesQuery.isError)}
+      loading={jurisdictionsQuery.isLoading || (!platformAdmin && tenantJurisdictionsQuery.isLoading)}
+      disabled={jurisdictionsQuery.isError || (!platformAdmin && tenantJurisdictionsQuery.isError)}
       options={[
         { label: 'All jurisdictions', value: '__ALL__' },
         ...jurisdictionOptions,
