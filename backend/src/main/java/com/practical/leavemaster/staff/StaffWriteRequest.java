@@ -25,7 +25,24 @@ public record StaffWriteRequest(
         String jurisdictionId,
         List<EntitlementInput> leaveEntitlements,
         String loginName,
-        Set<String> roleIds) {
+        Set<String> roleIds,
+        EmploymentType employmentType) {
+
+    /** Backward-compatible constructor for existing internal Java callers. */
+    public StaffWriteRequest(
+            String id,
+            String name,
+            String email,
+            LocalDate joinDate,
+            List<WorkScheduleDay> workSchedule,
+            LocalDate termDate,
+            String jurisdictionId,
+            List<EntitlementInput> leaveEntitlements,
+            String loginName,
+            Set<String> roleIds) {
+        this(id, name, email, joinDate, workSchedule, termDate, jurisdictionId,
+                leaveEntitlements, loginName, roleIds, null);
+    }
 
     public Staff toStaff() {
         return Staff.builder()
@@ -36,6 +53,7 @@ public record StaffWriteRequest(
                 .workSchedule(workSchedule == null ? new ArrayList<>() : new ArrayList<>(workSchedule))
                 .termDate(termDate)
                 .jurisdictionId(jurisdictionId)
+                .employmentType(employmentType)
                 .leaveEntitlements(toEntitlements(leaveEntitlements))
                 .loginName(loginName)
                 .roleIds(roleIds)
