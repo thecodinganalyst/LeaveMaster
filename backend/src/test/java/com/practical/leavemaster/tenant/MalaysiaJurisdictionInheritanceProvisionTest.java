@@ -62,7 +62,7 @@ class MalaysiaJurisdictionInheritanceProvisionTest {
                 .thenReturn(Optional.empty());
         when(leaveCalendarRepository.save(any(LeaveCalendar.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        service.provision(tenant, new TenantJurisdictionProvisionRequest("MY-SGR", false, true, start, end));
+        service.provision(tenant, new TenantJurisdictionProvisionRequest("MY-SGR", true, false, start, end));
 
         ArgumentCaptor<LeaveCalendar> captor = ArgumentCaptor.forClass(LeaveCalendar.class);
         verify(leaveCalendarRepository).save(captor.capture());
