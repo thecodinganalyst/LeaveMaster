@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -54,7 +55,7 @@ public class AustraliaHolidayCalendarInitializer implements ApplicationRunner {
                         .holidayDate(LocalDate.of(2026, holiday.month(), holiday.day()))
                         .holidayName(holiday.name())
                         .build())
-                .toCollection(ArrayList::new));
+                .collect(Collectors.toCollection(ArrayList::new)));
         leaveCalendarRepository.save(calendar);
     }
 
