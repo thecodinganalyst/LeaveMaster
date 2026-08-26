@@ -69,14 +69,25 @@ describe('resourceConfigResolver staff write normalization', () => {
     });
   });
 
-  it('leaves non-staff resources on the base normalization path', () => {
+  it('strips the system-managed in-use value from leave type writes', () => {
     const config = getAdminResourceConfig('leave-types');
     expect(config).toBeDefined();
 
     expect(normaliseFormValues(config!, { id: 'LT-1', name: 'Annual', used: false })).toEqual({
       id: 'LT-1',
       name: 'Annual',
-      used: false,
+    });
+  });
+
+  it('hides in-use everywhere and source jurisdiction leave type from the leave type table', () => {
+    const config = getAdminResourceConfig('leave-types');
+    expect(config).toBeDefined();
+
+    expect(config!.fields.some((field) => field.name === 'used')).toBe(false);
+    expect(config!.fields.find((field) => field.name === 'sourceJurisdictionLeaveTypeId')).toMatchObject({
+      list: false,
+      hidden: true,
+      formHidden: true,
     });
   });
 
