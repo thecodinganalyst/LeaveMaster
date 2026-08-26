@@ -1,7 +1,8 @@
 import { useCan } from '@refinedev/core';
 import { useQuery } from '@tanstack/react-query';
-import { Alert, Button, Space, Table, Tag } from 'antd';
+import { Alert, Button, Card, Descriptions, Empty, Space, Spin, Table, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { apiFetch } from '../../api/http.ts';
@@ -93,6 +94,10 @@ export const formatEffectivePeriod = (policy: LeaveEntitlementPolicySummary) => 
   return `${from} — ${to}`;
 };
 
+export const shouldUseCompactEntitlementLayout = (containerWidth: number, tableWidth: number) => (
+  containerWidth > 0 && tableWidth > containerWidth
+);
+
 export const LeaveTypeEntitlementsTable = ({ leaveTypeId, canEdit = false }: Props) => {
   const { data: canCreatePolicy } = useCan({ resource: 'leave-entitlement-policies', action: 'create' });
   const { data: canCreateRule } = useCan({ resource: 'leave-entitlement-policy-eligibility-rules', action: 'create' });
@@ -104,10 +109,10 @@ export const LeaveTypeEntitlementsTable = ({ leaveTypeId, canEdit = false }: Pro
     queryKey: ['leave-entitlement-policy-eligibility-rules', 'leave-type-details', leaveTypeId],
     queryFn: loadEligibilityRules,
   });
-
-  if (policiesQuery.isError || eligibilityQuery.isError) {
-    return <Alert type="error" showIcon message="Unable to load entitlements" />;
-  }
+  const containerRef = useRef<HTMLDivElement>(null);
+  const tableRef = useRef<HTMLDivElement>(null);
+  const measuredTableWidthRef = useRef(0);
+  const [useCompactLayout, setUseCompactLayout] = useState(false);
 
   const rulesByPolicy = new Map<string, EligibilityRuleSummary[]>();
   for (const rule of eligibilityQuery.data ?? []) {
@@ -146,6 +151,41 @@ export const LeaveTypeEntitlementsTable = ({ leaveTypeId, canEdit = false }: Pro
       ),
     }] : []),
   ];
+  const loading = policiesQuery.isLoading || eligibilityQuery.isLoading;
+
+  const updateResponsiveLayout = useCallback(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    if (!useCompactLayout) {
+      const table = tableRef.current?.querySelector('table');
+      const tableWidth = table instanceof HTMLElement ? table.scrollWidth : (tableRef.current?.scrollWidth ?? 0);
+      if (tableWidth > 0) measuredTableWidthRef.current = tableWidth;
+      setUseCompactLayout(shouldUseCompactEntitlementLayout(container.clientWidth, tableWidth));
+      return;
+    }
+
+    const measuredTableWidth = measuredTableWidthRef.current;
+    if (measuredTableWidth > 0 && container.clientWidth >= measuredTableWidth) {
+      setUseCompactLayout(false);
+    }
+  }, [useCompactLayout]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return undefined;
+
+    updateResponsiveLayout();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+
+    const resizeObserver = new ResizeObserver(updateResponsiveLayout);
+    resizeObserver.observe(container);
+    return () => resizeObserver.disconnect();
+  }, [updateResponsiveLayout, rows.length, canEdit, loading]);
+
+  if (policiesQuery.isError || eligibilityQuery.isError) {
+    return <Alert type="error" showIcon message="Unable to load entitlements" />;
+  }
 
   return (
     <>
@@ -156,14 +196,44 @@ export const LeaveTypeEntitlementsTable = ({ leaveTypeId, canEdit = false }: Pro
           </Button>
         </Space>
       ) : null}
-      <Table
-        rowKey="id"
-        columns={columns}
-        dataSource={rows}
-        loading={policiesQuery.isLoading || eligibilityQuery.isLoading}
-        pagination={false}
-        locale={{ emptyText: 'No entitlements configured for this leave type' }}
-      />
+      <div ref={containerRef} data-testid="leave-type-entitlements-container" style={{ width: '100%', minWidth: 0 }}>
+        {useCompactLayout ? (
+          <Spin spinning={loading}>
+            {rows.length === 0 && !loading ? (
+              <Empty description="No entitlements configured for this leave type" />
+            ) : (
+              <Space direction="vertical" size="middle" style={{ width: '100%' }} data-testid="leave-type-entitlements-compact">
+                {rows.map((policy) => (
+                  <Card key={policy.id} size="small">
+                    <Descriptions column={1} size="small" colon={false}>
+                      <Descriptions.Item label="Entitlement">{formatEntitlement(policy)}</Descriptions.Item>
+                      <Descriptions.Item label="Eligibility">{formatEligibilitySummary(rulesByPolicy.get(policy.id) ?? [])}</Descriptions.Item>
+                      <Descriptions.Item label="Effective Period">{formatEffectivePeriod(policy)}</Descriptions.Item>
+                      <Descriptions.Item label="Status"><Tag>{policy.active === false ? 'Inactive' : 'Active'}</Tag></Descriptions.Item>
+                      {canEdit ? (
+                        <Descriptions.Item label="Actions">
+                          <Link to={`/leave-types/${encodeURIComponent(leaveTypeId)}/entitlements/${encodeURIComponent(policy.id)}/edit`}>Edit</Link>
+                        </Descriptions.Item>
+                      ) : null}
+                    </Descriptions>
+                  </Card>
+                ))}
+              </Space>
+            )}
+          </Spin>
+        ) : (
+          <div ref={tableRef} data-testid="leave-type-entitlements-table">
+            <Table
+              rowKey="id"
+              columns={columns}
+              dataSource={rows}
+              loading={loading}
+              pagination={false}
+              locale={{ emptyText: 'No entitlements configured for this leave type' }}
+            />
+          </div>
+        )}
+      </div>
     </>
   );
 };

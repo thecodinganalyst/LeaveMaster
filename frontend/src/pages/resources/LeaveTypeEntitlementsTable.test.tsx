@@ -4,6 +4,7 @@ import {
   formatEffectivePeriod,
   formatEligibilitySummary,
   formatEntitlement,
+  shouldUseCompactEntitlementLayout,
   type EligibilityRuleSummary,
   type LeaveEntitlementPolicySummary,
 } from './LeaveTypeEntitlementsTable.tsx';
@@ -65,5 +66,20 @@ describe('LeaveTypeEntitlementsTable formatting', () => {
   it('formats an open-ended effective period', () => {
     expect(formatEffectivePeriod({ id: 'policy-1', effectiveFrom: '2026-01-01', effectiveTo: null }))
       .toBe('2026-01-01 — onward');
+  });
+});
+
+describe('LeaveTypeEntitlementsTable responsive layout', () => {
+  it('uses the compact layout when the table is wider than its container', () => {
+    expect(shouldUseCompactEntitlementLayout(360, 720)).toBe(true);
+  });
+
+  it('keeps the table layout when it fits its container', () => {
+    expect(shouldUseCompactEntitlementLayout(900, 720)).toBe(false);
+    expect(shouldUseCompactEntitlementLayout(720, 720)).toBe(false);
+  });
+
+  it('does not switch layouts before the container has a measurable width', () => {
+    expect(shouldUseCompactEntitlementLayout(0, 720)).toBe(false);
   });
 });
