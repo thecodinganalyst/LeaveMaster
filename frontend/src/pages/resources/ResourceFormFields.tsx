@@ -8,6 +8,7 @@ import { EntitlementPolicyFormFields } from './EntitlementPolicyFormFields.tsx';
 import { JurisdictionSelect } from './JurisdictionSelect.tsx';
 import { PublicHolidayListField } from './PublicHolidayListField.tsx';
 import { RolePermissionCheckboxList } from './RolePermissionCheckboxList.tsx';
+import { StaffEmploymentTypeField } from './StaffEmploymentTypeField.tsx';
 import { StaffFormFields } from './StaffFormFields.tsx';
 import { StaffRoleSelect } from './StaffRoleSelect.tsx';
 import { TenantJurisdictionFormFields } from './TenantJurisdictionFormFields.tsx';
@@ -35,6 +36,7 @@ export const ResourceFormFields = ({ config, editing = false, platformAdmin = fa
     return (
       <>
         <StaffFormFields editing={editing} {...(recordId ? { staffId: recordId } : {})} />
+        <StaffEmploymentTypeField />
         <StaffRoleSelect />
       </>
     );
