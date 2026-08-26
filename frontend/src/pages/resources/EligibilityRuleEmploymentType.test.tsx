@@ -32,14 +32,13 @@ describe('employment type eligibility rule editor', () => {
 
     expect(screen.getByText(/matches the staff member’s employment type/i)).toBeInTheDocument();
     const operator = screen.getByRole('combobox', { name: 'Operator' });
+    expect(operator.closest('.ant-select')).toHaveTextContent('Equals');
     fireEvent.mouseDown(operator);
     const listboxes = screen.getAllByRole('listbox');
     const operatorList = listboxes[listboxes.length - 1];
-    expect(within(operatorList).getByText('Equals')).toBeInTheDocument();
-    expect(within(operatorList).getByText('Does not equal')).toBeInTheDocument();
-    expect(within(operatorList).getByText('Is one of')).toBeInTheDocument();
-    expect(within(operatorList).getByText('Is not one of')).toBeInTheDocument();
-    expect(within(operatorList).queryByText('Greater than')).not.toBeInTheDocument();
+    expect(within(operatorList).getByRole('option', { name: 'Equals' })).toBeInTheDocument();
+    expect(within(operatorList).getByRole('option', { name: 'Does not equal' })).toBeInTheDocument();
+    expect(within(operatorList).queryByRole('option', { name: /Greater than/i })).not.toBeInTheDocument();
   });
 
   it('uses the shared human-readable employment type options for single values', () => {
