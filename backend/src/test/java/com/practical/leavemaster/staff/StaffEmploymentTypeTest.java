@@ -52,7 +52,7 @@ class StaffEmploymentTypeTest {
     @Test
     void shouldRejectUnsupportedEmploymentTypeDuringJsonDeserialization() {
         ObjectMapper objectMapper = new ObjectMapper();
-        String json = "{\"id\":\"staff-1\",\"name\":\"Alex\",\"joinDate\":\"2026-01-05\",\"employmentType\":\"PERMANENT\"}";
+        String json = "{\"id\":\"staff-1\",\"name\":\"Alex\",\"employmentType\":\"PERMANENT\"}";
 
         assertThatThrownBy(() -> objectMapper.readValue(json, StaffWriteRequest.class))
                 .hasMessageContaining("EmploymentType");
