@@ -1,6 +1,7 @@
 package com.practical.leavemaster.mcp;
 
 import com.practical.leavemaster.leaveentitlement.LeaveEntitlement;
+import com.practical.leavemaster.leaveentitlement.LeaveEntitlementRepository;
 import com.practical.leavemaster.leavetype.LeaveType;
 import com.practical.leavemaster.leavetype.LeaveTypeRepository;
 import com.practical.leavemaster.staff.Staff;
@@ -32,10 +33,14 @@ class LeaveBalanceAssistantReadServiceTest {
     private StaffRepository staffRepository;
 
     @Autowired
+    private LeaveEntitlementRepository leaveEntitlementRepository;
+
+    @Autowired
     private LeaveTypeRepository leaveTypeRepository;
 
     @AfterEach
     void cleanUp() {
+        leaveEntitlementRepository.deleteAll();
         staffRepository.deleteAll();
         leaveTypeRepository.deleteAll();
     }
@@ -49,8 +54,13 @@ class LeaveBalanceAssistantReadServiceTest {
                 .used(true)
                 .statutory(true)
                 .build());
-
-        LeaveEntitlement entitlement = LeaveEntitlement.builder()
+        Staff staff = staffRepository.save(Staff.builder()
+                .id("001-366")
+                .name("Lazy Staff")
+                .joinDate(LocalDate.of(2026, 8, 1))
+                .build());
+        leaveEntitlementRepository.save(LeaveEntitlement.builder()
+                .staff(staff)
                 .leaveType(annualLeave)
                 .from(LocalDate.of(2026, 1, 1))
                 .to(LocalDate.of(2026, 12, 31))
@@ -59,15 +69,7 @@ class LeaveBalanceAssistantReadServiceTest {
                 .baseEntitlementAmount(new BigDecimal("14.00"))
                 .carriedForwardAmount(BigDecimal.ZERO)
                 .adjustmentAmount(new BigDecimal("-8.21"))
-                .build();
-        Staff staff = Staff.builder()
-                .id("001-366")
-                .name("Lazy Staff")
-                .joinDate(LocalDate.of(2026, 8, 1))
-                .leaveEntitlements(List.of(entitlement))
-                .build();
-        entitlement.setStaff(staff);
-        staffRepository.save(staff);
+                .build());
 
         Staff detached = staffRepository.findById("001-366").orElseThrow();
         assertThat(Hibernate.isInitialized(detached.getLeaveEntitlements())).isFalse();
