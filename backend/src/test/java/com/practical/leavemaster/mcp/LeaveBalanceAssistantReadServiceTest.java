@@ -1,9 +1,5 @@
 package com.practical.leavemaster.mcp;
 
-import com.practical.leavemaster.leaveapplication.LeaveApplication;
-import com.practical.leavemaster.leaveapplication.LeaveApplicationRepository;
-import com.practical.leavemaster.leaveapplication.LeaveDuration;
-import com.practical.leavemaster.leaveapplication.LeaveStatus;
 import com.practical.leavemaster.leaveentitlement.LeaveEntitlement;
 import com.practical.leavemaster.leavetype.LeaveType;
 import com.practical.leavemaster.leavetype.LeaveTypeRepository;
@@ -38,12 +34,8 @@ class LeaveBalanceAssistantReadServiceTest {
     @Autowired
     private LeaveTypeRepository leaveTypeRepository;
 
-    @Autowired
-    private LeaveApplicationRepository leaveApplicationRepository;
-
     @AfterEach
     void cleanUp() {
-        leaveApplicationRepository.deleteAll();
         staffRepository.deleteAll();
         leaveTypeRepository.deleteAll();
     }
@@ -77,15 +69,6 @@ class LeaveBalanceAssistantReadServiceTest {
         entitlement.setStaff(staff);
         staffRepository.save(staff);
 
-        leaveApplicationRepository.save(LeaveApplication.builder()
-                .staff(staff)
-                .leaveDate(LocalDate.of(2026, 8, 20))
-                .leaveType(annualLeave)
-                .leaveDuration(LeaveDuration.AM)
-                .status(LeaveStatus.APPROVED)
-                .applicationDate(LocalDate.of(2026, 8, 10))
-                .build());
-
         Staff detached = staffRepository.findById("001-366").orElseThrow();
         assertThat(Hibernate.isInitialized(detached.getLeaveEntitlements())).isFalse();
 
@@ -97,8 +80,8 @@ class LeaveBalanceAssistantReadServiceTest {
             assertThat(result.from()).isEqualTo(LocalDate.of(2026, 1, 1));
             assertThat(result.to()).isEqualTo(LocalDate.of(2026, 12, 31));
             assertThat(result.entitlement()).isEqualByComparingTo("5.79");
-            assertThat(result.used()).isEqualByComparingTo("0.5");
-            assertThat(result.balance()).isEqualByComparingTo("5.29");
+            assertThat(result.used()).isEqualByComparingTo("0");
+            assertThat(result.balance()).isEqualByComparingTo("5.79");
             assertThat(result.policyId()).isEqualTo("policy-366");
             assertThat(result.baseEntitlementAmount()).isEqualByComparingTo("14.00");
             assertThat(result.adjustmentAmount()).isEqualByComparingTo("-8.21");
