@@ -17,6 +17,9 @@ import java.util.Map;
 
 @Slf4j
 final class AssistantToolAdapter {
+    private static final String TOOL_FAILURE_CODE = "TOOL_EXECUTION_FAILED";
+    private static final String TOOL_FAILURE_MESSAGE = "The LeaveMaster tool could not complete the request.";
+
     private AssistantToolAdapter() {
     }
 
@@ -117,28 +120,52 @@ final class AssistantToolAdapter {
                         conversationId, toolName(delegate), arguments, "SUCCESS", null);
                 return result;
             } catch (RuntimeException e) {
+                String name = toolName(delegate);
                 auditService.record(AssistantAuditService.TOOL_EXECUTION, user.getLoginName(), user.getTenantId(),
-                        conversationId, toolName(delegate), arguments, "FAILED", e.getClass().getSimpleName());
-                throw e;
+                        conversationId, name, arguments, "FAILED", e.getClass().getSimpleName());
+                trace.toolFailed(name, e);
+                return failureResult(objectMapper, name);
             }
         }));
+    }
+
+    private static String failureResult(ObjectMapper objectMapper, String toolName) {
+        try {
+            return objectMapper.writeValueAsString(Map.of(
+                    "status", "ERROR",
+                    "error", TOOL_FAILURE_CODE,
+                    "tool", toolName,
+                    "message", TOOL_FAILURE_MESSAGE));
+        } catch (Exception serializationFailure) {
+            log.error("Failed to serialize controlled assistant tool failure payload: tool={}, exceptionType={}",
+                    toolName, serializationFailure.getClass().getName());
+            return "{\"status\":\"ERROR\",\"error\":\"TOOL_EXECUTION_FAILED\",\"message\":\"The LeaveMaster tool could not complete the request.\"}";
+        }
     }
 
     private static String timedCall(ToolCallback delegate, String conversationId, AssistantRequestTrace trace,
                                     ToolInvocation invocation) {
         String name = toolName(delegate);
         int callNumber = trace.toolStarted(name);
+        int failureCountBefore = trace.toolFailureCount();
         long startedAtNanos = System.nanoTime();
         log.info("Ask LeaveMaestro tool started: conversationId={}, tool={}, toolCallNumber={}",
                 conversationId, name, callNumber);
         try {
             String result = invocation.call();
+            if (trace.toolFailureCount() > failureCountBefore) {
+                Throwable failure = trace.lastToolFailure();
+                log.warn("Ask LeaveMaestro tool completed: conversationId={}, tool={}, toolCallNumber={}, durationMs={}, status=FAILED, exceptionType={}",
+                        conversationId, name, callNumber, elapsedMillis(startedAtNanos),
+                        failure == null ? "<unknown>" : failure.getClass().getName());
+                return result;
+            }
             trace.toolCompleted(name);
             log.info("Ask LeaveMaestro tool completed: conversationId={}, tool={}, toolCallNumber={}, durationMs={}, status=SUCCESS",
                     conversationId, name, callNumber, elapsedMillis(startedAtNanos));
             return result;
         } catch (RuntimeException e) {
-            trace.toolFailed(name);
+            trace.toolFailed(name, e);
             log.warn("Ask LeaveMaestro tool completed: conversationId={}, tool={}, toolCallNumber={}, durationMs={}, status=FAILED, exceptionType={}",
                     conversationId, name, callNumber, elapsedMillis(startedAtNanos), e.getClass().getName());
             throw e;
