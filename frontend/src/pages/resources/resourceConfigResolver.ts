@@ -61,9 +61,11 @@ const leaveTypeConfig = () => {
   return {
     ...base,
     fields: [
-      ...base.fields.map((field) => field.name === 'sourceJurisdictionLeaveTypeId'
-        ? { ...field, hidden: true, formHidden: true }
-        : { ...field }),
+      ...base.fields
+        .filter((field) => field.name !== 'used')
+        .map((field) => field.name === 'sourceJurisdictionLeaveTypeId'
+          ? { ...field, list: false, hidden: true, formHidden: true }
+          : { ...field }),
       { name: 'active', label: 'Active', type: 'boolean' as const, list: true },
       { name: 'statutory', label: 'Statutory', type: 'boolean' as const, list: true },
       { name: 'paid', label: 'Paid', type: 'boolean' as const, list: true },
@@ -121,6 +123,7 @@ export const toFormValues = (config: AdminResourceConfig, record: Record<string,
 
 export const normaliseFormValues = (config: AdminResourceConfig, values: Record<string, unknown>) => {
   const result = normaliseBaseFormValues(config, values);
+  if (config.name === 'leave-types') delete result.used;
   for (const field of config.fields) {
     if (field.type === 'date' && values[field.name] === '') result[field.name] = null;
   }
