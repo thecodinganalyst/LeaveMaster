@@ -70,7 +70,6 @@ class AustraliaJurisdictionInheritanceProvisionTest {
                 .thenReturn(List.of(federal));
         when(leaveCalendarRepository.findByTenantIdAndJurisdictionIdAndStartAndEnd("acme-au", "AU-VIC", start, end))
                 .thenReturn(Optional.empty());
-        when(leaveCalendarRepository.findById(any())).thenReturn(Optional.empty());
         when(leaveCalendarRepository.save(any(LeaveCalendar.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         service.provision(tenant, new TenantJurisdictionProvisionRequest(
