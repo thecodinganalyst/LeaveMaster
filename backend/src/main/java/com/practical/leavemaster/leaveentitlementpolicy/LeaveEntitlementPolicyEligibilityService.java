@@ -1,6 +1,7 @@
 package com.practical.leavemaster.leaveentitlementpolicy;
 
 import com.practical.leavemaster.jurisdiction.JurisdictionRepository;
+import com.practical.leavemaster.staff.EmploymentType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -106,6 +107,7 @@ public class LeaveEntitlementPolicyEligibilityService {
         switch (rule.getCriterionType()) {
             case JURISDICTION_CODE -> validateJurisdictionRule(rule);
             case SERVICE_MONTHS -> validateServiceMonthsRule(rule);
+            case EMPLOYMENT_TYPE -> validateEmploymentTypeRule(rule);
             case HAS_DEPENDANT_MATCHING -> validateDependantRule(rule);
         }
     }
@@ -134,6 +136,26 @@ public class LeaveEntitlementPolicyEligibilityService {
         }
         if (values(rule.getValue()).size() != 1) {
             throw new LeaveEntitlementPolicyValidationException("SERVICE_MONTHS comparison operators require one value");
+        }
+    }
+
+    private void validateEmploymentTypeRule(LeaveEntitlementPolicyEligibilityRule rule) {
+        requireSetOperator(rule.getOperator(), "EMPLOYMENT_TYPE");
+        List<String> expectedValues = values(rule.getValue());
+        if (expectedValues.isEmpty()) {
+            throw new LeaveEntitlementPolicyValidationException("EMPLOYMENT_TYPE requires at least one value");
+        }
+        if ((rule.getOperator() == EligibilityOperator.EQUALS || rule.getOperator() == EligibilityOperator.NOT_EQUALS)
+                && expectedValues.size() != 1) {
+            throw new LeaveEntitlementPolicyValidationException(
+                    "EMPLOYMENT_TYPE EQUALS and NOT_EQUALS require one value");
+        }
+        for (String value : expectedValues) {
+            try {
+                EmploymentType.valueOf(value);
+            } catch (IllegalArgumentException ex) {
+                throw new LeaveEntitlementPolicyValidationException("Unknown employment type: " + value);
+            }
         }
     }
 

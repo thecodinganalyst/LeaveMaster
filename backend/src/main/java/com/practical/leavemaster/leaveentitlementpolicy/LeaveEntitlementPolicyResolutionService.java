@@ -224,6 +224,7 @@ public class LeaveEntitlementPolicyResolutionService {
         boolean matched = switch (rule.getCriterionType()) {
             case JURISDICTION_CODE -> evaluateStringSet(jurisdictionCodes(staff.getJurisdictionId()), rule);
             case SERVICE_MONTHS -> evaluateNumber(serviceMonths(staff, date), rule);
+            case EMPLOYMENT_TYPE -> evaluateStringSet(employmentTypes(staff), rule);
             case HAS_DEPENDANT_MATCHING -> evaluateDependant(staff, date, rule);
         };
         return new PolicyResolutionResult.RuleEvaluation(rule.getId(), rule.getCriterionType(), rule.getOperator(), matched,
@@ -271,6 +272,10 @@ public class LeaveEntitlementPolicyResolutionService {
             return 0;
         }
         return ChronoUnit.MONTHS.between(staff.getJoinDate(), date);
+    }
+
+    private Set<String> employmentTypes(Staff staff) {
+        return staff.getEmploymentType() == null ? Set.of() : Set.of(staff.getEmploymentType().name());
     }
 
     private Set<String> jurisdictionCodes(String jurisdictionId) {

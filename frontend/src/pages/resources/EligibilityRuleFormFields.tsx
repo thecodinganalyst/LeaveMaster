@@ -10,9 +10,10 @@ import {
   type EntitlementPolicyOptionSource,
   type LeaveTypeOptionSource,
 } from './entitlementPolicyPresentation.ts';
+import { EMPLOYMENT_TYPE_OPTIONS } from './employmentTypes.ts';
 import { getJurisdictionOptions, type JurisdictionOptionSource } from './jurisdictions.ts';
 
-type CriterionType = 'JURISDICTION_CODE' | 'SERVICE_MONTHS';
+type CriterionType = 'JURISDICTION_CODE' | 'SERVICE_MONTHS' | 'EMPLOYMENT_TYPE';
 type EligibilityOperator = 'EQUALS' | 'NOT_EQUALS' | 'IN' | 'NOT_IN' | 'GREATER_THAN' | 'GREATER_THAN_OR_EQUAL' | 'LESS_THAN' | 'LESS_THAN_OR_EQUAL';
 
 interface Props {
@@ -22,6 +23,7 @@ interface Props {
 const criterionOptions = [
   { label: 'Jurisdiction', value: 'JURISDICTION_CODE' },
   { label: 'Length of service (months)', value: 'SERVICE_MONTHS' },
+  { label: 'Employment type', value: 'EMPLOYMENT_TYPE' },
 ];
 
 const setOperators = [
@@ -129,6 +131,18 @@ export const EligibilityRuleFormFields = ({ editing = false }: Props) => {
       );
     }
 
+    if (criterionType === 'EMPLOYMENT_TYPE') {
+      return (
+        <Select
+          {...(isMulti ? { mode: 'multiple' as const } : {})}
+          options={[...EMPLOYMENT_TYPE_OPTIONS]}
+          showSearch
+          optionFilterProp="label"
+          placeholder={isMulti ? 'Select employment types' : 'Select an employment type'}
+        />
+      );
+    }
+
     return <Select disabled placeholder="Select a criterion first" />;
   })();
 
@@ -136,7 +150,9 @@ export const EligibilityRuleFormFields = ({ editing = false }: Props) => {
     ? isMulti ? 'Enter one or more non-negative whole numbers.' : 'Enter a non-negative whole number of completed service months.'
     : criterionType === 'JURISDICTION_CODE'
       ? 'Select the jurisdiction value used by this rule.'
-      : 'Choose a criterion and operator before entering a value.';
+      : criterionType === 'EMPLOYMENT_TYPE'
+        ? 'Select the staff employment type value used by this rule.'
+        : 'Choose a criterion and operator before entering a value.';
 
   return (
     <>
@@ -163,7 +179,9 @@ export const EligibilityRuleFormFields = ({ editing = false }: Props) => {
           ? 'Matches the employee’s assigned jurisdiction or an active parent jurisdiction.'
           : criterionType === 'SERVICE_MONTHS'
             ? 'Matches completed months of service as of the policy evaluation date.'
-            : 'Choose the employee attribute this rule evaluates.'}
+            : criterionType === 'EMPLOYMENT_TYPE'
+              ? 'Matches the staff member’s employment type.'
+              : 'Choose the employee attribute this rule evaluates.'}
         rules={[{ required: true, message: 'Criterion is required' }]}
       >
         <Select options={criterionOptions} placeholder="Select a criterion" />
