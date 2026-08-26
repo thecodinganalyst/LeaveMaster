@@ -1,5 +1,5 @@
 import { useCan, useDelete, useGetIdentity, useList, useResource } from '@refinedev/core';
-import { App, Button, Input, Popconfirm, Space, Tag, type TableProps } from 'antd';
+import { App, Button, Input, Popconfirm, Select, Space, Tag, type TableProps } from 'antd';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -10,6 +10,12 @@ import { PageContainer } from '../../components/common/PageContainer.tsx';
 import { PageHeader } from '../../components/common/PageHeader.tsx';
 import type { AdminField } from './resourceConfigResolver.ts';
 import { getAdminResourceConfig, isAdminFieldVisible, toFormValues } from './resourceConfigResolver.ts';
+import {
+  buildLeaveTypeJurisdictionMap,
+  filterRecordsByJurisdiction,
+  supportsJurisdictionFilter,
+} from './jurisdictionListFilter.ts';
+import { getJurisdictionOptions, type JurisdictionOptionSource } from './jurisdictions.ts';
 import { TenantEntitlementPolicySummary } from './TenantEntitlementPolicySummary.tsx';
 import { TenantLeaveTypeName } from './TenantLeaveTypeName.tsx';
 import { shouldHideTenantInternalId } from './tenantInternalIdVisibility.ts';
@@ -34,21 +40,62 @@ export const ResourceListPage = () => {
   const { data: identity } = useGetIdentity<LeaveMasterIdentity>();
   const platformAdmin = Boolean(identity?.platformAdmin);
   const [search, setSearch] = useState('');
+  const [jurisdictionFilter, setJurisdictionFilter] = useState<string>();
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const navigate = useNavigate();
   const { message } = App.useApp();
+  const jurisdictionFilterEnabled = supportsJurisdictionFilter(config?.name);
   const listQuery = useList({ resource: config?.name ?? '', pagination: { mode: 'off' }, queryOptions: { enabled: Boolean(config) } });
+  const jurisdictionsQuery = useList({
+    resource: 'jurisdictions',
+    pagination: { mode: 'off' },
+    queryOptions: { enabled: jurisdictionFilterEnabled },
+  });
+  const tenantJurisdictionsQuery = useList({
+    resource: 'tenant-jurisdictions',
+    pagination: { mode: 'off' },
+    queryOptions: { enabled: jurisdictionFilterEnabled && !platformAdmin },
+  });
+  const jurisdictionLeaveTypesQuery = useList({
+    resource: 'jurisdiction-leave-types',
+    pagination: { mode: 'off' },
+    queryOptions: { enabled: config?.name === 'leave-types' },
+  });
   const { data: canCreate } = useCan({ resource: config?.name ?? '', action: 'create' });
   const { data: canEdit } = useCan({ resource: config?.name ?? '', action: 'edit' });
   const { data: canDelete } = useCan({ resource: config?.name ?? '', action: 'delete' });
   const { mutateAsync: deleteRecord } = useDelete();
 
+  const leaveTypeJurisdictions = useMemo(
+    () => buildLeaveTypeJurisdictionMap((jurisdictionLeaveTypesQuery.data?.data ?? []) as Record<string, unknown>[]),
+    [jurisdictionLeaveTypesQuery.data],
+  );
+
+  const jurisdictionOptions = useMemo(() => {
+    if (!jurisdictionFilterEnabled) return [];
+    const jurisdictions = (jurisdictionsQuery.data?.data ?? []) as unknown as JurisdictionOptionSource[];
+    const options = getJurisdictionOptions(jurisdictions);
+    if (platformAdmin) return options;
+
+    const tenantJurisdictionIds = new Set(
+      ((tenantJurisdictionsQuery.data?.data ?? []) as Record<string, unknown>[])
+        .map((record) => String(record.jurisdictionId ?? '').trim())
+        .filter(Boolean),
+    );
+    return options.filter((option) => tenantJurisdictionIds.has(option.value));
+  }, [jurisdictionFilterEnabled, jurisdictionsQuery.data, platformAdmin, tenantJurisdictionsQuery.data]);
+
   const rows = useMemo(() => {
     if (!config) return [];
     const records = ((listQuery.data?.data ?? []) as Record<string, unknown>[]).map((record) => toFormValues(config, record));
-    if (!search.trim()) return records;
+    const jurisdictionFiltered = supportsJurisdictionFilter(config.name)
+      ? filterRecordsByJurisdiction(config.name, records, jurisdictionFilter, leaveTypeJurisdictions)
+      : records;
+    if (!search.trim()) return jurisdictionFiltered;
     const needle = search.toLowerCase();
-    return records.filter((record) => Object.values(record).some((value) => String(value ?? '').toLowerCase().includes(needle)));
-  }, [config, listQuery.data, search]);
+    return jurisdictionFiltered.filter((record) => Object.values(record).some((value) => String(value ?? '').toLowerCase().includes(needle)));
+  }, [config, jurisdictionFilter, leaveTypeJurisdictions, listQuery.data, search]);
 
   if (!config) return <EmptyState title="Resource unavailable" description="No administration configuration exists for this resource." />;
   if (listQuery.isLoading) return <LoadingState />;
@@ -99,11 +146,55 @@ export const ResourceListPage = () => {
     ? <Button type="primary" onClick={() => navigate(`/${config.name}/create`)}>Create</Button>
     : null;
 
+  const jurisdictionSelect = jurisdictionFilterEnabled ? (
+    <Select
+      aria-label="Jurisdiction"
+      value={jurisdictionFilter ?? '__ALL__'}
+      onChange={(value) => {
+        setJurisdictionFilter(value === '__ALL__' ? undefined : value);
+        setCurrentPage(1);
+      }}
+      loading={jurisdictionsQuery.isLoading || (!platformAdmin && tenantJurisdictionsQuery.isLoading) || (config.name === 'leave-types' && jurisdictionLeaveTypesQuery.isLoading)}
+      disabled={jurisdictionsQuery.isError || (!platformAdmin && tenantJurisdictionsQuery.isError) || (config.name === 'leave-types' && jurisdictionLeaveTypesQuery.isError)}
+      options={[
+        { label: 'All jurisdictions', value: '__ALL__' },
+        ...jurisdictionOptions,
+      ]}
+      showSearch
+      optionFilterProp="label"
+      style={{ minWidth: 220 }}
+    />
+  ) : null;
+
   return (
     <PageContainer>
       <PageHeader title={config.label} subtitle={`Manage ${config.label.toLowerCase()}.`} extra={createButton} />
-      <Input.Search allowClear placeholder={`Search ${config.label.toLowerCase()}`} onChange={(event) => setSearch(event.target.value)} style={{ maxWidth: 360 }} />
-      <DataTable<Record<string, unknown>> rowKey={(row) => String(row[config.idField])} dataSource={rows} columns={columns} pagination={{ pageSize: 10, showSizeChanger: true }} />
+      <Space wrap>
+        <Input.Search
+          allowClear
+          placeholder={`Search ${config.label.toLowerCase()}`}
+          onChange={(event) => {
+            setSearch(event.target.value);
+            setCurrentPage(1);
+          }}
+          style={{ maxWidth: 360 }}
+        />
+        {jurisdictionSelect}
+      </Space>
+      <DataTable<Record<string, unknown>>
+        rowKey={(row) => String(row[config.idField])}
+        dataSource={rows}
+        columns={columns}
+        pagination={{
+          current: currentPage,
+          pageSize,
+          showSizeChanger: true,
+          onChange: (page, nextPageSize) => {
+            setCurrentPage(nextPageSize !== pageSize ? 1 : page);
+            setPageSize(nextPageSize);
+          },
+        }}
+      />
     </PageContainer>
   );
 };
