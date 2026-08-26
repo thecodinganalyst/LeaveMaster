@@ -13,6 +13,7 @@ import java.util.Locale;
 @RequiredArgsConstructor
 public class JurisdictionCatalogInitializer implements ApplicationRunner {
     private static final String SINGAPORE = "SG";
+    private static final String AUSTRALIA = "AU";
 
     private final JurisdictionRepository jurisdictionRepository;
     private final JurisdictionLeaveTypeRepository leaveTypeRepository;
@@ -99,10 +100,21 @@ public class JurisdictionCatalogInitializer implements ApplicationRunner {
                 new LeaveSeed(SINGAPORE, "MARRIAGE_LEAVE", "Marriage Leave", false, null, null, null),
                 new LeaveSeed(SINGAPORE, "NS_LEAVE", "National Service Leave", true, null, "MINDEF Singapore", "https://www.ns.gov.sg/web/portal/nsmen/home/nstopics/make-up-pay"),
                 new LeaveSeed(SINGAPORE, "OFF_IN_LIEU", "Off in Lieu", false, null, null, null),
-                new LeaveSeed("AU", "ANNUAL_LEAVE", "Annual Leave", true, true, "Fair Work Ombudsman", "https://www.fairwork.gov.au/leave/annual-leave"),
-                new LeaveSeed("AU", "PERSONAL_CARERS_LEAVE", "Personal and Carer's Leave", true, true, "Fair Work Ombudsman", "https://www.fairwork.gov.au/leave/sick-and-carers-leave"),
-                new LeaveSeed("AU", "COMPASSIONATE_LEAVE", "Compassionate Leave", true, true, "Fair Work Ombudsman", "https://www.fairwork.gov.au/leave/compassionate-and-bereavement-leave"),
-                new LeaveSeed("AU", "PARENTAL_LEAVE", "Parental Leave", true, null, "Fair Work Ombudsman", "https://www.fairwork.gov.au/leave/parental-leave"),
+                new LeaveSeed(AUSTRALIA, "ANNUAL_LEAVE", "Annual Leave", true, true, "Fair Work Ombudsman", "https://www.fairwork.gov.au/leave/annual-leave"),
+                new LeaveSeed(AUSTRALIA, "PERSONAL_CARERS_LEAVE", "Personal / Carer's Leave", true, null, "Fair Work Ombudsman", "https://www.fairwork.gov.au/leave/sick-and-carers-leave"),
+                new LeaveSeed(AUSTRALIA, "COMPASSIONATE_LEAVE", "Compassionate Leave", true, null, "Fair Work Ombudsman", "https://www.fairwork.gov.au/leave/compassionate-and-bereavement-leave"),
+                new LeaveSeed(AUSTRALIA, "PARENTAL_LEAVE", "Unpaid Parental Leave", true, false, "Fair Work Ombudsman", "https://www.fairwork.gov.au/leave/parental-leave"),
+                new LeaveSeed(AUSTRALIA, "COMMUNITY_SERVICE_LEAVE", "Community Service Leave", true, null, "Fair Work Ombudsman", "https://www.fairwork.gov.au/leave/community-service-leave"),
+                new LeaveSeed(AUSTRALIA, "FAMILY_DOMESTIC_VIOLENCE_LEAVE", "Family and Domestic Violence Leave", true, true, "Fair Work Ombudsman", "https://www.fairwork.gov.au/leave/family-and-domestic-violence-leave"),
+                new LeaveSeed(AUSTRALIA, "LONG_SERVICE_LEAVE", "Long Service Leave", true, null, "Fair Work Ombudsman", "https://www.fairwork.gov.au/leave/long-service-leave"),
+                new LeaveSeed("AU-NSW", "LONG_SERVICE_LEAVE", "Long Service Leave", true, true, "NSW Industrial Relations", "https://www.nsw.gov.au/employment/rights-responsibilities/leave/long-service-leave"),
+                new LeaveSeed("AU-VIC", "LONG_SERVICE_LEAVE", "Long Service Leave", true, true, "Workforce Inspectorate Victoria", "https://www.vic.gov.au/long-service-leave"),
+                new LeaveSeed("AU-QLD", "LONG_SERVICE_LEAVE", "Long Service Leave", true, true, "Business Queensland", "https://www.business.qld.gov.au/running-business/employing/legal-obligations/long-service-leave"),
+                new LeaveSeed("AU-SA", "LONG_SERVICE_LEAVE", "Long Service Leave", true, true, "SafeWork SA", "https://www.safework.sa.gov.au/workers/wages-and-conditions/long-service-leave"),
+                new LeaveSeed("AU-WA", "LONG_SERVICE_LEAVE", "Long Service Leave", true, true, "WA Government", "https://www.wa.gov.au/service/employment/workplace-agreements/long-service-leave"),
+                new LeaveSeed("AU-TAS", "LONG_SERVICE_LEAVE", "Long Service Leave", true, true, "WorkSafe Tasmania", "https://worksafe.tas.gov.au/topics/laws-and-compliance/industrial-relations/long-service-leave"),
+                new LeaveSeed("AU-ACT", "LONG_SERVICE_LEAVE", "Long Service Leave", true, true, "ACT Government", "https://www.accesscanberra.act.gov.au/business-and-work/industrial-relations/long-service-leave"),
+                new LeaveSeed("AU-NT", "LONG_SERVICE_LEAVE", "Long Service Leave", true, true, "NT Government", "https://nt.gov.au/employ/for-employees-in-nt/long-service-leave"),
                 new LeaveSeed("CA", "ANNUAL_VACATION", "Vacation Leave", true, true, "Government of Canada", "https://www.canada.ca/en/services/jobs/workplace/federal-labour-standards/leaves.html"),
                 new LeaveSeed("CA", "MEDICAL_LEAVE", "Medical Leave", true, null, "Government of Canada", "https://www.canada.ca/en/services/jobs/workplace/federal-labour-standards/leaves.html"),
                 new LeaveSeed("CA", "PARENTAL_LEAVE", "Parental Leave", true, false, "Government of Canada", "https://www.canada.ca/en/services/jobs/workplace/federal-labour-standards/leaves.html"),
