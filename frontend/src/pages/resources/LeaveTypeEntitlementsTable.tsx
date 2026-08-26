@@ -114,10 +114,6 @@ export const LeaveTypeEntitlementsTable = ({ leaveTypeId, canEdit = false }: Pro
   const measuredTableWidthRef = useRef(0);
   const [useCompactLayout, setUseCompactLayout] = useState(false);
 
-  if (policiesQuery.isError || eligibilityQuery.isError) {
-    return <Alert type="error" showIcon message="Unable to load entitlements" />;
-  }
-
   const rulesByPolicy = new Map<string, EligibilityRuleSummary[]>();
   for (const rule of eligibilityQuery.data ?? []) {
     const rules = rulesByPolicy.get(rule.policyId) ?? [];
@@ -186,6 +182,10 @@ export const LeaveTypeEntitlementsTable = ({ leaveTypeId, canEdit = false }: Pro
     resizeObserver.observe(container);
     return () => resizeObserver.disconnect();
   }, [updateResponsiveLayout, rows.length, canEdit, loading]);
+
+  if (policiesQuery.isError || eligibilityQuery.isError) {
+    return <Alert type="error" showIcon message="Unable to load entitlements" />;
+  }
 
   return (
     <>
