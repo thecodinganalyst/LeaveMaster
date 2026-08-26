@@ -7,6 +7,7 @@ import {
   type AdminField,
   type AdminResourceConfig,
 } from './adminResourceConfig.ts';
+import { EMPLOYMENT_TYPE_OPTIONS } from './employmentTypes.ts';
 import { DEFAULT_STAFF_WORK_SCHEDULE } from './staffFormHelpers.ts';
 
 const publicHolidayConfig: AdminResourceConfig = {
@@ -53,6 +54,22 @@ const tenantJurisdictionConfig: AdminResourceConfig = {
     { name: 'calendarEnd', label: 'Calendar end', type: 'date', required: true },
     { name: 'createdAt', label: 'Added', list: true, formHidden: true },
   ],
+};
+
+const employeeConfig = () => {
+  const base = getBaseAdminResourceConfig('employees');
+  if (!base) return undefined;
+  const employmentTypeField: AdminField = {
+    name: 'employmentType',
+    label: 'Employment Type',
+    type: 'select',
+    options: EMPLOYMENT_TYPE_OPTIONS.map((option) => ({ ...option })),
+    list: false,
+  };
+  const fields = [...base.fields];
+  const emailIndex = fields.findIndex((field) => field.name === 'email');
+  fields.splice(emailIndex >= 0 ? emailIndex + 1 : fields.length, 0, employmentTypeField);
+  return { ...base, fields };
 };
 
 const leaveTypeConfig = () => {
@@ -107,6 +124,7 @@ const eligibilityRuleConfig = () => {
 export const getAdminResourceConfig = (name?: string) => {
   if (name === 'public-holidays') return publicHolidayConfig;
   if (name === 'tenant-jurisdictions') return tenantJurisdictionConfig;
+  if (name === 'employees') return employeeConfig();
   if (name === 'leave-types') return leaveTypeConfig();
   if (name === 'leave-entitlement-policies') return entitlementPolicyConfig();
   if (name === 'leave-entitlement-policy-eligibility-rules') return eligibilityRuleConfig();
