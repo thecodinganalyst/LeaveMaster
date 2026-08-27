@@ -2,11 +2,23 @@ package com.practical.leavemaster.email;
 
 import com.practical.leavemaster.leaveapplication.LeaveApplication;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
 @Slf4j
 public class EmailService {
+
+    private final TransactionalEmailSender transactionalEmailSender;
+
+    public EmailService() {
+        this.transactionalEmailSender = null;
+    }
+
+    @Autowired
+    public EmailService(TransactionalEmailSender transactionalEmailSender) {
+        this.transactionalEmailSender = transactionalEmailSender;
+    }
 
     public void sendCancellationRequestNotification(LeaveApplication application, String approverEmail) {
         if (approverEmail == null || approverEmail.isBlank()) {
@@ -37,10 +49,10 @@ public class EmailService {
         if (recipient == null || recipient.isBlank()) {
             throw new IllegalArgumentException("Activation email recipient must not be blank");
         }
-        // Intentionally never log or persist the plaintext PIN here. Issue #378 will replace
-        // this provider-neutral placeholder with the configured transactional email transport.
-        log.info("Account activation email placeholder invoked for recipient {} (PIN omitted; expires in {} minutes)",
-                recipient, expiryMinutes);
+        if (transactionalEmailSender == null) {
+            throw new EmailDeliveryException("Transactional email provider is not configured");
+        }
+        transactionalEmailSender.sendAccountActivationPin(recipient, staffName, pin, expiryMinutes);
     }
 
     private void sendLeaveDecisionNotification(LeaveApplication application, String decision, String subject) {
