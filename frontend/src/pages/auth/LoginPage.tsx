@@ -1,6 +1,6 @@
 import { useLogin } from '@refinedev/core';
 import { Alert, Button, Card, Form, Input, Space, Typography, message } from 'antd';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 import {
@@ -27,10 +27,7 @@ export const LoginPage = () => {
   const [cooldownUntil, setCooldownUntil] = useState<number>(0);
   const [, forceRender] = useState(0);
 
-  const cooldownRemaining = useMemo(
-    () => Math.max(0, Math.ceil((cooldownUntil - Date.now()) / 1000)),
-    [cooldownUntil, step],
-  );
+  const cooldownRemaining = Math.max(0, Math.ceil((cooldownUntil - Date.now()) / 1000));
 
   const run = async (action: () => Promise<void>) => {
     setBusy(true);
