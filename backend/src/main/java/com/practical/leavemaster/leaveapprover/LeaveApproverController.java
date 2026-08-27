@@ -1,5 +1,6 @@
 package com.practical.leavemaster.leaveapprover;
 
+import com.practical.leavemaster.staff.Staff;
 import com.practical.leavemaster.staff.StaffNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -21,12 +22,24 @@ public class LeaveApproverController {
         return leaveApproverService.findAll();
     }
 
+    @GetMapping("/staff-options")
+    public List<Staff> getStaffOptions() {
+        return leaveApproverService.findTenantStaffOptions();
+    }
+
+    @GetMapping("/approver-options")
+    public List<Staff> getApproverOptions() {
+        return leaveApproverService.findEligibleApproverOptions();
+    }
+
     @GetMapping("/staff/{staffId}")
     public ResponseEntity<List<LeaveApprover>> getByStaffId(@PathVariable String staffId) {
         try {
             return ResponseEntity.ok(leaveApproverService.findByStaffId(staffId));
         } catch (StaffNotFoundException e) {
             return ResponseEntity.notFound().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
         }
     }
 
@@ -54,9 +67,7 @@ public class LeaveApproverController {
         try {
             LeaveApprover updated = leaveApproverService.update(id, request);
             return ResponseEntity.ok(updated);
-        } catch (LeaveApproverNotFoundException e) {
-            return ResponseEntity.notFound().build();
-        } catch (StaffNotFoundException e) {
+        } catch (LeaveApproverNotFoundException | StaffNotFoundException e) {
             return ResponseEntity.notFound().build();
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -64,12 +75,14 @@ public class LeaveApproverController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable String id) {
+    public ResponseEntity<?> delete(@PathVariable String id) {
         try {
             leaveApproverService.delete(id);
             return ResponseEntity.noContent().build();
         } catch (LeaveApproverNotFoundException e) {
             return ResponseEntity.notFound().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 }
