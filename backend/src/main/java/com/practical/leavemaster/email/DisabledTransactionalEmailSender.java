@@ -1,10 +1,10 @@
 package com.practical.leavemaster.email;
 
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 @Component
-@ConditionalOnMissingBean(TransactionalEmailSender.class)
+@ConditionalOnProperty(name = "app.email.provider", havingValue = "disabled", matchIfMissing = true)
 public class DisabledTransactionalEmailSender implements TransactionalEmailSender {
 
     @Override
