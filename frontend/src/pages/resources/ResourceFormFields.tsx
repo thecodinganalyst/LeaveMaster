@@ -11,6 +11,7 @@ import { PublicHolidayListField } from './PublicHolidayListField.tsx';
 import { RolePermissionCheckboxList } from './RolePermissionCheckboxList.tsx';
 import { StaffEmploymentTypeField } from './StaffEmploymentTypeField.tsx';
 import { StaffFormFields } from './StaffFormFields.tsx';
+import { StaffLeaveApproversField } from './StaffLeaveApproversField.tsx';
 import { StaffRoleSelect } from './StaffRoleSelect.tsx';
 import { TenantJurisdictionFormFields } from './TenantJurisdictionFormFields.tsx';
 import { TenantOnboardingFormFields } from './TenantOnboardingFormFields.tsx';
@@ -39,6 +40,7 @@ export const ResourceFormFields = ({ config, editing = false, platformAdmin = fa
         <StaffFormFields editing={editing} {...(recordId ? { staffId: recordId } : {})} />
         <StaffEmploymentTypeField />
         <StaffRoleSelect />
+        <StaffLeaveApproversField editing={editing} {...(recordId ? { staffId: recordId } : {})} />
       </>
     );
   }

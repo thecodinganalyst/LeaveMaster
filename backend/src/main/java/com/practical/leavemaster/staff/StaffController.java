@@ -1,6 +1,7 @@
 package com.practical.leavemaster.staff;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,6 +16,7 @@ import java.util.Map;
 public class StaffController {
 
     private final StaffService staffService;
+    private final ObjectProvider<StaffWriteService> staffWriteServiceProvider;
 
     @GetMapping
     public List<Staff> getAll() {
@@ -31,7 +33,8 @@ public class StaffController {
     @PostMapping
     public ResponseEntity<?> create(@RequestBody StaffWriteRequest request) {
         try {
-            Staff saved = staffService.save(request.toStaff());
+            StaffWriteService writeService = staffWriteServiceProvider.getIfAvailable();
+            Staff saved = writeService == null ? staffService.save(request.toStaff()) : writeService.create(request);
             return ResponseEntity.status(HttpStatus.CREATED).body(saved);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -41,7 +44,8 @@ public class StaffController {
     @PutMapping("/{id}")
     public ResponseEntity<?> update(@PathVariable String id, @RequestBody StaffWriteRequest request) {
         try {
-            Staff updated = staffService.update(id, request.toStaff());
+            StaffWriteService writeService = staffWriteServiceProvider.getIfAvailable();
+            Staff updated = writeService == null ? staffService.update(id, request.toStaff()) : writeService.update(id, request);
             return ResponseEntity.ok(updated);
         } catch (StaffNotFoundException e) {
             return ResponseEntity.notFound().build();
