@@ -12,7 +12,7 @@ final class AssistantToolPolicy {
     static final Map<String, String> REQUIRED_AUTHORITY = Map.ofEntries(
             Map.entry("getAllTenants", RbacPermissions.TENANT_READ), Map.entry("getTenantById", RbacPermissions.TENANT_READ),
             Map.entry("createTenant", RbacPermissions.TENANT_WRITE), Map.entry("updateTenant", RbacPermissions.TENANT_WRITE), Map.entry("deleteTenant", RbacPermissions.TENANT_WRITE),
-            Map.entry("getAllStaff", RbacPermissions.STAFF_READ), Map.entry("getStaffById", RbacPermissions.STAFF_READ),
+            Map.entry("getAllStaff", RbacPermissions.STAFF_READ), Map.entry("getStaffById", RbacPermissions.STAFF_READ), Map.entry("getStaffLeaveEntitlement", RbacPermissions.STAFF_READ),
             Map.entry("createStaff", RbacPermissions.STAFF_WRITE), Map.entry("updateStaff", RbacPermissions.STAFF_WRITE), Map.entry("deleteStaff", RbacPermissions.STAFF_WRITE), Map.entry("terminateStaff", RbacPermissions.STAFF_WRITE),
             Map.entry("getAllUsers", RbacPermissions.USER_READ), Map.entry("getUserByLoginName", RbacPermissions.USER_READ),
             Map.entry("createUser", RbacPermissions.USER_WRITE), Map.entry("updateUser", RbacPermissions.USER_WRITE), Map.entry("changePassword", RbacPermissions.USER_WRITE), Map.entry("activateUser", RbacPermissions.USER_WRITE), Map.entry("deactivateUser", RbacPermissions.USER_WRITE), Map.entry("deleteUser", RbacPermissions.USER_WRITE),
@@ -39,7 +39,7 @@ final class AssistantToolPolicy {
     );
 
     static final Set<String> STRUCTURED_RESULT_TOOLS = Set.of(
-            "getAllStaff", "getStaffById",
+            "getAllStaff", "getStaffById", "getStaffLeaveEntitlement",
             "getAllLeaveTypes", "getLeaveTypeById",
             "getEntitlementPoliciesByJurisdiction", "getEligibilityRulesByEntitlementPolicyId",
             "getLeaveEntitlementConfigurationByJurisdiction",

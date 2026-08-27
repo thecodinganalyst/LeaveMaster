@@ -74,6 +74,28 @@ const StructuredData = ({ result }: { result: StructuredResult }) => {
   );
 };
 
+const StructuredSources = ({ results }: { results: StructuredResult[] }) => {
+  const [expanded, setExpanded] = useState(false);
+  if (results.length === 0) return null;
+
+  return (
+    <div style={{ marginTop: 4 }}>
+      <Button
+        type="link"
+        size="small"
+        aria-expanded={expanded}
+        onClick={() => setExpanded((current) => !current)}
+        style={{ paddingInline: 0 }}
+      >
+        {expanded ? 'Hide source data' : 'View source data'}
+      </Button>
+      {expanded ? results.map((result, index) => (
+        <StructuredData key={`${result.toolName}-${index}`} result={result} />
+      )) : null}
+    </div>
+  );
+};
+
 interface AssistantPanelProps {
   onClose?: () => void;
 }
@@ -203,9 +225,7 @@ export const AssistantPanel = ({ onClose }: AssistantPanelProps) => {
                 )}
               </Card>
 
-              {message.results?.map((result, index) => (
-                <StructuredData key={`${message.id}-${result.toolName}-${index}`} result={result} />
-              ))}
+              <StructuredSources results={message.results ?? []} />
 
               {message.actions?.map((action) => (
                 <Card key={action.id} size="small" title={actionTitle(action.toolName)} style={{ marginTop: 8 }}>

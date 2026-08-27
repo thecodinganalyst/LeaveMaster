@@ -20,4 +20,12 @@ class AssistantEntitlementToolPolicyTest {
             assertThat(AssistantToolPolicy.STRUCTURED_RESULT_TOOLS).contains(tool);
         }
     }
+
+    @Test
+    void shouldAuthorizeAndStructureFocusedStaffEntitlementReadTool() {
+        assertThat(AssistantToolPolicy.REQUIRED_AUTHORITY)
+                .containsEntry("getStaffLeaveEntitlement", RbacPermissions.STAFF_READ);
+        assertThat(AssistantToolPolicy.WRITE_TOOLS).doesNotContain("getStaffLeaveEntitlement");
+        assertThat(AssistantToolPolicy.STRUCTURED_RESULT_TOOLS).contains("getStaffLeaveEntitlement");
+    }
 }
