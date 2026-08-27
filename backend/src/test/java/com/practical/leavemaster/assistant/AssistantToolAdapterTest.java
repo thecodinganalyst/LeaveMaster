@@ -16,7 +16,6 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
@@ -51,6 +50,7 @@ class AssistantToolAdapterTest {
         assertThat(firstMap.get("leaveType")).isEqualTo("Annual");
         assertThat(firstMap.get("balance")).isEqualTo(12.5);
         assertThat(trace.toolCallCount()).isEqualTo(1);
+        assertThat(trace.toolFailureCount()).isZero();
         assertThat(trace.lastStartedTool()).isEqualTo("getLeaveBalances");
         assertThat(trace.lastCompletedTool()).isEqualTo("getLeaveBalances");
         assertThat(trace.elapsedMillis()).isGreaterThanOrEqualTo(0L);
@@ -59,21 +59,37 @@ class AssistantToolAdapterTest {
     }
 
     @Test
-    void shouldTrackFailedReadToolAndPreserveAuditFailure() {
+    void shouldReturnValidJsonForFailedReadToolAndPreserveAuditAndRootFailure() throws Exception {
         ToolCallback read = callback("getLeaveBalances");
-        when(read.call("{}" )).thenThrow(new IllegalStateException("database unavailable"));
+        IllegalStateException originalFailure = new IllegalStateException("database unavailable secret=do-not-expose");
+        when(read.call("{}" )).thenThrow(originalFailure);
         AssistantAuditService audit = mock(AssistantAuditService.class);
         AssistantRequestTrace trace = new AssistantRequestTrace();
+        List<AssistantDtos.StructuredResult> results = new ArrayList<>();
+        ObjectMapper objectMapper = new ObjectMapper();
 
         ToolCallback[] adapted = AssistantToolAdapter.forUser(
-                new ToolCallback[]{read}, authentication(RbacPermissions.LEAVE_APPLICATION_READ), user(), new ObjectMapper(),
-                new ArrayList<>(), new ArrayList<>(), "c-failed", mock(AssistantConfirmationService.class), audit, trace);
+                new ToolCallback[]{read}, authentication(RbacPermissions.LEAVE_APPLICATION_READ), user(), objectMapper,
+                new ArrayList<>(), results, "c-failed", mock(AssistantConfirmationService.class), audit, trace);
 
-        assertThatThrownBy(() -> adapted[0].call("{}"))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessage("database unavailable");
+        String toolResult = adapted[0].call("{}");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> payload = objectMapper.readValue(toolResult, Map.class);
+
+        assertThat(payload)
+                .containsEntry("status", "ERROR")
+                .containsEntry("error", "TOOL_EXECUTION_FAILED")
+                .containsEntry("tool", "getLeaveBalances")
+                .containsEntry("message", "The LeaveMaster tool could not complete the request.");
+        assertThat(toolResult)
+                .doesNotContain("database unavailable")
+                .doesNotContain("do-not-expose");
+        assertThat(results).isEmpty();
         assertThat(trace.toolCallCount()).isEqualTo(1);
-        assertThat(trace.lastStartedTool()).isEqualTo("getLeaveBalances");
+        assertThat(trace.toolFailureCount()).isEqualTo(1);
+        assertThat(trace.hasToolFailure()).isTrue();
+        assertThat(trace.lastFailedTool()).isEqualTo("getLeaveBalances");
+        assertThat(trace.lastToolFailure()).isSameAs(originalFailure);
         assertThat(trace.lastCompletedTool()).isEqualTo("getLeaveBalances");
         verify(audit).record(anyString(), anyString(), anyString(), anyString(), anyString(), any(),
                 org.mockito.ArgumentMatchers.eq("FAILED"), org.mockito.ArgumentMatchers.eq("IllegalStateException"));

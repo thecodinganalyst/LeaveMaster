@@ -69,4 +69,20 @@ class AssistantControllerTest {
                 .containsEntry("error", "The AI provider timed out")
                 .containsEntry("conversationId", "conversation-timeout");
     }
+
+    @Test
+    void shouldMapToolFailureWithoutExposingInternalCause() {
+        var tool = controller.toolFailure(new AssistantToolExecutionException(
+                "LeaveMaster could not complete an assistant data lookup",
+                "conversation-tool-failure",
+                "getLeaveBalances",
+                new IllegalStateException("Cannot lazily initialize secret internal detail")));
+
+        assertThat(tool.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        assertThat(tool.getBody())
+                .containsEntry("error", "LeaveMaster could not complete an assistant data lookup")
+                .containsEntry("conversationId", "conversation-tool-failure")
+                .doesNotContainValue("Cannot lazily initialize secret internal detail")
+                .doesNotContainKey("tool");
+    }
 }

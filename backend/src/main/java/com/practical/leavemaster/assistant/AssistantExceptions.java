@@ -22,3 +22,22 @@ class AssistantProviderException extends RuntimeException {
         return conversationId;
     }
 }
+
+class AssistantToolExecutionException extends RuntimeException {
+    private final String conversationId;
+    private final String toolName;
+
+    AssistantToolExecutionException(String message, String conversationId, String toolName, Throwable cause) {
+        super(message, cause);
+        this.conversationId = conversationId;
+        this.toolName = toolName;
+    }
+
+    String getConversationId() {
+        return conversationId;
+    }
+
+    String getToolName() {
+        return toolName;
+    }
+}

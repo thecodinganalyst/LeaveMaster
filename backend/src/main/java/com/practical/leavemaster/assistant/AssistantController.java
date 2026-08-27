@@ -47,6 +47,16 @@ public class AssistantController {
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(Map.of("error", exception.getMessage()));
     }
 
+    @ExceptionHandler(AssistantToolExecutionException.class)
+    ResponseEntity<Map<String, String>> toolFailure(AssistantToolExecutionException exception) {
+        Map<String, String> body = new LinkedHashMap<>();
+        body.put("error", exception.getMessage());
+        if (exception.getConversationId() != null && !exception.getConversationId().isBlank()) {
+            body.put("conversationId", exception.getConversationId());
+        }
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
+    }
+
     @ExceptionHandler(AssistantProviderException.class)
     ResponseEntity<Map<String, String>> providerFailure(AssistantProviderException exception) {
         Map<String, String> body = new LinkedHashMap<>();
