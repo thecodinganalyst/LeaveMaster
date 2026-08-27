@@ -108,6 +108,13 @@ app:
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000}
   storage:
     local-dir: ${STORAGE_LOCAL_DIR:${java.io.tmpdir}/leavemaster-attachments}
+  email:
+    provider: ${EMAIL_PROVIDER:disabled}
+    from-address: ${EMAIL_FROM_ADDRESS:onboarding@resend.dev}
+    from-name: ${EMAIL_FROM_NAME:LeaveMaster}
+    resend:
+      api-key: ${RESEND_API_KEY:}
+      base-url: ${RESEND_BASE_URL:https://api.resend.com}
   customer-enquiry:
     notification-recipient: ${CUSTOMER_ENQUIRY_NOTIFICATION_RECIPIENT:}
     notification-from: ${CUSTOMER_ENQUIRY_NOTIFICATION_FROM:noreply@leavemaestro.com}

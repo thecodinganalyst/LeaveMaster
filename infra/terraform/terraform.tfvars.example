@@ -17,3 +17,10 @@ ai_assistant_provider      = "openai"
 ai_assistant_model         = "gpt-5-mini"
 openai_api_key_secret_id   = "leavemaster-openai-api-key"
 gemini_api_key_secret_id   = "leavemaster-gemini-api-key"
+
+# Transactional email. Create the named Secret Manager secret separately and add
+# the Resend API key as a secret version; never put the API key in this file.
+email_provider           = "resend"
+resend_api_key_secret_id = "leavemaster-resend-api-key"
+email_from_address       = "onboarding@resend.dev"
+email_from_name          = "LeaveMaster"

@@ -113,7 +113,7 @@ public class AccountActivationService {
             return true;
         } catch (RuntimeException ex) {
             accountActivationRepository.deleteById(normalizedLoginName);
-            log.warn("Account activation PIN delivery failed; activation record invalidated", ex);
+            log.warn("Account activation PIN delivery failed; activation record invalidated");
             return false;
         }
     }

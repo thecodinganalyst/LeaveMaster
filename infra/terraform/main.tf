@@ -32,6 +32,7 @@ locals {
 
   attachment_bucket_name = "${var.project_id}-leavemaster-attachments-${data.google_project.current.number}"
   assistant_provider     = lower(var.ai_assistant_provider)
+  email_provider         = lower(var.email_provider)
 }
 
 data "google_project" "current" {
@@ -50,6 +51,13 @@ data "google_secret_manager_secret" "gemini_api_key" {
 
   project   = var.project_id
   secret_id = var.gemini_api_key_secret_id
+}
+
+data "google_secret_manager_secret" "resend_api_key" {
+  count = local.email_provider == "resend" ? 1 : 0
+
+  project   = var.project_id
+  secret_id = var.resend_api_key_secret_id
 }
 
 resource "google_project_service" "required" {
@@ -186,6 +194,15 @@ resource "google_secret_manager_secret_iam_member" "cloud_run_gemini_api_key" {
   member    = "serviceAccount:${google_service_account.cloud_run.email}"
 }
 
+resource "google_secret_manager_secret_iam_member" "cloud_run_resend_api_key" {
+  count = local.email_provider == "resend" ? 1 : 0
+
+  project   = var.project_id
+  secret_id = data.google_secret_manager_secret.resend_api_key[0].secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.cloud_run.email}"
+}
+
 resource "google_storage_bucket_iam_member" "github_cloudbuild_source" {
   bucket = google_storage_bucket.cloudbuild_source.name
   role   = "roles/storage.admin"
@@ -281,6 +298,21 @@ resource "google_cloud_run_v2_service" "api" {
       }
 
       env {
+        name  = "EMAIL_PROVIDER"
+        value = local.email_provider
+      }
+
+      env {
+        name  = "EMAIL_FROM_ADDRESS"
+        value = var.email_from_address
+      }
+
+      env {
+        name  = "EMAIL_FROM_NAME"
+        value = var.email_from_name
+      }
+
+      env {
         name  = "PLATFORM_ADMIN_RESET_PASSWORD"
         value = tostring(var.reset_platform_admin_password)
       }
@@ -327,6 +359,21 @@ resource "google_cloud_run_v2_service" "api" {
       }
 
       dynamic "env" {
+        for_each = local.email_provider == "resend" ? [1] : []
+
+        content {
+          name = "RESEND_API_KEY"
+
+          value_source {
+            secret_key_ref {
+              secret  = data.google_secret_manager_secret.resend_api_key[0].secret_id
+              version = "latest"
+            }
+          }
+        }
+      }
+
+      dynamic "env" {
         for_each = var.enable_platform_admin_password_secret ? [1] : []
 
         content {
@@ -348,7 +395,8 @@ resource "google_cloud_run_v2_service" "api" {
     google_secret_manager_secret_iam_member.cloud_run_database_password,
     google_secret_manager_secret_iam_member.cloud_run_platform_admin_password,
     google_secret_manager_secret_iam_member.cloud_run_openai_api_key,
-    google_secret_manager_secret_iam_member.cloud_run_gemini_api_key
+    google_secret_manager_secret_iam_member.cloud_run_gemini_api_key,
+    google_secret_manager_secret_iam_member.cloud_run_resend_api_key
   ]
 }
 
