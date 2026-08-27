@@ -16,14 +16,16 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AppUserDetailsService implements UserDetailsService {
 
+    private static final String PENDING_PASSWORD_SENTINEL = "PENDING_ACTIVATION";
+
     private final AppUserRepository appUserRepository;
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         return appUserRepository.findById(username)
                 .map(appUser -> User.withUsername(appUser.getLoginName())
-                        .password(appUser.getPassword())
-                        .disabled(!appUser.isActive())
+                        .password(appUser.getPassword() == null ? PENDING_PASSWORD_SENTINEL : appUser.getPassword())
+                        .disabled(!appUser.isActive() || appUser.getPassword() == null)
                         .authorities(resolveAuthorities(appUser))
                         .build())
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));

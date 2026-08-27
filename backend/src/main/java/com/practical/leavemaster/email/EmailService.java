@@ -33,6 +33,16 @@ public class EmailService {
         sendLeaveDecisionNotification(application, "rejected", "Leave Application Rejected");
     }
 
+    public void sendAccountActivationPin(String recipient, String staffName, String pin, int expiryMinutes) {
+        if (recipient == null || recipient.isBlank()) {
+            throw new IllegalArgumentException("Activation email recipient must not be blank");
+        }
+        // Intentionally never log or persist the plaintext PIN here. Issue #378 will replace
+        // this provider-neutral placeholder with the configured transactional email transport.
+        log.info("Account activation email placeholder invoked for recipient {} (PIN omitted; expires in {} minutes)",
+                recipient, expiryMinutes);
+    }
+
     private void sendLeaveDecisionNotification(LeaveApplication application, String decision, String subject) {
         String requesterEmail = application.getStaff().getEmail();
         if (requesterEmail == null || requesterEmail.isBlank()) {
