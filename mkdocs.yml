@@ -44,6 +44,7 @@ nav:
       - Platform public holidays: public-holidays.md
   - Security and Access:
       - RBAC: rbac.md
+      - Account activation and email: account-activation-and-email.md
       - AI assistant security: assistant-security.md
       - Ask LeaveMaestro setup: assistant-setup.md
       - AI assistant providers: assistant-providers.md

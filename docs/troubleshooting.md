@@ -1,6 +1,6 @@
 # Troubleshooting LeaveMaster
 
-This guide covers common local, CI, Firebase, Cloud Run, authentication, Terraform and AI-assistant failures.
+This guide covers common local, CI, Firebase, Cloud Run, authentication, transactional email, Terraform and AI-assistant failures.
 
 ## Frontend build or CI failures
 
@@ -53,14 +53,65 @@ If the browser reports CORS failure, confirm the backend allowed-origin configur
 
 ## Login problems
 
+### Newly created staff has no password
+
+This is expected for staff provisioned through the current staff-creation flow. LeaveMaestro no longer generates a default password for new staff users.
+
+From the login page:
+
+1. enter the staff user's login name;
+2. select **Continue**;
+3. use **Send verification PIN** when the activation flow is offered;
+4. verify the PIN sent to the staff email;
+5. choose a permanent password.
+
+Do not create/recover a default password as a workaround. See `docs/account-activation-and-email.md`.
+
+### Activation PIN email is not delivered
+
+Check:
+
+- `EMAIL_PROVIDER=resend` is set in the deployed runtime;
+- `EMAIL_FROM_ADDRESS` uses the intended development or verified-domain sender;
+- Secret Manager contains an enabled version for the configured Resend secret;
+- Cloud Run's runtime service account has `secretAccessor` on that secret;
+- the Cloud Run revision has a secret-backed `RESEND_API_KEY` environment reference;
+- Resend accepted the request / shows the expected test or delivery event.
+
+Never print the API key or activation PIN while diagnosing delivery.
+
+A provider delivery failure invalidates the generated PIN but retains request-throttling state. The user must request another PIN after the configured cooldown permits it.
+
+### Resend rejects the sender/domain
+
+For the current development/test rollout, use the supported `resend.dev` identity such as `onboarding@resend.dev`.
+
+If using a custom sender, verify its domain/subdomain in Resend first and add the DNS records Resend provides. Buying a GoDaddy mailbox/email-hosting plan is not required merely for outbound Resend delivery.
+
+### PIN is invalid or expired
+
+The current defaults are:
+
+- six-digit PIN;
+- 15-minute expiry;
+- maximum 5 failed verification attempts;
+- 60-second resend cooldown;
+- maximum 5 PIN requests per hour.
+
+Requesting a new PIN replaces the prior active PIN. After successful password setup the activation is consumed and cannot be replayed.
+
+Do not attempt to retrieve a plaintext PIN from the database or logs; only its hash is persisted.
+
 ### Correct credentials return a login error
 
 Check the `app_user` row:
 
 - exact login name;
 - `active=true`;
-- password column contains a BCrypt hash (usually starts with `$2`);
+- an activated account has a BCrypt password hash (usually starts with `$2`);
 - required role assignments exist.
+
+A pending staff account intentionally has no permanent password and should follow the activation flow instead of normal password authentication.
 
 Spring Security form login posts to `/login` with `username` and `password` form parameters.
 
@@ -173,7 +224,8 @@ Review application logs for the first root exception. Common causes:
 - Flyway validation/migration error;
 - invalid production `APP_PUBLIC_URL`;
 - wildcard/non-HTTPS CORS setting;
-- assistant enabled without `OPENAI_API_KEY`;
+- transactional email enabled but the Resend Secret Manager secret/version is missing;
+- assistant enabled without the selected provider API key;
 - Secret Manager secret version missing or runtime service account lacks accessor permission.
 
 The `cloudrun` profile intentionally fails early for unsafe/missing runtime configuration.
@@ -206,7 +258,13 @@ The deployment workflow refuses a plan that would delete/replace critical backen
 
 ### Cloud Run says secret/version not found
 
-Terraform can create the Secret Manager resource without creating a secret **value**. Add an enabled secret version before enabling a Cloud Run secret reference.
+Terraform can create or reference the Secret Manager resource without creating a secret **value**. Add an enabled secret version before enabling a Cloud Run secret reference.
+
+### Resend key should be added or rotated
+
+Use the existing/default secret ID `leavemaster-resend-api-key` unless deployment configuration specifies another one. Add a new Secret Manager version when rotating the value.
+
+Do not place `RESEND_API_KEY` in GitHub variables, Terraform plaintext, Vite configuration or logs. Cloud Run should receive it through a secret-backed environment reference.
 
 ### PlatformAdmin secret was added but password did not change
 
@@ -220,13 +278,7 @@ Add a new version to the existing Secret Manager secret rather than placing a ke
 
 ### `/api/assistant/chat` returns `503`
 
-Check:
-
-- `ENABLE_OPENAI_ASSISTANT=true` in the production GitHub environment;
-- OpenAI secret exists and has an enabled version;
-- Cloud Run runtime service account has `secretAccessor` on that secret;
-- Cloud Run has a secret-backed `OPENAI_API_KEY` environment entry;
-- `SPRING_AI_MODEL_CHAT=openai` is set by the runtime deployment.
+Check the configured assistant provider/model and its corresponding Secret Manager credential. The active provider must have an enabled secret version, runtime secret access and a secret-backed environment entry.
 
 ### Assistant returns `502`
 
@@ -283,10 +335,11 @@ Include:
 - relevant non-secret config names/values;
 - Terraform plan/resource address when infrastructure-related.
 
-Never include database passwords, OpenAI keys, OAuth client secrets, session cookies, CSRF tokens, WIF credentials or Secret Manager payloads.
+Never include database passwords, Resend/OpenAI/Gemini API keys, activation PINs, OAuth client secrets, session cookies, CSRF tokens, WIF credentials or Secret Manager payloads.
 
 ## Related guides
 
+- `docs/account-activation-and-email.md`
 - `docs/architecture.md`
 - `docs/development-and-ci.md`
 - `docs/environments-and-domains.md`

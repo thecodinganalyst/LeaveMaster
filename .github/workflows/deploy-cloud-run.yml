@@ -38,6 +38,10 @@ env:
   TF_VAR_ai_assistant_model: ${{ vars.AI_ASSISTANT_MODEL || 'gpt-5-mini' }}
   TF_VAR_openai_api_key_secret_id: ${{ vars.OPENAI_API_KEY_SECRET_ID || 'leavemaster-openai-api-key' }}
   TF_VAR_gemini_api_key_secret_id: ${{ vars.GEMINI_API_KEY_SECRET_ID || 'leavemaster-gemini-api-key' }}
+  TF_VAR_email_provider: ${{ vars.EMAIL_PROVIDER || 'disabled' }}
+  TF_VAR_resend_api_key_secret_id: ${{ vars.RESEND_API_KEY_SECRET_ID || 'leavemaster-resend-api-key' }}
+  TF_VAR_email_from_address: ${{ vars.EMAIL_FROM_ADDRESS || 'onboarding@resend.dev' }}
+  TF_VAR_email_from_name: ${{ vars.EMAIL_FROM_NAME || 'LeaveMaster' }}
   TF_VAR_enable_platform_admin_password_secret: ${{ vars.ENABLE_PLATFORM_ADMIN_PASSWORD_SECRET || 'false' }}
   TF_VAR_reset_platform_admin_password: ${{ vars.RESET_PLATFORM_ADMIN_PASSWORD || 'false' }}
   TF_VAR_enable_firebase_hosting: ${{ vars.ENABLE_FIREBASE_HOSTING || 'false' }}
@@ -106,6 +110,7 @@ jobs:
             -target=google_secret_manager_secret_iam_member.cloud_run_platform_admin_password \
             -target=google_secret_manager_secret_iam_member.cloud_run_openai_api_key \
             -target=google_secret_manager_secret_iam_member.cloud_run_gemini_api_key \
+            -target=google_secret_manager_secret_iam_member.cloud_run_resend_api_key \
             -target=google_storage_bucket_iam_member.cloud_run_attachments \
             -target=google_storage_bucket_iam_member.github_cloudbuild_source \
             -target=google_project_service.firebase \
