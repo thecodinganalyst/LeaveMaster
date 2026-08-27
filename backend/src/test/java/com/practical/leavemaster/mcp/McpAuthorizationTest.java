@@ -81,7 +81,7 @@ class McpAuthorizationTest {
             RbacPermissions.TENANT_WRITE, new String[]{"createTenant", "updateTenant", "deleteTenant"}
         ));
         assertPermissions(StaffMcpTools.class, Map.of(
-            RbacPermissions.STAFF_READ, new String[]{"getAllStaff", "getStaffById"},
+            RbacPermissions.STAFF_READ, new String[]{"getAllStaff", "getStaffById", "getStaffLeaveEntitlement"},
             RbacPermissions.STAFF_WRITE, new String[]{"createStaff", "updateStaff", "deleteStaff", "terminateStaff"}
         ));
         assertPermissions(AppUserMcpTools.class, Map.of(
