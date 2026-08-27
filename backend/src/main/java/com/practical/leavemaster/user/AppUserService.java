@@ -48,6 +48,9 @@ public class AppUserService {
         if (appUserRepository.existsById(user.getLoginName())) {
             throw new DuplicateLoginNameException(user.getLoginName());
         }
+        if (user.getPassword() == null || user.getPassword().isBlank()) {
+            throw new IllegalArgumentException("Password must not be blank");
+        }
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         applyOidcCredentials(user, user.getOidcProvider(), user.getOidcSubject());
         AppUser saved = appUserRepository.save(user);
@@ -86,7 +89,7 @@ public class AppUserService {
         AppUser existing = appUserRepository.findById(loginName)
                 .orElseThrow(() -> new AppUserNotFoundException(loginName));
 
-        if (!passwordEncoder.matches(currentPassword, existing.getPassword())) {
+        if (existing.getPassword() == null || !passwordEncoder.matches(currentPassword, existing.getPassword())) {
             throw new IllegalArgumentException("Current password is incorrect");
         }
         if (passwordEncoder.matches(newPassword, existing.getPassword())) {
@@ -156,6 +159,43 @@ public class AppUserService {
         return saved;
     }
 
+    public AppUser createPendingForStaff(
+            String staffId,
+            String loginName,
+            boolean active,
+            String tenantId,
+            Set<String> roleIds) {
+        if (appUserRepository.existsById(loginName)) {
+            throw new DuplicateLoginNameException(loginName);
+        }
+        AppUser user = AppUser.builder()
+                .loginName(loginName)
+                .password(null)
+                .active(active)
+                .staffId(staffId)
+                .oidcProvider(null)
+                .oidcSubject(null)
+                .tenantId(tenantId)
+                .roles(resolveStaffRoles(roleIds, tenantId))
+                .build();
+        AppUser saved = appUserRepository.save(user);
+        tenantActivityService.touch(saved.getTenantId());
+        return saved;
+    }
+
+    public AppUser completeInitialPassword(String loginName, String newPassword) {
+        validateSelfServicePassword(newPassword);
+        AppUser existing = appUserRepository.findById(loginName)
+                .orElseThrow(() -> new AppUserNotFoundException(loginName));
+        if (!existing.isActive() || existing.getPassword() != null) {
+            throw new IllegalStateException("Account is not eligible for initial password setup");
+        }
+        existing.setPassword(passwordEncoder.encode(newPassword));
+        AppUser saved = appUserRepository.save(existing);
+        tenantActivityService.touch(saved.getTenantId());
+        return saved;
+    }
+
     public Set<String> findRoleIdsByStaffId(String staffId) {
         return appUserRepository.findByStaffId(staffId)
                 .map(user -> user.getRoles().stream()
@@ -191,7 +231,7 @@ public class AppUserService {
         if (!user.isActive()) {
             throw new IllegalStateException("User account is not active");
         }
-        if (!passwordEncoder.matches(password, user.getPassword())) {
+        if (password == null || user.getPassword() == null || !passwordEncoder.matches(password, user.getPassword())) {
             throw new IllegalArgumentException("Invalid credentials");
         }
         return user;
