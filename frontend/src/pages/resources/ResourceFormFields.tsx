@@ -6,6 +6,7 @@ import { isAdminFieldVisible } from './adminResourceConfig.ts';
 import { EligibilityRuleFormFields } from './EligibilityRuleFormFields.tsx';
 import { EntitlementPolicyFormFields } from './EntitlementPolicyFormFields.tsx';
 import { JurisdictionSelect } from './JurisdictionSelect.tsx';
+import { LeaveApproverFormFields } from './LeaveApproverFormFields.tsx';
 import { PublicHolidayListField } from './PublicHolidayListField.tsx';
 import { RolePermissionCheckboxList } from './RolePermissionCheckboxList.tsx';
 import { StaffEmploymentTypeField } from './StaffEmploymentTypeField.tsx';
@@ -48,6 +49,10 @@ export const ResourceFormFields = ({ config, editing = false, platformAdmin = fa
 
   if (config.name === 'leave-entitlement-policy-eligibility-rules') {
     return <EligibilityRuleFormFields editing={editing} />;
+  }
+
+  if (config.name === 'leave-approvers') {
+    return <LeaveApproverFormFields editing={editing} />;
   }
 
   return (
