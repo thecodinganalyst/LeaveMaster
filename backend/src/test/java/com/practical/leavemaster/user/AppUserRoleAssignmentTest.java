@@ -38,30 +38,29 @@ class AppUserRoleAssignmentTest {
     private AppUserService appUserService;
 
     @Test
-    void shouldCreateStaffUserWithMultipleTenantRoles() {
+    void shouldCreatePendingStaffUserWithMultipleTenantRoles() {
         AppRole employee = role("EMPLOYEE", "tenant-a");
         AppRole approver = role("APPROVER", "tenant-a");
         when(appUserRepository.existsById("alice")).thenReturn(false);
-        when(passwordEncoder.encode("pass")).thenReturn("encoded");
         when(appRoleRepository.findById("EMPLOYEE")).thenReturn(Optional.of(employee));
         when(appRoleRepository.findById("APPROVER")).thenReturn(Optional.of(approver));
         when(appUserRepository.save(any(AppUser.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         AppUser saved = appUserService.createForStaff(
-                "S001", "alice", "pass", true, "tenant-a", Set.of("EMPLOYEE", "APPROVER"));
+                "S001", "alice", "ignored-default", true, "tenant-a", Set.of("EMPLOYEE", "APPROVER"));
 
         assertThat(saved.getRoles()).extracting(AppRole::getId)
                 .containsExactlyInAnyOrder("EMPLOYEE", "APPROVER");
+        assertThat(saved.getPassword()).isNull();
     }
 
     @Test
     void shouldRejectRoleFromAnotherTenant() {
         when(appUserRepository.existsById("alice")).thenReturn(false);
-        when(passwordEncoder.encode("pass")).thenReturn("encoded");
         when(appRoleRepository.findById("OTHER_ROLE")).thenReturn(Optional.of(role("OTHER_ROLE", "tenant-b")));
 
         assertThatThrownBy(() -> appUserService.createForStaff(
-                "S001", "alice", "pass", true, "tenant-a", Set.of("OTHER_ROLE")))
+                "S001", "alice", "ignored-default", true, "tenant-a", Set.of("OTHER_ROLE")))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("does not belong to the staff tenant");
     }
@@ -69,16 +68,15 @@ class AppUserRoleAssignmentTest {
     @Test
     void shouldRejectUnknownAndPlatformAdministratorRoles() {
         when(appUserRepository.existsById("alice")).thenReturn(false);
-        when(passwordEncoder.encode("pass")).thenReturn("encoded");
         when(appRoleRepository.findById("MISSING")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> appUserService.createForStaff(
-                "S001", "alice", "pass", true, "tenant-a", Set.of("MISSING")))
+                "S001", "alice", "ignored-default", true, "tenant-a", Set.of("MISSING")))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Role not found");
 
         assertThatThrownBy(() -> appUserService.createForStaff(
-                "S001", "alice", "pass", true, "tenant-a", Set.of("PLATFORM_ADMIN")))
+                "S001", "alice", "ignored-default", true, "tenant-a", Set.of("PLATFORM_ADMIN")))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("cannot be assigned to staff");
     }
