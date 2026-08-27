@@ -1,8 +1,10 @@
 # API Documentation
 
-This document lists all REST API endpoints exposed by LeaveMaster and describes what each one does.
+This document lists REST API endpoints exposed by LeaveMaster and describes what each one does. Swagger/OpenAPI at `/swagger-ui.html` and `/api-docs` remains the authoritative generated contract for the running backend.
 
-All endpoints (except `/users/login`, OAuth2 login endpoints, Swagger/OpenAPI, and H2 console) require authentication and the matching RBAC permission.
+Authentication/session bootstrap endpoints, OAuth2 login endpoints, first-time account-activation endpoints, Swagger/OpenAPI and the local H2 console are intentionally reachable without an authenticated business session where required by their flow. Protected business endpoints still require authentication and the matching RBAC permission.
+
+For the complete first-time activation flow, PIN security/lifecycle and Resend configuration, see [Account activation and transactional email](account-activation-and-email.md).
 
 ---
 
@@ -40,9 +42,80 @@ Required permissions: `TENANT_READ` for `GET`, `TENANT_WRITE` for `POST`/`PUT`/`
 | `PUT` | `/users/{loginName}/change-password` | Change the password of a user. Body: `{ "password": "..." }`. Returns `400` for invalid input. |
 | `PUT` | `/users/{loginName}/activate` | Activate a previously deactivated user account. |
 | `PUT` | `/users/{loginName}/deactivate` | Deactivate an active user account. |
-| `POST` | `/users/login` | Authenticate a user. Body: `{ "loginName": "...", "password": "..." }`. Returns the user on success, `401` for invalid credentials, `403` if the account is inactive. |
+| `POST` | `/users/login` | Legacy/application user authentication endpoint where still used. The browser's current session login is handled by Spring Security form login. |
 
-Required permissions: `USER_READ` for `GET`, `USER_WRITE` for user management endpoints. `/users/login` is public.
+Required permissions: `USER_READ` for `GET`, `USER_WRITE` for user management endpoints.
+
+New staff provisioning does **not** generate a default password. First-time staff activation uses the account-activation endpoints below.
+
+---
+
+## First-time Account Activation (`/api/account-activation`)
+
+The controller is exposed under both `/account-activation` and `/api/account-activation`. The `/api` form is recommended for frontend/external documentation.
+
+These endpoints are used before the user has an authenticated session and therefore must not reveal more account information than the login UX requires.
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/account-activation/lookup` | Determine whether the entered login should continue to normal password login (`PASSWORD`) or the first-time activation flow (`ACTIVATION`). |
+| `POST` | `/api/account-activation/request` | Request a short-lived verification PIN. PIN generation happens only on this explicit request. Returns `202 Accepted` with generic anti-enumeration messaging. |
+| `POST` | `/api/account-activation/verify` | Verify the six-digit activation PIN. Invalid/expired/unusable PINs return a safe `400` response. |
+| `POST` | `/api/account-activation/set-password` | Set the initial permanent password after successful PIN verification. Returns `204 No Content` on success. |
+
+### Lookup
+
+Request:
+
+```json
+{
+  "loginName": "alice"
+}
+```
+
+Example response for a first-time staff account:
+
+```json
+{
+  "nextStep": "ACTIVATION"
+}
+```
+
+An already activated account returns `PASSWORD` instead.
+
+### Request PIN
+
+```json
+{
+  "loginName": "alice"
+}
+```
+
+The API response never contains the PIN. The PIN is sent through the configured transactional email provider only when this endpoint is invoked.
+
+### Verify PIN
+
+```json
+{
+  "loginName": "alice",
+  "pin": "123456"
+}
+```
+
+The current defaults are a 15-minute PIN lifetime, maximum 5 failed verification attempts, 60-second resend cooldown and maximum 5 PIN requests per hour. Only the PIN hash is stored.
+
+### Set initial password
+
+```json
+{
+  "loginName": "alice",
+  "password": "a-new-password"
+}
+```
+
+Password setup succeeds only after a valid, unexpired PIN verification. Successful setup consumes the activation; subsequent login uses the normal password flow.
+
+See [Account activation and transactional email](account-activation-and-email.md) for provider configuration, failure handling and security details.
 
 ---
 
@@ -70,7 +143,7 @@ Required permissions: `ROLE_MANAGE` for all role endpoints.
 |--------|------|-------------|
 | `GET` | `/staff` | Retrieve a list of all staff records. |
 | `GET` | `/staff/{id}` | Retrieve a single staff record by ID. Returns `404` if not found. |
-| `POST` | `/staff` | Create a new staff record. `jurisdictionId` identifies the staff member's jurisdiction and is used for jurisdiction-specific calendars and eligibility rules. Returns `400` for invalid input. |
+| `POST` | `/staff` | Create a new staff record. `jurisdictionId` identifies the staff member's jurisdiction and is used for jurisdiction-specific calendars and eligibility rules. The associated staff user is provisioned without a generated default password and completes first-time activation from the login flow. Returns `400` for invalid input. |
 | `PUT` | `/staff/{id}` | Update an existing staff record, including `jurisdictionId`. Returns `404` if not found, `400` for invalid input. |
 | `DELETE` | `/staff/{id}` | Delete a staff record. Returns `204` on success, `404` if not found, `409` if the staff member is referenced by other records. |
 | `PUT` | `/staff/{id}/terminate` | Terminate a staff member on a given date (query param `termDate`). Cancels any approved future leave and removes pending leave applications. Returns `400` for invalid input. |
@@ -261,7 +334,7 @@ Required permissions:
 
 ## Leave Application Status Flow
 
-```
+```text
 DRAFT → PENDING → APPROVED → CANCEL_REQUESTED → CANCELLED
                 ↘ DENIED
 ```
