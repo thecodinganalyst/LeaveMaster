@@ -113,6 +113,35 @@ variable "gemini_api_key_secret_id" {
   default     = "leavemaster-gemini-api-key"
 }
 
+variable "email_provider" {
+  description = "Transactional email provider: disabled or resend"
+  type        = string
+  default     = "disabled"
+
+  validation {
+    condition     = contains(["disabled", "resend"], lower(var.email_provider))
+    error_message = "email_provider must be either disabled or resend."
+  }
+}
+
+variable "resend_api_key_secret_id" {
+  description = "Existing Secret Manager secret containing the Resend API key"
+  type        = string
+  default     = "leavemaster-resend-api-key"
+}
+
+variable "email_from_address" {
+  description = "Transactional email sender address. resend.dev is suitable for development/testing; use a verified domain for production."
+  type        = string
+  default     = "onboarding@resend.dev"
+}
+
+variable "email_from_name" {
+  description = "Transactional email sender display name"
+  type        = string
+  default     = "LeaveMaster"
+}
+
 variable "enable_platform_admin_password_secret" {
   description = "Whether Cloud Run should read PLATFORM_ADMIN_PASSWORD from Secret Manager"
   type        = bool
