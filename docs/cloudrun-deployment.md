@@ -2,7 +2,7 @@
 
 This guide describes the current LeaveMaster production deployment: Spring Boot on Google Cloud Run, React/Vite on Firebase Hosting, Supabase PostgreSQL, Terraform-managed GCP/Firebase infrastructure, Secret Manager runtime credentials and GitHub Actions authentication through Workload Identity Federation (WIF).
 
-For architecture and local development, start with `README.md`, `docs/architecture.md` and `docs/development-and-ci.md`.
+For architecture and local development, start with `README.md`, `docs/architecture.md` and `docs/development-and-ci.md`. For first-time staff activation and transactional email, see [`docs/account-activation-and-email.md`](account-activation-and-email.md).
 
 ## Production topology
 
@@ -14,12 +14,14 @@ flowchart LR
     Supabase[(Supabase PostgreSQL)]
     GCS[(GCS attachments)]
     Secrets[Secret Manager]
+    Resend[Resend transactional email]
 
     Browser --> Firebase
     Firebase -->|backend rewrites| CloudRun
     CloudRun --> Supabase
     CloudRun --> GCS
     Secrets --> CloudRun
+    CloudRun -. account activation email .-> Resend
 ```
 
 Browser traffic stays on the Firebase/custom frontend origin. Do not configure the production Vite bundle to call the `run.app` hostname directly.
@@ -120,6 +122,49 @@ RESET_PLATFORM_ADMIN_PASSWORD=false
 ```
 
 The reset flag should be set to `true` only for the deliberate recovery deployment and returned to `false` immediately afterward.
+
+## Resend activation-email secret
+
+First-time staff account activation can send verification PINs through Resend. The Java application is provider-neutral, but the current provider adapter is enabled with:
+
+```text
+EMAIL_PROVIDER=resend
+EMAIL_FROM_ADDRESS=onboarding@resend.dev
+EMAIL_FROM_NAME=LeaveMaster
+```
+
+The Resend API key belongs in Secret Manager. Terraform expects an existing secret ID through `resend_api_key_secret_id`; the current default is:
+
+```text
+leavemaster-resend-api-key
+```
+
+Create the secret and first version if needed:
+
+```bash
+printf '%s' 'YOUR_RESEND_API_KEY' | \
+  gcloud secrets create leavemaster-resend-api-key \
+    --data-file=- \
+    --replication-policy=automatic \
+    --project=YOUR_PROJECT_ID
+```
+
+Rotate an existing key by adding a version:
+
+```bash
+printf '%s' 'YOUR_NEW_RESEND_API_KEY' | \
+  gcloud secrets versions add leavemaster-resend-api-key \
+    --data-file=- \
+    --project=YOUR_PROJECT_ID
+```
+
+Terraform grants the Cloud Run runtime service account secret access and injects the value as secret-backed `RESEND_API_KEY`. Never put the plaintext key in GitHub variables, Terraform variable files, application configuration, logs or Vite/frontend settings.
+
+A custom sending domain is not required for current development/testing. `onboarding@resend.dev` is supported as the development sender. Treat `resend.dev` as test/development usage rather than unrestricted production delivery.
+
+No GoDaddy or other registrar mailbox/email-hosting subscription is required merely to send outbound transactional email through Resend. When a production sending identity is needed later, verify a domain/subdomain in Resend and change `EMAIL_FROM_ADDRESS`; no application code change is required.
+
+See [`docs/account-activation-and-email.md`](account-activation-and-email.md) for activation API behaviour, PIN security, smoke testing and custom-domain rollout.
 
 ## OpenAI assistant secret
 
@@ -231,10 +276,16 @@ Current runtime/environment options include:
 ```text
 PUBLIC_APP_URL
 ALLOWED_FRONTEND_ORIGINS
+EMAIL_PROVIDER
+EMAIL_FROM_ADDRESS
+EMAIL_FROM_NAME
+RESEND_API_KEY_SECRET_ID
 ENABLE_OPENAI_ASSISTANT
 OPENAI_API_KEY_SECRET_ID
 OPENAI_MODEL
 ```
+
+`RESEND_API_KEY_SECRET_ID` identifies the Secret Manager secret; the API key value itself must not be stored as a GitHub variable.
 
 See `docs/environments-and-domains.md` for exact semantics and custom-domain/OAuth requirements.
 
@@ -248,7 +299,7 @@ High-level flow:
 2. Authenticate to Google Cloud through WIF.
 3. Initialize Terraform against the production GCS backend.
 4. Run Terraform format/validation checks.
-5. Perform targeted prerequisite provisioning for APIs, buckets, registry, service accounts, managed secrets/IAM, Firebase resources and optional OpenAI binding.
+5. Perform targeted prerequisite provisioning for APIs, buckets, registry, service accounts, managed secrets/IAM, Firebase resources and optional provider bindings.
 6. Build `backend` with Gradle `bootJar`.
 7. Build/push the production container using Cloud Build.
 8. Tag the container with the current Git commit SHA.
@@ -297,9 +348,10 @@ The Terraform layout under `infra/terraform/` covers:
 - attachment bucket/runtime IAM;
 - database secret resource/runtime IAM;
 - PlatformAdmin secret resource/runtime IAM;
-- optional existing OpenAI secret lookup/runtime IAM;
+- existing Resend secret lookup/runtime IAM and secret-backed `RESEND_API_KEY` injection when email is enabled;
+- optional existing OpenAI/Gemini secret lookup/runtime IAM;
 - Firebase project association and Hosting site;
-- runtime public URL/CORS/assistant settings;
+- runtime public URL/CORS/email/assistant settings;
 - deployment outputs.
 
 Before applying manually, understand the production remote state and GitHub-provided variables. Do not create a second local production state.
@@ -321,6 +373,8 @@ Firebase Hosting can own the browser custom domain/TLS, for example `app.example
 5. deploy Cloud Run and Firebase Hosting.
 
 A separate API domain is optional and is not needed for the browser session flow.
+
+The **email sending domain is independent** from the browser custom domain. A custom email domain/subdomain is optional until production transactional delivery is required; see [`docs/account-activation-and-email.md`](account-activation-and-email.md). Buying a mailbox from the registrar is not required for Resend outbound delivery.
 
 ## OAuth callbacks
 
@@ -346,9 +400,10 @@ Verify:
 5. Backend health/application logs show successful database/Flyway startup.
 6. CORS rejects unapproved direct browser origins.
 7. OAuth callbacks use the canonical app origin if providers are enabled.
-8. If assistant is enabled, Cloud Run contains a secret-backed `OPENAI_API_KEY` reference and `/api/assistant/chat` works for an authorized user.
-9. Terraform outputs show the expected app URL/origin configuration.
+8. If Resend email is enabled, Cloud Run contains a secret-backed `RESEND_API_KEY` reference and a controlled activation smoke test can request email without exposing the PIN/key in logs.
+9. If assistant is enabled, Cloud Run contains the selected provider's secret-backed API key and `/api/assistant/chat` works for an authorized user.
+10. Terraform outputs show the expected app URL/origin configuration.
 
 ## Troubleshooting
 
-See `docs/troubleshooting.md` for Firebase Site Not Found, session `401`, Cloud Run image mismatch, Flyway, Terraform state/import, WIF and assistant-provider failures.
+See `docs/troubleshooting.md` for Firebase Site Not Found, session `401`, Cloud Run image mismatch, Flyway, Terraform state/import, WIF and assistant-provider failures. See [`docs/account-activation-and-email.md`](account-activation-and-email.md) for Resend configuration, sender/domain rejection, activation PIN delivery, expiry and rate-limit troubleshooting.
