@@ -29,6 +29,9 @@ class StaffWriteRequestControllerTest {
     private StaffService staffService;
 
     @MockitoBean
+    private StaffWriteService staffWriteService;
+
+    @MockitoBean
     private SecurityFilterChain securityFilterChain;
 
     @Test
@@ -38,14 +41,15 @@ class StaffWriteRequestControllerTest {
                 .name("Alice")
                 .joinDate(LocalDate.of(2026, 8, 3))
                 .build();
-        when(staffService.save(argThat(staff ->
-                staff != null
-                        && staff.getLeaveEntitlements().size() == 1
-                        && "LT-ANNUAL".equals(staff.getLeaveEntitlements().getFirst().getLeaveType().getId())
-                        && new BigDecimal("10.0").compareTo(staff.getLeaveEntitlements().getFirst().getEntitlement()) == 0
-                        && BigDecimal.ZERO.compareTo(staff.getLeaveEntitlements().getFirst().getCarriedForwardAmount()) == 0
-                        && BigDecimal.ZERO.compareTo(staff.getLeaveEntitlements().getFirst().getAdjustmentAmount()) == 0)))
-                .thenReturn(saved);
+        when(staffWriteService.create(argThat(request -> {
+            Staff staff = request == null ? null : request.toStaff();
+            return staff != null
+                    && staff.getLeaveEntitlements().size() == 1
+                    && "LT-ANNUAL".equals(staff.getLeaveEntitlements().getFirst().getLeaveType().getId())
+                    && new BigDecimal("10.0").compareTo(staff.getLeaveEntitlements().getFirst().getEntitlement()) == 0
+                    && BigDecimal.ZERO.compareTo(staff.getLeaveEntitlements().getFirst().getCarriedForwardAmount()) == 0
+                    && BigDecimal.ZERO.compareTo(staff.getLeaveEntitlements().getFirst().getAdjustmentAmount()) == 0;
+        }))).thenReturn(saved);
 
         mockMvc.perform(post("/api/staff")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -74,11 +78,12 @@ class StaffWriteRequestControllerTest {
                 .name("Bob")
                 .joinDate(LocalDate.of(2026, 8, 3))
                 .build();
-        when(staffService.save(argThat(staff ->
-                staff != null
-                        && staff.getLeaveEntitlements().size() == 1
-                        && "LT-ANNUAL".equals(staff.getLeaveEntitlements().getFirst().getLeaveType().getId()))))
-                .thenReturn(saved);
+        when(staffWriteService.create(argThat(request -> {
+            Staff staff = request == null ? null : request.toStaff();
+            return staff != null
+                    && staff.getLeaveEntitlements().size() == 1
+                    && "LT-ANNUAL".equals(staff.getLeaveEntitlements().getFirst().getLeaveType().getId());
+        }))).thenReturn(saved);
 
         mockMvc.perform(post("/api/staff")
                         .contentType(MediaType.APPLICATION_JSON)
