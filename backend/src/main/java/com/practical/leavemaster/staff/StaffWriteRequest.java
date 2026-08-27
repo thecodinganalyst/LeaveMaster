@@ -26,7 +26,8 @@ public record StaffWriteRequest(
         List<EntitlementInput> leaveEntitlements,
         String loginName,
         Set<String> roleIds,
-        EmploymentType employmentType) {
+        EmploymentType employmentType,
+        List<LeaveApproverInput> leaveApprovers) {
 
     /** Backward-compatible constructor for existing internal Java callers. */
     public StaffWriteRequest(
@@ -41,7 +42,24 @@ public record StaffWriteRequest(
             String loginName,
             Set<String> roleIds) {
         this(id, name, email, joinDate, workSchedule, termDate, jurisdictionId,
-                leaveEntitlements, loginName, roleIds, null);
+                leaveEntitlements, loginName, roleIds, null, null);
+    }
+
+    /** Backward-compatible constructor retaining employment type support. */
+    public StaffWriteRequest(
+            String id,
+            String name,
+            String email,
+            LocalDate joinDate,
+            List<WorkScheduleDay> workSchedule,
+            LocalDate termDate,
+            String jurisdictionId,
+            List<EntitlementInput> leaveEntitlements,
+            String loginName,
+            Set<String> roleIds,
+            EmploymentType employmentType) {
+        this(id, name, email, joinDate, workSchedule, termDate, jurisdictionId,
+                leaveEntitlements, loginName, roleIds, employmentType, null);
     }
 
     public Staff toStaff() {
@@ -65,6 +83,13 @@ public record StaffWriteRequest(
             return null;
         }
         return inputs.stream().map(EntitlementInput::toEntitlement).toList();
+    }
+
+    public record LeaveApproverInput(
+            String id,
+            String approverId,
+            LocalDate effectiveFrom,
+            LocalDate effectiveTo) {
     }
 
     public record EntitlementInput(
