@@ -127,14 +127,24 @@ public class AppUserService {
     }
 
     public AppUser createForStaff(String staffId, String loginName, String password, boolean active) {
-        return createForStaff(staffId, loginName, password, active, null, Set.of());
+        return createForStaffWithPassword(staffId, loginName, password, active, null, Set.of());
     }
 
     public AppUser createForStaff(String staffId, String loginName, String password, boolean active, String tenantId) {
-        return createForStaff(staffId, loginName, password, active, tenantId, Set.of());
+        return createForStaffWithPassword(staffId, loginName, password, active, tenantId, Set.of());
     }
 
     public AppUser createForStaff(
+            String staffId,
+            String loginName,
+            String ignoredDefaultPassword,
+            boolean active,
+            String tenantId,
+            Set<String> roleIds) {
+        return createPendingForStaff(staffId, loginName, active, tenantId, roleIds);
+    }
+
+    private AppUser createForStaffWithPassword(
             String staffId,
             String loginName,
             String password,
