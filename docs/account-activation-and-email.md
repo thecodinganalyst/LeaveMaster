@@ -236,6 +236,17 @@ email_from_name          = "LeaveMaster"
 
 Cloud Run receives the API key through a secret-backed `RESEND_API_KEY` environment reference.
 
+For the GitHub `production` environment, the deployment workflow maps these non-secret variables into Terraform:
+
+```text
+EMAIL_PROVIDER=resend
+RESEND_API_KEY_SECRET_ID=leavemaster-resend-api-key
+EMAIL_FROM_ADDRESS=onboarding@resend.dev
+EMAIL_FROM_NAME=LeaveMaster
+```
+
+The `RESEND_API_KEY_SECRET_ID` value is only the Secret Manager secret name; it is safe to store as a GitHub variable. The actual Resend API key remains only in Secret Manager.
+
 ## Optional future production custom domain
 
 A verified custom sending domain is an upgrade path, not a prerequisite for the current implementation.
@@ -320,7 +331,6 @@ Request a new PIN after the resend cooldown. Do not extend or recover a plaintex
 
 ## Related documentation
 
-- [README](../README.md)
 - [API documentation](api.md)
 - [Cloud Run deployment](cloudrun-deployment.md)
 - [Architecture](architecture.md)
