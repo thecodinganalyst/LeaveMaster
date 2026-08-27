@@ -36,6 +36,61 @@ public class StaffAssistantReadService {
         return staffRepository.findById(id).map(this::toResult);
     }
 
+    @Transactional(readOnly = true)
+    public Optional<StaffLeaveEntitlementResult> findLeaveEntitlement(String staffId, String leaveType, Integer year) {
+        if (staffId == null || staffId.isBlank()) {
+            throw new IllegalArgumentException("staffId is required");
+        }
+        if (leaveType == null || leaveType.isBlank()) {
+            throw new IllegalArgumentException("leaveType is required");
+        }
+
+        int targetYear = year == null ? LocalDate.now().getYear() : year;
+        LocalDate yearStart = LocalDate.of(targetYear, 1, 1);
+        LocalDate yearEnd = LocalDate.of(targetYear, 12, 31);
+        String requestedLeaveType = leaveType.trim();
+
+        return staffRepository.findById(staffId.trim()).flatMap(staff -> {
+            List<LeaveEntitlement> entitlements = staff.getLeaveEntitlements() == null
+                    ? List.of()
+                    : staff.getLeaveEntitlements();
+            return entitlements.stream()
+                    .filter(entitlement -> overlaps(entitlement, yearStart, yearEnd))
+                    .filter(entitlement -> matchesLeaveType(entitlement, requestedLeaveType))
+                    .findFirst()
+                    .map(entitlement -> toStaffLeaveEntitlementResult(staff, entitlement));
+        });
+    }
+
+    private boolean overlaps(LeaveEntitlement entitlement, LocalDate yearStart, LocalDate yearEnd) {
+        return entitlement.getFrom() != null
+                && entitlement.getTo() != null
+                && !entitlement.getFrom().isAfter(yearEnd)
+                && !entitlement.getTo().isBefore(yearStart);
+    }
+
+    private boolean matchesLeaveType(LeaveEntitlement entitlement, String requestedLeaveType) {
+        if (entitlement.getLeaveType() == null) return false;
+        String id = entitlement.getLeaveType().getId();
+        String name = entitlement.getLeaveType().getName();
+        return (id != null && id.equalsIgnoreCase(requestedLeaveType))
+                || (name != null && name.equalsIgnoreCase(requestedLeaveType));
+    }
+
+    private StaffLeaveEntitlementResult toStaffLeaveEntitlementResult(Staff staff, LeaveEntitlement entitlement) {
+        return new StaffLeaveEntitlementResult(
+                staff.getName(),
+                staff.getJoinDate(),
+                staff.getJurisdictionId(),
+                entitlement.getLeaveType() == null ? null : entitlement.getLeaveType().getName(),
+                entitlement.getFrom(),
+                entitlement.getTo(),
+                entitlement.getEntitlement(),
+                entitlement.getBaseEntitlementAmount(),
+                entitlement.getCarriedForwardAmount(),
+                entitlement.getAdjustmentAmount());
+    }
+
     private StaffResult toResult(Staff staff) {
         List<WorkScheduleResult> workSchedule = staff.getWorkSchedule() == null
                 ? List.of()
@@ -103,6 +158,20 @@ public class StaffAssistantReadService {
             BigDecimal carriedForwardAmount,
             BigDecimal adjustmentAmount,
             Instant generatedAt
+    ) {
+    }
+
+    public record StaffLeaveEntitlementResult(
+            String staffName,
+            LocalDate joinDate,
+            String jurisdictionId,
+            String leaveTypeName,
+            LocalDate from,
+            LocalDate to,
+            BigDecimal entitlement,
+            BigDecimal baseEntitlementAmount,
+            BigDecimal carriedForwardAmount,
+            BigDecimal adjustmentAmount
     ) {
     }
 }
