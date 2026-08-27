@@ -9,6 +9,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -52,6 +53,23 @@ class StaffMcpToolsTest {
 
         assertThat(result).isPresent().get().extracting(StaffAssistantReadService.StaffResult::name).isEqualTo("Alice");
         verify(staffAssistantReadService).findById("s1");
+    }
+
+    @Test
+    void shouldGetFocusedStaffLeaveEntitlement() {
+        var entitlement = new StaffAssistantReadService.StaffLeaveEntitlementResult(
+                "Alice", LocalDate.of(2026, 8, 3), "SG", "Annual Leave",
+                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31),
+                new BigDecimal("5.79"), new BigDecimal("5.79"), BigDecimal.ZERO, BigDecimal.ZERO);
+        when(staffAssistantReadService.findLeaveEntitlement("001", "Annual Leave", 2026))
+                .thenReturn(Optional.of(entitlement));
+
+        Optional<StaffAssistantReadService.StaffLeaveEntitlementResult> result =
+                staffMcpTools.getStaffLeaveEntitlement("001", "Annual Leave", 2026);
+
+        assertThat(result).isPresent().get().extracting(StaffAssistantReadService.StaffLeaveEntitlementResult::entitlement)
+                .isEqualTo(new BigDecimal("5.79"));
+        verify(staffAssistantReadService).findLeaveEntitlement("001", "Annual Leave", 2026);
     }
 
     @Test
