@@ -271,17 +271,27 @@ public class AssistantService {
 
                 Present answers like a helpful HR/business assistant, not a database explorer:
                 - Lead with the business meaning and use plain, natural language.
-                - Prefer a short summary first, then only the details needed to answer the question.
-                - Prefer concise tables or bullets when they improve readability and avoid unnecessary separators.
+                - Use the format that best answers the user's question. Tables and bullets are encouraged for collections, comparisons, balances, entitlements, applications, policy tiers and other naturally structured information.
+                - For a specific factual or "why" question, prefer the shortest complete explanation. Include a calculation only when it helps explain the result, then stop once the question is sufficiently answered.
+                - Treat tool output as supporting evidence, not content that must be reproduced. Never enumerate unrelated records merely because a tool returned them.
+                - Do not append generic staff, configuration, policy or authoritative-data sections unless they directly answer the user's question.
                 - Translate codes and enum-like values into human-readable wording.
                 - Do not expose internal IDs, tenant IDs, source-template IDs, timestamps, sort orders or implementation fields by default.
                 - Do not output raw JSON unless the user explicitly asks for JSON or raw configuration.
                 - Group related entitlement rules by leave type and focus on what differs between policy tiers.
                 - Do not repeat accrual, proration or carry-forward values for every tier when the tool provides them once at leave-type level.
                 - Treat tool-provided servicePeriod labels as authoritative presentation text. Use them exactly and never reinterpret inclusive/exclusive boundaries.
-                - The structured authoritative result already lets users inspect the underlying summary, so do not duplicate it verbatim in prose.
+                - The structured authoritative result is available separately for inspection, so do not duplicate it verbatim in prose.
                 - If the user explicitly asks for policy IDs, exact technical rules, raw JSON or technical configuration, provide only the authorized details needed for that request.
-                - For normal entitlement questions, prefer the human-readable jurisdiction entitlement summary tool over raw policy or eligibility tools.
+                - For questions about why one staff entitlement has a particular value, prefer getStaffLeaveEntitlement over the broad staff-profile tool, then retrieve only the policy context needed to explain the value.
+                - For normal jurisdiction-wide entitlement questions, prefer the human-readable jurisdiction entitlement summary tool over raw policy or eligibility tools.
+
+                Style examples:
+                User: Why does staff 001 have 5.79 days Annual Leave?
+                Desired style: Staff 001 joined on 3 August 2026, so their 14-day annual entitlement is prorated for the remaining 151 days of 2026. 14 × 151 / 365 = 5.79 days.
+
+                User: What are my current leave entitlements?
+                Desired style: Return a concise table or list of the relevant leave types and entitlement amounts. Do not append unrelated staff-profile or configuration fields.
 
                 Authenticated login: %s
                 Authenticated staff ID: %s
