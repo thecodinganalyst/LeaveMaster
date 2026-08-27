@@ -30,7 +30,7 @@ public class AppUser {
     @Column(name = "login_name", nullable = false)
     private String loginName;
 
-    @Column(nullable = false)
+    @Column
     private String password;
 
     @Column(nullable = false)
