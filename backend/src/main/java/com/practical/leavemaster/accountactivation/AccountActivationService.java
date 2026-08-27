@@ -112,8 +112,11 @@ public class AccountActivationService {
             log.info("Account activation PIN delivery requested successfully");
             return true;
         } catch (RuntimeException ex) {
-            accountActivationRepository.deleteById(normalizedLoginName);
-            log.warn("Account activation PIN delivery failed; activation record invalidated", ex);
+            activation.setPinHash(null);
+            activation.setExpiresAt(null);
+            activation.setVerifiedAt(null);
+            accountActivationRepository.save(activation);
+            log.warn("Account activation PIN delivery failed; PIN invalidated while request throttling was retained");
             return false;
         }
     }
