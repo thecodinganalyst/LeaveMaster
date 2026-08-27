@@ -20,7 +20,7 @@ beforeEach(() => {
 });
 
 describe('AssistantPanel', () => {
-  it('renders authoritative structured business results alongside the assistant explanation', async () => {
+  it('keeps authoritative structured results collapsed until the user asks to inspect them', async () => {
     vi.mocked(sendAssistantMessage).mockResolvedValue({
       conversationId: 'c1',
       message: 'You have 12.5 days of annual leave remaining.',
@@ -38,9 +38,15 @@ describe('AssistantPanel', () => {
     fireEvent.click(screen.getByLabelText('Send message'));
 
     expect(await screen.findByText('You have 12.5 days of annual leave remaining.')).toBeInTheDocument();
-    expect(screen.getByText('Authoritative LeaveMaestro data')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'View source data' })).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByText('Authoritative LeaveMaestro data')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'View source data' }));
+
+    expect(await screen.findByText('Authoritative LeaveMaestro data')).toBeInTheDocument();
     expect(screen.getByText('Annual Leave')).toBeInTheDocument();
     expect(screen.getByText('12.5')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Hide source data' })).toHaveAttribute('aria-expanded', 'true');
   });
 
   it('renders markdown only for assistant messages while keeping user text literal', async () => {
