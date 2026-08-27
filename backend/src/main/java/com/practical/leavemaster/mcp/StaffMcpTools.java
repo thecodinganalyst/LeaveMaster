@@ -26,10 +26,17 @@ public class StaffMcpTools {
         return staffAssistantReadService.findAll();
     }
 
-    @Tool(description = "Get a staff member by ID")
+    @Tool(description = "Get a staff member by ID. Use for broad staff-profile questions; for a question about one leave entitlement value, prefer getStaffLeaveEntitlement.")
     @PreAuthorize("hasAuthority('" + RbacPermissions.STAFF_READ + "')")
     public Optional<StaffAssistantReadService.StaffResult> getStaffById(String id) {
         return staffAssistantReadService.findById(id);
+    }
+
+    @Tool(description = "Get focused evidence for one staff leave entitlement. Prefer this when the user asks why a specific entitlement has a particular value. leaveType may be the leave type ID or human-readable name; year may be omitted for the current year. Returns only the staff and entitlement fields needed for explanation, not the full staff profile.")
+    @PreAuthorize("hasAuthority('" + RbacPermissions.STAFF_READ + "')")
+    public Optional<StaffAssistantReadService.StaffLeaveEntitlementResult> getStaffLeaveEntitlement(
+            String staffId, String leaveType, Integer year) {
+        return staffAssistantReadService.findLeaveEntitlement(staffId, leaveType, year);
     }
 
     @Tool(description = "Create a new staff member")
