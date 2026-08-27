@@ -53,6 +53,8 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/users/login",
                     "/api/users/login",
+                    "/account-activation/**",
+                    "/api/account-activation/**",
                     "/auth/csrf",
                     "/auth/login",
                     "/oauth2/**",
