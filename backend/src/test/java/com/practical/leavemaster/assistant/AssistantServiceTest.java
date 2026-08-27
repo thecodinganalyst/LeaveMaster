@@ -190,6 +190,21 @@ class AssistantServiceTest {
                 .isInstanceOf(AssistantUnavailableException.class);
     }
 
+    @Test
+    void shouldRequireMinimumSufficientAnswersWhilePreservingStructuredFormats() {
+        AppUser user = AppUser.builder().loginName("dennis").staffId("S1").tenantId("T1").active(true).build();
+        String prompt = ReflectionTestUtils.invokeMethod(service, "systemPrompt", user);
+
+        assertThat(prompt)
+                .contains("Use the format that best answers the user's question")
+                .contains("Tables and bullets are encouraged for collections")
+                .contains("For a specific factual or \"why\" question, prefer the shortest complete explanation")
+                .contains("Treat tool output as supporting evidence, not content that must be reproduced")
+                .contains("prefer getStaffLeaveEntitlement")
+                .contains("Why does staff 001 have 5.79 days Annual Leave?")
+                .contains("What are my current leave entitlements?");
+    }
+
     private String formattedLogs() {
         return logAppender.list.stream()
                 .map(ILoggingEvent::getFormattedMessage)
