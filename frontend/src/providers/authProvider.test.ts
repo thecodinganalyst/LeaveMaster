@@ -22,24 +22,24 @@ vi.mock('../auth/session.ts', () => ({
 describe('authProvider', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('rejects missing login credentials without calling the backend', async () => {
-    await expect(authProvider.login?.({ loginName: '', password: '' })).resolves.toMatchObject({
+  it('rejects missing tenant-aware login credentials without calling the backend', async () => {
+    await expect(authProvider.login?.({ tenantId: '', loginName: '', password: '' })).resolves.toMatchObject({
       success: false,
       error: { name: 'InvalidCredentials' },
     });
     expect(loginWithSession).not.toHaveBeenCalled();
   });
 
-  it('establishes a backend session and refreshes server identity on login', async () => {
+  it('establishes a backend session with tenant ID and refreshes server identity on login', async () => {
     vi.mocked(getCurrentUser).mockResolvedValue({
       loginName: 'dennis', staffId: 'S1', tenantId: 'T1', active: true, authorities: ['STAFF_READ'],
     });
 
-    await expect(authProvider.login?.({ loginName: 'dennis', password: 'secret' })).resolves.toEqual({
+    await expect(authProvider.login?.({ tenantId: ' T1 ', loginName: ' dennis ', password: 'secret' })).resolves.toEqual({
       success: true,
       redirectTo: '/',
     });
-    expect(loginWithSession).toHaveBeenCalledWith('dennis', 'secret');
+    expect(loginWithSession).toHaveBeenCalledWith('T1', 'dennis', 'secret');
     expect(clearCurrentUser).toHaveBeenCalled();
     expect(getCurrentUser).toHaveBeenCalledWith(true);
   });
@@ -51,6 +51,7 @@ describe('authProvider', () => {
 
     await expect(
       authProvider.login?.({
+        tenantId: 'T1',
         loginName: 'dennis',
         password: 'secret',
         redirectPath: '/leave-requests/show/42',
@@ -61,11 +62,11 @@ describe('authProvider', () => {
     });
   });
 
-  it('surfaces backend authentication failures safely', async () => {
-    vi.mocked(loginWithSession).mockRejectedValue(new ApiError('Invalid login', 401));
-    await expect(authProvider.login?.({ loginName: 'dennis', password: 'bad' })).resolves.toMatchObject({
+  it('surfaces generic backend authentication failures safely', async () => {
+    vi.mocked(loginWithSession).mockRejectedValue(new ApiError('Invalid tenant ID, login name, or password.', 401));
+    await expect(authProvider.login?.({ tenantId: 'T1', loginName: 'dennis', password: 'bad' })).resolves.toMatchObject({
       success: false,
-      error: { name: 'AuthenticationError', message: 'Invalid login' },
+      error: { name: 'AuthenticationError', message: 'Invalid tenant ID, login name, or password.' },
     });
   });
 
