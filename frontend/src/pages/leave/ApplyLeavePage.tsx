@@ -86,12 +86,7 @@ export const ApplyLeavePage = () => {
 
   useEffect(() => {
     if (!policyMetadata?.eventBased) {
-      form.setFieldsValue({
-        eventDate: undefined,
-        eventStartDate: undefined,
-        eventEndDate: undefined,
-        eventExternalReference: undefined,
-      });
+      form.resetFields(['eventDate', 'eventStartDate', 'eventEndDate', 'eventExternalReference']);
     }
   }, [form, policyMetadata?.eventBased]);
 
