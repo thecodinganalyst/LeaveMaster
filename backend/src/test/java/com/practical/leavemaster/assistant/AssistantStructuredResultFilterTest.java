@@ -61,10 +61,11 @@ class AssistantStructuredResultFilterTest {
         );
 
         List<AssistantDtos.StructuredResult> scoped = AssistantStructuredResultFilter.scope(results);
+        List<String> leaveTypes = ((List<?>) scoped.get(2).data()).stream()
+                .map(item -> String.valueOf(((Map<?, ?>) item).get("leaveType")))
+                .toList();
 
-        assertThat((List<?>) scoped.get(2).data())
-                .extracting(item -> ((Map<?, ?>) item).get("leaveType"))
-                .containsExactly("Annual Leave", "Sick Leave");
+        assertThat(leaveTypes).containsExactly("Annual Leave", "Sick Leave");
     }
 
     @Test
