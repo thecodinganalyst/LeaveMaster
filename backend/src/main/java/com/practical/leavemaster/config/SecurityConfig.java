@@ -138,6 +138,13 @@ public class SecurityConfig {
     }
 
     @Bean
+    public TenantAuthenticationProvider tenantAuthenticationProvider(
+            AppUserRepository appUserRepository,
+            PasswordEncoder passwordEncoder) {
+        return new TenantAuthenticationProvider(appUserRepository, passwordEncoder);
+    }
+
+    @Bean
     public AuthenticationManager authenticationManager(TenantAuthenticationProvider tenantAuthenticationProvider) {
         return new ProviderManager(tenantAuthenticationProvider);
     }
