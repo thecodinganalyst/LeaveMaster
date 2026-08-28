@@ -117,9 +117,9 @@ export const apiFetch = async <T>(path: string, init: RequestInit = {}): Promise
   return body as T;
 };
 
-export const loginWithSession = async (loginName: string, password: string) => {
+export const loginWithSession = async (tenantId: string, loginName: string, password: string) => {
   const csrf = await getCsrfToken();
-  const form = new URLSearchParams({ username: loginName, password });
+  const form = new URLSearchParams({ tenantId, username: loginName, password });
   const response = await fetchWithNetworkDiagnostics(buildUrl('/auth/login'), {
     method: 'POST',
     credentials: 'include',
@@ -131,7 +131,7 @@ export const loginWithSession = async (loginName: string, password: string) => {
   });
 
   if (!response.ok) {
-    throw new ApiError('Invalid login name or password.', response.status);
+    throw new ApiError('Invalid tenant ID, login name, or password.', response.status);
   }
 
   clearCsrfToken();
