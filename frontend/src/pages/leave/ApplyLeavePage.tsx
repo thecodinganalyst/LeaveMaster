@@ -1,12 +1,21 @@
+import { UploadOutlined } from '@ant-design/icons';
 import { useCan } from '@refinedev/core';
-import { App, Alert, Button, Card, Divider, Form, Input, Select, Space, Typography } from 'antd';
+import { App, Alert, Button, Card, Divider, Form, Input, Select, Space, Typography, Upload } from 'antd';
+import type { UploadFile } from 'antd';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { getCurrentUser } from '../../auth/session.ts';
 import { PageContainer } from '../../components/common/PageContainer.tsx';
 import { PageHeader } from '../../components/common/PageHeader.tsx';
-import { applyForLeave, getLeaveTypes, type LeaveDuration, type LeaveTypeSummary } from '../../features/leave/leaveApi.ts';
+import {
+  applyForLeave,
+  getLeaveApplicationPolicyMetadata,
+  getLeaveTypes,
+  type LeaveApplicationPolicyMetadata,
+  type LeaveDuration,
+  type LeaveTypeSummary,
+} from '../../features/leave/leaveApi.ts';
 
 interface FormValues {
   leaveTypeId: string;
@@ -17,11 +26,14 @@ interface FormValues {
   eventStartDate?: string;
   eventEndDate?: string;
   eventExternalReference?: string;
+  attachment?: UploadFile[];
 }
 
 export const ApplyLeavePage = () => {
   const [staffId, setStaffId] = useState<string | null>(null);
   const [leaveTypes, setLeaveTypes] = useState<LeaveTypeSummary[]>([]);
+  const [policyMetadata, setPolicyMetadata] = useState<LeaveApplicationPolicyMetadata>();
+  const [policyLoading, setPolicyLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string>();
@@ -29,6 +41,9 @@ export const ApplyLeavePage = () => {
   const navigate = useNavigate();
   const { message } = App.useApp();
   const { data: canWrite } = useCan({ resource: 'leave-requests', action: 'create' });
+  const selectedLeaveTypeId = Form.useWatch('leaveTypeId', form);
+  const fromDate = Form.useWatch('fromDate', form);
+  const eventDate = Form.useWatch('eventDate', form);
 
   useEffect(() => {
     void (async () => {
@@ -46,11 +61,41 @@ export const ApplyLeavePage = () => {
     })();
   }, []);
 
+  useEffect(() => {
+    if (!staffId || !selectedLeaveTypeId) {
+      setPolicyMetadata(undefined);
+      return;
+    }
+    let cancelled = false;
+    setPolicyLoading(true);
+    void getLeaveApplicationPolicyMetadata(staffId, selectedLeaveTypeId, eventDate || fromDate)
+      .then((metadata) => {
+        if (!cancelled) setPolicyMetadata(metadata);
+      })
+      .catch((cause: unknown) => {
+        if (!cancelled) {
+          setPolicyMetadata(undefined);
+          setError(cause instanceof Error ? cause.message : 'Unable to resolve leave policy.');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setPolicyLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [eventDate, fromDate, selectedLeaveTypeId, staffId]);
+
+  useEffect(() => {
+    if (!policyMetadata?.eventBased) {
+      form.resetFields(['eventDate', 'eventStartDate', 'eventEndDate', 'eventExternalReference']);
+    }
+  }, [form, policyMetadata?.eventBased]);
+
   const submit = async (values: FormValues) => {
     if (!staffId || !canWrite?.can) return;
     setSubmitting(true);
     setError(undefined);
     try {
+      const attachment = values.attachment?.[0]?.originFileObj;
       const applications = await applyForLeave({
         staffId,
         fromDate: values.fromDate,
@@ -58,11 +103,11 @@ export const ApplyLeavePage = () => {
         leaveTypeId: values.leaveTypeId,
         leaveDuration: values.leaveDuration,
         status: 'PENDING',
-        ...(values.eventDate ? { eventDate: values.eventDate } : {}),
-        ...(values.eventStartDate ? { eventStartDate: values.eventStartDate } : {}),
-        ...(values.eventEndDate ? { eventEndDate: values.eventEndDate } : {}),
-        ...(values.eventExternalReference ? { eventExternalReference: values.eventExternalReference } : {}),
-      });
+        ...(policyMetadata?.eventBased && values.eventDate ? { eventDate: values.eventDate } : {}),
+        ...(policyMetadata?.eventBased && values.eventStartDate ? { eventStartDate: values.eventStartDate } : {}),
+        ...(policyMetadata?.eventBased && values.eventEndDate ? { eventEndDate: values.eventEndDate } : {}),
+        ...(policyMetadata?.eventBased && values.eventExternalReference ? { eventExternalReference: values.eventExternalReference } : {}),
+      }, attachment);
       const awaitingVerification = applications.some((application) => application.status === 'PENDING_VERIFICATION');
       message.success(awaitingVerification
         ? 'Leave request recorded and is awaiting qualifying-event verification.'
@@ -100,8 +145,8 @@ export const ApplyLeavePage = () => {
               { required: true, message: 'Select an end date' },
               ({ getFieldValue }) => ({
                 validator: (_, value: string | undefined) => {
-                  const fromDate = getFieldValue('fromDate') as string | undefined;
-                  return fromDate && value && value < fromDate
+                  const start = getFieldValue('fromDate') as string | undefined;
+                  return start && value && value < start
                     ? Promise.reject(new Error('End date must be on or after start date'))
                     : Promise.resolve();
                 },
@@ -118,29 +163,57 @@ export const ApplyLeavePage = () => {
             ]} />
           </Form.Item>
 
-          <Divider orientation="left">Qualifying event</Divider>
-          <Alert
-            type="info"
-            showIcon
-            message="Only needed for event-based leave"
-            description="For leave such as an NS/reservist call-up or parental event, enter the event details here. You do not need to create a separate event first. For ordinary annual or sick leave, leave these fields blank."
-            style={{ marginBottom: 16 }}
-          />
-          <Form.Item name="eventDate" label="Event date">
-            <Input type="date" allowClear />
-          </Form.Item>
-          <Space.Compact block style={{ alignItems: 'flex-start' }}>
-            <div style={{ flex: 1 }}><Form.Item name="eventStartDate" label="Event start date"><Input type="date" allowClear /></Form.Item></div>
-            <div style={{ flex: 1 }}><Form.Item name="eventEndDate" label="Event end date"><Input type="date" allowClear /></Form.Item></div>
-          </Space.Compact>
-          <Form.Item name="eventExternalReference" label="Event reference" extra="Optional reference such as a call-up notice or case number.">
-            <Input />
+          {policyMetadata?.eventBased ? (
+            <>
+              <Divider orientation="left">Qualifying event</Divider>
+              <Alert
+                type="info"
+                showIcon
+                message="Describe the qualifying event for this leave"
+                description="These generic event details are used to create or reuse the qualifying event behind this leave request."
+                style={{ marginBottom: 16 }}
+              />
+              <Form.Item name="eventDate" label="Event date" rules={[{ required: true, message: 'Event date is required for event-based leave' }]}>
+                <Input type="date" allowClear />
+              </Form.Item>
+              <Space.Compact block style={{ alignItems: 'flex-start' }}>
+                <div style={{ flex: 1 }}><Form.Item name="eventStartDate" label="Event start date"><Input type="date" allowClear /></Form.Item></div>
+                <div style={{ flex: 1 }}><Form.Item name="eventEndDate" label="Event end date"><Input type="date" allowClear /></Form.Item></div>
+              </Space.Compact>
+              <Form.Item name="eventExternalReference" label="Event reference" extra="Optional external reference such as a registration, case, notice, or call-up number.">
+                <Input />
+              </Form.Item>
+            </>
+          ) : null}
+
+          <Form.Item
+            name="attachment"
+            label="Attachment"
+            valuePropName="fileList"
+            getValueFromEvent={(event) => event?.fileList}
+            rules={policyMetadata?.eventBased && policyMetadata.eventRequiresVerification
+              ? [{ required: true, message: 'Attachment is required because this qualifying event must be verified' }]
+              : []}
+            extra={policyMetadata?.eventBased && policyMetadata.eventRequiresVerification
+              ? 'Evidence is required for verification of this qualifying event.'
+              : 'Optional supporting evidence. PDF and common image formats are supported by the existing attachment storage flow.'}
+          >
+            <Upload
+              beforeUpload={() => false}
+              maxCount={1}
+              accept="application/pdf,image/jpeg,image/png,image/gif,image/webp"
+            >
+              <Button icon={<UploadOutlined />}>Choose file</Button>
+            </Upload>
           </Form.Item>
 
+          {policyLoading ? <Typography.Paragraph type="secondary">Resolving leave policy…</Typography.Paragraph> : null}
           <Alert type="info" showIcon message="The backend excludes non-working days and public holidays from the submitted range." style={{ marginBottom: 16 }} />
-          <Typography.Paragraph type="secondary">Event-based policies create or reuse the qualifying event automatically. If verification is required, the request is recorded first and moves to normal approval only after the event is verified.</Typography.Paragraph>
+          {policyMetadata?.eventBased ? (
+            <Typography.Paragraph type="secondary">Event-based policies create or reuse the qualifying event automatically. If verification is required, this leave attachment is used as the supporting evidence and the request moves to normal approval after verification.</Typography.Paragraph>
+          ) : null}
           <Space>
-            <Button type="primary" htmlType="submit" loading={submitting} disabled={!staffId}>Submit request</Button>
+            <Button type="primary" htmlType="submit" loading={submitting || policyLoading} disabled={!staffId}>Submit request</Button>
             <Button onClick={() => navigate('/leave-requests')}>Cancel</Button>
           </Space>
         </Form>

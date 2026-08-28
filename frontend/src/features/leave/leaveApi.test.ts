@@ -6,6 +6,7 @@ import {
   approveCancellation,
   approveLeave,
   cancelLeave,
+  getLeaveApplicationPolicyMetadata,
   getLeaveBalances,
   getPendingApprovals,
   getVisibleLeave,
@@ -26,7 +27,13 @@ describe('leaveApi', () => {
     expect(apiFetch).toHaveBeenNthCalledWith(2, '/leave-applications/staff/S%201/balance');
   });
 
-  it('submits a pending leave request using the JSON endpoint', async () => {
+  it('loads policy metadata for the selected leave type and effective date', async () => {
+    vi.mocked(apiFetch).mockResolvedValue({ eventBased: true, eventRequiresVerification: true });
+    await getLeaveApplicationPolicyMetadata('S 1', 'MAT/1', '2026-08-28');
+    expect(apiFetch).toHaveBeenCalledWith('/leave-applications/policy-metadata?staffId=S+1&leaveTypeId=MAT%2F1&effectiveDate=2026-08-28');
+  });
+
+  it('submits a pending leave request using the JSON endpoint when there is no attachment', async () => {
     vi.mocked(apiFetch).mockResolvedValue([]);
     const request = {
       staffId: 'S1',
@@ -41,6 +48,30 @@ describe('leaveApi', () => {
       method: 'POST',
       body: JSON.stringify(request),
     });
+  });
+
+  it('submits the normal leave attachment together with the request as multipart form data', async () => {
+    vi.mocked(apiFetch).mockResolvedValue([]);
+    const request = {
+      staffId: 'S1',
+      fromDate: '2026-08-12',
+      toDate: '2026-08-13',
+      leaveTypeId: 'MAT',
+      leaveDuration: 'FULL' as const,
+      status: 'PENDING' as const,
+      eventDate: '2026-08-12',
+    };
+    const file = new File(['evidence'], 'evidence.pdf', { type: 'application/pdf' });
+
+    await applyForLeave(request, file);
+
+    const call = vi.mocked(apiFetch).mock.calls[0];
+    expect(call?.[0]).toBe('/leave-applications');
+    expect(call?.[1]?.method).toBe('POST');
+    const body = call?.[1]?.body;
+    expect(body).toBeInstanceOf(FormData);
+    expect((body as FormData).get('file')).toBe(file);
+    expect((body as FormData).get('request')).toBeInstanceOf(Blob);
   });
 
   it('uses the dedicated approval and cancellation-decision endpoints', async () => {
