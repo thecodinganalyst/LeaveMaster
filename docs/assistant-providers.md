@@ -4,6 +4,8 @@ Ask LeaveMaestro is provider-neutral at the API and frontend layers. The backend
 
 For complete credential creation, Secret Manager, GitHub variable, deployment, verification, switching, rotation and troubleshooting steps, see [Set up Ask LeaveMaestro](assistant-setup.md).
 
+For accumulated engineering guidance on answer quality, prompting, authoritative tool usage, behavioural evaluation and provider-independent AI design, see [Ask LeaveMaestro AI learnings and improvement playbook](ask-leavemaestro-ai-learnings.md).
+
 ## Runtime configuration
 
 | Variable | Required | Description |
