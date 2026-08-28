@@ -61,17 +61,18 @@ public class AccountActivationService {
 
     @Transactional
     public boolean requestPin(String loginName) {
-        String normalizedLoginName = normalizeLoginName(loginName);
-        Optional<ActivationContext> context = eligibleContext(normalizedLoginName);
+        Optional<ActivationContext> context = eligibleContext(normalizeLoginName(loginName));
         if (context.isEmpty()) {
-            log.info("Account activation PIN request ignored for an ineligible or unknown account");
+            log.info("Account activation PIN request ignored for an ineligible, unknown, or ambiguous account");
             return false;
         }
 
+        ActivationContext activationContext = context.get();
+        String userId = activationContext.user().getUserId();
         LocalDateTime now = now();
-        AccountActivation activation = accountActivationRepository.findById(normalizedLoginName)
+        AccountActivation activation = accountActivationRepository.findById(userId)
                 .orElseGet(() -> AccountActivation.builder()
-                        .loginName(normalizedLoginName)
+                        .userId(userId)
                         .requestWindowStartedAt(now)
                         .requestCount(0)
                         .build());
@@ -102,7 +103,6 @@ public class AccountActivationService {
         activation.setRequestCount(activation.getRequestCount() + 1);
         accountActivationRepository.save(activation);
 
-        ActivationContext activationContext = context.get();
         try {
             emailService.sendAccountActivationPin(
                     activationContext.staff().getEmail(),
@@ -112,7 +112,7 @@ public class AccountActivationService {
             log.info("Account activation PIN delivery requested successfully");
             return true;
         } catch (RuntimeException ex) {
-            accountActivationRepository.deleteById(normalizedLoginName);
+            accountActivationRepository.deleteById(userId);
             log.warn("Account activation PIN delivery failed; activation record invalidated");
             return false;
         }
@@ -130,7 +130,7 @@ public class AccountActivationService {
             return false;
         }
 
-        Optional<AccountActivation> activationOptional = accountActivationRepository.findById(normalizedLoginName);
+        Optional<AccountActivation> activationOptional = accountActivationRepository.findById(context.get().user().getUserId());
         if (activationOptional.isEmpty()) {
             return false;
         }
@@ -161,12 +161,13 @@ public class AccountActivationService {
 
     @Transactional
     public boolean setInitialPassword(String loginName, String newPassword) {
-        String normalizedLoginName = normalizeLoginName(loginName);
-        if (normalizedLoginName == null || eligibleContext(normalizedLoginName).isEmpty()) {
+        Optional<ActivationContext> context = eligibleContext(normalizeLoginName(loginName));
+        if (context.isEmpty()) {
             return false;
         }
 
-        Optional<AccountActivation> activationOptional = accountActivationRepository.findById(normalizedLoginName);
+        String userId = context.get().user().getUserId();
+        Optional<AccountActivation> activationOptional = accountActivationRepository.findById(userId);
         if (activationOptional.isEmpty()) {
             return false;
         }
@@ -180,7 +181,7 @@ public class AccountActivationService {
             return false;
         }
 
-        appUserService.completeInitialPassword(normalizedLoginName, newPassword);
+        appUserService.completeInitialPasswordByUserId(userId, newPassword);
         activation.setConsumedAt(now);
         activation.setPinHash(null);
         accountActivationRepository.save(activation);
@@ -192,7 +193,7 @@ public class AccountActivationService {
         if (loginName == null) {
             return Optional.empty();
         }
-        Optional<AppUser> userOptional = appUserRepository.findById(loginName);
+        Optional<AppUser> userOptional = appUserRepository.findUniqueByLoginName(loginName);
         if (userOptional.isEmpty()) {
             return Optional.empty();
         }

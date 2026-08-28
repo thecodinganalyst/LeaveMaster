@@ -22,26 +22,18 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class AppUserRoleAssignmentTest {
 
-    @Mock
-    private AppUserRepository appUserRepository;
+    @Mock private AppUserRepository appUserRepository;
+    @Mock private AppRoleRepository appRoleRepository;
+    @Mock private PasswordEncoder passwordEncoder;
+    @Mock private TenantActivityService tenantActivityService;
 
-    @Mock
-    private AppRoleRepository appRoleRepository;
-
-    @Mock
-    private PasswordEncoder passwordEncoder;
-
-    @Mock
-    private TenantActivityService tenantActivityService;
-
-    @InjectMocks
-    private AppUserService appUserService;
+    @InjectMocks private AppUserService appUserService;
 
     @Test
     void shouldCreatePendingStaffUserWithMultipleTenantRoles() {
         AppRole employee = role("EMPLOYEE", "tenant-a");
         AppRole approver = role("APPROVER", "tenant-a");
-        when(appUserRepository.existsById("alice")).thenReturn(false);
+        when(appUserRepository.existsScopedLoginName("tenant-a", "alice")).thenReturn(false);
         when(appRoleRepository.findById("EMPLOYEE")).thenReturn(Optional.of(employee));
         when(appRoleRepository.findById("APPROVER")).thenReturn(Optional.of(approver));
         when(appUserRepository.save(any(AppUser.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -51,12 +43,13 @@ class AppUserRoleAssignmentTest {
 
         assertThat(saved.getRoles()).extracting(AppRole::getId)
                 .containsExactlyInAnyOrder("EMPLOYEE", "APPROVER");
+        assertThat(saved.getTenantId()).isEqualTo("tenant-a");
         assertThat(saved.getPassword()).isNull();
     }
 
     @Test
     void shouldRejectRoleFromAnotherTenant() {
-        when(appUserRepository.existsById("alice")).thenReturn(false);
+        when(appUserRepository.existsScopedLoginName("tenant-a", "alice")).thenReturn(false);
         when(appRoleRepository.findById("OTHER_ROLE")).thenReturn(Optional.of(role("OTHER_ROLE", "tenant-b")));
 
         assertThatThrownBy(() -> appUserService.createForStaff(
@@ -67,7 +60,7 @@ class AppUserRoleAssignmentTest {
 
     @Test
     void shouldRejectUnknownAndPlatformAdministratorRoles() {
-        when(appUserRepository.existsById("alice")).thenReturn(false);
+        when(appUserRepository.existsScopedLoginName("tenant-a", "alice")).thenReturn(false);
         when(appRoleRepository.findById("MISSING")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> appUserService.createForStaff(
@@ -84,13 +77,14 @@ class AppUserRoleAssignmentTest {
     @Test
     void shouldReplaceStaffRolesAndAllowClearingAllRoles() {
         AppUser user = AppUser.builder()
+                .userId("user-alice")
                 .loginName("alice")
                 .staffId("S001")
                 .tenantId("tenant-a")
                 .roles(Set.of(role("EMPLOYEE", "tenant-a")))
                 .build();
         AppRole approver = role("APPROVER", "tenant-a");
-        when(appUserRepository.findByStaffId("S001")).thenReturn(Optional.of(user));
+        when(appUserRepository.findByTenantIdAndStaffId("tenant-a", "S001")).thenReturn(Optional.of(user));
         when(appRoleRepository.findById("APPROVER")).thenReturn(Optional.of(approver));
         when(appUserRepository.save(user)).thenReturn(user);
 
@@ -103,17 +97,19 @@ class AppUserRoleAssignmentTest {
     }
 
     @Test
-    void shouldReturnAssignedRoleIdsForStaff() {
+    void shouldReturnAssignedRoleIdsForTenantScopedStaff() {
         AppUser user = AppUser.builder()
+                .userId("user-alice")
                 .loginName("alice")
                 .staffId("S001")
+                .tenantId("tenant-a")
                 .roles(Set.of(role("EMPLOYEE", "tenant-a"), role("APPROVER", "tenant-a")))
                 .build();
-        when(appUserRepository.findByStaffId("S001")).thenReturn(Optional.of(user));
+        when(appUserRepository.findByTenantIdAndStaffId("tenant-a", "S001")).thenReturn(Optional.of(user));
 
-        assertThat(appUserService.findRoleIdsByStaffId("S001"))
+        assertThat(appUserService.findRoleIdsByStaffId("S001", "tenant-a"))
                 .containsExactlyInAnyOrder("EMPLOYEE", "APPROVER");
-        assertThat(appUserService.findRoleIdsByStaffId("missing")).isEmpty();
+        assertThat(appUserService.findRoleIdsByStaffId("missing", "tenant-a")).isEmpty();
     }
 
     private static AppRole role(String id, String tenantId) {

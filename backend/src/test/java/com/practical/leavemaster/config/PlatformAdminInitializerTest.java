@@ -62,7 +62,7 @@ class PlatformAdminInitializerTest {
         when(appRoleRepository.findById(PlatformAdminInitializer.PLATFORM_ADMIN_ROLE_ID)).thenReturn(Optional.empty());
         when(appPermissionRepository.findAllById(anyCollection())).thenReturn(List.of(tenantRead, tenantWrite));
         when(appRoleRepository.save(any(AppRole.class))).thenReturn(savedRole);
-        when(appUserRepository.findById(PlatformAdminInitializer.PLATFORM_ADMIN_LOGIN_NAME)).thenReturn(Optional.empty());
+        when(appUserRepository.findByTenantIdIsNullAndLoginName(PlatformAdminInitializer.PLATFORM_ADMIN_LOGIN_NAME)).thenReturn(Optional.empty());
         when(appUserRepository.findAll()).thenReturn(List.of());
         when(passwordEncoder.encode("test-password")).thenReturn("$2a$encoded");
         when(appUserRepository.save(any(AppUser.class))).thenAnswer(i -> i.getArgument(0));
@@ -89,12 +89,12 @@ class PlatformAdminInitializerTest {
                 .active(false)
                 .permissions(Set.of(extra))
                 .build();
-        AppUser admin = AppUser.builder().loginName(PlatformAdminInitializer.PLATFORM_ADMIN_LOGIN_NAME)
-                .password("old-hash").active(true).roles(Set.of(staleRole)).build();
+        AppUser admin = AppUser.builder().userId("platform-admin-id").loginName(PlatformAdminInitializer.PLATFORM_ADMIN_LOGIN_NAME)
+                .password("old-hash").active(true).tenantId(null).roles(Set.of(staleRole)).build();
         when(appRoleRepository.findById(PlatformAdminInitializer.PLATFORM_ADMIN_ROLE_ID)).thenReturn(Optional.of(staleRole));
         when(appPermissionRepository.findAllById(anyCollection())).thenReturn(List.of(tenantRead, tenantWrite));
         when(appRoleRepository.save(staleRole)).thenReturn(staleRole);
-        when(appUserRepository.findById(PlatformAdminInitializer.PLATFORM_ADMIN_LOGIN_NAME)).thenReturn(Optional.of(admin));
+        when(appUserRepository.findByTenantIdIsNullAndLoginName(PlatformAdminInitializer.PLATFORM_ADMIN_LOGIN_NAME)).thenReturn(Optional.of(admin));
         when(appUserRepository.findAll()).thenReturn(List.of(admin));
 
         initializer.run(applicationArguments);
@@ -110,10 +110,10 @@ class PlatformAdminInitializerTest {
     @Test
     void shouldNotChangeExistingAdminPasswordByDefault() throws Exception {
         AppRole role = platformAdminRole();
-        AppUser admin = AppUser.builder().loginName(PlatformAdminInitializer.PLATFORM_ADMIN_LOGIN_NAME)
-                .password("old-hash").active(true).roles(Set.of(role)).build();
+        AppUser admin = AppUser.builder().userId("platform-admin-id").loginName(PlatformAdminInitializer.PLATFORM_ADMIN_LOGIN_NAME)
+                .password("old-hash").active(true).tenantId(null).roles(Set.of(role)).build();
         when(appRoleRepository.findById(PlatformAdminInitializer.PLATFORM_ADMIN_ROLE_ID)).thenReturn(Optional.of(role));
-        when(appUserRepository.findById(PlatformAdminInitializer.PLATFORM_ADMIN_LOGIN_NAME)).thenReturn(Optional.of(admin));
+        when(appUserRepository.findByTenantIdIsNullAndLoginName(PlatformAdminInitializer.PLATFORM_ADMIN_LOGIN_NAME)).thenReturn(Optional.of(admin));
         when(appUserRepository.findAll()).thenReturn(List.of(admin));
 
         initializer.run(applicationArguments);
@@ -126,11 +126,11 @@ class PlatformAdminInitializerTest {
     @Test
     void shouldResetExistingDefaultAdminPasswordOnlyWhenExplicitlyEnabled() throws Exception {
         AppRole role = platformAdminRole();
-        AppUser admin = AppUser.builder().loginName(PlatformAdminInitializer.PLATFORM_ADMIN_LOGIN_NAME)
-                .password("old-hash").active(true).roles(Set.of(role)).build();
+        AppUser admin = AppUser.builder().userId("platform-admin-id").loginName(PlatformAdminInitializer.PLATFORM_ADMIN_LOGIN_NAME)
+                .password("old-hash").active(true).tenantId(null).roles(Set.of(role)).build();
         ReflectionTestUtils.setField(initializer, "resetPlatformAdminPassword", true);
         when(appRoleRepository.findById(PlatformAdminInitializer.PLATFORM_ADMIN_ROLE_ID)).thenReturn(Optional.of(role));
-        when(appUserRepository.findById(PlatformAdminInitializer.PLATFORM_ADMIN_LOGIN_NAME)).thenReturn(Optional.of(admin));
+        when(appUserRepository.findByTenantIdIsNullAndLoginName(PlatformAdminInitializer.PLATFORM_ADMIN_LOGIN_NAME)).thenReturn(Optional.of(admin));
         when(appUserRepository.findAll()).thenReturn(List.of(admin));
         when(passwordEncoder.encode("test-password")).thenReturn("new-hash");
         when(appUserRepository.save(admin)).thenReturn(admin);
@@ -145,10 +145,10 @@ class PlatformAdminInitializerTest {
     @Test
     void shouldCreatePlatformAdminUserWhenNoUsersInRole() throws Exception {
         AppRole role = platformAdminRole();
-        AppUser userWithoutRole = AppUser.builder().loginName("someUser").password("$2a$encoded")
-                .active(true).roles(Set.of()).build();
+        AppUser userWithoutRole = AppUser.builder().userId("user-id").loginName("someUser").password("$2a$encoded")
+                .active(true).tenantId("tenant-a").roles(Set.of()).build();
         when(appRoleRepository.findById(PlatformAdminInitializer.PLATFORM_ADMIN_ROLE_ID)).thenReturn(Optional.of(role));
-        when(appUserRepository.findById(PlatformAdminInitializer.PLATFORM_ADMIN_LOGIN_NAME)).thenReturn(Optional.empty());
+        when(appUserRepository.findByTenantIdIsNullAndLoginName(PlatformAdminInitializer.PLATFORM_ADMIN_LOGIN_NAME)).thenReturn(Optional.empty());
         when(appUserRepository.findAll()).thenReturn(List.of(userWithoutRole));
         when(passwordEncoder.encode("test-password")).thenReturn("$2a$encoded");
         when(appUserRepository.save(any(AppUser.class))).thenAnswer(i -> i.getArgument(0));
@@ -158,6 +158,7 @@ class PlatformAdminInitializerTest {
         ArgumentCaptor<AppUser> userCaptor = ArgumentCaptor.forClass(AppUser.class);
         verify(appUserRepository).save(userCaptor.capture());
         assertThat(userCaptor.getValue().getLoginName()).isEqualTo(PlatformAdminInitializer.PLATFORM_ADMIN_LOGIN_NAME);
+        assertThat(userCaptor.getValue().getTenantId()).isNull();
         assertThat(userCaptor.getValue().getRoles()).contains(role);
     }
 }

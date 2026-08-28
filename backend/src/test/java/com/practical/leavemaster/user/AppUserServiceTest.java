@@ -1,5 +1,6 @@
 package com.practical.leavemaster.user;
 
+import com.practical.leavemaster.rbac.AppRoleRepository;
 import com.practical.leavemaster.tenant.TenantActivityService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,23 +20,18 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class AppUserServiceTest {
 
-    @Mock
-    private AppUserRepository appUserRepository;
+    @Mock private AppUserRepository appUserRepository;
+    @Mock private AppRoleRepository appRoleRepository;
+    @Mock private PasswordEncoder passwordEncoder;
+    @Mock private TenantActivityService tenantActivityService;
 
-    @Mock
-    private PasswordEncoder passwordEncoder;
-
-    @Mock
-    private TenantActivityService tenantActivityService;
-
-    @InjectMocks
-    private AppUserService appUserService;
+    @InjectMocks private AppUserService appUserService;
 
     @Test
-    void shouldReturnAllUsers() {
+    void shouldReturnAllNonPlatformUsersWithoutAuthentication() {
         List<AppUser> users = List.of(
-                AppUser.builder().loginName("alice").password("pass").active(true).build(),
-                AppUser.builder().loginName("bob").password("pass").active(false).build()
+                user("u1", "tenant-a", "alice", true),
+                user("u2", "tenant-b", "bob", false)
         );
         when(appUserRepository.findAll()).thenReturn(users);
 
@@ -45,50 +41,74 @@ class AppUserServiceTest {
     }
 
     @Test
-    void shouldFindUserByLoginName() {
-        AppUser user = AppUser.builder().loginName("alice").password("pass").active(true).build();
-        when(appUserRepository.findById("alice")).thenReturn(Optional.of(user));
+    void shouldFindUniqueUserByLoginNameWithoutTenantContext() {
+        AppUser user = user("u1", "tenant-a", "alice", true);
+        when(appUserRepository.findUniqueByLoginName("alice")).thenReturn(Optional.of(user));
 
         Optional<AppUser> result = appUserService.findByLoginName("alice");
 
-        assertThat(result).isPresent();
-        assertThat(result.get().getLoginName()).isEqualTo("alice");
+        assertThat(result).contains(user);
     }
 
     @Test
-    void shouldSaveUser() {
-        AppUser user = AppUser.builder().loginName("alice").password("pass").active(true).build();
-        when(appUserRepository.existsById("alice")).thenReturn(false);
+    void shouldFindUserByExplicitTenantAndLoginName() {
+        AppUser tenantA = user("u1", "tenant-a", "001", true);
+        when(appUserRepository.findScopedByLoginName("tenant-a", "001")).thenReturn(Optional.of(tenantA));
+
+        assertThat(appUserService.findByLoginName("tenant-a", "001")).contains(tenantA);
+    }
+
+    @Test
+    void shouldSaveUserWhenLoginNameIsAvailableWithinTenant() {
+        AppUser user = user(null, "tenant-a", "alice", true);
+        user.setPassword("pass");
+        when(appUserRepository.existsScopedLoginName("tenant-a", "alice")).thenReturn(false);
         when(passwordEncoder.encode("pass")).thenReturn("$2a$10$encoded");
         when(appUserRepository.save(user)).thenReturn(user);
 
         AppUser result = appUserService.save(user);
 
         assertThat(result.getLoginName()).isEqualTo("alice");
+        assertThat(result.getPassword()).isEqualTo("$2a$10$encoded");
         verify(passwordEncoder).encode("pass");
     }
 
     @Test
-    void shouldThrowWhenSavingWithDuplicateLoginName() {
-        AppUser user = AppUser.builder().loginName("alice").password("pass").active(true).build();
-        when(appUserRepository.existsById("alice")).thenReturn(true);
+    void shouldRejectDuplicateLoginNameWithinSameTenant() {
+        AppUser user = user(null, "tenant-a", "001", true);
+        user.setPassword("pass");
+        when(appUserRepository.existsScopedLoginName("tenant-a", "001")).thenReturn(true);
 
         assertThatThrownBy(() -> appUserService.save(user))
                 .isInstanceOf(DuplicateLoginNameException.class)
-                .hasMessageContaining("alice");
+                .hasMessageContaining("001");
+    }
+
+    @Test
+    void shouldAllowSameLoginNameInDifferentTenant() {
+        AppUser tenantB = user(null, "tenant-b", "001", true);
+        tenantB.setPassword("pass");
+        when(appUserRepository.existsScopedLoginName("tenant-b", "001")).thenReturn(false);
+        when(passwordEncoder.encode("pass")).thenReturn("encoded");
+        when(appUserRepository.save(tenantB)).thenReturn(tenantB);
+
+        AppUser saved = appUserService.save(tenantB);
+
+        assertThat(saved.getTenantId()).isEqualTo("tenant-b");
+        assertThat(saved.getLoginName()).isEqualTo("001");
     }
 
     @Test
     void shouldUpdateUser() {
-        AppUser existing = AppUser.builder().loginName("alice").password("pass").active(true).build();
+        AppUser existing = user("u1", "tenant-a", "alice", true);
+        existing.setPassword("pass");
         AppUser updated = AppUser.builder()
                 .loginName("alice")
-                .password("pass")
                 .active(false)
                 .oidcProvider("github")
                 .oidcSubject("12345")
                 .build();
-        when(appUserRepository.findById("alice")).thenReturn(Optional.of(existing));
+        when(appUserRepository.findUniqueByLoginName("alice")).thenReturn(Optional.of(existing));
         when(appUserRepository.findByOidcProviderAndOidcSubject("github", "12345")).thenReturn(Optional.empty());
         when(appUserRepository.save(existing)).thenReturn(existing);
 
@@ -101,7 +121,7 @@ class AppUserServiceTest {
 
     @Test
     void shouldThrowWhenUpdatingNonExistentUser() {
-        when(appUserRepository.findById("nonexistent")).thenReturn(Optional.empty());
+        when(appUserRepository.findUniqueByLoginName("nonexistent")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> appUserService.update("nonexistent", new AppUser()))
                 .isInstanceOf(AppUserNotFoundException.class);
@@ -109,9 +129,9 @@ class AppUserServiceTest {
 
     @Test
     void shouldThrowWhenUpdatingUserWithPartialOidcCredentials() {
-        AppUser existing = AppUser.builder().loginName("alice").password("pass").active(true).build();
+        AppUser existing = user("u1", "tenant-a", "alice", true);
         AppUser updated = AppUser.builder().active(true).oidcProvider("github").build();
-        when(appUserRepository.findById("alice")).thenReturn(Optional.of(existing));
+        when(appUserRepository.findUniqueByLoginName("alice")).thenReturn(Optional.of(existing));
 
         assertThatThrownBy(() -> appUserService.update("alice", updated))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -120,10 +140,10 @@ class AppUserServiceTest {
 
     @Test
     void shouldThrowWhenUpdatingUserWithOidcCredentialsAlreadyAssigned() {
-        AppUser existing = AppUser.builder().loginName("alice").password("pass").active(true).build();
-        AppUser anotherUser = AppUser.builder().loginName("bob").password("pass").active(true).build();
+        AppUser existing = user("u1", "tenant-a", "alice", true);
+        AppUser anotherUser = user("u2", "tenant-b", "bob", true);
         AppUser updated = AppUser.builder().active(true).oidcProvider("github").oidcSubject("12345").build();
-        when(appUserRepository.findById("alice")).thenReturn(Optional.of(existing));
+        when(appUserRepository.findUniqueByLoginName("alice")).thenReturn(Optional.of(existing));
         when(appUserRepository.findByOidcProviderAndOidcSubject("github", "12345"))
                 .thenReturn(Optional.of(anotherUser));
 
@@ -134,15 +154,15 @@ class AppUserServiceTest {
 
     @Test
     void shouldChangePassword() {
-        AppUser existing = AppUser.builder().loginName("alice").password("old").active(true).build();
-        when(appUserRepository.findById("alice")).thenReturn(Optional.of(existing));
+        AppUser existing = user("u1", "tenant-a", "alice", true);
+        existing.setPassword("old");
+        when(appUserRepository.findUniqueByLoginName("alice")).thenReturn(Optional.of(existing));
         when(passwordEncoder.encode("newPass")).thenReturn("$2a$10$encodedNewPass");
         when(appUserRepository.save(existing)).thenReturn(existing);
 
         AppUser result = appUserService.changePassword("alice", "newPass");
 
         assertThat(result.getPassword()).isEqualTo("$2a$10$encodedNewPass");
-        verify(passwordEncoder).encode("newPass");
     }
 
     @Test
@@ -153,40 +173,28 @@ class AppUserServiceTest {
     }
 
     @Test
-    void shouldActivateUser() {
-        AppUser existing = AppUser.builder().loginName("alice").password("pass").active(false).build();
-        when(appUserRepository.findById("alice")).thenReturn(Optional.of(existing));
+    void shouldActivateAndDeactivateUser() {
+        AppUser existing = user("u1", "tenant-a", "alice", false);
+        when(appUserRepository.findUniqueByLoginName("alice")).thenReturn(Optional.of(existing));
         when(appUserRepository.save(existing)).thenReturn(existing);
 
-        AppUser result = appUserService.activate("alice");
-
-        assertThat(result.isActive()).isTrue();
+        assertThat(appUserService.activate("alice").isActive()).isTrue();
+        assertThat(appUserService.deactivate("alice").isActive()).isFalse();
     }
 
     @Test
-    void shouldDeactivateUser() {
-        AppUser existing = AppUser.builder().loginName("alice").password("pass").active(true).build();
-        when(appUserRepository.findById("alice")).thenReturn(Optional.of(existing));
-        when(appUserRepository.save(existing)).thenReturn(existing);
-
-        AppUser result = appUserService.deactivate("alice");
-
-        assertThat(result.isActive()).isFalse();
-    }
-
-    @Test
-    void shouldDeleteUser() {
-        AppUser user = AppUser.builder().loginName("alice").password("pass").active(true).build();
-        when(appUserRepository.findById("alice")).thenReturn(Optional.of(user));
+    void shouldDeleteByImmutableUserId() {
+        AppUser user = user("u1", "tenant-a", "alice", true);
+        when(appUserRepository.findUniqueByLoginName("alice")).thenReturn(Optional.of(user));
 
         appUserService.delete("alice");
 
-        verify(appUserRepository).deleteById("alice");
+        verify(appUserRepository).deleteById("u1");
     }
 
     @Test
     void shouldThrowWhenDeletingNonExistentUser() {
-        when(appUserRepository.findById("nonexistent")).thenReturn(Optional.empty());
+        when(appUserRepository.findUniqueByLoginName("nonexistent")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> appUserService.delete("nonexistent"))
                 .isInstanceOf(AppUserNotFoundException.class);
@@ -194,7 +202,7 @@ class AppUserServiceTest {
 
     @Test
     void shouldCreateUserForStaff() {
-        when(appUserRepository.existsById("alice")).thenReturn(false);
+        when(appUserRepository.existsScopedLoginName(null, "alice")).thenReturn(false);
         when(passwordEncoder.encode("pass")).thenReturn("$2a$10$encoded");
         when(appUserRepository.save(any(AppUser.class))).thenAnswer(i -> i.getArgument(0));
 
@@ -203,44 +211,64 @@ class AppUserServiceTest {
         assertThat(result.getStaffId()).isEqualTo("S001");
         assertThat(result.getLoginName()).isEqualTo("alice");
         assertThat(result.isActive()).isTrue();
-        verify(passwordEncoder).encode("pass");
     }
 
     @Test
-    void shouldThrowWhenCreatingForStaffWithDuplicateLoginName() {
-        when(appUserRepository.existsById("alice")).thenReturn(true);
+    void shouldRejectDuplicateStaffLoginWithinTenant() {
+        when(appUserRepository.existsScopedLoginName("tenant-a", "001")).thenReturn(true);
 
-        assertThatThrownBy(() -> appUserService.createForStaff("S001", "alice", "pass", true))
+        assertThatThrownBy(() -> appUserService.createForStaff("S001", "001", "pass", true, "tenant-a"))
                 .isInstanceOf(DuplicateLoginNameException.class);
     }
 
     @Test
-    void shouldDeactivateUserByStaffId() {
-        AppUser user = AppUser.builder().loginName("alice").password("pass").active(true).staffId("S001").build();
-        when(appUserRepository.findByStaffId("S001")).thenReturn(Optional.of(user));
+    void shouldUpdateAndReadRolesByTenantScopedStaffIdentity() {
+        AppUser user = user("u1", "tenant-a", "alice", true);
+        user.setStaffId("S001");
+        when(appUserRepository.findByTenantIdAndStaffId("tenant-a", "S001")).thenReturn(Optional.of(user));
+
+        assertThat(appUserService.findRoleIdsByStaffId("S001", "tenant-a")).isEmpty();
+        verify(appUserRepository).findByTenantIdAndStaffId("tenant-a", "S001");
+    }
+
+    @Test
+    void shouldDeactivateUserByTenantScopedStaffId() {
+        AppUser user = user("u1", "tenant-a", "alice", true);
+        user.setStaffId("S001");
+        when(appUserRepository.findByTenantIdAndStaffId("tenant-a", "S001")).thenReturn(Optional.of(user));
         when(appUserRepository.save(user)).thenReturn(user);
 
-        appUserService.deactivateByStaffId("S001");
+        appUserService.deactivateByStaffId("S001", "tenant-a");
 
         assertThat(user.isActive()).isFalse();
         verify(appUserRepository).save(user);
     }
 
     @Test
-    void shouldLoginSuccessfully() {
-        AppUser user = AppUser.builder().loginName("alice").password("$2a$10$encoded").active(true).build();
-        when(appUserRepository.findById("alice")).thenReturn(Optional.of(user));
+    void shouldLoginOnlyWhenLoginNameIsGloballyUnambiguousUntilTenantAwareAuthIsAdded() {
+        AppUser user = user("u1", "tenant-a", "alice", true);
+        user.setPassword("$2a$10$encoded");
+        when(appUserRepository.findUniqueByLoginName("alice")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("pass", "$2a$10$encoded")).thenReturn(true);
 
         AppUser result = appUserService.login("alice", "pass");
 
-        assertThat(result.getLoginName()).isEqualTo("alice");
+        assertThat(result).isEqualTo(user);
+    }
+
+    @Test
+    void shouldFailClosedWhenLegacyLoginNameIsAmbiguous() {
+        when(appUserRepository.findUniqueByLoginName("001")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> appUserService.login("001", "pass"))
+                .isInstanceOf(AppUserNotFoundException.class);
     }
 
     @Test
     void shouldThrowWhenLoginWithWrongPassword() {
-        AppUser user = AppUser.builder().loginName("alice").password("$2a$10$encoded").active(true).build();
-        when(appUserRepository.findById("alice")).thenReturn(Optional.of(user));
+        AppUser user = user("u1", "tenant-a", "alice", true);
+        user.setPassword("$2a$10$encoded");
+        when(appUserRepository.findUniqueByLoginName("alice")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("wrong", "$2a$10$encoded")).thenReturn(false);
 
         assertThatThrownBy(() -> appUserService.login("alice", "wrong"))
@@ -250,19 +278,22 @@ class AppUserServiceTest {
 
     @Test
     void shouldThrowWhenLoginWithInactiveUser() {
-        AppUser user = AppUser.builder().loginName("alice").password("$2a$10$encoded").active(false).build();
-        when(appUserRepository.findById("alice")).thenReturn(Optional.of(user));
+        AppUser user = user("u1", "tenant-a", "alice", false);
+        user.setPassword("$2a$10$encoded");
+        when(appUserRepository.findUniqueByLoginName("alice")).thenReturn(Optional.of(user));
 
         assertThatThrownBy(() -> appUserService.login("alice", "pass"))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("not active");
     }
 
-    @Test
-    void shouldThrowWhenLoginWithNonExistentUser() {
-        when(appUserRepository.findById("nonexistent")).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> appUserService.login("nonexistent", "pass"))
-                .isInstanceOf(AppUserNotFoundException.class);
+    private static AppUser user(String userId, String tenantId, String loginName, boolean active) {
+        return AppUser.builder()
+                .userId(userId)
+                .tenantId(tenantId)
+                .loginName(loginName)
+                .active(active)
+                .roles(java.util.Set.of())
+                .build();
     }
 }

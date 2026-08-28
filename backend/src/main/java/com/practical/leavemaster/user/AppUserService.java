@@ -31,8 +31,16 @@ public class AppUserService {
 
     public List<AppUser> findAll() {
         List<AppUser> users = appUserRepository.findAll();
-        if (isCurrentUserPlatformAdmin()) {
+        Optional<AppUser> currentUser = currentUser();
+        if (currentUser.map(this::isActivePlatformAdminUser).orElse(false)) {
             return users;
+        }
+        if (currentUser.isPresent() && currentUser.get().getTenantId() != null) {
+            String tenantId = currentUser.get().getTenantId();
+            return users.stream()
+                    .filter(user -> Objects.equals(tenantId, user.getTenantId()))
+                    .filter(user -> !isPlatformAdminUser(user))
+                    .toList();
         }
         return users.stream()
                 .filter(user -> !isPlatformAdminUser(user))
@@ -40,17 +48,24 @@ public class AppUserService {
     }
 
     public Optional<AppUser> findByLoginName(String loginName) {
-        return appUserRepository.findById(loginName)
+        return resolveUserForCurrentContext(loginName)
                 .filter(user -> !isPlatformAdminUser(user) || isCurrentUserPlatformAdmin());
     }
 
+    public Optional<AppUser> findByLoginName(String tenantId, String loginName) {
+        return appUserRepository.findScopedByLoginName(tenantId, loginName);
+    }
+
     public AppUser save(AppUser user) {
-        if (appUserRepository.existsById(user.getLoginName())) {
-            throw new DuplicateLoginNameException(user.getLoginName());
+        String loginName = normalizeLoginName(user.getLoginName());
+        user.setLoginName(loginName);
+        if (appUserRepository.existsScopedLoginName(user.getTenantId(), loginName)) {
+            throw new DuplicateLoginNameException(loginName);
         }
         if (user.getPassword() == null || user.getPassword().isBlank()) {
             throw new IllegalArgumentException("Password must not be blank");
         }
+        user.setUserId(null);
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         applyOidcCredentials(user, user.getOidcProvider(), user.getOidcSubject());
         AppUser saved = appUserRepository.save(user);
@@ -59,7 +74,7 @@ public class AppUserService {
     }
 
     public AppUser update(String loginName, AppUser updated) {
-        AppUser existing = appUserRepository.findById(loginName)
+        AppUser existing = resolveUserForCurrentContext(loginName)
                 .orElseThrow(() -> new AppUserNotFoundException(loginName));
         existing.setActive(updated.isActive());
         applyOidcCredentials(existing, updated.getOidcProvider(), updated.getOidcSubject());
@@ -72,7 +87,7 @@ public class AppUserService {
         if (newPassword == null || newPassword.isBlank()) {
             throw new IllegalArgumentException("New password must not be blank");
         }
-        AppUser existing = appUserRepository.findById(loginName)
+        AppUser existing = resolveUserForCurrentContext(loginName)
                 .orElseThrow(() -> new AppUserNotFoundException(loginName));
         existing.setPassword(passwordEncoder.encode(newPassword));
         AppUser saved = appUserRepository.save(existing);
@@ -80,14 +95,15 @@ public class AppUserService {
         return saved;
     }
 
-    public void changeOwnPassword(String loginName, String currentPassword, String newPassword) {
+    public void changeOwnPassword(String userId, String currentPassword, String newPassword) {
         if (currentPassword == null || currentPassword.isBlank()) {
             throw new IllegalArgumentException("Current password must not be blank");
         }
         validateSelfServicePassword(newPassword);
 
-        AppUser existing = appUserRepository.findById(loginName)
-                .orElseThrow(() -> new AppUserNotFoundException(loginName));
+        AppUser existing = appUserRepository.findById(userId)
+                .orElseGet(() -> appUserRepository.findUniqueByLoginName(userId)
+                        .orElseThrow(() -> new AppUserNotFoundException(userId)));
 
         if (existing.getPassword() == null || !passwordEncoder.matches(currentPassword, existing.getPassword())) {
             throw new IllegalArgumentException("Current password is incorrect");
@@ -102,7 +118,7 @@ public class AppUserService {
     }
 
     public AppUser activate(String loginName) {
-        AppUser existing = appUserRepository.findById(loginName)
+        AppUser existing = resolveUserForCurrentContext(loginName)
                 .orElseThrow(() -> new AppUserNotFoundException(loginName));
         existing.setActive(true);
         AppUser saved = appUserRepository.save(existing);
@@ -111,7 +127,7 @@ public class AppUserService {
     }
 
     public AppUser deactivate(String loginName) {
-        AppUser existing = appUserRepository.findById(loginName)
+        AppUser existing = resolveUserForCurrentContext(loginName)
                 .orElseThrow(() -> new AppUserNotFoundException(loginName));
         existing.setActive(false);
         AppUser saved = appUserRepository.save(existing);
@@ -120,9 +136,9 @@ public class AppUserService {
     }
 
     public void delete(String loginName) {
-        AppUser existing = appUserRepository.findById(loginName)
+        AppUser existing = resolveUserForCurrentContext(loginName)
                 .orElseThrow(() -> new AppUserNotFoundException(loginName));
-        appUserRepository.deleteById(loginName);
+        appUserRepository.deleteById(existing.getUserId());
         tenantActivityService.touch(existing.getTenantId());
     }
 
@@ -151,11 +167,10 @@ public class AppUserService {
             boolean active,
             String tenantId,
             Set<String> roleIds) {
-        if (appUserRepository.existsById(loginName)) {
-            throw new DuplicateLoginNameException(loginName);
-        }
+        String normalizedLoginName = normalizeLoginName(loginName);
+        assertLoginNameAvailable(tenantId, normalizedLoginName);
         AppUser user = AppUser.builder()
-                .loginName(loginName)
+                .loginName(normalizedLoginName)
                 .password(passwordEncoder.encode(password))
                 .active(active)
                 .staffId(staffId)
@@ -175,11 +190,10 @@ public class AppUserService {
             boolean active,
             String tenantId,
             Set<String> roleIds) {
-        if (appUserRepository.existsById(loginName)) {
-            throw new DuplicateLoginNameException(loginName);
-        }
+        String normalizedLoginName = normalizeLoginName(loginName);
+        assertLoginNameAvailable(tenantId, normalizedLoginName);
         AppUser user = AppUser.builder()
-                .loginName(loginName)
+                .loginName(normalizedLoginName)
                 .password(null)
                 .active(active)
                 .staffId(staffId)
@@ -195,8 +209,22 @@ public class AppUserService {
 
     public AppUser completeInitialPassword(String loginName, String newPassword) {
         validateSelfServicePassword(newPassword);
-        AppUser existing = appUserRepository.findById(loginName)
+        AppUser existing = appUserRepository.findUniqueByLoginName(loginName)
                 .orElseThrow(() -> new AppUserNotFoundException(loginName));
+        return completeInitialPassword(existing.getUserId(), newPassword, true);
+    }
+
+    public AppUser completeInitialPasswordByUserId(String userId, String newPassword) {
+        validateSelfServicePassword(newPassword);
+        return completeInitialPassword(userId, newPassword, false);
+    }
+
+    private AppUser completeInitialPassword(String userId, String newPassword, boolean alreadyValidated) {
+        if (!alreadyValidated) {
+            validateSelfServicePassword(newPassword);
+        }
+        AppUser existing = appUserRepository.findById(userId)
+                .orElseThrow(() -> new AppUserNotFoundException(userId));
         if (!existing.isActive() || existing.getPassword() != null) {
             throw new IllegalStateException("Account is not eligible for initial password setup");
         }
@@ -207,20 +235,20 @@ public class AppUserService {
     }
 
     public Set<String> findRoleIdsByStaffId(String staffId) {
-        return appUserRepository.findByStaffId(staffId)
-                .map(user -> user.getRoles().stream()
-                        .filter(Objects::nonNull)
-                        .map(AppRole::getId)
-                        .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new)))
+        return appUserRepository.findUniqueByStaffId(staffId)
+                .map(this::roleIds)
+                .orElseGet(LinkedHashSet::new);
+    }
+
+    public Set<String> findRoleIdsByStaffId(String staffId, String tenantId) {
+        return appUserRepository.findByTenantIdAndStaffId(tenantId, staffId)
+                .map(this::roleIds)
                 .orElseGet(LinkedHashSet::new);
     }
 
     public AppUser updateRolesByStaffId(String staffId, Set<String> roleIds, String tenantId) {
-        AppUser user = appUserRepository.findByStaffId(staffId)
+        AppUser user = appUserRepository.findByTenantIdAndStaffId(tenantId, staffId)
                 .orElseThrow(() -> new AppUserNotFoundException(staffId));
-        if (!Objects.equals(user.getTenantId(), tenantId)) {
-            throw new IllegalArgumentException("Staff user does not belong to the staff tenant");
-        }
         user.setRoles(resolveStaffRoles(roleIds, tenantId));
         AppUser saved = appUserRepository.save(user);
         tenantActivityService.touch(saved.getTenantId());
@@ -228,15 +256,15 @@ public class AppUserService {
     }
 
     public void deactivateByStaffId(String staffId) {
-        appUserRepository.findByStaffId(staffId).ifPresent(user -> {
-            user.setActive(false);
-            AppUser saved = appUserRepository.save(user);
-            tenantActivityService.touch(saved.getTenantId());
-        });
+        appUserRepository.findUniqueByStaffId(staffId).ifPresent(this::deactivateUser);
+    }
+
+    public void deactivateByStaffId(String staffId, String tenantId) {
+        appUserRepository.findByTenantIdAndStaffId(tenantId, staffId).ifPresent(this::deactivateUser);
     }
 
     public AppUser login(String loginName, String password) {
-        AppUser user = appUserRepository.findById(loginName)
+        AppUser user = appUserRepository.findUniqueByLoginName(loginName)
                 .orElseThrow(() -> new AppUserNotFoundException(loginName));
         if (!user.isActive()) {
             throw new IllegalStateException("User account is not active");
@@ -245,6 +273,59 @@ public class AppUserService {
             throw new IllegalArgumentException("Invalid credentials");
         }
         return user;
+    }
+
+    private void deactivateUser(AppUser user) {
+        user.setActive(false);
+        AppUser saved = appUserRepository.save(user);
+        tenantActivityService.touch(saved.getTenantId());
+    }
+
+    private Set<String> roleIds(AppUser user) {
+        return user.getRoles().stream()
+                .filter(Objects::nonNull)
+                .map(AppRole::getId)
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    private void assertLoginNameAvailable(String tenantId, String loginName) {
+        if (appUserRepository.existsScopedLoginName(tenantId, loginName)) {
+            throw new DuplicateLoginNameException(loginName);
+        }
+    }
+
+    private String normalizeLoginName(String loginName) {
+        if (loginName == null || loginName.isBlank()) {
+            throw new IllegalArgumentException("Login name must not be blank");
+        }
+        return loginName.trim();
+    }
+
+    private Optional<AppUser> resolveUserForCurrentContext(String loginName) {
+        if (loginName == null || loginName.isBlank()) {
+            return Optional.empty();
+        }
+        Optional<AppUser> currentUser = currentUser();
+        if (currentUser.isPresent() && !isActivePlatformAdminUser(currentUser.get())) {
+            return appUserRepository.findScopedByLoginName(currentUser.get().getTenantId(), loginName);
+        }
+        if (currentUser.isPresent() && isActivePlatformAdminUser(currentUser.get())) {
+            Optional<AppUser> platformUser = appUserRepository.findByTenantIdIsNullAndLoginName(loginName.trim());
+            if (platformUser.isPresent()) {
+                return platformUser;
+            }
+        }
+        return appUserRepository.findUniqueByLoginName(loginName);
+    }
+
+    private Optional<AppUser> currentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() || authentication.getName() == null) {
+            return Optional.empty();
+        }
+        String principalName = authentication.getName();
+        return appUserRepository.findById(principalName)
+                .or(() -> appUserRepository.findUniqueByLoginName(principalName));
     }
 
     private Set<AppRole> resolveStaffRoles(Set<String> roleIds, String tenantId) {
@@ -301,7 +382,7 @@ public class AppUserService {
         String normalizedSubject = oidcSubject.trim();
 
         appUserRepository.findByOidcProviderAndOidcSubject(normalizedProvider, normalizedSubject)
-                .filter(existing -> !existing.getLoginName().equals(target.getLoginName()))
+                .filter(existing -> target.getUserId() == null || !existing.getUserId().equals(target.getUserId()))
                 .ifPresent(existing -> {
                     throw new IllegalArgumentException("OIDC identity is already assigned to another user");
                 });
@@ -311,14 +392,7 @@ public class AppUserService {
     }
 
     private boolean isCurrentUserPlatformAdmin() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated() || authentication.getName() == null) {
-            return false;
-        }
-
-        return appUserRepository.findById(authentication.getName())
-                .map(this::isActivePlatformAdminUser)
-                .orElse(false);
+        return currentUser().map(this::isActivePlatformAdminUser).orElse(false);
     }
 
     private boolean isActivePlatformAdminUser(AppUser user) {

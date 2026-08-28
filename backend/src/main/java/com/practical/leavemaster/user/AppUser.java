@@ -7,7 +7,9 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,11 +17,17 @@ import lombok.NoArgsConstructor;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 
 import com.practical.leavemaster.rbac.AppRole;
 
 @Entity
-@Table(name = "app_user")
+@Table(
+        name = "app_user",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_app_user_tenant_login",
+                columnNames = {"tenant_id", "login_name"})
+)
 @Data
 @Builder
 @NoArgsConstructor
@@ -27,6 +35,9 @@ import com.practical.leavemaster.rbac.AppRole;
 public class AppUser {
 
     @Id
+    @Column(name = "user_id", nullable = false, updatable = false, length = 36)
+    private String userId;
+
     @Column(name = "login_name", nullable = false)
     private String loginName;
 
@@ -52,8 +63,15 @@ public class AppUser {
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "app_user_role",
-            joinColumns = @JoinColumn(name = "login_name"),
+            joinColumns = @JoinColumn(name = "user_id"),
             inverseJoinColumns = @JoinColumn(name = "role_id")
     )
     private Set<AppRole> roles = new HashSet<>();
+
+    @PrePersist
+    void ensureUserId() {
+        if (userId == null || userId.isBlank()) {
+            userId = UUID.randomUUID().toString();
+        }
+    }
 }

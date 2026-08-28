@@ -30,7 +30,7 @@ class AppUserPendingActivationTest {
 
     @Test
     void shouldCreatePendingStaffUserWithoutGeneratingDefaultPassword() {
-        when(appUserRepository.existsById("alice")).thenReturn(false);
+        when(appUserRepository.existsScopedLoginName("tenant-a", "alice")).thenReturn(false);
         when(appUserRepository.save(any(AppUser.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         AppUser saved = appUserService.createPendingForStaff(
@@ -39,12 +39,13 @@ class AppUserPendingActivationTest {
         assertThat(saved.getPassword()).isNull();
         assertThat(saved.isActive()).isTrue();
         assertThat(saved.getStaffId()).isEqualTo("S001");
+        assertThat(saved.getTenantId()).isEqualTo("tenant-a");
         verify(passwordEncoder, never()).encode(any());
     }
 
     @Test
     void sixArgumentStaffCreationShouldIgnoreLegacyDefaultPassword() {
-        when(appUserRepository.existsById("alice")).thenReturn(false);
+        when(appUserRepository.existsScopedLoginName("tenant-a", "alice")).thenReturn(false);
         when(appUserRepository.save(any(AppUser.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         AppUser saved = appUserService.createForStaff(
@@ -57,13 +58,15 @@ class AppUserPendingActivationTest {
     @Test
     void shouldCompleteInitialPasswordForEligiblePendingAccount() {
         AppUser pending = AppUser.builder()
+                .userId("user-alice")
                 .loginName("alice")
                 .active(true)
                 .staffId("S001")
                 .tenantId("tenant-a")
                 .password(null)
                 .build();
-        when(appUserRepository.findById("alice")).thenReturn(java.util.Optional.of(pending));
+        when(appUserRepository.findUniqueByLoginName("alice")).thenReturn(java.util.Optional.of(pending));
+        when(appUserRepository.findById("user-alice")).thenReturn(java.util.Optional.of(pending));
         when(passwordEncoder.encode("strong-pass")).thenReturn("encoded-strong-pass");
         when(appUserRepository.save(pending)).thenReturn(pending);
 
@@ -76,11 +79,13 @@ class AppUserPendingActivationTest {
     @Test
     void shouldRejectInitialPasswordForActiveAccountThatAlreadyHasPassword() {
         AppUser existing = AppUser.builder()
+                .userId("user-alice")
                 .loginName("alice")
                 .active(true)
                 .password("existing-hash")
                 .build();
-        when(appUserRepository.findById("alice")).thenReturn(java.util.Optional.of(existing));
+        when(appUserRepository.findUniqueByLoginName("alice")).thenReturn(java.util.Optional.of(existing));
+        when(appUserRepository.findById("user-alice")).thenReturn(java.util.Optional.of(existing));
 
         assertThatThrownBy(() -> appUserService.completeInitialPassword("alice", "strong-pass"))
                 .isInstanceOf(IllegalStateException.class)
@@ -98,11 +103,12 @@ class AppUserPendingActivationTest {
     @Test
     void pendingAccountCannotUseNormalPasswordLogin() {
         AppUser pending = AppUser.builder()
+                .userId("user-alice")
                 .loginName("alice")
                 .active(true)
                 .password(null)
                 .build();
-        when(appUserRepository.findById("alice")).thenReturn(java.util.Optional.of(pending));
+        when(appUserRepository.findUniqueByLoginName("alice")).thenReturn(java.util.Optional.of(pending));
 
         assertThatThrownBy(() -> appUserService.login("alice", "alice"))
                 .isInstanceOf(IllegalArgumentException.class)
