@@ -77,6 +77,7 @@ public class StaffService {
         Staff existing = staffRepository.findById(id)
                 .orElseThrow(() -> new StaffNotFoundException(id));
         existing.setName(updated.getName());
+        existing.setEmail(updated.getEmail());
         existing.setJoinDate(updated.getJoinDate());
         if (updated.getWorkSchedule() != null) {
             existing.setWorkSchedule(new ArrayList<>(updated.getWorkSchedule()));
@@ -86,9 +87,7 @@ public class StaffService {
         existing.setEmploymentType(updated.getEmploymentType());
         enforceCurrentTenantAndJurisdiction(existing, true);
         if (updated.getLeaveEntitlements() != null) {
-            List<LeaveEntitlement> normalized = normalizeLeaveEntitlements(existing, updated.getLeaveEntitlements());
-            existing.getLeaveEntitlements().clear();
-            existing.getLeaveEntitlements().addAll(normalized);
+            reconcileLeaveEntitlements(existing, updated.getLeaveEntitlements());
         }
         if (updated.getRoleIds() != null) {
             appUserService.updateRolesByStaffId(id, new HashSet<>(updated.getRoleIds()), existing.getTenantId());
@@ -208,25 +207,78 @@ public class StaffService {
 
         List<LeaveEntitlement> normalized = new ArrayList<>();
         for (LeaveEntitlement leaveEntitlement : leaveEntitlements) {
-            if (leaveEntitlement.getLeaveType() == null || leaveEntitlement.getLeaveType().getId() == null) {
-                throw new IllegalArgumentException("Leave entitlement must specify a leave type ID");
-            }
-
-            LeaveType leaveType = leaveTypeRepository.findById(leaveEntitlement.getLeaveType().getId())
-                    .orElseThrow(() -> new IllegalArgumentException(
-                            "Leave type not found: " + leaveEntitlement.getLeaveType().getId()));
-            if (staff.getTenantId() != null && !Objects.equals(staff.getTenantId(), leaveType.getTenantId())) {
-                throw new IllegalArgumentException("Leave type does not belong to the staff tenant");
-            }
-
-            markLeaveTypeAsUsed(leaveType);
-            leaveEntitlement.setStaff(staff);
-            leaveEntitlement.setLeaveType(leaveType);
-            leaveEntitlement.setTenantId(staff.getTenantId());
-            applyPeriodAndProration(staff, leaveEntitlement);
+            normalizeLeaveEntitlement(staff, leaveEntitlement);
             normalized.add(leaveEntitlement);
         }
         return normalized;
+    }
+
+    private void reconcileLeaveEntitlements(Staff staff, List<LeaveEntitlement> requestedEntitlements) {
+        Set<String> submittedIds = new HashSet<>();
+        List<LeaveEntitlement> reconciled = new ArrayList<>();
+
+        for (LeaveEntitlement requested : requestedEntitlements) {
+            LeaveEntitlement target;
+            String requestedId = requested.getId();
+            if (requestedId == null || requestedId.isBlank()) {
+                target = new LeaveEntitlement();
+                copyMutableEntitlementFields(requested, target);
+            } else {
+                if (!submittedIds.add(requestedId)) {
+                    throw new IllegalArgumentException("Duplicate leave entitlement ID: " + requestedId);
+                }
+                target = staff.getLeaveEntitlements().stream()
+                        .filter(existing -> requestedId.equals(existing.getId()))
+                        .findFirst()
+                        .orElseThrow(() -> new IllegalArgumentException(
+                                "Leave entitlement does not belong to staff " + staff.getId() + ": " + requestedId));
+                copyMutableEntitlementFields(requested, target);
+            }
+
+            normalizeLeaveEntitlement(staff, target);
+            reconciled.add(target);
+        }
+
+        staff.getLeaveEntitlements().removeIf(existing ->
+                reconciled.stream().noneMatch(entitlement -> entitlement == existing));
+        for (LeaveEntitlement entitlement : reconciled) {
+            boolean alreadyManaged = staff.getLeaveEntitlements().stream()
+                    .anyMatch(existing -> existing == entitlement);
+            if (!alreadyManaged) {
+                staff.getLeaveEntitlements().add(entitlement);
+            }
+        }
+    }
+
+    private void copyMutableEntitlementFields(LeaveEntitlement source, LeaveEntitlement target) {
+        target.setLeaveType(source.getLeaveType());
+        target.setFrom(source.getFrom());
+        target.setTo(source.getTo());
+        target.setEntitlement(source.getEntitlement());
+        target.setPolicyId(source.getPolicyId());
+        target.setBaseEntitlementAmount(source.getBaseEntitlementAmount());
+        target.setCarriedForwardAmount(source.getCarriedForwardAmount());
+        target.setAdjustmentAmount(source.getAdjustmentAmount());
+        target.setGeneratedAt(source.getGeneratedAt());
+    }
+
+    private void normalizeLeaveEntitlement(Staff staff, LeaveEntitlement leaveEntitlement) {
+        if (leaveEntitlement.getLeaveType() == null || leaveEntitlement.getLeaveType().getId() == null) {
+            throw new IllegalArgumentException("Leave entitlement must specify a leave type ID");
+        }
+
+        LeaveType leaveType = leaveTypeRepository.findById(leaveEntitlement.getLeaveType().getId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Leave type not found: " + leaveEntitlement.getLeaveType().getId()));
+        if (staff.getTenantId() != null && !Objects.equals(staff.getTenantId(), leaveType.getTenantId())) {
+            throw new IllegalArgumentException("Leave type does not belong to the staff tenant");
+        }
+
+        markLeaveTypeAsUsed(leaveType);
+        leaveEntitlement.setStaff(staff);
+        leaveEntitlement.setLeaveType(leaveType);
+        leaveEntitlement.setTenantId(staff.getTenantId());
+        applyPeriodAndProration(staff, leaveEntitlement);
     }
 
     private void markLeaveTypeAsUsed(LeaveType leaveType) {
