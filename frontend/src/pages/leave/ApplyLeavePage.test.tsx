@@ -92,7 +92,8 @@ describe('ApplyLeavePage policy-aware event fields', () => {
 
     fireEvent.change(screen.getByLabelText('From date'), { target: { value: '2026-08-28' } });
     fireEvent.change(screen.getByLabelText('To date'), { target: { value: '2026-08-28' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Submit request' }));
+    await waitFor(() => expect(mockedGetPolicyMetadata).toHaveBeenCalledWith('S1', 'MAT', '2026-08-28'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Submit request' }));
 
     expect(await screen.findByText('Event date is required for event-based leave')).toBeInTheDocument();
     expect(screen.getByText('Attachment is required because this qualifying event must be verified')).toBeInTheDocument();
