@@ -4,6 +4,7 @@ import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 
 import java.util.Collection;
+import java.util.List;
 
 public class TenantAuthenticationToken extends AbstractAuthenticationToken {
 
@@ -13,7 +14,7 @@ public class TenantAuthenticationToken extends AbstractAuthenticationToken {
     private Object credentials;
 
     public TenantAuthenticationToken(String tenantId, String loginName, String password) {
-        super(null);
+        super(List.of());
         this.tenantId = tenantId;
         this.loginName = loginName;
         this.principal = loginName;
