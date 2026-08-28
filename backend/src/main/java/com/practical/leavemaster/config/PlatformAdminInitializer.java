@@ -56,7 +56,7 @@ public class PlatformAdminInitializer implements ApplicationRunner {
                 .map(this::reconcilePlatformAdminRole)
                 .orElseGet(this::createPlatformAdminRole);
 
-        Optional<AppUser> defaultAdmin = appUserRepository.findById(PLATFORM_ADMIN_LOGIN_NAME);
+        Optional<AppUser> defaultAdmin = appUserRepository.findByTenantIdIsNullAndLoginName(PLATFORM_ADMIN_LOGIN_NAME);
         boolean hasUsers = appUserRepository.findAll().stream()
                 .anyMatch(u -> u.getRoles().stream()
                         .anyMatch(r -> PLATFORM_ADMIN_ROLE_ID.equals(r.getId())));
@@ -67,6 +67,7 @@ public class PlatformAdminInitializer implements ApplicationRunner {
                     .loginName(PLATFORM_ADMIN_LOGIN_NAME)
                     .password(passwordEncoder.encode(platformAdminPassword))
                     .active(true)
+                    .tenantId(null)
                     .roles(Set.of(role))
                     .build();
             appUserRepository.save(admin);
