@@ -3,6 +3,8 @@ package com.practical.leavemaster.user;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -14,6 +16,8 @@ import java.util.Map;
 public class AppUserController {
 
     private final AppUserService appUserService;
+    private final AppUserRepository appUserRepository;
+    private final TenantAuthenticationProvider tenantAuthenticationProvider;
 
     @GetMapping
     public List<AppUser> getAll() {
@@ -96,14 +100,17 @@ public class AppUserController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Map<String, String> body) {
         try {
-            AppUser user = appUserService.login(body.get("loginName"), body.get("password"));
-            return ResponseEntity.ok(user);
-        } catch (AppUserNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Invalid credentials"));
-        } catch (IllegalStateException e) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", e.getMessage()));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", e.getMessage()));
+            Authentication authentication = tenantAuthenticationProvider.authenticate(new TenantAuthenticationToken(
+                    body.get("tenantId"), body.get("loginName"), body.get("password")));
+            return appUserRepository.findById(authentication.getName())
+                    .<ResponseEntity<?>>map(ResponseEntity::ok)
+                    .orElseGet(() -> genericUnauthorized());
+        } catch (AuthenticationException | ClassCastException e) {
+            return genericUnauthorized();
         }
+    }
+
+    private ResponseEntity<?> genericUnauthorized() {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Invalid credentials"));
     }
 }
