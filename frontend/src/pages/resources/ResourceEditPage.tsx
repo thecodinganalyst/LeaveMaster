@@ -8,6 +8,7 @@ import { PageContainer } from '../../components/common/PageContainer.tsx';
 import { PageHeader } from '../../components/common/PageHeader.tsx';
 import { getAdminResourceConfig, normaliseFormValues, toFormValues } from './resourceConfigResolver.ts';
 import { ResourceFormFields } from './ResourceFormFields.tsx';
+import { syncStaffDependants, type StaffDependantValue } from './staffDependants.ts';
 
 interface LeaveMasterIdentity {
   id: string;
@@ -36,10 +37,22 @@ export const ResourceEditPage = () => {
 
   const submit = async (values: Record<string, unknown>) => {
     try {
+      const dependants = config.name === 'employees' ? values.dependants as StaffDependantValue[] | undefined : undefined;
       const payload = normaliseFormValues(config, values);
+      if (config.name === 'employees') delete payload.dependants;
       for (const field of config.fields.filter((item) => item.readOnlyOnEdit || item.formHidden || item.hidden)) delete payload[field.name];
       const result = await mutateAsync({ resource: config.name, id, values: payload });
       const updatedId = String((result.data as Record<string, unknown> | undefined)?.[config.idField] ?? id);
+
+      if (config.name === 'employees') {
+        try {
+          await syncStaffDependants(updatedId, dependants);
+        } catch (error) {
+          message.error(`Staff updated, but dependant changes were not fully saved: ${error instanceof Error ? error.message : 'unknown error'}`);
+          return;
+        }
+      }
+
       message.success(`${config.singular} updated`);
       navigate(`/${config.name}/show/${encodeURIComponent(updatedId)}`);
     } catch {
