@@ -4,6 +4,7 @@ import { ApiError, apiFetch, clearCsrfToken, loginWithSession } from '../api/htt
 import { clearCurrentUser, getCurrentUser } from '../auth/session.ts';
 
 interface LoginParams {
+  tenantId?: string;
   loginName?: string;
   password?: string;
   redirectPath?: string;
@@ -11,20 +12,20 @@ interface LoginParams {
 
 export const authProvider: AuthBindings = {
   login: async (params) => {
-    const { loginName, password, redirectPath } = (params ?? {}) as LoginParams;
+    const { tenantId, loginName, password, redirectPath } = (params ?? {}) as LoginParams;
 
-    if (!loginName || !password) {
+    if (!tenantId || !loginName || !password) {
       return {
         success: false,
         error: {
           name: 'InvalidCredentials',
-          message: 'Login name and password are required.',
+          message: 'Tenant ID, login name, and password are required.',
         },
       };
     }
 
     try {
-      await loginWithSession(loginName, password);
+      await loginWithSession(tenantId.trim(), loginName.trim(), password);
       clearCurrentUser();
       await getCurrentUser(true);
       return { success: true, redirectTo: redirectPath ?? '/' };
