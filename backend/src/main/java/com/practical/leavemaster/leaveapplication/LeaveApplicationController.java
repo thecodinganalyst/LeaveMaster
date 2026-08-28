@@ -22,6 +22,7 @@ import java.util.Map;
 public class LeaveApplicationController {
 
     private final LeaveApplicationService leaveApplicationService;
+    private final LeaveApplicationPolicyMetadataService policyMetadataService;
 
     @GetMapping
     @PreAuthorize("@leaveAuthorization.canAccessStaff(authentication, #staffId)")
@@ -30,6 +31,21 @@ public class LeaveApplicationController {
             return ResponseEntity.ok(leaveApplicationService.findVisibleForStaff(staffId));
         } catch (StaffNotFoundException e) {
             return ResponseEntity.notFound().build();
+        }
+    }
+
+    @GetMapping("/policy-metadata")
+    @PreAuthorize("@leaveAuthorization.canApplyForStaff(authentication, #staffId)")
+    public ResponseEntity<?> getPolicyMetadata(
+            @RequestParam String staffId,
+            @RequestParam String leaveTypeId,
+            @RequestParam(required = false) LocalDate effectiveDate) {
+        try {
+            return ResponseEntity.ok(policyMetadataService.resolve(staffId, leaveTypeId, effectiveDate));
+        } catch (StaffNotFoundException | com.practical.leavemaster.leavetype.LeaveTypeNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 
@@ -82,6 +98,7 @@ public class LeaveApplicationController {
             @RequestPart("request") LeaveApplicationRequest request,
             @RequestPart(value = "file", required = false) MultipartFile file) {
         try {
+            policyMetadataService.validateAttachmentRequirement(request, file != null && !file.isEmpty());
             List<LeaveApplication> applications = leaveApplicationService.apply(request, file);
             return ResponseEntity.status(HttpStatus.CREATED).body(applications);
         } catch (StaffNotFoundException | com.practical.leavemaster.leavetype.LeaveTypeNotFoundException e) {
@@ -95,6 +112,7 @@ public class LeaveApplicationController {
     @PreAuthorize("@leaveAuthorization.canApplyForStaff(authentication, #request.staffId)")
     public ResponseEntity<?> applyJson(@RequestBody LeaveApplicationRequest request) {
         try {
+            policyMetadataService.validateAttachmentRequirement(request, false);
             List<LeaveApplication> applications = leaveApplicationService.apply(request, null);
             return ResponseEntity.status(HttpStatus.CREATED).body(applications);
         } catch (StaffNotFoundException | com.practical.leavemaster.leavetype.LeaveTypeNotFoundException e) {
