@@ -20,8 +20,8 @@ import java.time.LocalDateTime;
 public class AccountActivation {
 
     @Id
-    @Column(name = "login_name", nullable = false)
-    private String loginName;
+    @Column(name = "user_id", nullable = false, length = 36)
+    private String userId;
 
     @Column(name = "pin_hash")
     private String pinHash;
