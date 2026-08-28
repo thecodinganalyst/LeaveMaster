@@ -86,7 +86,7 @@ class AssistantStructuredResultFilterTest {
                 List.of(
                         new AssistantDtos.StructuredResult("getStaffLeaveEntitlement", Map.of("leaveTypeName", "Annual Leave")),
                         new AssistantDtos.StructuredResult("getLeaveEntitlementConfigurationByJurisdiction", List.of(
-                                config("Annual Leave"), config("Sick Leave")))))
+                                config("Annual Leave"), config("Sick Leave"))))
         );
 
         assertThat((List<?>) response.structuredResults().get(1).data()).hasSize(1);
