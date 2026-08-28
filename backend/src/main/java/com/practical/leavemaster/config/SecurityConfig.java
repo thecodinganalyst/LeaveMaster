@@ -2,6 +2,8 @@ package com.practical.leavemaster.config;
 
 import com.practical.leavemaster.rbac.RbacPermissions;
 import com.practical.leavemaster.user.AppUserRepository;
+import com.practical.leavemaster.user.TenantAuthenticationFilter;
+import com.practical.leavemaster.user.TenantAuthenticationProvider;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
@@ -10,16 +12,20 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -38,6 +44,7 @@ public class SecurityConfig {
         HttpSecurity http,
         ObjectProvider<ClientRegistrationRepository> clientRegistrationRepositoryProvider,
         AppUserRepository appUserRepository,
+        AuthenticationManager authenticationManager,
         @Value("${app.public-url:http://localhost:5173}") String publicAppUrl
     ) throws Exception {
         String normalizedPublicAppUrl = stripTrailingSlash(publicAppUrl);
@@ -107,16 +114,13 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.DELETE, "/leave-applications/**").hasAuthority(RbacPermissions.LEAVE_APPLICATION_WRITE)
                 .anyRequest().authenticated()
             )
-            .formLogin(form -> form
-                .loginProcessingUrl("/auth/login")
-                .successHandler((request, response, authentication) -> response.setStatus(HttpServletResponse.SC_OK))
-                .failureHandler((request, response, exception) -> response.setStatus(HttpServletResponse.SC_UNAUTHORIZED))
-            )
+            .formLogin(AbstractHttpConfigurer::disable)
+            .httpBasic(AbstractHttpConfigurer::disable)
+            .addFilterAt(new TenantAuthenticationFilter(authenticationManager), UsernamePasswordAuthenticationFilter.class)
             .logout(logout -> logout
                 .logoutUrl("/logout")
                 .logoutSuccessHandler((request, response, authentication) -> response.setStatus(HttpServletResponse.SC_OK))
             )
-            .httpBasic(Customizer.withDefaults())
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint((request, response, authException) -> response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized"))
             );
@@ -131,6 +135,11 @@ public class SecurityConfig {
         }
 
         return http.build();
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(TenantAuthenticationProvider tenantAuthenticationProvider) {
+        return new ProviderManager(tenantAuthenticationProvider);
     }
 
     @Bean
