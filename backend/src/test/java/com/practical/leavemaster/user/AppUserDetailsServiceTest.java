@@ -51,16 +51,18 @@ class AppUserDetailsServiceTest {
                 .build();
 
         AppUser user = AppUser.builder()
+                .userId("user-alice")
                 .loginName("alice")
                 .password("{noop}password")
                 .active(true)
                 .roles(Set.of(managerRole, approverRole, disabledRole))
                 .build();
 
-        when(appUserRepository.findById("alice")).thenReturn(Optional.of(user));
+        when(appUserRepository.findUniqueByLoginName("alice")).thenReturn(Optional.of(user));
 
         UserDetails details = appUserDetailsService.loadUserByUsername("alice");
 
+        assertThat(details.getUsername()).isEqualTo("user-alice");
         assertThat(details.getAuthorities())
                 .extracting("authority")
                 .containsExactlyInAnyOrder("TENANT_READ", "STAFF_WRITE", "LEAVE_APPROVE")
@@ -68,8 +70,8 @@ class AppUserDetailsServiceTest {
     }
 
     @Test
-    void shouldThrowWhenUserMissing() {
-        when(appUserRepository.findById("missing")).thenReturn(Optional.empty());
+    void shouldThrowWhenUserMissingOrLoginNameAmbiguous() {
+        when(appUserRepository.findUniqueByLoginName("missing")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> appUserDetailsService.loadUserByUsername("missing"))
                 .isInstanceOf(org.springframework.security.core.userdetails.UsernameNotFoundException.class);
