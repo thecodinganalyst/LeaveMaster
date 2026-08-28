@@ -43,8 +43,11 @@ public class LeaveApprover {
     private LocalDate effectiveTo;
 
     @ManyToOne
-    @JoinColumn(name = "admin_id", nullable = false)
+    @JoinColumn(name = "admin_id")
     private Staff admin;
+
+    @Column(name = "admin_login_name")
+    private String adminLoginName;
 
     @Column(name = "admin_date", nullable = false)
     private LocalDate adminDate;

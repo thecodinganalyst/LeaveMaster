@@ -66,15 +66,16 @@ public class LeaveApproverService {
         validateDates(request);
         Staff staff = resolveStaff(request.getStaffId());
         Staff approver = resolveStaff(request.getApproverId());
-        Staff admin = resolveAdmin(request);
-        validateAssignment(staff, approver, admin, null);
+        AuditActor actor = resolveAuditActor(request);
+        validateAssignment(staff, approver, actor, null);
 
         LeaveApprover leaveApprover = LeaveApprover.builder()
                 .staff(staff)
                 .approver(approver)
                 .effectiveFrom(request.getEffectiveFrom())
                 .effectiveTo(request.getEffectiveTo())
-                .admin(admin)
+                .admin(actor.staff())
+                .adminLoginName(actor.loginName())
                 .adminDate(LocalDate.now())
                 .tenantId(staff.getTenantId())
                 .build();
@@ -93,14 +94,15 @@ public class LeaveApproverService {
 
         Staff staff = resolveStaff(request.getStaffId());
         Staff approver = resolveStaff(request.getApproverId());
-        Staff admin = resolveAdmin(request);
-        validateAssignment(staff, approver, admin, id);
+        AuditActor actor = resolveAuditActor(request);
+        validateAssignment(staff, approver, actor, id);
 
         existing.setStaff(staff);
         existing.setApprover(approver);
         existing.setEffectiveFrom(request.getEffectiveFrom());
         existing.setEffectiveTo(request.getEffectiveTo());
-        existing.setAdmin(admin);
+        existing.setAdmin(actor.staff());
+        existing.setAdminLoginName(actor.loginName());
         existing.setAdminDate(LocalDate.now());
         existing.setTenantId(staff.getTenantId());
         LeaveApprover saved = leaveApproverRepository.save(existing);
@@ -118,12 +120,18 @@ public class LeaveApproverService {
         tenantActivityService.touch(resolveTenantId(existing));
     }
 
-    private void validateAssignment(Staff staff, Staff approver, Staff admin, String excludedRecordId) {
+    private void validateAssignment(Staff staff, Staff approver, AuditActor actor, String excludedRecordId) {
         validateTenantMembership(staff, "Staff");
         validateTenantMembership(approver, "Approver");
-        validateTenantMembership(admin, "Admin staff");
-        if (!Objects.equals(staff.getTenantId(), approver.getTenantId()) || !Objects.equals(staff.getTenantId(), admin.getTenantId())) {
-            throw new IllegalArgumentException("Staff, approver and admin staff must belong to the same tenant");
+        if (!Objects.equals(staff.getTenantId(), approver.getTenantId())) {
+            throw new IllegalArgumentException("Staff and approver must belong to the same tenant");
+        }
+        if (actor.tenantId() != null && !actor.tenantId().isBlank()
+                && !Objects.equals(staff.getTenantId(), actor.tenantId())) {
+            throw new IllegalArgumentException("Authenticated user does not belong to the staff tenant");
+        }
+        if (actor.staff() != null && !Objects.equals(staff.getTenantId(), actor.staff().getTenantId())) {
+            throw new IllegalArgumentException("Admin staff does not belong to the staff tenant");
         }
         if (Objects.equals(staff.getId(), approver.getId())) {
             throw new IllegalArgumentException("Leave approver assignment would create a circular dependency: a staff member cannot approve their own leave");
@@ -184,15 +192,23 @@ public class LeaveApproverService {
                 .orElseThrow(() -> new StaffNotFoundException(staffId));
     }
 
-    private Staff resolveAdmin(LeaveApproverRequest request) {
+    private AuditActor resolveAuditActor(LeaveApproverRequest request) {
         Optional<AppUser> user = currentUser();
-        String adminId = user.map(AppUser::getStaffId)
-                .filter(id -> id != null && !id.isBlank())
-                .orElse(request.getAdminId());
-        if (adminId == null || adminId.isBlank()) {
-            throw new IllegalArgumentException("Authenticated user is not associated with a staff record");
+        if (user.isPresent()) {
+            AppUser appUser = user.get();
+            Staff adminStaff = Optional.ofNullable(appUser.getStaffId())
+                    .filter(id -> !id.isBlank())
+                    .flatMap(staffRepository::findById)
+                    .orElse(null);
+            return new AuditActor(adminStaff, appUser.getLoginName(), appUser.getTenantId());
         }
-        return resolveStaff(adminId);
+
+        String adminId = request.getAdminId();
+        if (adminId == null || adminId.isBlank()) {
+            throw new IllegalArgumentException("Authenticated user is required to manage leave approvers");
+        }
+        Staff adminStaff = resolveStaff(adminId);
+        return new AuditActor(adminStaff, null, adminStaff.getTenantId());
     }
 
     private boolean canApproveLeave(Staff staff) {
@@ -238,5 +254,8 @@ public class LeaveApproverService {
             return leaveApprover.getTenantId();
         }
         return leaveApprover.getStaff() != null ? leaveApprover.getStaff().getTenantId() : null;
+    }
+
+    private record AuditActor(Staff staff, String loginName, String tenantId) {
     }
 }

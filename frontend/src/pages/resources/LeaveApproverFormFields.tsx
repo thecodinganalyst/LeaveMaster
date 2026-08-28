@@ -1,4 +1,3 @@
-import { useGetIdentity } from '@refinedev/core';
 import { useQuery } from '@tanstack/react-query';
 import { Form, Input, Select } from 'antd';
 import { useEffect } from 'react';
@@ -8,10 +7,6 @@ import { apiFetch } from '../../api/http.ts';
 interface StaffOption {
   id: string;
   name?: string | null;
-}
-
-interface LeaveMasterIdentity {
-  staffId?: string | null;
 }
 
 const loadStaffOptions = () => apiFetch<StaffOption[]>('/api/leave-approvers/staff-options');
@@ -24,7 +19,6 @@ const toOptions = (staff: StaffOption[]) => staff.map((item) => ({
 
 export const LeaveApproverFormFields = ({ editing = false }: { editing?: boolean }) => {
   const form = Form.useFormInstance();
-  const { data: identity } = useGetIdentity<LeaveMasterIdentity>();
   const staffQuery = useQuery({
     queryKey: ['leave-approver-form', 'staff-options'],
     queryFn: loadStaffOptions,
@@ -41,10 +35,7 @@ export const LeaveApproverFormFields = ({ editing = false }: { editing?: boolean
     if (!form.getFieldValue('effectiveFrom')) {
       form.setFieldValue('effectiveFrom', new Date().toISOString().slice(0, 10));
     }
-    if (identity?.staffId && !form.getFieldValue('adminId')) {
-      form.setFieldValue('adminId', identity.staffId);
-    }
-  }, [editing, form, identity?.staffId]);
+  }, [editing, form]);
 
   const staffOptions = toOptions(staffQuery.data ?? []);
   const approverOptions = toOptions(approverQuery.data ?? []);
@@ -90,17 +81,6 @@ export const LeaveApproverFormFields = ({ editing = false }: { editing?: boolean
         })]}
       >
         <Input type="date" allowClear />
-      </Form.Item>
-
-      <Form.Item name="adminId" label="Admin staff ID" rules={[{ required: true, message: 'Admin staff ID is required' }]}>
-        <Select
-          showSearch
-          optionFilterProp="label"
-          options={staffOptions}
-          loading={staffQuery.isLoading}
-          disabled
-          placeholder="Current staff"
-        />
       </Form.Item>
     </>
   );
