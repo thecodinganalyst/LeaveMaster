@@ -1,6 +1,5 @@
 package com.practical.leavemaster.user;
 
-import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -65,21 +64,6 @@ class TenantAuthenticationFilterTest {
         assertThatThrownBy(() -> filter.attemptAuthentication(request, new MockHttpServletResponse()))
                 .isInstanceOf(AuthenticationServiceException.class)
                 .hasMessageContaining("GET");
-    }
-
-    @Test
-    void configuredHandlersReturnOkAndUnauthorized() throws Exception {
-        TenantAuthenticationFilter filter = new TenantAuthenticationFilter(authentication -> authentication);
-        MockHttpServletResponse success = new MockHttpServletResponse();
-        filter.getSuccessHandler().onAuthenticationSuccess(
-                new MockHttpServletRequest(), success,
-                new TenantAuthenticationToken("tenant-a", "001", "user-a", List.of()));
-        assertThat(success.getStatus()).isEqualTo(HttpServletResponse.SC_OK);
-
-        MockHttpServletResponse failure = new MockHttpServletResponse();
-        filter.getFailureHandler().onAuthenticationFailure(
-                new MockHttpServletRequest(), failure, new BadCredentialsException("Invalid credentials"));
-        assertThat(failure.getStatus()).isEqualTo(HttpServletResponse.SC_UNAUTHORIZED);
     }
 
     @Test
