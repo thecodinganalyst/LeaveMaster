@@ -37,6 +37,7 @@ public final class AssistantDtos {
     ) {
         public ChatResponse {
             message = AssistantResponseFormatter.toDisplayMarkdown(message);
+            structuredResults = AssistantStructuredResultFilter.scope(structuredResults);
         }
     }
 
