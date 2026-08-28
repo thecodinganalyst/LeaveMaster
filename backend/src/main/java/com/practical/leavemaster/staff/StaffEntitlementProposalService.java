@@ -10,6 +10,7 @@ import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicy;
 import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicyRepository;
 import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicyResolutionService;
 import com.practical.leavemaster.leaveentitlementpolicy.LeavePolicyModel;
+import com.practical.leavemaster.leaveentitlementpolicy.LeaveProrationRounding;
 import com.practical.leavemaster.leaveentitlementpolicy.PolicyPeriodResolutionResult;
 import com.practical.leavemaster.leaveentitlementpolicy.PolicyResolutionResult;
 import com.practical.leavemaster.leaveentitlementpolicy.ProrationMethod;
@@ -225,21 +226,22 @@ public class StaffEntitlementProposalService {
         if (policy.getProrationMethod() == ProrationMethod.NONE || !eligibleStart.isAfter(periodStart)) {
             return amount.setScale(2, RoundingMode.HALF_UP);
         }
-        return switch (policy.getProrationMethod()) {
+        BigDecimal rawProratedAmount = switch (policy.getProrationMethod()) {
             case CALENDAR_DAYS -> {
                 long totalDays = ChronoUnit.DAYS.between(periodStart, periodEnd) + 1;
                 long eligibleDays = ChronoUnit.DAYS.between(eligibleStart, periodEnd) + 1;
                 yield amount.multiply(BigDecimal.valueOf(eligibleDays))
-                        .divide(BigDecimal.valueOf(totalDays), 2, RoundingMode.HALF_UP);
+                        .divide(BigDecimal.valueOf(totalDays), 8, RoundingMode.HALF_UP);
             }
             case MONTHS -> {
                 long totalMonths = ChronoUnit.MONTHS.between(YearMonth.from(periodStart), YearMonth.from(periodEnd)) + 1;
                 long eligibleMonths = ChronoUnit.MONTHS.between(YearMonth.from(eligibleStart), YearMonth.from(periodEnd)) + 1;
                 yield amount.multiply(BigDecimal.valueOf(eligibleMonths))
-                        .divide(BigDecimal.valueOf(totalMonths), 2, RoundingMode.HALF_UP);
+                        .divide(BigDecimal.valueOf(totalMonths), 8, RoundingMode.HALF_UP);
             }
-            case NONE -> amount.setScale(2, RoundingMode.HALF_UP);
+            case NONE -> amount;
         };
+        return LeaveProrationRounding.toNearestHalfDay(rawProratedAmount);
     }
 
     private LocalDate laterOf(LocalDate first, LocalDate second) {
