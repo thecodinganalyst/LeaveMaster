@@ -1,6 +1,7 @@
 package com.practical.leavemaster.mcp;
 
 import com.practical.leavemaster.leaveentitlement.LeaveEntitlement;
+import com.practical.leavemaster.leaveentitlementpolicy.LeaveProrationRounding;
 import com.practical.leavemaster.staff.DaySchedule;
 import com.practical.leavemaster.staff.Staff;
 import com.practical.leavemaster.staff.StaffRepository;
@@ -88,7 +89,9 @@ public class StaffAssistantReadService {
                 entitlement.getEntitlement(),
                 entitlement.getBaseEntitlementAmount(),
                 entitlement.getCarriedForwardAmount(),
-                entitlement.getAdjustmentAmount());
+                entitlement.getAdjustmentAmount(),
+                LeaveProrationRounding.HALF_DAY,
+                "NEAREST_HALF_DAY");
     }
 
     private StaffResult toResult(Staff staff) {
@@ -171,7 +174,9 @@ public class StaffAssistantReadService {
             BigDecimal entitlement,
             BigDecimal baseEntitlementAmount,
             BigDecimal carriedForwardAmount,
-            BigDecimal adjustmentAmount
+            BigDecimal adjustmentAmount,
+            BigDecimal prorationDenominationDays,
+            String prorationRoundingRule
     ) {
     }
 }

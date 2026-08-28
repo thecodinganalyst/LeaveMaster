@@ -93,8 +93,8 @@ class StaffEntitlementProposalServiceTest {
         assertThat(entitlement.getLeaveType()).isEqualTo(annual);
         assertThat(entitlement.getFrom()).isEqualTo(LocalDate.of(2026, 1, 1));
         assertThat(entitlement.getTo()).isEqualTo(LocalDate.of(2026, 12, 31));
-        assertThat(entitlement.getEntitlement()).isEqualByComparingTo("10.08");
-        assertThat(entitlement.getBaseEntitlementAmount()).isEqualByComparingTo("10.08");
+        assertThat(entitlement.getEntitlement()).isEqualByComparingTo("10.00");
+        assertThat(entitlement.getBaseEntitlementAmount()).isEqualByComparingTo("10.00");
         assertThat(entitlement.getCarriedForwardAmount()).isEqualByComparingTo("0.00");
         assertThat(entitlement.getPolicyId()).isEqualTo("policy-annual");
     }
