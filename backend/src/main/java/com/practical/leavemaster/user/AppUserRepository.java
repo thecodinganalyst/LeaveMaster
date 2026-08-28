@@ -29,7 +29,7 @@ public interface AppUserRepository extends JpaRepository<AppUser, String> {
 
     Optional<AppUser> findByTenantIdAndStaffId(String tenantId, String staffId);
 
-    Optional<AppUser> findByStaffId(String staffId);
+    List<AppUser> findAllByStaffId(String staffId);
 
     Optional<AppUser> findByOidcProviderAndOidcSubject(String oidcProvider, String oidcSubject);
 
@@ -40,7 +40,15 @@ public interface AppUserRepository extends JpaRepository<AppUser, String> {
             return Optional.empty();
         }
         List<AppUser> matches = findAllByLoginName(loginName.trim());
-        return matches.size() == 1 ? Optional.of(matches.getFirst()) : Optional.empty();
+        return matches.size() == 1 ? Optional.of(matches.get(0)) : Optional.empty();
+    }
+
+    default Optional<AppUser> findUniqueByStaffId(String staffId) {
+        if (staffId == null || staffId.isBlank()) {
+            return Optional.empty();
+        }
+        List<AppUser> matches = findAllByStaffId(staffId.trim());
+        return matches.size() == 1 ? Optional.of(matches.get(0)) : Optional.empty();
     }
 
     default Optional<AppUser> findScopedByLoginName(String tenantId, String loginName) {
