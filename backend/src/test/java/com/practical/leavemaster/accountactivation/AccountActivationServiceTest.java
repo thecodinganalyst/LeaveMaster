@@ -32,6 +32,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class AccountActivationServiceTest {
 
+    private static final String USER_ID = "user-alice";
+
     @Mock private AppUserRepository appUserRepository;
     @Mock private StaffRepository staffRepository;
     @Mock private AccountActivationRepository accountActivationRepository;
@@ -58,19 +60,19 @@ class AccountActivationServiceTest {
 
     @Test
     void shouldReturnPasswordForUnknownOrAlreadyActivatedAccount() {
-        when(appUserRepository.findById("missing")).thenReturn(Optional.empty());
+        when(appUserRepository.findUniqueByLoginName("missing")).thenReturn(Optional.empty());
         assertThat(service.lookup("missing")).isEqualTo(AccountActivationService.NextStep.PASSWORD);
 
         AppUser active = pendingUser();
         active.setPassword("encoded-password");
-        when(appUserRepository.findById("alice")).thenReturn(Optional.of(active));
+        when(appUserRepository.findUniqueByLoginName("alice")).thenReturn(Optional.of(active));
         assertThat(service.lookup("alice")).isEqualTo(AccountActivationService.NextStep.PASSWORD);
     }
 
     @Test
     void shouldGenerateAndStoreOnlyHashedPinOnExplicitRequest() {
         stubEligibleAccount();
-        when(accountActivationRepository.findById("alice")).thenReturn(Optional.empty());
+        when(accountActivationRepository.findById(USER_ID)).thenReturn(Optional.empty());
         when(passwordEncoder.encode(anyString())).thenReturn("hashed-pin");
         when(accountActivationRepository.save(any(AccountActivation.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -87,6 +89,7 @@ class AccountActivationServiceTest {
         ArgumentCaptor<AccountActivation> activationCaptor = ArgumentCaptor.forClass(AccountActivation.class);
         verify(accountActivationRepository).save(activationCaptor.capture());
         AccountActivation stored = activationCaptor.getValue();
+        assertThat(stored.getUserId()).isEqualTo(USER_ID);
         assertThat(stored.getPinHash()).isEqualTo("hashed-pin");
         assertThat(stored.getPinHash()).isNotEqualTo(pinCaptor.getValue());
         assertThat(stored.getFailedAttempts()).isZero();
@@ -95,7 +98,7 @@ class AccountActivationServiceTest {
 
     @Test
     void shouldNotGeneratePinForIneligibleAccount() {
-        when(appUserRepository.findById("alice")).thenReturn(Optional.empty());
+        when(appUserRepository.findUniqueByLoginName("alice")).thenReturn(Optional.empty());
 
         assertThat(service.requestPin("alice")).isFalse();
 
@@ -108,7 +111,7 @@ class AccountActivationServiceTest {
         stubEligibleAccount();
         AccountActivation existing = activation(LocalDateTime.now(ZoneOffset.UTC).plusMinutes(10));
         existing.setRequestedAt(LocalDateTime.now(ZoneOffset.UTC));
-        when(accountActivationRepository.findById("alice")).thenReturn(Optional.of(existing));
+        when(accountActivationRepository.findById(USER_ID)).thenReturn(Optional.of(existing));
 
         assertThat(service.requestPin("alice")).isFalse();
         verify(passwordEncoder, never()).encode(anyString());
@@ -121,7 +124,7 @@ class AccountActivationServiceTest {
         existing.setRequestedAt(LocalDateTime.now(ZoneOffset.UTC).minusMinutes(2));
         existing.setRequestWindowStartedAt(LocalDateTime.now(ZoneOffset.UTC).minusMinutes(30));
         existing.setRequestCount(5);
-        when(accountActivationRepository.findById("alice")).thenReturn(Optional.of(existing));
+        when(accountActivationRepository.findById(USER_ID)).thenReturn(Optional.of(existing));
 
         assertThat(service.requestPin("alice")).isFalse();
         verify(passwordEncoder, never()).encode(anyString());
@@ -130,20 +133,20 @@ class AccountActivationServiceTest {
     @Test
     void shouldInvalidateActivationRecordWhenEmailDeliveryFails() {
         stubEligibleAccount();
-        when(accountActivationRepository.findById("alice")).thenReturn(Optional.empty());
+        when(accountActivationRepository.findById(USER_ID)).thenReturn(Optional.empty());
         when(passwordEncoder.encode(anyString())).thenReturn("hashed-pin");
         doThrow(new IllegalStateException("provider unavailable"))
                 .when(emailService).sendAccountActivationPin(anyString(), anyString(), anyString(), org.mockito.ArgumentMatchers.anyInt());
 
         assertThat(service.requestPin("alice")).isFalse();
-        verify(accountActivationRepository).deleteById("alice");
+        verify(accountActivationRepository).deleteById(USER_ID);
     }
 
     @Test
     void shouldVerifyCorrectPinOnce() {
         stubEligibleAccount();
         AccountActivation activation = activation(LocalDateTime.now(ZoneOffset.UTC).plusMinutes(10));
-        when(accountActivationRepository.findById("alice")).thenReturn(Optional.of(activation));
+        when(accountActivationRepository.findById(USER_ID)).thenReturn(Optional.of(activation));
         when(passwordEncoder.matches("123456", "hashed-pin")).thenReturn(true);
 
         assertThat(service.verifyPin("alice", "123456")).isTrue();
@@ -155,7 +158,7 @@ class AccountActivationServiceTest {
     void shouldCountWrongPinAttempts() {
         stubEligibleAccount();
         AccountActivation activation = activation(LocalDateTime.now(ZoneOffset.UTC).plusMinutes(10));
-        when(accountActivationRepository.findById("alice")).thenReturn(Optional.of(activation));
+        when(accountActivationRepository.findById(USER_ID)).thenReturn(Optional.of(activation));
         when(passwordEncoder.matches("654321", "hashed-pin")).thenReturn(false);
 
         assertThat(service.verifyPin("alice", "654321")).isFalse();
@@ -167,14 +170,14 @@ class AccountActivationServiceTest {
     void shouldRejectExpiredMalformedAndMaxAttemptPins() {
         stubEligibleAccount();
         AccountActivation expired = activation(LocalDateTime.now(ZoneOffset.UTC).minusSeconds(1));
-        when(accountActivationRepository.findById("alice")).thenReturn(Optional.of(expired));
+        when(accountActivationRepository.findById(USER_ID)).thenReturn(Optional.of(expired));
         assertThat(service.verifyPin("alice", "123456")).isFalse();
 
         assertThat(service.verifyPin("alice", "12ab56")).isFalse();
 
         AccountActivation maxed = activation(LocalDateTime.now(ZoneOffset.UTC).plusMinutes(10));
         maxed.setFailedAttempts(5);
-        when(accountActivationRepository.findById("alice")).thenReturn(Optional.of(maxed));
+        when(accountActivationRepository.findById(USER_ID)).thenReturn(Optional.of(maxed));
         assertThat(service.verifyPin("alice", "123456")).isFalse();
         verify(passwordEncoder, never()).matches(anyString(), anyString());
     }
@@ -184,12 +187,12 @@ class AccountActivationServiceTest {
         stubEligibleAccount();
         AccountActivation activation = activation(LocalDateTime.now(ZoneOffset.UTC).plusMinutes(10));
         activation.setVerifiedAt(LocalDateTime.now(ZoneOffset.UTC).minusSeconds(1));
-        when(accountActivationRepository.findById("alice")).thenReturn(Optional.of(activation));
-        when(appUserService.completeInitialPassword("alice", "strong-pass")).thenReturn(pendingUser());
+        when(accountActivationRepository.findById(USER_ID)).thenReturn(Optional.of(activation));
+        when(appUserService.completeInitialPasswordByUserId(USER_ID, "strong-pass")).thenReturn(pendingUser());
 
         assertThat(service.setInitialPassword("alice", "strong-pass")).isTrue();
 
-        verify(appUserService).completeInitialPassword("alice", "strong-pass");
+        verify(appUserService).completeInitialPasswordByUserId(USER_ID, "strong-pass");
         assertThat(activation.getConsumedAt()).isNotNull();
         assertThat(activation.getPinHash()).isNull();
         verify(accountActivationRepository).save(activation);
@@ -199,22 +202,22 @@ class AccountActivationServiceTest {
     void shouldRejectPasswordSetupBeforeVerificationOrAfterConsumption() {
         stubEligibleAccount();
         AccountActivation unverified = activation(LocalDateTime.now(ZoneOffset.UTC).plusMinutes(10));
-        when(accountActivationRepository.findById("alice")).thenReturn(Optional.of(unverified));
+        when(accountActivationRepository.findById(USER_ID)).thenReturn(Optional.of(unverified));
         assertThat(service.setInitialPassword("alice", "strong-pass")).isFalse();
 
         AccountActivation consumed = activation(LocalDateTime.now(ZoneOffset.UTC).plusMinutes(10));
         consumed.setVerifiedAt(LocalDateTime.now(ZoneOffset.UTC).minusSeconds(2));
         consumed.setConsumedAt(LocalDateTime.now(ZoneOffset.UTC).minusSeconds(1));
-        when(accountActivationRepository.findById("alice")).thenReturn(Optional.of(consumed));
+        when(accountActivationRepository.findById(USER_ID)).thenReturn(Optional.of(consumed));
         assertThat(service.setInitialPassword("alice", "strong-pass")).isFalse();
-        verify(appUserService, never()).completeInitialPassword(anyString(), anyString());
+        verify(appUserService, never()).completeInitialPasswordByUserId(anyString(), anyString());
     }
 
     @Test
     void shouldRejectDisabledFutureTerminatedOrCrossTenantAccounts() {
         AppUser user = pendingUser();
         user.setActive(false);
-        when(appUserRepository.findById("alice")).thenReturn(Optional.of(user));
+        when(appUserRepository.findUniqueByLoginName("alice")).thenReturn(Optional.of(user));
         assertThat(service.lookup("alice")).isEqualTo(AccountActivationService.NextStep.PASSWORD);
 
         user.setActive(true);
@@ -235,12 +238,13 @@ class AccountActivationServiceTest {
     }
 
     private void stubEligibleAccount() {
-        when(appUserRepository.findById("alice")).thenReturn(Optional.of(pendingUser()));
+        when(appUserRepository.findUniqueByLoginName("alice")).thenReturn(Optional.of(pendingUser()));
         when(staffRepository.findById("S001")).thenReturn(Optional.of(staff()));
     }
 
     private static AppUser pendingUser() {
         return AppUser.builder()
+                .userId(USER_ID)
                 .loginName("alice")
                 .password(null)
                 .active(true)
@@ -261,7 +265,7 @@ class AccountActivationServiceTest {
 
     private static AccountActivation activation(LocalDateTime expiresAt) {
         return AccountActivation.builder()
-                .loginName("alice")
+                .userId(USER_ID)
                 .pinHash("hashed-pin")
                 .requestedAt(LocalDateTime.now(ZoneOffset.UTC).minusMinutes(1))
                 .expiresAt(expiresAt)
