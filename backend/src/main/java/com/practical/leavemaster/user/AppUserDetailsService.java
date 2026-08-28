@@ -22,13 +22,13 @@ public class AppUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        return appUserRepository.findById(username)
-                .map(appUser -> User.withUsername(appUser.getLoginName())
+        return appUserRepository.findUniqueByLoginName(username)
+                .map(appUser -> User.withUsername(appUser.getUserId())
                         .password(appUser.getPassword() == null ? PENDING_PASSWORD_SENTINEL : appUser.getPassword())
                         .disabled(!appUser.isActive() || appUser.getPassword() == null)
                         .authorities(resolveAuthorities(appUser))
                         .build())
-                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
+                .orElseThrow(() -> new UsernameNotFoundException("User not found or login name is ambiguous"));
     }
 
     private Set<GrantedAuthority> resolveAuthorities(AppUser appUser) {
