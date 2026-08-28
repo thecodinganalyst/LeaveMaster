@@ -9,6 +9,7 @@ import { JurisdictionSelect } from './JurisdictionSelect.tsx';
 import { LeaveApproverFormFields } from './LeaveApproverFormFields.tsx';
 import { PublicHolidayListField } from './PublicHolidayListField.tsx';
 import { RolePermissionCheckboxList } from './RolePermissionCheckboxList.tsx';
+import { StaffDependantsField } from './StaffDependantsField.tsx';
 import { StaffEmploymentTypeField } from './StaffEmploymentTypeField.tsx';
 import { StaffFormFields } from './StaffFormFields.tsx';
 import { StaffLeaveApproversField } from './StaffLeaveApproversField.tsx';
@@ -26,13 +27,8 @@ interface Props {
 }
 
 export const ResourceFormFields = ({ config, editing = false, platformAdmin = false, recordId }: Props) => {
-  if (config.name === 'tenants' && !editing) {
-    return <TenantOnboardingFormFields />;
-  }
-
-  if (config.name === 'tenant-jurisdictions' && !editing) {
-    return <TenantJurisdictionFormFields />;
-  }
+  if (config.name === 'tenants' && !editing) return <TenantOnboardingFormFields />;
+  if (config.name === 'tenant-jurisdictions' && !editing) return <TenantJurisdictionFormFields />;
 
   if (config.name === 'employees') {
     return (
@@ -40,22 +36,15 @@ export const ResourceFormFields = ({ config, editing = false, platformAdmin = fa
         <StaffFormFields editing={editing} {...(recordId ? { staffId: recordId } : {})} />
         <StaffEmploymentTypeField />
         <StaffRoleSelect />
+        <StaffDependantsField editing={editing} {...(recordId ? { staffId: recordId } : {})} />
         <StaffLeaveApproversField editing={editing} {...(recordId ? { staffId: recordId } : {})} />
       </>
     );
   }
 
-  if (config.name === 'leave-entitlement-policies') {
-    return <EntitlementPolicyFormFields editing={editing} platformAdmin={platformAdmin} />;
-  }
-
-  if (config.name === 'leave-entitlement-policy-eligibility-rules') {
-    return <EligibilityRuleFormFields editing={editing} />;
-  }
-
-  if (config.name === 'leave-approvers') {
-    return <LeaveApproverFormFields editing={editing} />;
-  }
+  if (config.name === 'leave-entitlement-policies') return <EntitlementPolicyFormFields editing={editing} platformAdmin={platformAdmin} />;
+  if (config.name === 'leave-entitlement-policy-eligibility-rules') return <EligibilityRuleFormFields editing={editing} />;
+  if (config.name === 'leave-approvers') return <LeaveApproverFormFields editing={editing} />;
 
   return (
     <>
@@ -76,68 +65,18 @@ export const ResourceFormFields = ({ config, editing = false, platformAdmin = fa
         const disabled = Boolean(editing && field.readOnlyOnEdit);
         const itemProps = { name: field.name, label: field.label, rules, extra: field.description };
 
-        if (field.type === 'boolean') {
-          return (
-            <Form.Item key={field.name} {...itemProps} valuePropName="checked">
-              <Switch disabled={disabled} />
-            </Form.Item>
-          );
-        }
-
-        if (field.name === 'jurisdictionId') {
-          return (
-            <Form.Item key={field.name} {...itemProps}>
-              <JurisdictionSelect disabled={disabled} />
-            </Form.Item>
-          );
-        }
-
-        if (field.type === 'select') {
-          return (
-            <Form.Item key={field.name} {...itemProps}>
-              <Select options={field.options ?? []} disabled={disabled} />
-            </Form.Item>
-          );
-        }
-
-        if (field.type === 'permissions') {
-          return (
-            <Form.Item key={field.name} {...itemProps}>
-              <RolePermissionCheckboxList disabled={disabled} />
-            </Form.Item>
-          );
-        }
-
+        if (field.type === 'boolean') return <Form.Item key={field.name} {...itemProps} valuePropName="checked"><Switch disabled={disabled} /></Form.Item>;
+        if (field.name === 'jurisdictionId') return <Form.Item key={field.name} {...itemProps}><JurisdictionSelect disabled={disabled} /></Form.Item>;
+        if (field.type === 'select') return <Form.Item key={field.name} {...itemProps}><Select options={field.options ?? []} disabled={disabled} /></Form.Item>;
+        if (field.type === 'permissions') return <Form.Item key={field.name} {...itemProps}><RolePermissionCheckboxList disabled={disabled} /></Form.Item>;
         if (field.type === 'holiday-list') {
-          return (
-            <PublicHolidayListField
-              key={field.name}
-              name={field.name}
-              label={field.label}
-              {...(field.description !== undefined ? { description: field.description } : {})}
-              disabled={disabled}
-            />
-          );
+          return <PublicHolidayListField key={field.name} name={field.name} label={field.label} {...(field.description !== undefined ? { description: field.description } : {})} disabled={disabled} />;
         }
-
-        if (field.type === 'json') {
-          return (
-            <Form.Item key={field.name} {...itemProps}>
-              <Input.TextArea rows={5} disabled={disabled} placeholder="[]" />
-            </Form.Item>
-          );
-        }
-
+        if (field.type === 'json') return <Form.Item key={field.name} {...itemProps}><Input.TextArea rows={5} disabled={disabled} placeholder="[]" /></Form.Item>;
         if (field.type === 'number') {
           return (
             <Form.Item key={field.name} {...itemProps}>
-              <InputNumber
-                disabled={disabled}
-                {...(field.min !== undefined ? { min: field.min } : {})}
-                step={field.step ?? 1}
-                precision={0}
-                style={{ width: '100%' }}
-              />
+              <InputNumber disabled={disabled} {...(field.min !== undefined ? { min: field.min } : {})} step={field.step ?? 1} precision={0} style={{ width: '100%' }} />
             </Form.Item>
           );
         }
@@ -146,12 +85,7 @@ export const ResourceFormFields = ({ config, editing = false, platformAdmin = fa
         const input = field.type === 'password'
           ? <Input.Password disabled={disabled} autoComplete="new-password" />
           : <Input type={inputType} disabled={disabled} allowClear={field.type === 'date'} />;
-
-        return (
-          <Form.Item key={field.name} {...itemProps}>
-            {input}
-          </Form.Item>
-        );
+        return <Form.Item key={field.name} {...itemProps}>{input}</Form.Item>;
       })}
     </>
   );
