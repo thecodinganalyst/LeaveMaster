@@ -35,7 +35,7 @@ public class TenantAuthenticationFilter extends UsernamePasswordAuthenticationFi
                 tenantId == null ? null : tenantId.trim(),
                 loginName == null ? null : loginName.trim(),
                 password);
-        setDetails(request, token);
+        token.setDetails(this.authenticationDetailsSource.buildDetails(request));
         return this.getAuthenticationManager().authenticate(token);
     }
 }
