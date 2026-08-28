@@ -51,6 +51,10 @@ public interface AppUserRepository extends JpaRepository<AppUser, String> {
         return matches.size() == 1 ? Optional.of(matches.get(0)) : Optional.empty();
     }
 
+    default Optional<AppUser> findByStaffId(String staffId) {
+        return findUniqueByStaffId(staffId);
+    }
+
     default Optional<AppUser> findScopedByLoginName(String tenantId, String loginName) {
         if (loginName == null || loginName.isBlank()) {
             return Optional.empty();
