@@ -5,7 +5,7 @@ import java.util.regex.Pattern;
 
 final class AssistantResponseFormatter {
 
-    private static final Pattern TEXT_COMMAND = Pattern.compile("\\\\text\\{([^{}]*)}");
+    private static final Pattern TEXT_COMMAND = Pattern.compile("\\\\text\\{\\s*([^{}]*?)\\s*}");
     private static final Pattern FRACTION_COMMAND = Pattern.compile("\\\\frac\\{([^{}]*)}\\{([^{}]*)}");
 
     private AssistantResponseFormatter() {
