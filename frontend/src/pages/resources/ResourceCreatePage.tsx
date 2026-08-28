@@ -8,6 +8,7 @@ import { PageContainer } from '../../components/common/PageContainer.tsx';
 import { PageHeader } from '../../components/common/PageHeader.tsx';
 import { getAdminResourceConfig, getAdminResourceInitialValues, normaliseFormValues } from './resourceConfigResolver.ts';
 import { ResourceFormFields } from './ResourceFormFields.tsx';
+import { syncStaffDependants, type StaffDependantValue } from './staffDependants.ts';
 import { tenantOnboardingInitialValues } from './tenantOnboarding.ts';
 
 interface LeaveMasterIdentity {
@@ -35,7 +36,22 @@ export const ResourceCreatePage = () => {
 
   const submit = async (values: Record<string, unknown>) => {
     try {
-      await mutateAsync({ resource: config.name, values: normaliseFormValues(config, values) });
+      const dependants = config.name === 'employees' ? values.dependants as StaffDependantValue[] | undefined : undefined;
+      const payload = normaliseFormValues(config, values);
+      if (config.name === 'employees') delete payload.dependants;
+      const result = await mutateAsync({ resource: config.name, values: payload });
+      const createdId = String((result.data as Record<string, unknown> | undefined)?.[config.idField] ?? values[config.idField] ?? '');
+
+      if (config.name === 'employees' && createdId) {
+        try {
+          await syncStaffDependants(createdId, dependants);
+        } catch (error) {
+          message.warning(`Staff created, but dependant changes were not fully saved: ${error instanceof Error ? error.message : 'unknown error'}`);
+          navigate(`/${config.name}/edit/${encodeURIComponent(createdId)}`);
+          return;
+        }
+      }
+
       message.success(`${config.singular} created`);
       navigate(`/${config.name}`);
     } catch {
