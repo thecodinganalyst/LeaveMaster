@@ -35,6 +35,9 @@ public final class AssistantDtos {
             List<PendingAction> pendingActions,
             List<StructuredResult> structuredResults
     ) {
+        public ChatResponse {
+            message = AssistantResponseFormatter.toDisplayMarkdown(message);
+        }
     }
 
     public record ConfirmationRequest(String confirmationToken) {
