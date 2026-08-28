@@ -2,6 +2,7 @@ import { apiFetch } from '../../api/http.ts';
 
 export type LeaveDuration = 'FULL' | 'AM' | 'PM';
 export type LeaveStatus = 'DRAFT' | 'PENDING_VERIFICATION' | 'PENDING' | 'APPROVED' | 'CANCEL_REQUESTED' | 'CANCELLED' | 'DENIED';
+export type LeavePolicyModel = 'ANNUAL_ENTITLEMENT' | 'CONDITIONAL_ANNUAL_ENTITLEMENT' | 'EVENT_BASED';
 
 export interface LeaveTypeSummary {
   id: string;
@@ -35,6 +36,12 @@ export interface LeaveBalance {
   balance: number;
 }
 
+export interface LeaveApplicationPolicyMetadata {
+  policyModel?: LeavePolicyModel | null;
+  eventBased: boolean;
+  eventRequiresVerification: boolean;
+}
+
 export interface ApplyLeaveRequest {
   staffId: string;
   fromDate: string;
@@ -49,7 +56,6 @@ export interface ApplyLeaveRequest {
   eventEndDate?: string;
   dependantId?: string;
   eventExternalReference?: string;
-  eventSupportingDocumentReference?: string;
 }
 
 export const getVisibleLeave = (staffId: string) =>
@@ -63,8 +69,21 @@ export const getLeaveApplication = (id: string) =>
 
 export const getLeaveTypes = () => apiFetch<LeaveTypeSummary[]>('/leave-types');
 
-export const applyForLeave = (request: ApplyLeaveRequest) =>
-  apiFetch<LeaveApplication[]>('/leave-applications', { method: 'POST', body: JSON.stringify(request) });
+export const getLeaveApplicationPolicyMetadata = (staffId: string, leaveTypeId: string, effectiveDate?: string) => {
+  const params = new URLSearchParams({ staffId, leaveTypeId });
+  if (effectiveDate) params.set('effectiveDate', effectiveDate);
+  return apiFetch<LeaveApplicationPolicyMetadata>(`/leave-applications/policy-metadata?${params.toString()}`);
+};
+
+export const applyForLeave = (request: ApplyLeaveRequest, attachment?: File) => {
+  if (!attachment) {
+    return apiFetch<LeaveApplication[]>('/leave-applications', { method: 'POST', body: JSON.stringify(request) });
+  }
+  const formData = new FormData();
+  formData.append('request', new Blob([JSON.stringify(request)], { type: 'application/json' }));
+  formData.append('file', attachment);
+  return apiFetch<LeaveApplication[]>('/leave-applications', { method: 'POST', body: formData });
+};
 
 export const updateLeaveDuration = (application: LeaveApplication, leaveDuration: LeaveDuration) =>
   apiFetch<LeaveApplication>(`/leave-applications/${encodeURIComponent(application.id)}`, {
