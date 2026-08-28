@@ -4,6 +4,7 @@ import com.practical.leavemaster.leavecalendar.LeaveCalendarNotFoundException;
 import com.practical.leavemaster.staff.StaffNotFoundException;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -22,7 +23,9 @@ import java.util.Map;
 public class LeaveApplicationController {
 
     private final LeaveApplicationService leaveApplicationService;
-    private final LeaveApplicationPolicyMetadataService policyMetadataService;
+
+    @Autowired(required = false)
+    private LeaveApplicationPolicyMetadataService policyMetadataService;
 
     @GetMapping
     @PreAuthorize("@leaveAuthorization.canAccessStaff(authentication, #staffId)")
@@ -40,6 +43,9 @@ public class LeaveApplicationController {
             @RequestParam String staffId,
             @RequestParam String leaveTypeId,
             @RequestParam(required = false) LocalDate effectiveDate) {
+        if (policyMetadataService == null) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
+        }
         try {
             return ResponseEntity.ok(policyMetadataService.resolve(staffId, leaveTypeId, effectiveDate));
         } catch (StaffNotFoundException | com.practical.leavemaster.leavetype.LeaveTypeNotFoundException e) {
@@ -98,7 +104,9 @@ public class LeaveApplicationController {
             @RequestPart("request") LeaveApplicationRequest request,
             @RequestPart(value = "file", required = false) MultipartFile file) {
         try {
-            policyMetadataService.validateAttachmentRequirement(request, file != null && !file.isEmpty());
+            if (policyMetadataService != null) {
+                policyMetadataService.validateAttachmentRequirement(request, file != null && !file.isEmpty());
+            }
             List<LeaveApplication> applications = leaveApplicationService.apply(request, file);
             return ResponseEntity.status(HttpStatus.CREATED).body(applications);
         } catch (StaffNotFoundException | com.practical.leavemaster.leavetype.LeaveTypeNotFoundException e) {
@@ -112,7 +120,9 @@ public class LeaveApplicationController {
     @PreAuthorize("@leaveAuthorization.canApplyForStaff(authentication, #request.staffId)")
     public ResponseEntity<?> applyJson(@RequestBody LeaveApplicationRequest request) {
         try {
-            policyMetadataService.validateAttachmentRequirement(request, false);
+            if (policyMetadataService != null) {
+                policyMetadataService.validateAttachmentRequirement(request, false);
+            }
             List<LeaveApplication> applications = leaveApplicationService.apply(request, null);
             return ResponseEntity.status(HttpStatus.CREATED).body(applications);
         } catch (StaffNotFoundException | com.practical.leavemaster.leavetype.LeaveTypeNotFoundException e) {
