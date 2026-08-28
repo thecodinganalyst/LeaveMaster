@@ -26,6 +26,7 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -76,11 +77,11 @@ class LeaveApproverTenantAdminTest {
                 .build();
 
         when(appUserRepository.findById("Bravo_Admin")).thenReturn(Optional.of(tenantAdmin));
-        when(appUserRepository.findByStaffId("002")).thenReturn(Optional.of(approverUser));
+        lenient().when(appUserRepository.findByStaffId("002")).thenReturn(Optional.of(approverUser));
         when(staffRepository.findById("001")).thenReturn(Optional.of(staff));
         when(staffRepository.findById("002")).thenReturn(Optional.of(approver));
-        when(leaveApproverRepository.findAllByTenantId("Bravo")).thenReturn(List.of());
-        when(leaveApproverRepository.save(any(LeaveApprover.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        lenient().when(leaveApproverRepository.findAllByTenantId("Bravo")).thenReturn(List.of());
+        lenient().when(leaveApproverRepository.save(any(LeaveApprover.class))).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     @AfterEach
