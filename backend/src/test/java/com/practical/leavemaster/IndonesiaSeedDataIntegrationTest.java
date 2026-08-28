@@ -57,7 +57,7 @@ class IndonesiaSeedDataIntegrationTest {
         assertThat(annual.getPolicyModel()).isEqualTo(LeavePolicyModel.ANNUAL_ENTITLEMENT);
         assertThat(eligibilityRepository.findAllByPolicyIdOrderBySortOrderAsc("ID_ANNUAL_12"))
                 .singleElement()
-                .satisfies(rule -> assertThat(rule.getCriterionValue()).isEqualTo("12"));
+                .satisfies(rule -> assertThat(rule.getValue()).isEqualTo("12"));
 
         assertEventPolicy("ID_MARRIAGE_EVENT", "MARRIAGE", "3");
         assertEventPolicy("ID_CHILD_MARRIAGE_EVENT", "CHILD_MARRIAGE", "2");
