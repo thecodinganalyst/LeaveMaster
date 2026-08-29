@@ -1,6 +1,6 @@
 import { useCreate, useGetIdentity, useResource } from '@refinedev/core';
 import { App, Button, Form, Space } from 'antd';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { FormSection } from '../../components/common/FormSection.tsx';
@@ -8,7 +8,6 @@ import { PageContainer } from '../../components/common/PageContainer.tsx';
 import { PageHeader } from '../../components/common/PageHeader.tsx';
 import { getAdminResourceConfig, getAdminResourceInitialValues, normaliseFormValues } from './resourceConfigResolver.ts';
 import { ResourceFormFields } from './ResourceFormFields.tsx';
-import { syncStaffDependants, type StaffDependantValue } from './staffDependants.ts';
 import { tenantOnboardingInitialValues } from './tenantOnboarding.ts';
 
 interface LeaveMasterIdentity {
@@ -24,6 +23,7 @@ export const ResourceCreatePage = () => {
   const { mutateAsync, isLoading } = useCreate();
   const { data: identity } = useGetIdentity<LeaveMasterIdentity>();
   const [form] = Form.useForm();
+  const [staffCreationStep, setStaffCreationStep] = useState<0 | 1>(0);
   const navigate = useNavigate();
   const { message } = App.useApp();
 
@@ -33,36 +33,35 @@ export const ResourceCreatePage = () => {
   }, [config?.name, form, identity?.country]);
 
   if (!config || config.creatable === false) return null;
+  const isStaffCreation = config.name === 'employees';
 
   const submit = async (values: Record<string, unknown>) => {
+    if (isStaffCreation && staffCreationStep === 0) return;
     try {
-      const dependants = config.name === 'employees' ? values.dependants as StaffDependantValue[] | undefined : undefined;
       const payload = normaliseFormValues(config, values);
-      if (config.name === 'employees') delete payload.dependants;
       const result = await mutateAsync({ resource: config.name, values: payload });
       const createdId = String((result.data as Record<string, unknown> | undefined)?.[config.idField] ?? values[config.idField] ?? '');
-
-      if (config.name === 'employees' && createdId) {
-        try {
-          await syncStaffDependants(createdId, dependants);
-        } catch (error) {
-          message.warning(`Staff created, but dependant changes were not fully saved: ${error instanceof Error ? error.message : 'unknown error'}`);
-          navigate(`/${config.name}/edit/${encodeURIComponent(createdId)}`);
-          return;
-        }
-      }
-
       message.success(`${config.singular} created`);
-      navigate(`/${config.name}`);
+      navigate(`/${config.name}${createdId && false ? `/edit/${encodeURIComponent(createdId)}` : ''}`);
     } catch {
       message.error(`Unable to create ${config.singular.toLowerCase()}`);
+    }
+  };
+
+  const nextStaffStep = async () => {
+    try {
+      await form.validateFields();
+      form.setFieldValue('leaveEntitlements', []);
+      setStaffCreationStep(1);
+    } catch {
+      // Ant Design displays field-level validation feedback.
     }
   };
 
   return (
     <PageContainer>
       <PageHeader title={`Create ${config.singular}`} subtitle={`Add a new ${config.singular.toLowerCase()} record.`} />
-      <FormSection title="Details">
+      <FormSection title={isStaffCreation ? (staffCreationStep === 0 ? 'Staff details' : 'Review and confirm') : 'Details'}>
         <Form
           form={form}
           layout="vertical"
@@ -75,10 +74,24 @@ export const ResourceCreatePage = () => {
             ...tenantOnboardingInitialValues(config.name),
           }}
         >
-          <ResourceFormFields config={config} preferredCountry={identity?.country} platformAdmin={Boolean(identity?.platformAdmin)} />
+          <ResourceFormFields
+            config={config}
+            preferredCountry={identity?.country}
+            platformAdmin={Boolean(identity?.platformAdmin)}
+            {...(isStaffCreation ? { staffCreationStep } : {})}
+          />
           <Space>
-            <Button type="primary" htmlType="submit" loading={isLoading}>Save</Button>
-            <Button htmlType="button" onClick={() => navigate(`/${config.name}`)}>Cancel</Button>
+            {isStaffCreation && staffCreationStep === 0 ? (
+              <Button type="primary" htmlType="button" onClick={() => void nextStaffStep()}>Next: Review Entitlements</Button>
+            ) : null}
+            {isStaffCreation && staffCreationStep === 1 ? (
+              <>
+                <Button htmlType="button" disabled={isLoading} onClick={() => setStaffCreationStep(0)}>Back</Button>
+                <Button type="primary" htmlType="submit" loading={isLoading}>Confirm &amp; Create Staff</Button>
+              </>
+            ) : null}
+            {!isStaffCreation ? <Button type="primary" htmlType="submit" loading={isLoading}>Save</Button> : null}
+            <Button htmlType="button" disabled={isLoading} onClick={() => navigate(`/${config.name}`)}>Cancel</Button>
           </Space>
         </Form>
       </FormSection>
