@@ -86,7 +86,7 @@ export function LeaveWorkflowVisual() {
           </div>
         ))}
       </div>
-      <figcaption id="leave-workflow-caption" className="mt-4 text-center text-sm text-slate-500">One connected path from policy rules to the employee's remaining balance.</figcaption>
+      <figcaption id="leave-workflow-caption" className="mt-4 text-center text-sm text-slate-500">One connected path from policy rules to the employee&apos;s remaining balance.</figcaption>
     </figure>
   );
 }
