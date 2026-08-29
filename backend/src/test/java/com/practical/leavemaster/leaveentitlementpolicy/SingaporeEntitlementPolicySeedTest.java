@@ -124,9 +124,21 @@ class SingaporeEntitlementPolicySeedTest {
     }
 
     @Test
-    void preservesSickAndHospitalisationServiceProgression() {
-        assertEntitlements("SG_SICK_", List.of("03", "04", "05", "06_PLUS"), List.of(5, 8, 11, 14));
-        assertEntitlements("SG_HOSP_", List.of("03", "04", "05", "06_PLUS"), List.of(15, 30, 45, 60));
+    void representsSingaporeMedicalLeaveAsSickPlusAdditionalHospitalisationBalances() {
+        List<String> suffixes = List.of("03", "04", "05", "06_PLUS");
+        List<Integer> sickAmounts = List.of(5, 8, 11, 14);
+        List<Integer> additionalHospitalisationAmounts = List.of(10, 22, 34, 46);
+        List<Integer> combinedMedicalLeaveMaximums = List.of(15, 30, 45, 60);
+
+        assertEntitlements("SG_SICK_", suffixes, sickAmounts);
+        assertEntitlements("SG_HOSP_", suffixes, additionalHospitalisationAmounts);
+
+        for (int i = 0; i < suffixes.size(); i++) {
+            BigDecimal sickAmount = entitlementAmount("SG_SICK_" + suffixes.get(i));
+            BigDecimal hospitalisationAmount = entitlementAmount("SG_HOSP_" + suffixes.get(i));
+            assertThat(sickAmount.add(hospitalisationAmount))
+                    .isEqualByComparingTo(BigDecimal.valueOf(combinedMedicalLeaveMaximums.get(i)));
+        }
     }
 
     private void assertStatutoryTemplate(String id, EntitlementUnit unit, int amount,
@@ -177,5 +189,9 @@ class SingaporeEntitlementPolicySeedTest {
                     .allSatisfy(rule -> assertThat(rule.getCriterionType())
                             .isEqualTo(EligibilityCriterionType.SERVICE_MONTHS));
         }
+    }
+
+    private BigDecimal entitlementAmount(String policyId) {
+        return policyRepository.findById(policyId).orElseThrow().getEntitlementAmount();
     }
 }
