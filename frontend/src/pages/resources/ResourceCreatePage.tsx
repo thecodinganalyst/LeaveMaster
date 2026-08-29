@@ -39,10 +39,9 @@ export const ResourceCreatePage = () => {
     if (isStaffCreation && staffCreationStep === 0) return;
     try {
       const payload = normaliseFormValues(config, values);
-      const result = await mutateAsync({ resource: config.name, values: payload });
-      const createdId = String((result.data as Record<string, unknown> | undefined)?.[config.idField] ?? values[config.idField] ?? '');
+      await mutateAsync({ resource: config.name, values: payload });
       message.success(`${config.singular} created`);
-      navigate(`/${config.name}${createdId && false ? `/edit/${encodeURIComponent(createdId)}` : ''}`);
+      navigate(`/${config.name}`);
     } catch {
       message.error(`Unable to create ${config.singular.toLowerCase()}`);
     }
