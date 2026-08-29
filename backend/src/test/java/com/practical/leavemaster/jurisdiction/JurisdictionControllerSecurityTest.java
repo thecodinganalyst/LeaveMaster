@@ -22,9 +22,9 @@ class JurisdictionControllerSecurityTest {
     @Test
     void platformAdminMarkerIsRequiredInAdditionToGenericJurisdictionWritePermission() {
         assertThat(REQUIRED_WRITE_EXPRESSION)
-                .contains("JURISDICTION_WRITE")
-                .contains("ROLE_PLATFORM_ADMIN")
-                .doesNotContain("or");
+                .contains("hasAuthority('JURISDICTION_WRITE')")
+                .contains("hasAuthority('ROLE_PLATFORM_ADMIN')")
+                .contains(" and ");
     }
 
     private void assertWriteAuthorization(Method method) {
