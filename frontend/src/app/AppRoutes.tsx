@@ -7,6 +7,7 @@ import { AppLayout } from '../components/layout/AppLayout.tsx';
 import { ErrorState } from '../components/common/ErrorState.tsx';
 import { ChangePasswordPage } from '../pages/auth/ChangePasswordPage.tsx';
 import { LoginPage } from '../pages/auth/LoginPage.tsx';
+import { ContactEnquiriesPage } from '../pages/contact/ContactEnquiriesPage.tsx';
 import { DashboardPage } from '../pages/dashboard/DashboardPage.tsx';
 import { ApplyLeavePage } from '../pages/leave/ApplyLeavePage.tsx';
 import { ApprovalInboxPage } from '../pages/leave/ApprovalInboxPage.tsx';
@@ -50,6 +51,7 @@ export const AppRoutes = () => {
         <Route path="/leave-requests/show/:id" element={<LeaveDetailsPage />} />
         <Route path="/leave-requests/edit/:id" element={<LeaveDetailsPage />} />
         <Route path="/approvals" element={<ApprovalInboxPage />} />
+        <Route path="/contact-enquiries" element={<ContactEnquiriesPage />} />
         <Route path="/leave-types/:leaveTypeId/entitlements/create" element={<EntitlementWorkflowPage />} />
         <Route path="/leave-types/:leaveTypeId/entitlements/:policyId/edit" element={<EntitlementWorkflowPage />} />
         <Route path="/:resource">
