@@ -20,10 +20,12 @@ class AccountActivationControllerTest {
     @InjectMocks private AccountActivationController controller;
 
     @Test
-    void lookupShouldReturnActivationStep() {
-        when(accountActivationService.lookup("alice")).thenReturn(AccountActivationService.NextStep.ACTIVATION);
+    void lookupShouldPassTenantAndReturnActivationStep() {
+        when(accountActivationService.lookup("tenant-a", "alice"))
+                .thenReturn(AccountActivationService.NextStep.ACTIVATION);
 
-        ResponseEntity<Map<String, String>> response = controller.lookup(Map.of("loginName", "alice"));
+        ResponseEntity<Map<String, String>> response = controller.lookup(
+                Map.of("tenantId", "tenant-a", "loginName", "alice"));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).containsEntry("nextStep", "ACTIVATION");
@@ -31,9 +33,10 @@ class AccountActivationControllerTest {
 
     @Test
     void pinRequestShouldAlwaysReturnSameAcceptedResponse() {
-        when(accountActivationService.requestPin("alice")).thenReturn(false);
+        when(accountActivationService.requestPin("tenant-a", "alice")).thenReturn(false);
 
-        ResponseEntity<Map<String, String>> response = controller.requestPin(Map.of("loginName", "alice"));
+        ResponseEntity<Map<String, String>> response = controller.requestPin(
+                Map.of("tenantId", "tenant-a", "loginName", "alice"));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
         assertThat(response.getBody()).containsEntry(
@@ -42,20 +45,20 @@ class AccountActivationControllerTest {
 
     @Test
     void verifyShouldReturnOkForValidPin() {
-        when(accountActivationService.verifyPin("alice", "123456")).thenReturn(true);
+        when(accountActivationService.verifyPin("tenant-a", "alice", "123456")).thenReturn(true);
 
         ResponseEntity<Map<String, String>> response = controller.verifyPin(
-                Map.of("loginName", "alice", "pin", "123456"));
+                Map.of("tenantId", "tenant-a", "loginName", "alice", "pin", "123456"));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
     @Test
     void verifyShouldReturnBadRequestForInvalidPin() {
-        when(accountActivationService.verifyPin("alice", "123456")).thenReturn(false);
+        when(accountActivationService.verifyPin("tenant-a", "alice", "123456")).thenReturn(false);
 
         ResponseEntity<Map<String, String>> response = controller.verifyPin(
-                Map.of("loginName", "alice", "pin", "123456"));
+                Map.of("tenantId", "tenant-a", "loginName", "alice", "pin", "123456"));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).containsEntry("error", "Invalid or expired verification PIN");
@@ -63,31 +66,31 @@ class AccountActivationControllerTest {
 
     @Test
     void setPasswordShouldReturnNoContentWhenCompleted() {
-        when(accountActivationService.setInitialPassword("alice", "strong-pass")).thenReturn(true);
+        when(accountActivationService.setInitialPassword("tenant-a", "alice", "strong-pass")).thenReturn(true);
 
         ResponseEntity<?> response = controller.setInitialPassword(
-                Map.of("loginName", "alice", "password", "strong-pass"));
+                Map.of("tenantId", "tenant-a", "loginName", "alice", "password", "strong-pass"));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
     }
 
     @Test
     void setPasswordShouldReturnBadRequestWhenActivationNotReady() {
-        when(accountActivationService.setInitialPassword("alice", "strong-pass")).thenReturn(false);
+        when(accountActivationService.setInitialPassword("tenant-a", "alice", "strong-pass")).thenReturn(false);
 
         ResponseEntity<?> response = controller.setInitialPassword(
-                Map.of("loginName", "alice", "password", "strong-pass"));
+                Map.of("tenantId", "tenant-a", "loginName", "alice", "password", "strong-pass"));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
     @Test
     void setPasswordShouldExposeOnlyPasswordPolicyValidation() {
-        when(accountActivationService.setInitialPassword("alice", "short"))
+        when(accountActivationService.setInitialPassword("tenant-a", "alice", "short"))
                 .thenThrow(new IllegalArgumentException("New password must be at least 8 characters long"));
 
         ResponseEntity<?> response = controller.setInitialPassword(
-                Map.of("loginName", "alice", "password", "short"));
+                Map.of("tenantId", "tenant-a", "loginName", "alice", "password", "short"));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).isEqualTo(Map.of("error", "New password must be at least 8 characters long"));

@@ -14,30 +14,32 @@ import {
 describe('account activation API client', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('uses the backend activation contract', async () => {
+  it('sends tenant and login context through every activation request', async () => {
+    const identity = { tenantId: 'tenant-a', loginName: 'alice' };
     apiFetch.mockResolvedValue({ nextStep: 'ACTIVATION' });
-    await lookupAccountActivation('alice');
+
+    await lookupAccountActivation(identity);
     expect(apiFetch).toHaveBeenCalledWith('/account-activation/lookup', {
       method: 'POST',
-      body: JSON.stringify({ loginName: 'alice' }),
+      body: JSON.stringify(identity),
     });
 
-    await requestAccountActivationPin('alice');
+    await requestAccountActivationPin(identity);
     expect(apiFetch).toHaveBeenCalledWith('/account-activation/request', {
       method: 'POST',
-      body: JSON.stringify({ loginName: 'alice' }),
+      body: JSON.stringify(identity),
     });
 
-    await verifyAccountActivationPin('alice', '123456');
+    await verifyAccountActivationPin(identity, '123456');
     expect(apiFetch).toHaveBeenCalledWith('/account-activation/verify', {
       method: 'POST',
-      body: JSON.stringify({ loginName: 'alice', pin: '123456' }),
+      body: JSON.stringify({ ...identity, pin: '123456' }),
     });
 
-    await setInitialAccountPassword('alice', 'strongpass');
+    await setInitialAccountPassword(identity, 'strongpass');
     expect(apiFetch).toHaveBeenCalledWith('/account-activation/set-password', {
       method: 'POST',
-      body: JSON.stringify({ loginName: 'alice', password: 'strongpass' }),
+      body: JSON.stringify({ ...identity, password: 'strongpass' }),
     });
   });
 });

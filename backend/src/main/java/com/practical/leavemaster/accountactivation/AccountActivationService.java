@@ -6,6 +6,7 @@ import com.practical.leavemaster.staff.StaffRepository;
 import com.practical.leavemaster.user.AppUser;
 import com.practical.leavemaster.user.AppUserRepository;
 import com.practical.leavemaster.user.AppUserService;
+import com.practical.leavemaster.user.AuthenticationRealm;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -18,7 +19,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Locale;
-import java.util.Objects;
 import java.util.Optional;
 
 @Service
@@ -53,17 +53,18 @@ public class AccountActivationService {
     @Value("${app.account-activation.max-requests-per-hour:5}")
     private int maxRequestsPerHour;
 
-    public NextStep lookup(String loginName) {
-        return eligibleContext(normalizeLoginName(loginName)).isPresent()
+    public NextStep lookup(String tenantId, String loginName) {
+        return eligibleContext(normalizeTenantId(tenantId), normalizeLoginName(loginName)).isPresent()
                 ? NextStep.ACTIVATION
                 : NextStep.PASSWORD;
     }
 
     @Transactional
-    public boolean requestPin(String loginName) {
-        Optional<ActivationContext> context = eligibleContext(normalizeLoginName(loginName));
+    public boolean requestPin(String tenantId, String loginName) {
+        Optional<ActivationContext> context = eligibleContext(
+                normalizeTenantId(tenantId), normalizeLoginName(loginName));
         if (context.isEmpty()) {
-            log.info("Account activation PIN request ignored for an ineligible, unknown, or ambiguous account");
+            log.info("Account activation PIN request ignored for an ineligible or unknown account");
             return false;
         }
 
@@ -119,13 +120,14 @@ public class AccountActivationService {
     }
 
     @Transactional
-    public boolean verifyPin(String loginName, String pin) {
+    public boolean verifyPin(String tenantId, String loginName, String pin) {
+        String normalizedTenantId = normalizeTenantId(tenantId);
         String normalizedLoginName = normalizeLoginName(loginName);
-        if (normalizedLoginName == null || pin == null || !pin.matches("\\d{6}")) {
+        if (normalizedTenantId == null || normalizedLoginName == null || pin == null || !pin.matches("\\d{6}")) {
             return false;
         }
 
-        Optional<ActivationContext> context = eligibleContext(normalizedLoginName);
+        Optional<ActivationContext> context = eligibleContext(normalizedTenantId, normalizedLoginName);
         if (context.isEmpty()) {
             return false;
         }
@@ -160,8 +162,9 @@ public class AccountActivationService {
     }
 
     @Transactional
-    public boolean setInitialPassword(String loginName, String newPassword) {
-        Optional<ActivationContext> context = eligibleContext(normalizeLoginName(loginName));
+    public boolean setInitialPassword(String tenantId, String loginName, String newPassword) {
+        Optional<ActivationContext> context = eligibleContext(
+                normalizeTenantId(tenantId), normalizeLoginName(loginName));
         if (context.isEmpty()) {
             return false;
         }
@@ -189,11 +192,11 @@ public class AccountActivationService {
         return true;
     }
 
-    private Optional<ActivationContext> eligibleContext(String loginName) {
-        if (loginName == null) {
+    private Optional<ActivationContext> eligibleContext(String tenantId, String loginName) {
+        if (tenantId == null || loginName == null || AuthenticationRealm.isPlatformRealm(tenantId)) {
             return Optional.empty();
         }
-        Optional<AppUser> userOptional = appUserRepository.findUniqueByLoginName(loginName);
+        Optional<AppUser> userOptional = appUserRepository.findByTenantIdAndLoginName(tenantId, loginName);
         if (userOptional.isEmpty()) {
             return Optional.empty();
         }
@@ -202,7 +205,7 @@ public class AccountActivationService {
             return Optional.empty();
         }
 
-        Optional<Staff> staffOptional = staffRepository.findById(user.getStaffId());
+        Optional<Staff> staffOptional = staffRepository.findByIdAndTenantId(user.getStaffId(), tenantId);
         if (staffOptional.isEmpty()) {
             return Optional.empty();
         }
@@ -210,11 +213,17 @@ public class AccountActivationService {
         LocalDate today = LocalDate.now(ZoneOffset.UTC);
         if (staff.getEmail() == null || staff.getEmail().isBlank()
                 || staff.getJoinDate() == null || staff.getJoinDate().isAfter(today)
-                || (staff.getTermDate() != null && !staff.getTermDate().isAfter(today))
-                || !Objects.equals(user.getTenantId(), staff.getTenantId())) {
+                || (staff.getTermDate() != null && !staff.getTermDate().isAfter(today))) {
             return Optional.empty();
         }
         return Optional.of(new ActivationContext(user, staff));
+    }
+
+    private String normalizeTenantId(String tenantId) {
+        if (tenantId == null || tenantId.isBlank()) {
+            return null;
+        }
+        return tenantId.trim();
     }
 
     private String normalizeLoginName(String loginName) {

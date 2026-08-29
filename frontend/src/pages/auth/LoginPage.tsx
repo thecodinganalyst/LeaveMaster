@@ -30,6 +30,7 @@ export const LoginPage = () => {
   const [, forceRender] = useState(0);
 
   const cooldownRemaining = Math.max(0, Math.ceil((cooldownUntil - Date.now()) / 1000));
+  const accountIdentity = { tenantId, loginName };
 
   const run = async (action: () => Promise<void>) => {
     setBusy(true);
@@ -60,6 +61,10 @@ export const LoginPage = () => {
     setCooldownUntil(0);
   };
 
+  const accountContext = step === 'IDENTIFIER' ? null : (
+    <Typography.Text strong>{tenantId} / {loginName}</Typography.Text>
+  );
+
   return (
     <div className="login-page">
       <Card style={{ width: '100%', maxWidth: 420 }}>
@@ -76,7 +81,8 @@ export const LoginPage = () => {
             <Form layout="vertical" onFinish={({ tenantId: tenantValue, loginName: loginValue }) => run(async () => {
               const normalizedTenantId = String(tenantValue).trim();
               const normalizedLoginName = String(loginValue).trim();
-              const result = await lookupAccountActivation(normalizedLoginName);
+              const identity = { tenantId: normalizedTenantId, loginName: normalizedLoginName };
+              const result = await lookupAccountActivation(identity);
               setTenantId(normalizedTenantId);
               setLoginName(normalizedLoginName);
               setStep(result.nextStep === 'ACTIVATION' ? 'ACTIVATION' : 'PASSWORD');
@@ -98,7 +104,7 @@ export const LoginPage = () => {
 
           {step === 'PASSWORD' ? (
             <Form layout="vertical" onFinish={({ password }) => login({ tenantId, loginName, password, redirectPath })}>
-              <Typography.Text strong>{tenantId} / {loginName}</Typography.Text>
+              {accountContext}
               <Form.Item label="Password" name="password" rules={[{ required: true, message: 'Enter your password.' }]}>
                 <Input.Password autoComplete="current-password" autoFocus />
               </Form.Item>
@@ -111,9 +117,10 @@ export const LoginPage = () => {
 
           {step === 'ACTIVATION' ? (
             <Space direction="vertical" style={{ width: '100%' }}>
+              {accountContext}
               <Typography.Text>Your account needs to be set up before you can sign in.</Typography.Text>
               <Button type="primary" block loading={busy} onClick={() => run(async () => {
-                await requestAccountActivationPin(loginName);
+                await requestAccountActivationPin(accountIdentity);
                 startCooldown();
                 setStep('PIN');
                 message.success('If the account is eligible, a verification PIN has been sent.');
@@ -124,9 +131,10 @@ export const LoginPage = () => {
 
           {step === 'PIN' ? (
             <Form layout="vertical" onFinish={({ pin }) => run(async () => {
-              await verifyAccountActivationPin(loginName, String(pin));
+              await verifyAccountActivationPin(accountIdentity, String(pin));
               setStep('SET_PASSWORD');
             })}>
+              {accountContext}
               <Typography.Text>Enter the 6-digit verification PIN sent to your registered email. It expires after {PIN_EXPIRY_MINUTES} minutes.</Typography.Text>
               <Form.Item label="Verification PIN" name="pin" rules={[
                 { required: true, message: 'Enter the verification PIN.' },
@@ -137,7 +145,7 @@ export const LoginPage = () => {
               <Space direction="vertical" style={{ width: '100%' }}>
                 <Button type="primary" htmlType="submit" block loading={busy}>Verify PIN</Button>
                 <Button block disabled={busy || cooldownRemaining > 0} onClick={() => run(async () => {
-                  await requestAccountActivationPin(loginName);
+                  await requestAccountActivationPin(accountIdentity);
                   startCooldown();
                   message.success('If the account is eligible, a new verification PIN has been sent.');
                 })}>
@@ -149,9 +157,10 @@ export const LoginPage = () => {
 
           {step === 'SET_PASSWORD' ? (
             <Form layout="vertical" onFinish={({ password }) => run(async () => {
-              await setInitialAccountPassword(loginName, password);
+              await setInitialAccountPassword(accountIdentity, password);
               setStep('COMPLETE');
             })}>
+              {accountContext}
               <Typography.Text>Choose your permanent password.</Typography.Text>
               <Form.Item name="password" label="New password" rules={[
                 { required: true, message: 'Enter a new password.' },
@@ -173,6 +182,7 @@ export const LoginPage = () => {
 
           {step === 'COMPLETE' ? (
             <Space direction="vertical" style={{ width: '100%' }}>
+              {accountContext}
               <Alert type="success" showIcon message="Account activated" description="Your password has been set. You can now sign in." />
               <Button type="primary" block onClick={() => setStep('PASSWORD')}>Continue to sign in</Button>
             </Space>
