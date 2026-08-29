@@ -23,7 +23,6 @@ type Step = 'IDENTIFIER' | 'PASSWORD' | 'ACTIVATION' | 'PIN' | 'SET_PASSWORD' | 
 
 const PIN_EXPIRY_MINUTES = 15;
 const RESEND_COOLDOWN_SECONDS = 60;
-const PLATFORM_REALM_ID = 'PLATFORM';
 
 const providerLabel = (provider?: OAuthProvider) => provider === 'google' ? 'Google' : provider === 'github' ? 'GitHub' : 'OAuth';
 
@@ -171,7 +170,6 @@ export const LoginPage = () => {
               <Form.Item
                 label="Tenant ID"
                 name="tenantId"
-                extra={`Platform administrators use ${PLATFORM_REALM_ID}.`}
                 rules={[{ required: true, message: 'Enter your tenant ID.' }]}
               >
                 <Input autoComplete="organization" autoFocus />

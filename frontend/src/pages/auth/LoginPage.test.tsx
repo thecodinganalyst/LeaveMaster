@@ -79,11 +79,12 @@ describe('LoginPage account activation and OAuth onboarding', () => {
     expect(startOAuthLogin).toHaveBeenCalledWith('github');
   });
 
-  it('requires a free-text tenant ID and keeps active accounts on password login', async () => {
+  it('requires a free-text tenant ID without disclosing privileged tenant guidance', async () => {
     renderPage();
     expect(screen.getByLabelText('Tenant ID')).toBeInTheDocument();
     expect(screen.queryByRole('combobox', { name: 'Tenant ID' })).not.toBeInTheDocument();
-    expect(screen.getByText(/Platform administrators use PLATFORM/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Platform administrators/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/\bPLATFORM\b/)).not.toBeInTheDocument();
     await enterIdentifier();
 
     expect(await screen.findByText('tenant-a / alice')).toBeInTheDocument();
