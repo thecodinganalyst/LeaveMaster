@@ -10,7 +10,7 @@ import {
 } from './staffFormHelpers.ts';
 
 const selectedLabel = (day: string) => {
-  const selectInput = screen.getByLabelText(`${day} work schedule`);
+  const selectInput = screen.getByRole('combobox', { name: `${day} work schedule` });
   return selectInput.closest('.ant-select')?.querySelector('.ant-select-selection-item')?.textContent;
 };
 
