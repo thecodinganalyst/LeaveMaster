@@ -62,6 +62,7 @@ export const LoginPage = () => {
   const [step, setStep] = useState<Step>('IDENTIFIER');
   const [tenantId, setTenantId] = useState('');
   const [loginName, setLoginName] = useState('');
+  const [identifierFormKey, setIdentifierFormKey] = useState(0);
   const [oauthSetupProvider, setOAuthSetupProvider] = useState<OAuthProvider | undefined>(initialSetupProvider);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>(() => oauthErrorMessage(oauthError, rememberedProvider));
@@ -99,6 +100,7 @@ export const LoginPage = () => {
     setStep('IDENTIFIER');
     setTenantId('');
     setLoginName('');
+    setIdentifierFormKey((value) => value + 1);
     setError(undefined);
     setCooldownUntil(0);
   };
@@ -157,7 +159,7 @@ export const LoginPage = () => {
           ) : null}
 
           {step === 'IDENTIFIER' ? (
-            <Form layout="vertical" onFinish={({ tenantId: tenantValue, loginName: loginValue }) => run(async () => {
+            <Form key={identifierFormKey} layout="vertical" onFinish={({ tenantId: tenantValue, loginName: loginValue }) => run(async () => {
               const normalizedTenantId = String(tenantValue).trim();
               const normalizedLoginName = String(loginValue).trim();
               const identity = { tenantId: normalizedTenantId, loginName: normalizedLoginName };
