@@ -24,12 +24,15 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 
@@ -130,7 +133,13 @@ public class SecurityConfig {
             http.oauth2Login(oauth2 -> oauth2
                 .userInfoEndpoint(userInfo -> userInfo.userService(existingUserOnlyOAuth2UserService))
                 .successHandler((request, response, authentication) -> response.sendRedirect(normalizedPublicAppUrl + "/"))
-                .failureHandler((request, response, exception) -> response.sendRedirect(normalizedPublicAppUrl + "/login?oauthError=true"))
+                .failureHandler((request, response, exception) -> {
+                    String errorCode = exception instanceof OAuth2AuthenticationException oauthException
+                        ? oauthException.getError().getErrorCode()
+                        : "oauth_failed";
+                    String encodedErrorCode = URLEncoder.encode(errorCode, StandardCharsets.UTF_8);
+                    response.sendRedirect(normalizedPublicAppUrl + "/login?oauthError=" + encodedErrorCode);
+                })
             );
         }
 
