@@ -15,12 +15,14 @@ type Step = 'IDENTIFIER' | 'PASSWORD' | 'ACTIVATION' | 'PIN' | 'SET_PASSWORD' | 
 
 const PIN_EXPIRY_MINUTES = 15;
 const RESEND_COOLDOWN_SECONDS = 60;
+const PLATFORM_REALM_ID = 'PLATFORM';
 
 export const LoginPage = () => {
   const { mutate: login, isPending: loginPending } = useLogin();
   const [searchParams] = useSearchParams();
   const redirectPath = searchParams.get('to') ?? '/';
   const [step, setStep] = useState<Step>('IDENTIFIER');
+  const [tenantId, setTenantId] = useState('');
   const [loginName, setLoginName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
@@ -52,6 +54,7 @@ export const LoginPage = () => {
 
   const restart = () => {
     setStep('IDENTIFIER');
+    setTenantId('');
     setLoginName('');
     setError(undefined);
     setCooldownUntil(0);
@@ -63,33 +66,45 @@ export const LoginPage = () => {
         <Space direction="vertical" size={18} style={{ width: '100%' }}>
           <Typography.Title level={3} style={{ marginBottom: 0 }}>LeaveMaestro</Typography.Title>
           <Typography.Text type="secondary">
-            {step === 'IDENTIFIER' ? 'Enter your login name to continue.' : 'Sign in or complete your account setup.'}
+            {step === 'IDENTIFIER'
+              ? 'Enter your tenant ID and login name to continue.'
+              : 'Sign in or complete your account setup.'}
           </Typography.Text>
           {error ? <Alert type="error" showIcon message={error} /> : null}
 
           {step === 'IDENTIFIER' ? (
-            <Form layout="vertical" onFinish={({ loginName: value }) => run(async () => {
-              const normalized = String(value).trim();
-              const result = await lookupAccountActivation(normalized);
-              setLoginName(normalized);
+            <Form layout="vertical" onFinish={({ tenantId: tenantValue, loginName: loginValue }) => run(async () => {
+              const normalizedTenantId = String(tenantValue).trim();
+              const normalizedLoginName = String(loginValue).trim();
+              const result = await lookupAccountActivation(normalizedLoginName);
+              setTenantId(normalizedTenantId);
+              setLoginName(normalizedLoginName);
               setStep(result.nextStep === 'ACTIVATION' ? 'ACTIVATION' : 'PASSWORD');
             })}>
+              <Form.Item
+                label="Tenant ID"
+                name="tenantId"
+                extra={`Platform administrators use ${PLATFORM_REALM_ID}.`}
+                rules={[{ required: true, message: 'Enter your tenant ID.' }]}
+              >
+                <Input autoComplete="organization" autoFocus />
+              </Form.Item>
               <Form.Item label="Login name" name="loginName" rules={[{ required: true, message: 'Enter your login name.' }]}>
-                <Input autoComplete="username" autoFocus />
+                <Input autoComplete="username" />
               </Form.Item>
               <Button type="primary" htmlType="submit" block loading={busy}>Continue</Button>
             </Form>
           ) : null}
 
           {step === 'PASSWORD' ? (
-            <Form layout="vertical" onFinish={({ password }) => login({ loginName, password, redirectPath })}>
-              <Typography.Text strong>{loginName}</Typography.Text>
+            <Form layout="vertical" onFinish={({ password }) => login({ tenantId, loginName, password, redirectPath })}>
+              <Typography.Text strong>{tenantId} / {loginName}</Typography.Text>
               <Form.Item label="Password" name="password" rules={[{ required: true, message: 'Enter your password.' }]}>
                 <Input.Password autoComplete="current-password" autoFocus />
               </Form.Item>
               <Space direction="vertical" style={{ width: '100%' }}>
                 <Button type="primary" htmlType="submit" block loading={loginPending}>Sign in</Button>
-                <Button type="link" block onClick={restart}>Use a different login name</Button>
+                <Button type="link" block onClick={restart}>Use a different account</Button>
               </Space>
             </Form>
           ) : null}
@@ -103,7 +118,7 @@ export const LoginPage = () => {
                 setStep('PIN');
                 message.success('If the account is eligible, a verification PIN has been sent.');
               })}>Send verification PIN</Button>
-              <Button type="link" block onClick={restart}>Use a different login name</Button>
+              <Button type="link" block onClick={restart}>Use a different account</Button>
             </Space>
           ) : null}
 

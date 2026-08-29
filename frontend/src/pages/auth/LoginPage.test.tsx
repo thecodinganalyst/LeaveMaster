@@ -28,7 +28,8 @@ const renderPage = () => render(
   </MemoryRouter>,
 );
 
-const enterIdentifier = async (name = 'alice') => {
+const enterIdentifier = async (name = 'alice', tenantId = 'tenant-a') => {
+  fireEvent.change(screen.getByLabelText('Tenant ID'), { target: { value: tenantId } });
   fireEvent.change(screen.getByLabelText('Login name'), { target: { value: name } });
   fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
   await waitFor(() => expect(lookupAccountActivation).toHaveBeenCalledWith(name));
@@ -43,15 +44,20 @@ describe('LoginPage account activation', () => {
     setInitialAccountPassword.mockResolvedValue(undefined);
   });
 
-  it('keeps existing active accounts on the password login flow', async () => {
+  it('requires a manually entered tenant ID and keeps active accounts on password login', async () => {
     renderPage();
+    expect(screen.getByLabelText('Tenant ID')).toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: 'Tenant ID' })).not.toBeInTheDocument();
+    expect(screen.getByText(/Platform administrators use PLATFORM/i)).toBeInTheDocument();
     await enterIdentifier();
 
+    expect(await screen.findByText('tenant-a / alice')).toBeInTheDocument();
     expect(await screen.findByLabelText('Password')).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'secret123' } });
     fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
 
     await waitFor(() => expect(login).toHaveBeenCalledWith({
+      tenantId: 'tenant-a',
       loginName: 'alice',
       password: 'secret123',
       redirectPath: '/leave',

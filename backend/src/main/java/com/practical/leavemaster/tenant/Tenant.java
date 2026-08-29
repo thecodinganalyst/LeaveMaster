@@ -1,5 +1,6 @@
 package com.practical.leavemaster.tenant;
 
+import com.practical.leavemaster.user.AuthenticationRealm;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -63,6 +64,9 @@ public class Tenant {
     @PrePersist
     @PreUpdate
     void refreshLastModified() {
+        if (AuthenticationRealm.isPlatformRealm(id)) {
+            throw new IllegalArgumentException(AuthenticationRealm.PLATFORM_REALM_ID + " is reserved for platform authentication");
+        }
         lastModified = LocalDateTime.now();
     }
 }

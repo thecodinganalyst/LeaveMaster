@@ -76,30 +76,31 @@ describe('http client', () => {
     });
   });
 
-  it('posts form credentials under the auth namespace then refreshes csrf', async () => {
+  it('posts tenant-aware form credentials under the auth namespace then refreshes csrf', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(jsonResponse({ token: 'csrf-login', headerName: 'X-CSRF-TOKEN', parameterName: '_csrf' }))
       .mockResolvedValueOnce(new Response(null, { status: 200 }))
       .mockResolvedValueOnce(jsonResponse({ token: 'csrf-new', headerName: 'X-CSRF-TOKEN', parameterName: '_csrf' }));
 
-    await loginWithSession('dennis', 'password');
+    await loginWithSession('tenant-a', 'dennis', 'password');
 
     const [url, request] = fetchMock.mock.calls[1]!;
     expect(url).toBe('http://localhost:8080/auth/login');
     expect(request).toMatchObject({ method: 'POST', credentials: 'include' });
+    expect(String(request?.body)).toContain('tenantId=tenant-a');
     expect(String(request?.body)).toContain('username=dennis');
     expect(fetchMock).toHaveBeenCalledTimes(3);
     await expect(getCsrfToken()).resolves.toMatchObject({ token: 'csrf-new' });
   });
 
-  it('rejects failed session login with a stable credential error', async () => {
+  it('rejects failed tenant-aware session login with a stable credential error', async () => {
     vi.spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(jsonResponse({ token: 'csrf-login', headerName: 'X-CSRF-TOKEN', parameterName: '_csrf' }))
       .mockResolvedValueOnce(new Response(null, { status: 401 }));
 
-    await expect(loginWithSession('dennis', 'bad')).rejects.toMatchObject({
+    await expect(loginWithSession('tenant-a', 'dennis', 'bad')).rejects.toMatchObject({
       statusCode: 401,
-      message: 'Invalid login name or password.',
+      message: 'Invalid tenant ID, login name, or password.',
     });
   });
 });
