@@ -44,20 +44,20 @@ export const metadata: Metadata = {
 export default function HomePage() {
   return (
     <>
-      <section className="bg-slate-950">
+      <section className="bg-white">
         <div className="section pt-20 sm:pt-24">
           <div className="grid gap-12 lg:grid-cols-[1.08fr_0.92fr] lg:items-start">
             <div>
               <p className="mb-4 inline-flex rounded-full border border-brand-100 bg-brand-50 px-4 py-2 text-sm font-medium text-brand-700">
                 Leave management without the spreadsheet
               </p>
-              <h1 className="max-w-3xl text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
+              <h1 className="max-w-3xl text-4xl font-bold tracking-tight text-slate-950 sm:text-5xl lg:text-6xl">
                 Turn your leave policies into rules that run themselves.
               </h1>
-              <p className="mt-6 max-w-2xl text-lg text-slate-300">
+              <p className="mt-6 max-w-2xl text-lg text-slate-600">
                 LeaveMaestro brings employee entitlements, eligibility, proration, public holidays, balances, and approvals into one policy-aware workflow—so HR spends less time calculating leave and correcting records manually.
               </p>
-              <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-400">
+              <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-500">
                 Built for growing companies that have outgrown spreadsheet-based leave management and need a clearer way to apply leave rules consistently.
               </p>
               <div className="mt-8 flex flex-col gap-4 sm:flex-row">
@@ -66,13 +66,13 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="card bg-white/95">
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-600">From policy to entitlement</p>
+            <div className="card border-brand-100 bg-brand-50/60">
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-700">From policy to entitlement</p>
               <div className="mt-6 space-y-4">
                 {policyWorkflow.map(([step, title, description]) => (
-                  <div key={step} className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <div key={step} className="rounded-2xl border border-brand-100 bg-white p-4">
                     <div className="flex gap-4">
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-50 font-semibold text-brand-700">{step}</span>
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-100 font-semibold text-brand-700">{step}</span>
                       <div>
                         <p className="font-semibold text-slate-900">{title}</p>
                         <p className="mt-1 text-sm text-slate-600">{description}</p>
@@ -95,10 +95,10 @@ export default function HomePage() {
           </p>
         </div>
 
-        <div className="mt-10 overflow-hidden rounded-[2rem] border border-slate-200 bg-white">
-          <div className="grid grid-cols-2 bg-slate-950 px-5 py-4 text-sm font-semibold text-white sm:px-8">
+        <div className="mt-10 overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
+          <div className="grid grid-cols-2 border-b border-brand-100 bg-brand-50 px-5 py-4 text-sm font-semibold text-slate-900 sm:px-8">
             <span>Before LeaveMaestro</span>
-            <span>With LeaveMaestro</span>
+            <span className="text-brand-700">With LeaveMaestro</span>
           </div>
           {comparisonRows.map(([before, after]) => (
             <div key={before} className="grid grid-cols-2 gap-4 border-t border-slate-200 px-5 py-4 text-sm sm:px-8 sm:text-base">
@@ -144,10 +144,10 @@ export default function HomePage() {
       </section>
 
       <section className="section pt-0">
-        <div className="rounded-[2rem] bg-slate-950 px-8 py-10 text-white sm:px-10">
+        <div className="rounded-[2rem] border border-brand-100 bg-brand-50 px-8 py-10 sm:px-10">
           <div className="max-w-3xl">
-            <h2 className="text-3xl font-bold text-white">See whether LeaveMaestro fits the way your organisation manages leave</h2>
-            <p className="mt-4 text-slate-300">
+            <h2 className="text-3xl font-bold text-slate-950">See whether LeaveMaestro fits the way your organisation manages leave</h2>
+            <p className="mt-4 text-slate-600">
               Explore the demo or talk to us about your leave policies, jurisdictions, entitlement rules, and rollout needs.
             </p>
             <div className="mt-8 flex flex-col gap-4 sm:flex-row">
