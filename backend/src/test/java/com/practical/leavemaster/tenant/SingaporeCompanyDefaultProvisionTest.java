@@ -72,7 +72,7 @@ class SingaporeCompanyDefaultProvisionTest {
         when(policyRepository.save(any(LeaveEntitlementPolicy.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(eligibilityRepository.findAllByPolicyIdOrderBySortOrderAsc(any())).thenReturn(List.of());
 
-        service.provision(tenant, new TenantJurisdictionProvisionRequest("SG", true, false, null, null));
+        service.provision(tenant, new TenantJurisdictionProvisionRequest("SG", false, true, null, null));
 
         ArgumentCaptor<LeaveEntitlementPolicy> captor = ArgumentCaptor.forClass(LeaveEntitlementPolicy.class);
         verify(policyRepository, org.mockito.Mockito.times(3)).save(captor.capture());
