@@ -48,20 +48,32 @@ test('marketing surfaces stay light and the homepage starts on white', async () 
   assert.equal(globals.includes('#092b28'), false, 'global marketing background must not use near-black teal');
 });
 
-test('marketing pages use reusable product visuals', async () => {
+test('marketing pages use reusable product visuals and snapshots', async () => {
   const home = await read('../app/page.tsx');
   const features = await read('../app/features/page.tsx');
   const demo = await read('../app/demo/page.tsx');
   const visuals = await read('./ProductVisuals.tsx');
+  const snapshots = await read('./ProductSnapshots.tsx');
 
   assert.match(home, /<HeroProductVisual\s*\/>/);
   assert.match(home, /<LeaveWorkflowVisual\s*\/>/);
   assert.match(features, /<LeaveWorkflowVisual\s*\/>/);
-  assert.match(demo, /<PersonaVisual persona="employee"\s*\/>/);
-  assert.match(demo, /<PersonaVisual persona="manager"\s*\/>/);
-  assert.match(demo, /<PersonaVisual persona="hr"\s*\/>/);
   assert.match(visuals, /Representative LeaveMaestro interface/);
   assert.match(visuals, /Policy.*Eligibility.*Entitlement.*Request.*Approval.*Balance/s);
+
+  for (const component of ['EmployeeDashboardSnapshot', 'LeaveApplicationSnapshot', 'ApprovalSnapshot', 'PolicyBuilderSnapshot', 'AskMaestroSnapshot', 'JurisdictionSnapshot']) {
+    assert.match(snapshots, new RegExp(`export function ${component}`));
+  }
+
+  assert.match(home, /<PolicyBuilderSnapshot\s*\/>/);
+  assert.match(home, /<LeaveApplicationSnapshot\s*\/>/);
+  assert.match(home, /<ApprovalSnapshot\s*\/>/);
+  assert.match(home, /<AskMaestroSnapshot\s*\/>/);
+  assert.match(features, /<EmployeeDashboardSnapshot\s*\/>/);
+  assert.match(features, /<JurisdictionSnapshot\s*\/>/);
+  assert.match(demo, /<EmployeeDashboardSnapshot\s*\/>/);
+  assert.match(demo, /<ApprovalSnapshot\s*\/>/);
+  assert.match(demo, /<PolicyBuilderSnapshot\s*\/>/);
 });
 
 test('navigation uses the reusable Conductor LM brand mark', async () => {
