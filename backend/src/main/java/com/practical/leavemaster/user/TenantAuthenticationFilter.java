@@ -6,6 +6,10 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.authentication.session.ChangeSessionIdAuthenticationStrategy;
+import org.springframework.security.web.context.DelegatingSecurityContextRepository;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.context.RequestAttributeSecurityContextRepository;
 
 public class TenantAuthenticationFilter extends UsernamePasswordAuthenticationFilter {
 
@@ -14,6 +18,10 @@ public class TenantAuthenticationFilter extends UsernamePasswordAuthenticationFi
     public TenantAuthenticationFilter(AuthenticationManager authenticationManager) {
         super(authenticationManager);
         setFilterProcessesUrl("/auth/login");
+        setSecurityContextRepository(new DelegatingSecurityContextRepository(
+                new RequestAttributeSecurityContextRepository(),
+                new HttpSessionSecurityContextRepository()));
+        setSessionAuthenticationStrategy(new ChangeSessionIdAuthenticationStrategy());
         setAuthenticationSuccessHandler((request, response, authentication) ->
                 response.setStatus(HttpServletResponse.SC_OK));
         setAuthenticationFailureHandler((request, response, exception) ->
