@@ -61,8 +61,11 @@ public class ExistingUserOnlyOAuth2UserService implements OAuth2UserService<OAut
         }
 
         HttpSession session = currentSession();
+        if (!OAuthLinkingContext.hasContext(session)) {
+            throw oauthError("not_linked", "OAuth account is not linked");
+        }
         OAuthLinkingContext.LinkRequest linkRequest = OAuthLinkingContext.consume(session, provider)
-                .orElseThrow(() -> oauthError("not_linked", "OAuth account is not linked"));
+                .orElseThrow(() -> oauthError("link_context_invalid", "OAuth linking session is invalid or expired"));
 
         AppUser appUser = appUserRepository.findById(linkRequest.userId())
                 .filter(AppUser::isActive)
@@ -87,12 +90,12 @@ public class ExistingUserOnlyOAuth2UserService implements OAuth2UserService<OAut
 
     private HttpSession currentSession() {
         if (!(RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributes)) {
-            throw oauthError("link_context_invalid", "OAuth linking session is unavailable");
+            throw oauthError("not_linked", "OAuth account is not linked");
         }
         HttpServletRequest request = attributes.getRequest();
         HttpSession session = request.getSession(false);
         if (session == null) {
-            throw oauthError("link_context_invalid", "OAuth linking session is unavailable");
+            throw oauthError("not_linked", "OAuth account is not linked");
         }
         return session;
     }
