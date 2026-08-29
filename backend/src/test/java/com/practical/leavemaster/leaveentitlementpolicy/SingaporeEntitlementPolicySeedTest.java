@@ -117,10 +117,16 @@ class SingaporeEntitlementPolicySeedTest {
     }
 
     @Test
-    void seedsCompanyDefaultCompassionateMarriageAndUnpaidLeave() {
-        assertCompanyDefault("SG_COMPASSIONATE_DEFAULT", "SG:COMPASSIONATE_LEAVE", 2);
-        assertCompanyDefault("SG_MARRIAGE_DEFAULT", "SG:MARRIAGE_LEAVE", 2);
-        assertCompanyDefault("SG_UNPAID_DEFAULT", "SG:UNPAID_LEAVE", 14);
+    void seedsCompanyDefaultsWithEventAndRequestBasedSemantics() {
+        assertEventBasedCompanyDefault("SG_COMPASSIONATE_DEFAULT", "SG:COMPASSIONATE_LEAVE", "BEREAVEMENT", 2);
+        assertEventBasedCompanyDefault("SG_MARRIAGE_DEFAULT", "SG:MARRIAGE_LEAVE", "MARRIAGE", 2);
+
+        LeaveEntitlementPolicy unpaid = policyRepository.findById("SG_UNPAID_DEFAULT").orElseThrow();
+        assertThat(unpaid.getJurisdictionLeaveTypeId()).isEqualTo("SG:UNPAID_LEAVE");
+        assertThat(unpaid.getPolicyModel()).isEqualTo(LeavePolicyModel.REQUEST_BASED);
+        assertThat(unpaid.getEntitlementAmount()).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(unpaid.getQualifyingEventTypeCode()).isNull();
+        assertThat(eligibilityRepository.findAllByPolicyIdAndActiveTrueOrderBySortOrderAsc(unpaid.getId())).isEmpty();
     }
 
     @Test
@@ -162,10 +168,15 @@ class SingaporeEntitlementPolicySeedTest {
         assertThat(eligibilityRepository.findAllByPolicyIdAndActiveTrueOrderBySortOrderAsc(id)).isNotEmpty();
     }
 
-    private void assertCompanyDefault(String id, String jurisdictionLeaveTypeId, int amount) {
+    private void assertEventBasedCompanyDefault(String id, String jurisdictionLeaveTypeId, String eventType, int amount) {
         LeaveEntitlementPolicy policy = policyRepository.findById(id).orElseThrow();
         assertThat(policy.getJurisdictionLeaveTypeId()).isEqualTo(jurisdictionLeaveTypeId);
+        assertThat(policy.getPolicyModel()).isEqualTo(LeavePolicyModel.EVENT_BASED);
+        assertThat(policy.getQualifyingEventTypeCode()).isEqualTo(eventType);
         assertThat(policy.getEntitlementAmount()).isEqualByComparingTo(BigDecimal.valueOf(amount));
+        assertThat(policy.getEventEntitlementAmountMode()).isEqualTo(EventEntitlementAmountMode.FIXED);
+        assertThat(policy.getEventValidityDaysBefore()).isZero();
+        assertThat(policy.getEventValidityDaysAfter()).isEqualTo(30);
         assertThat(policy.getAccrualMethod()).isEqualTo(AccrualMethod.NONE);
         assertThat(policy.getProrationMethod()).isEqualTo(ProrationMethod.NONE);
         assertThat(eligibilityRepository.findAllByPolicyIdAndActiveTrueOrderBySortOrderAsc(id)).isEmpty();
