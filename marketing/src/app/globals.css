@@ -7,10 +7,10 @@
 }
 
 body {
-  @apply bg-slate-950 text-slate-100 antialiased;
+  @apply bg-brand-950 text-slate-100 antialiased;
   background-image:
-    radial-gradient(circle at top, rgba(45, 156, 143, 0.25), transparent 35%),
-    linear-gradient(180deg, #0f2740 0%, #112f4d 50%, #f4f7fb 50%, #f4f7fb 100%);
+    radial-gradient(circle at top, rgba(45, 156, 143, 0.28), transparent 35%),
+    linear-gradient(180deg, #092b28 0%, #103f3b 50%, #fafafa 50%, #fafafa 100%);
 }
 
 @layer base {
