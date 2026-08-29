@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
+import { join } from 'node:path';
 import test from 'node:test';
 
 const read = (relativePath) => readFile(new URL(relativePath, import.meta.url), 'utf8');
@@ -12,8 +13,7 @@ async function readMarketingSourceFiles() {
     const entries = await readdir(root, { recursive: true, withFileTypes: true });
     for (const entry of entries) {
       if (!entry.isFile() || !/\.(?:tsx|css)$/.test(entry.name)) continue;
-      const parentPath = entry.parentPath ?? entry.path;
-      contents.push(await readFile(new URL(`${parentPath.replace(root.pathname, '')}/${entry.name}`, root), 'utf8'));
+      contents.push(await readFile(join(entry.parentPath, entry.name), 'utf8'));
     }
   }
 
