@@ -11,4 +11,9 @@ public class DisabledTransactionalEmailSender implements TransactionalEmailSende
     public void sendAccountActivationPin(String recipient, String staffName, String pin, int expiryMinutes) {
         throw new EmailDeliveryException("Transactional email provider is not configured");
     }
+
+    @Override
+    public void sendContactEnquiryReply(String recipient, String contactName, String originalMessage, String replyBody) {
+        throw new EmailDeliveryException("Transactional email provider is not configured");
+    }
 }

@@ -54,39 +54,47 @@ public class ResendTransactionalEmailSender implements TransactionalEmailSender 
                   <p>If you did not request this PIN, ignore this email and contact your LeaveMaster administrator if you are concerned.</p>
                 </div>
                 """.formatted(displayName, pin, expiryMinutes);
+        sendHtmlEmail(recipient, "Your LeaveMaster verification PIN", html, "account activation");
+    }
 
+    @Override
+    public void sendContactEnquiryReply(String recipient, String contactName, String originalMessage, String replyBody) {
+        String displayName = contactName == null || contactName.isBlank() ? "there" : escapeHtml(contactName.trim());
+        String html = """
+                <div style=\"font-family:Arial,sans-serif;line-height:1.5;color:#1f2937\">
+                  <h2>LeaveMaestro enquiry reply</h2>
+                  <p>Hello %s,</p>
+                  <div style=\"white-space:pre-wrap\">%s</div>
+                  <hr style=\"margin:24px 0;border:0;border-top:1px solid #e5e7eb\" />
+                  <p style=\"color:#6b7280\">Your original enquiry:</p>
+                  <div style=\"white-space:pre-wrap;color:#6b7280\">%s</div>
+                </div>
+                """.formatted(displayName, escapeHtml(replyBody), escapeHtml(originalMessage));
+        sendHtmlEmail(recipient, "Re: Your LeaveMaestro enquiry", html, "contact enquiry reply");
+    }
+
+    private void sendHtmlEmail(String recipient, String subject, String html, String purpose) {
         ResendEmailRequest request = new ResendEmailRequest(
-                "%s <%s>".formatted(fromName, fromAddress),
-                List.of(recipient),
-                "Your LeaveMaster verification PIN",
-                html);
+                "%s <%s>".formatted(fromName, fromAddress), List.of(recipient), subject, html);
         try {
-            log.info("Sending account activation email through Resend");
-            restClient.post()
-                    .uri("/emails")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(request)
-                    .retrieve()
-                    .toBodilessEntity();
-            log.info("Resend accepted account activation email");
+            log.info("Sending {} email through Resend", purpose);
+            restClient.post().uri("/emails").contentType(MediaType.APPLICATION_JSON).body(request)
+                    .retrieve().toBodilessEntity();
+            log.info("Resend accepted {} email", purpose);
         } catch (RestClientResponseException ex) {
-            log.warn("Resend rejected account activation email with HTTP status {}", ex.getStatusCode().value());
+            log.warn("Resend rejected {} email with HTTP status {}", purpose, ex.getStatusCode().value());
             throw new EmailDeliveryException("Transactional email provider rejected the request", ex);
         } catch (RestClientException ex) {
-            log.warn("Resend account activation email delivery failed due to a transport error");
+            log.warn("Resend {} email delivery failed due to a transport error", purpose);
             throw new EmailDeliveryException("Transactional email provider is unavailable", ex);
         }
     }
 
     private static String escapeHtml(String value) {
-        return value
-                .replace("&", "&amp;")
-                .replace("<", "&lt;")
-                .replace(">", "&gt;")
-                .replace("\"", "&quot;")
-                .replace("'", "&#39;");
+        if (value == null) return "";
+        return value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                .replace("\"", "&quot;").replace("'", "&#39;");
     }
 
-    record ResendEmailRequest(String from, List<String> to, String subject, String html) {
-    }
+    record ResendEmailRequest(String from, List<String> to, String subject, String html) {}
 }

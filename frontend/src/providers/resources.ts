@@ -14,6 +14,7 @@ export const resources: IResourceItem[] = [
   crud('leave-requests', 'Leave Requests', 'calendar'),
   crud('employees', 'Staff', 'team'),
   crud('tenants', 'Tenants', 'bank'),
+  { name: 'contact-enquiries', list: '/contact-enquiries', meta: { label: 'Contact Enquiries', icon: 'mail' } },
   crud('tenant-jurisdictions', 'Tenant Jurisdictions', 'global'),
   crud('jurisdictions', 'Jurisdictions', 'global'),
   crud('jurisdiction-leave-types', 'Jurisdiction Leave Types', 'tags'),

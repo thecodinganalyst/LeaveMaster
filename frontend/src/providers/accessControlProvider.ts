@@ -44,6 +44,10 @@ export const accessControlProvider: AccessControlProvider = {
   can: async ({ resource, action }) => {
     try {
       if (!resource || !action) return { can: false, reason: 'Resource and action are required.' };
+      if (resource === 'contact-enquiries') {
+        const user = await getCurrentUser();
+        return user.platformAdmin ? { can: true } : { can: false, reason: 'Platform administrator access required.' };
+      }
       const permission = requiredPermission(resource, action);
       if (permission === undefined) {
         await getCurrentUser();

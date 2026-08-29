@@ -1,10 +1,15 @@
 package com.practical.leavemaster.customerenquiry;
 
+import com.practical.leavemaster.email.TransactionalEmailSender;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 import java.util.regex.Pattern;
 
 @Service
@@ -16,6 +21,7 @@ public class CustomerEnquiryService {
 
     private final CustomerEnquiryRepository repository;
     private final CustomerEnquiryNotificationService notificationService;
+    private final TransactionalEmailSender emailSender;
 
     public void submit(CustomerEnquiryRequest request) {
         CustomerEnquiry enquiry = normalizeAndValidate(request);
@@ -26,6 +32,42 @@ public class CustomerEnquiryService {
         } catch (RuntimeException ex) {
             log.warn("Customer enquiry {} was persisted but notification delivery failed", persisted.getId(), ex);
         }
+    }
+
+    @Transactional(readOnly = true)
+    public List<CustomerEnquiry> list(CustomerEnquiryStatus status) {
+        return status == null
+                ? repository.findAllByOrderByCreatedAtDesc()
+                : repository.findByStatusOrderByCreatedAtDesc(status);
+    }
+
+    @Transactional
+    public CustomerEnquiry getAndMarkRead(String id) {
+        CustomerEnquiry enquiry = findWithReplies(id);
+        if (enquiry.getStatus() == CustomerEnquiryStatus.NEW) {
+            enquiry.setStatus(CustomerEnquiryStatus.READ);
+            enquiry.setFirstReadAt(LocalDateTime.now());
+        }
+        return enquiry;
+    }
+
+    @Transactional
+    public CustomerEnquiry reply(String id, String replyBody, String actor) {
+        String normalizedReply = required(replyBody, "replyBody", 4000);
+        CustomerEnquiry enquiry = findWithReplies(id);
+
+        emailSender.sendContactEnquiryReply(
+                enquiry.getEmail(), enquiry.getName(), enquiry.getMessage(), normalizedReply);
+
+        enquiry.getReplies().add(CustomerEnquiryReply.builder()
+                .id(UUID.randomUUID().toString())
+                .enquiry(enquiry)
+                .replyBody(normalizedReply)
+                .repliedBy(actor)
+                .createdAt(LocalDateTime.now())
+                .build());
+        enquiry.setStatus(CustomerEnquiryStatus.REPLIED);
+        return enquiry;
     }
 
     CustomerEnquiry normalizeAndValidate(CustomerEnquiryRequest request) {
@@ -62,6 +104,11 @@ public class CustomerEnquiryService {
                 .message(message)
                 .status(CustomerEnquiryStatus.NEW)
                 .build();
+    }
+
+    private CustomerEnquiry findWithReplies(String id) {
+        return repository.findWithRepliesById(id)
+                .orElseThrow(() -> new CustomerEnquiryValidationException("Customer enquiry not found"));
     }
 
     private String required(String value, String field, int maxLength) {

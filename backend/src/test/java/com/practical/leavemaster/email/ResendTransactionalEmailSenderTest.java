@@ -49,6 +49,32 @@ class ResendTransactionalEmailSenderTest {
     }
 
     @Test
+    void shouldBuildContactEnquiryReplyEmailAndEscapeSubmittedContent() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        ResendTransactionalEmailSender sender = new ResendTransactionalEmailSender(
+                builder, "test-api-key", "https://api.resend.com", "onboarding@resend.dev", "LeaveMaestro");
+
+        server.expect(requestTo("https://api.resend.com/emails"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(content().json("""
+                        {
+                          "from":"LeaveMaestro <onboarding@resend.dev>",
+                          "to":["alice@example.com"],
+                          "subject":"Re: Your LeaveMaestro enquiry"
+                        }
+                        """, false))
+                .andExpect(content().string(org.hamcrest.Matchers.allOf(
+                        org.hamcrest.Matchers.containsString("Alice &lt;Admin&gt;"),
+                        org.hamcrest.Matchers.containsString("Thanks &amp; welcome"),
+                        org.hamcrest.Matchers.containsString("Need &lt;help&gt;"))))
+                .andRespond(withSuccess("{\"id\":\"email-id\"}", MediaType.APPLICATION_JSON));
+
+        sender.sendContactEnquiryReply("alice@example.com", "Alice <Admin>", "Need <help>", "Thanks & welcome");
+        server.verify();
+    }
+
+    @Test
     void shouldAllowCustomVerifiedSenderWithoutCodeChange() {
         RestClient.Builder builder = RestClient.builder();
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
