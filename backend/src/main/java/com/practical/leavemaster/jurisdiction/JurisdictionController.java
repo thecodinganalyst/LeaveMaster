@@ -20,6 +20,9 @@ import java.util.Map;
 @RequestMapping({"/jurisdictions", "/api/jurisdictions"})
 @RequiredArgsConstructor
 public class JurisdictionController {
+    private static final String PLATFORM_JURISDICTION_WRITE =
+            "hasAuthority('JURISDICTION_WRITE') and @platformAdminAccess.isPlatformAdmin(authentication)";
+
     private final JurisdictionService jurisdictionService;
     private final JurisdictionLeaveTypeService leaveTypeService;
 
@@ -46,7 +49,7 @@ public class JurisdictionController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('JURISDICTION_WRITE')")
+    @PreAuthorize(PLATFORM_JURISDICTION_WRITE)
     public ResponseEntity<?> create(@RequestBody Jurisdiction jurisdiction) {
         try {
             return ResponseEntity.status(HttpStatus.CREATED).body(jurisdictionService.create(jurisdiction));
@@ -56,7 +59,7 @@ public class JurisdictionController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('JURISDICTION_WRITE')")
+    @PreAuthorize(PLATFORM_JURISDICTION_WRITE)
     public ResponseEntity<?> update(@PathVariable String id, @RequestBody Jurisdiction jurisdiction) {
         try {
             return ResponseEntity.ok(jurisdictionService.update(id, jurisdiction));
@@ -66,7 +69,7 @@ public class JurisdictionController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('JURISDICTION_WRITE')")
+    @PreAuthorize(PLATFORM_JURISDICTION_WRITE)
     public ResponseEntity<?> delete(@PathVariable String id) {
         try {
             jurisdictionService.delete(id);
