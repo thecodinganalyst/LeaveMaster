@@ -76,7 +76,7 @@ class ExistingUserOnlyOAuth2UserServiceTest {
         assertThatThrownBy(() -> service.loadUser(request))
                 .isInstanceOf(OAuth2AuthenticationException.class)
                 .satisfies(exception -> assertThat(((OAuth2AuthenticationException) exception).getError().getErrorCode())
-                        .isEqualTo("link_context_invalid"));
+                        .isEqualTo("not_linked"));
     }
 
     @Test
@@ -149,7 +149,7 @@ class ExistingUserOnlyOAuth2UserServiceTest {
         assertThatThrownBy(() -> service.loadUser(request))
                 .isInstanceOf(OAuth2AuthenticationException.class)
                 .satisfies(exception -> assertThat(((OAuth2AuthenticationException) exception).getError().getErrorCode())
-                        .isEqualTo("not_linked"));
+                        .isEqualTo("link_context_invalid"));
         assertThat(OAuthLinkingContext.consume(servletRequest.getSession(), "google")).isEmpty();
     }
 
