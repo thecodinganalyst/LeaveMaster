@@ -35,6 +35,7 @@ describe('accessControlProvider', () => {
       staffId: null,
       tenantId: null,
       active: true,
+      platformAdmin: true,
       authorities: ['TENANT_READ', 'TENANT_WRITE'],
     });
 
@@ -54,6 +55,7 @@ describe('accessControlProvider', () => {
       staffId: null,
       tenantId: null,
       active: true,
+      platformAdmin: true,
       authorities: ['PUBLIC_HOLIDAY_READ', 'PUBLIC_HOLIDAY_WRITE'],
     });
 
@@ -95,5 +97,47 @@ describe('accessControlProvider', () => {
 
     expect(result.can).toBe(false);
     expect(result.reason).toContain('STAFF_WRITE');
+  });
+
+  it('denies tenant admins jurisdiction create and delete even with JURISDICTION_WRITE', async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({
+      loginName: 'Bravo_Admin',
+      staffId: '001',
+      tenantId: 'Bravo',
+      active: true,
+      platformAdmin: false,
+      authorities: ['JURISDICTION_READ', 'JURISDICTION_WRITE'],
+    });
+
+    await expect(accessControlProvider.can({ resource: 'jurisdictions', action: 'create', params: {} }))
+      .resolves.toMatchObject({ can: false, reason: 'Platform administrator access required.' });
+    await expect(accessControlProvider.can({ resource: 'jurisdictions', action: 'delete', params: {} }))
+      .resolves.toMatchObject({ can: false, reason: 'Platform administrator access required.' });
+  });
+
+  it('allows platform admin jurisdiction writes and keeps tenant jurisdiction reads available', async () => {
+    vi.mocked(getCurrentUser).mockResolvedValueOnce({
+      loginName: 'PlatformAdmin',
+      staffId: null,
+      tenantId: null,
+      active: true,
+      platformAdmin: true,
+      authorities: ['JURISDICTION_READ', 'JURISDICTION_WRITE'],
+    });
+
+    await expect(accessControlProvider.can({ resource: 'jurisdictions', action: 'edit', params: {} }))
+      .resolves.toMatchObject({ can: true });
+
+    vi.mocked(getCurrentUser).mockResolvedValueOnce({
+      loginName: 'Bravo_Admin',
+      staffId: '001',
+      tenantId: 'Bravo',
+      active: true,
+      platformAdmin: false,
+      authorities: ['JURISDICTION_READ'],
+    });
+
+    await expect(accessControlProvider.can({ resource: 'jurisdictions', action: 'list', params: {} }))
+      .resolves.toMatchObject({ can: true });
   });
 });
