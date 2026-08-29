@@ -7,10 +7,7 @@
 }
 
 body {
-  @apply bg-brand-950 text-slate-100 antialiased;
-  background-image:
-    radial-gradient(circle at top, rgba(45, 156, 143, 0.28), transparent 35%),
-    linear-gradient(180deg, #092b28 0%, #103f3b 50%, #fafafa 50%, #fafafa 100%);
+  @apply bg-white text-slate-900 antialiased;
 }
 
 @layer base {
@@ -32,7 +29,7 @@ body {
 
 @layer components {
   .page-shell {
-    @apply min-h-screen bg-slate-50/95;
+    @apply min-h-screen bg-white;
   }
 
   .section {
