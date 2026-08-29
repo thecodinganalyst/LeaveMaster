@@ -56,7 +56,7 @@ describe('ContactEnquiriesPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open' }));
 
     expect(await screen.findByText('Original message')).toBeInTheDocument();
-    expect(screen.getByText('Please show me the product.')).toBeInTheDocument();
+    expect(screen.getAllByText('Please show me the product.')).toHaveLength(2);
     expect(mockedApiFetch).toHaveBeenCalledWith('/api/platform/contact-enquiries/e1');
   });
 
