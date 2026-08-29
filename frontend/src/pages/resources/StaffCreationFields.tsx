@@ -37,9 +37,9 @@ interface Props { step: 0 | 1; }
 const loadCalendars = () => apiFetch<LeaveCalendarJurisdictionSource[]>('/api/leave-calendars');
 const loadJurisdictions = () => apiFetch<JurisdictionOptionSource[]>('/api/jurisdictions');
 
-const WorkScheduleEditor = () => {
+export const WorkScheduleEditor = () => {
   const form = Form.useFormInstance();
-  const schedule = Form.useWatch('workSchedule', form) as WorkScheduleDayValue[] | undefined;
+  const schedule = Form.useWatch('workSchedule', { form, preserve: true }) as WorkScheduleDayValue[] | undefined;
   const options = [
     { label: 'Not working', value: 'NONE' },
     { label: 'Full day', value: 'FULL' },
