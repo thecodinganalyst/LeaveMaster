@@ -2,7 +2,7 @@ import { apiFetch } from '../../api/http.ts';
 
 export type LeaveDuration = 'FULL' | 'AM' | 'PM';
 export type LeaveStatus = 'DRAFT' | 'PENDING_VERIFICATION' | 'PENDING' | 'APPROVED' | 'CANCEL_REQUESTED' | 'CANCELLED' | 'DENIED';
-export type LeavePolicyModel = 'ANNUAL_ENTITLEMENT' | 'CONDITIONAL_ANNUAL_ENTITLEMENT' | 'EVENT_BASED';
+export type LeavePolicyModel = 'ANNUAL_ENTITLEMENT' | 'CONDITIONAL_ANNUAL_ENTITLEMENT' | 'EVENT_BASED' | 'REQUEST_BASED';
 
 export interface LeaveTypeSummary {
   id: string;

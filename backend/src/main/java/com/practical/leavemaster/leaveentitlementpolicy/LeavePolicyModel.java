@@ -14,5 +14,8 @@ public enum LeavePolicyModel {
     CONDITIONAL_ANNUAL_ENTITLEMENT,
 
     /** Entitlement is associated with a qualifying event and is not a normal annual balance. */
-    EVENT_BASED
+    EVENT_BASED,
+
+    /** Leave can be requested without a generated standard balance or qualifying event entitlement. */
+    REQUEST_BASED
 }
