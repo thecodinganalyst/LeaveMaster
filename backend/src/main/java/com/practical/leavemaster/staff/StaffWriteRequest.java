@@ -42,6 +42,15 @@ public record StaffWriteRequest(
                 leaveEntitlements, loginName, roleIds, employmentType, null, null);
     }
 
+    public StaffWriteRequest(
+            String id, String name, String email, LocalDate joinDate, List<WorkScheduleDay> workSchedule,
+            LocalDate termDate, String jurisdictionId, List<EntitlementInput> leaveEntitlements,
+            String loginName, Set<String> roleIds, EmploymentType employmentType,
+            List<LeaveApproverInput> leaveApprovers) {
+        this(id, name, email, joinDate, workSchedule, termDate, jurisdictionId,
+                leaveEntitlements, loginName, roleIds, employmentType, leaveApprovers, null);
+    }
+
     public Staff toStaff() {
         return Staff.builder()
                 .id(id)
