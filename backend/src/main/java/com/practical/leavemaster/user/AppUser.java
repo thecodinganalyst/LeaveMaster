@@ -24,9 +24,14 @@ import com.practical.leavemaster.rbac.AppRole;
 @Entity
 @Table(
         name = "app_user",
-        uniqueConstraints = @UniqueConstraint(
-                name = "uk_app_user_tenant_login",
-                columnNames = {"tenant_id", "login_name"})
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_app_user_tenant_login",
+                        columnNames = {"tenant_id", "login_name"}),
+                @UniqueConstraint(
+                        name = "uk_app_user_oauth_identity",
+                        columnNames = {"oidc_provider", "oidc_subject"})
+        }
 )
 @Data
 @Builder
