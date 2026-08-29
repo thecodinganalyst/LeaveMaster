@@ -15,6 +15,8 @@ import java.util.stream.Collectors;
 public class TenantAuthenticationProvider implements AuthenticationProvider {
 
     private static final String INVALID_CREDENTIALS = "Invalid credentials";
+    private static final String PLATFORM_ADMIN_ROLE_ID = "PLATFORM_ADMIN";
+    private static final String PLATFORM_ADMIN_AUTHORITY = "ROLE_PLATFORM_ADMIN";
 
     private final AppUserRepository appUserRepository;
     private final PasswordEncoder passwordEncoder;
@@ -45,6 +47,10 @@ public class TenantAuthenticationProvider implements AuthenticationProvider {
                 .filter(permission -> permission != null && permission.getCode() != null)
                 .map(permission -> (GrantedAuthority) new SimpleGrantedAuthority(permission.getCode()))
                 .collect(Collectors.toSet());
+        if (user.getTenantId() == null && user.getRoles().stream()
+                .anyMatch(role -> role != null && role.isActive() && PLATFORM_ADMIN_ROLE_ID.equalsIgnoreCase(role.getId()))) {
+            authorities.add(new SimpleGrantedAuthority(PLATFORM_ADMIN_AUTHORITY));
+        }
 
         String authenticatedRealm = user.getTenantId() == null
                 ? AuthenticationRealm.PLATFORM_REALM_ID

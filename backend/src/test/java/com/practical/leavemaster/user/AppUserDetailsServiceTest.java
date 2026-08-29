@@ -66,7 +66,57 @@ class AppUserDetailsServiceTest {
         assertThat(details.getAuthorities())
                 .extracting("authority")
                 .containsExactlyInAnyOrder("TENANT_READ", "STAFF_WRITE", "LEAVE_APPROVE")
-                .doesNotContain("USER_WRITE");
+                .doesNotContain("USER_WRITE", "ROLE_PLATFORM_ADMIN");
+    }
+
+    @Test
+    void shouldExposePlatformAdminRoleAsSecurityAuthorityOnlyForPlatformScopedUser() {
+        AppRole platformAdmin = AppRole.builder()
+                .id("PLATFORM_ADMIN")
+                .description("Platform admin")
+                .active(true)
+                .permissions(Set.of(AppPermission.builder().code("JURISDICTION_WRITE").description("Write jurisdictions").build()))
+                .build();
+        AppUser user = AppUser.builder()
+                .userId("platform-user")
+                .tenantId(null)
+                .loginName("PlatformAdmin")
+                .password("{noop}password")
+                .active(true)
+                .roles(Set.of(platformAdmin))
+                .build();
+
+        when(appUserRepository.findUniqueByLoginName("PlatformAdmin")).thenReturn(Optional.of(user));
+
+        UserDetails details = appUserDetailsService.loadUserByUsername("PlatformAdmin");
+
+        assertThat(details.getAuthorities())
+                .extracting("authority")
+                .containsExactlyInAnyOrder("JURISDICTION_WRITE", "ROLE_PLATFORM_ADMIN");
+    }
+
+    @Test
+    void shouldNotExposePlatformAdminMarkerForTenantScopedUser() {
+        AppRole platformAdmin = AppRole.builder()
+                .id("PLATFORM_ADMIN")
+                .description("Platform admin")
+                .active(true)
+                .permissions(Set.of())
+                .build();
+        AppUser user = AppUser.builder()
+                .userId("tenant-user")
+                .tenantId("Bravo")
+                .loginName("admin")
+                .password("{noop}password")
+                .active(true)
+                .roles(Set.of(platformAdmin))
+                .build();
+
+        when(appUserRepository.findUniqueByLoginName("admin")).thenReturn(Optional.of(user));
+
+        UserDetails details = appUserDetailsService.loadUserByUsername("admin");
+
+        assertThat(details.getAuthorities()).extracting("authority").doesNotContain("ROLE_PLATFORM_ADMIN");
     }
 
     @Test

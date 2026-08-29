@@ -17,6 +17,8 @@ import java.util.stream.Collectors;
 public class AppUserDetailsService implements UserDetailsService {
 
     private static final String PENDING_PASSWORD_SENTINEL = "PENDING_ACTIVATION";
+    private static final String PLATFORM_ADMIN_ROLE_ID = "PLATFORM_ADMIN";
+    private static final String PLATFORM_ADMIN_AUTHORITY = "ROLE_PLATFORM_ADMIN";
 
     private final AppUserRepository appUserRepository;
 
@@ -32,11 +34,16 @@ public class AppUserDetailsService implements UserDetailsService {
     }
 
     private Set<GrantedAuthority> resolveAuthorities(AppUser appUser) {
-        return appUser.getRoles().stream()
+        Set<GrantedAuthority> authorities = appUser.getRoles().stream()
                 .filter(role -> role != null && role.isActive())
                 .flatMap(role -> role.getPermissions().stream())
                 .map(permission -> permission.getCode())
                 .map(SimpleGrantedAuthority::new)
                 .collect(Collectors.toSet());
+        if (appUser.getTenantId() == null && appUser.getRoles().stream()
+                .anyMatch(role -> role != null && role.isActive() && PLATFORM_ADMIN_ROLE_ID.equalsIgnoreCase(role.getId()))) {
+            authorities.add(new SimpleGrantedAuthority(PLATFORM_ADMIN_AUTHORITY));
+        }
+        return authorities;
     }
 }
