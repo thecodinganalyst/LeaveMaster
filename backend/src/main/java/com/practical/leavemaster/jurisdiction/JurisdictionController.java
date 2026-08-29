@@ -21,7 +21,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class JurisdictionController {
     private static final String PLATFORM_JURISDICTION_WRITE =
-            "hasAuthority('JURISDICTION_WRITE') and @platformAdminAccess.isPlatformAdmin(authentication)";
+            "hasAuthority('JURISDICTION_WRITE') and hasAuthority('ROLE_PLATFORM_ADMIN')";
 
     private final JurisdictionService jurisdictionService;
     private final JurisdictionLeaveTypeService leaveTypeService;
