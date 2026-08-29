@@ -33,6 +33,7 @@ public class AccountActivationService {
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final int PIN_BOUND = 1_000_000;
+    private static final String TENANT_ADMIN_ROLE_SUFFIX = "_Admin";
 
     private final AppUserRepository appUserRepository;
     private final StaffRepository staffRepository;
@@ -106,8 +107,8 @@ public class AccountActivationService {
 
         try {
             emailService.sendAccountActivationPin(
-                    activationContext.staff().getEmail(),
-                    activationContext.staff().getName(),
+                    activationContext.email(),
+                    activationContext.displayName(),
                     pin,
                     pinExpiryMinutes);
             log.info("Account activation PIN delivery requested successfully");
@@ -201,10 +202,20 @@ public class AccountActivationService {
             return Optional.empty();
         }
         AppUser user = userOptional.get();
-        if (!user.isActive() || user.getPassword() != null || user.getStaffId() == null || user.getStaffId().isBlank()) {
+        if (!user.isActive() || user.getPassword() != null) {
             return Optional.empty();
         }
 
+        if (user.getStaffId() != null && !user.getStaffId().isBlank()) {
+            return eligibleStaffContext(tenantId, user);
+        }
+        if (isTenantAdmin(tenantId, user) && user.getEmail() != null && !user.getEmail().isBlank()) {
+            return Optional.of(new ActivationContext(user, user.getEmail().trim(), "Tenant Administrator"));
+        }
+        return Optional.empty();
+    }
+
+    private Optional<ActivationContext> eligibleStaffContext(String tenantId, AppUser user) {
         Optional<Staff> staffOptional = staffRepository.findByIdAndTenantId(user.getStaffId(), tenantId);
         if (staffOptional.isEmpty()) {
             return Optional.empty();
@@ -216,7 +227,13 @@ public class AccountActivationService {
                 || (staff.getTermDate() != null && !staff.getTermDate().isAfter(today))) {
             return Optional.empty();
         }
-        return Optional.of(new ActivationContext(user, staff));
+        return Optional.of(new ActivationContext(user, staff.getEmail(), staff.getName()));
+    }
+
+    private boolean isTenantAdmin(String tenantId, AppUser user) {
+        String tenantAdminRoleId = tenantId + TENANT_ADMIN_ROLE_SUFFIX;
+        return user.getRoles() != null && user.getRoles().stream()
+                .anyMatch(role -> tenantAdminRoleId.equals(role.getId()));
     }
 
     private String normalizeTenantId(String tenantId) {
@@ -237,6 +254,6 @@ public class AccountActivationService {
         return LocalDateTime.now(ZoneOffset.UTC);
     }
 
-    private record ActivationContext(AppUser user, Staff staff) {
+    private record ActivationContext(AppUser user, String email, String displayName) {
     }
 }
