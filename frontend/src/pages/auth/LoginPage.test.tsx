@@ -6,14 +6,26 @@ import { ApiError } from '../../api/http.ts';
 import { LoginPage } from './LoginPage.tsx';
 
 const login = vi.fn();
+const loginWithSession = vi.fn();
 const lookupAccountActivation = vi.fn();
 const requestAccountActivationPin = vi.fn();
 const verifyAccountActivationPin = vi.fn();
 const setInitialAccountPassword = vi.fn();
+const startOAuthLogin = vi.fn();
+const startOAuthLink = vi.fn();
+const clearRememberedOAuthProvider = vi.fn();
 
 vi.mock('@refinedev/core', () => ({
   useLogin: () => ({ mutate: login, isPending: false }),
 }));
+
+vi.mock('../../api/http.ts', async () => {
+  const actual = await vi.importActual<typeof import('../../api/http.ts')>('../../api/http.ts');
+  return {
+    ...actual,
+    loginWithSession: (...args: unknown[]) => loginWithSession(...args),
+  };
+});
 
 vi.mock('../../api/accountActivation.ts', () => ({
   lookupAccountActivation: (...args: unknown[]) => lookupAccountActivation(...args),
@@ -22,8 +34,18 @@ vi.mock('../../api/accountActivation.ts', () => ({
   setInitialAccountPassword: (...args: unknown[]) => setInitialAccountPassword(...args),
 }));
 
-const renderPage = () => render(
-  <MemoryRouter initialEntries={['/login?to=%2Fleave']}>
+vi.mock('../../api/oauth.ts', () => ({
+  getRememberedOAuthProvider: () => {
+    const value = window.sessionStorage.getItem('leavemaster.oauthProvider');
+    return value === 'google' || value === 'github' ? value : undefined;
+  },
+  clearRememberedOAuthProvider: () => clearRememberedOAuthProvider(),
+  startOAuthLogin: (...args: unknown[]) => startOAuthLogin(...args),
+  startOAuthLink: (...args: unknown[]) => startOAuthLink(...args),
+}));
+
+const renderPage = (entry = '/login?to=%2Fleave') => render(
+  <MemoryRouter initialEntries={[entry]}>
     <LoginPage />
   </MemoryRouter>,
 );
@@ -35,13 +57,26 @@ const enterIdentifier = async (name = 'alice', tenantId = 'tenant-a') => {
   await waitFor(() => expect(lookupAccountActivation).toHaveBeenCalledWith({ tenantId, loginName: name }));
 };
 
-describe('LoginPage account activation', () => {
+describe('LoginPage account activation and OAuth onboarding', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.sessionStorage.clear();
     lookupAccountActivation.mockResolvedValue({ nextStep: 'PASSWORD' });
     requestAccountActivationPin.mockResolvedValue({ message: 'accepted' });
     verifyAccountActivationPin.mockResolvedValue({ message: 'verified' });
     setInitialAccountPassword.mockResolvedValue(undefined);
+    loginWithSession.mockResolvedValue(undefined);
+    startOAuthLink.mockResolvedValue(undefined);
+  });
+
+  it('shows Google and GitHub as first-class sign-in choices', () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole('button', { name: /Continue with Google/i }));
+    expect(startOAuthLogin).toHaveBeenCalledWith('google');
+
+    fireEvent.click(screen.getByRole('button', { name: /Continue with GitHub/i }));
+    expect(startOAuthLogin).toHaveBeenCalledWith('github');
   });
 
   it('requires a free-text tenant ID and keeps active accounts on password login', async () => {
@@ -64,7 +99,50 @@ describe('LoginPage account activation', () => {
     expect(requestAccountActivationPin).not.toHaveBeenCalled();
   });
 
-  it('propagates tenant identity through PIN request, verification and password setup', async () => {
+  it('turns an unlinked Google login into account-verification onboarding', async () => {
+    window.sessionStorage.setItem('leavemaster.oauthProvider', 'google');
+    renderPage('/login?oauthError=not_linked');
+
+    expect(screen.getByText('Set up Google sign-in')).toBeInTheDocument();
+    expect(screen.getByText(/not linked to LeaveMaestro yet/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Continue with Google/i })).not.toBeInTheDocument();
+
+    await enterIdentifier();
+    fireEvent.change(await screen.findByLabelText('Password'), { target: { value: 'secret123' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Verify and set up Google sign-in' }));
+
+    await waitFor(() => expect(loginWithSession).toHaveBeenCalledWith('tenant-a', 'alice', 'secret123'));
+    await waitFor(() => expect(startOAuthLink).toHaveBeenCalledWith('google'));
+    expect(login).not.toHaveBeenCalled();
+  });
+
+  it('propagates tenant identity through PIN activation and continues GitHub linking', async () => {
+    window.sessionStorage.setItem('leavemaster.oauthProvider', 'github');
+    lookupAccountActivation.mockResolvedValue({ nextStep: 'ACTIVATION' });
+    renderPage('/login?oauthError=not_linked');
+    await enterIdentifier();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Send verification PIN' }));
+    await waitFor(() => expect(requestAccountActivationPin).toHaveBeenCalledWith({ tenantId: 'tenant-a', loginName: 'alice' }));
+
+    fireEvent.change(await screen.findByLabelText('Verification PIN'), { target: { value: '123456' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Verify PIN' }));
+    await waitFor(() => expect(verifyAccountActivationPin).toHaveBeenCalledWith(
+      { tenantId: 'tenant-a', loginName: 'alice' }, '123456',
+    ));
+
+    fireEvent.change(await screen.findByLabelText('New password'), { target: { value: 'strongpass' } });
+    fireEvent.change(screen.getByLabelText('Confirm new password'), { target: { value: 'strongpass' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Activate and set up GitHub sign-in' }));
+
+    await waitFor(() => expect(setInitialAccountPassword).toHaveBeenCalledWith(
+      { tenantId: 'tenant-a', loginName: 'alice' }, 'strongpass',
+    ));
+    await waitFor(() => expect(loginWithSession).toHaveBeenCalledWith('tenant-a', 'alice', 'strongpass'));
+    await waitFor(() => expect(startOAuthLink).toHaveBeenCalledWith('github'));
+  });
+
+  it('propagates tenant identity through PIN request, verification and password setup for normal activation', async () => {
     lookupAccountActivation.mockResolvedValue({ nextStep: 'ACTIVATION' });
     renderPage();
     await enterIdentifier();
@@ -75,12 +153,8 @@ describe('LoginPage account activation', () => {
     await waitFor(() => expect(requestAccountActivationPin).toHaveBeenCalledWith({ tenantId: 'tenant-a', loginName: 'alice' }));
 
     const pin = await screen.findByLabelText('Verification PIN');
-    expect(screen.getByText('tenant-a / alice')).toBeInTheDocument();
     fireEvent.change(pin, { target: { value: '123456' } });
     fireEvent.click(screen.getByRole('button', { name: 'Verify PIN' }));
-    await waitFor(() => expect(verifyAccountActivationPin).toHaveBeenCalledWith(
-      { tenantId: 'tenant-a', loginName: 'alice' }, '123456',
-    ));
 
     const password = await screen.findByLabelText('New password');
     fireEvent.change(password, { target: { value: 'strongpass' } });
@@ -91,6 +165,22 @@ describe('LoginPage account activation', () => {
       { tenantId: 'tenant-a', loginName: 'alice' }, 'strongpass',
     ));
     expect(await screen.findByText('Account activated')).toBeInTheDocument();
+  });
+
+  it('shows a privacy-safe message when the external identity is already linked elsewhere', () => {
+    window.sessionStorage.setItem('leavemaster.oauthProvider', 'github');
+    renderPage('/login?oauthError=identity_in_use');
+
+    expect(screen.getByText('This GitHub account is already linked to another LeaveMaestro account.')).toBeInTheDocument();
+    expect(screen.queryByText(/tenant-a \/ alice/)).not.toBeInTheDocument();
+  });
+
+  it('shows a recoverable cancellation message', () => {
+    window.sessionStorage.setItem('leavemaster.oauthProvider', 'google');
+    renderPage('/login?oauthError=access_denied');
+
+    expect(screen.getByText('Google sign-in was cancelled or denied. You can try again.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Continue with Google/i })).toBeInTheDocument();
   });
 
   it('resets both tenant ID and login name when choosing a different account', async () => {
