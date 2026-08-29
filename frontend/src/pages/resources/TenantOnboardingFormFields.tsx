@@ -17,6 +17,19 @@ export const TenantOnboardingFormFields = () => (
     <Form.Item name="name" label="Name" rules={[{ required: true, message: 'Name is required' }]}>
       <Input />
     </Form.Item>
+    <Form.Item
+      name="tenantAdminEmail"
+      label="Tenant Admin Email"
+      rules={[
+        { required: true, message: 'Tenant admin email is required' },
+        { type: 'email', message: 'Enter a valid tenant admin email' },
+      ]}
+    >
+      <Input type="email" autoComplete="email" />
+    </Form.Item>
+    <Typography.Paragraph type="secondary">
+      The tenant administrator will use this email to receive a first-time login PIN and set a permanent password.
+    </Typography.Paragraph>
     <Form.Item name="startDate" label="Tenant start date" rules={[{ required: true, message: 'Start date is required' }]}>
       <Input type="date" allowClear />
     </Form.Item>
