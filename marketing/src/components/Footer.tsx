@@ -14,7 +14,6 @@ export function Footer() {
         <nav className="flex flex-wrap gap-4" aria-label="Footer">
           <Link href="/features" className="hover:text-brand-600">Features</Link>
           <Link href="/demo" className="hover:text-brand-600">Demo</Link>
-          <Link href="/pricing" className="hover:text-brand-600">Pricing</Link>
           <Link href="/contact" className="hover:text-brand-600">Contact</Link>
           <Link href="/privacy" className="hover:text-brand-600">Privacy</Link>
           <Link href="/terms" className="hover:text-brand-600">Terms</Link>
