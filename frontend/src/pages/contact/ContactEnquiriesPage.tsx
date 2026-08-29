@@ -5,7 +5,7 @@ import type { ColumnsType } from 'antd/es/table';
 import { apiFetch } from '../../api/http.ts';
 import { getCurrentUser } from '../../auth/session.ts';
 
-type Status = 'NEW' | 'READ' | 'REPLIED' | 'CLOSED';
+type Status = 'NEW' | 'READ' | 'IN_PROGRESS' | 'REPLIED' | 'CLOSED';
 
 type Reply = {
   id: string;
@@ -33,6 +33,7 @@ type Enquiry = {
 const statusColor: Record<Status, string> = {
   NEW: 'blue',
   READ: 'gold',
+  IN_PROGRESS: 'orange',
   REPLIED: 'green',
   CLOSED: 'default',
 };
@@ -106,8 +107,8 @@ export function ContactEnquiriesPage() {
     {
       title: 'Status',
       dataIndex: 'status',
-      width: 110,
-      render: (value: Status) => <Tag color={statusColor[value]}>{value}</Tag>,
+      width: 120,
+      render: (value: Status) => <Tag color={statusColor[value]}>{value.replaceAll('_', ' ')}</Tag>,
     },
     {
       title: 'Received',
@@ -148,7 +149,10 @@ export function ContactEnquiriesPage() {
           placeholder="All statuses"
           style={{ minWidth: 180 }}
           value={status}
-          options={(['NEW', 'READ', 'REPLIED', 'CLOSED'] as Status[]).map((value) => ({ value, label: value }))}
+          options={(['NEW', 'READ', 'IN_PROGRESS', 'REPLIED', 'CLOSED'] as Status[]).map((value) => ({
+            value,
+            label: value.replaceAll('_', ' '),
+          }))}
           onChange={(value) => {
             setStatus(value);
             setSelected(null);
@@ -172,7 +176,7 @@ export function ContactEnquiriesPage() {
       </Card>
 
       {selected ? (
-        <Card title={<Space><span>{selected.name}</span><Tag color={statusColor[selected.status]}>{selected.status}</Tag></Space>}>
+        <Card title={<Space><span>{selected.name}</span><Tag color={statusColor[selected.status]}>{selected.status.replaceAll('_', ' ')}</Tag></Space>}>
           <Descriptions bordered column={{ xs: 1, sm: 2 }} size="small">
             <Descriptions.Item label="Company">{selected.company}</Descriptions.Item>
             <Descriptions.Item label="Email">{selected.email}</Descriptions.Item>
