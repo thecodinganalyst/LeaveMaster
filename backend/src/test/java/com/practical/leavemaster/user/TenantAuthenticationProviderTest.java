@@ -69,7 +69,21 @@ class TenantAuthenticationProviderTest {
 
     @Test
     void authenticatesPlatformAdministratorOnlyThroughReservedPlatformRealm() {
-        AppUser admin = user("platform-user", null, "PlatformAdmin", "hash-platform");
+        AppPermission permission = AppPermission.builder().code("JURISDICTION_WRITE").description("Write jurisdictions").build();
+        AppRole platformAdminRole = AppRole.builder()
+                .id("PLATFORM_ADMIN")
+                .description("Platform admin")
+                .active(true)
+                .permissions(Set.of(permission))
+                .build();
+        AppUser admin = AppUser.builder()
+                .userId("platform-user")
+                .tenantId(null)
+                .loginName("PlatformAdmin")
+                .password("hash-platform")
+                .active(true)
+                .roles(Set.of(platformAdminRole))
+                .build();
         when(appUserRepository.findByTenantIdIsNullAndLoginName("PlatformAdmin")).thenReturn(Optional.of(admin));
         when(passwordEncoder.matches("secret", "hash-platform")).thenReturn(true);
 
@@ -77,6 +91,32 @@ class TenantAuthenticationProviderTest {
 
         assertThat(result.getName()).isEqualTo("platform-user");
         assertThat(((TenantAuthenticationToken) result).getTenantId()).isEqualTo(AuthenticationRealm.PLATFORM_REALM_ID);
+        assertThat(result.getAuthorities()).extracting("authority")
+                .containsExactlyInAnyOrder("JURISDICTION_WRITE", "ROLE_PLATFORM_ADMIN");
+    }
+
+    @Test
+    void doesNotExposePlatformAdminAuthorityToTenantScopedAccount() {
+        AppRole platformAdminRole = AppRole.builder()
+                .id("PLATFORM_ADMIN")
+                .description("Platform admin")
+                .active(true)
+                .permissions(Set.of())
+                .build();
+        AppUser tenantUser = AppUser.builder()
+                .userId("tenant-user")
+                .tenantId("Bravo")
+                .loginName("admin")
+                .password("hash")
+                .active(true)
+                .roles(Set.of(platformAdminRole))
+                .build();
+        when(appUserRepository.findByTenantIdAndLoginName("Bravo", "admin")).thenReturn(Optional.of(tenantUser));
+        when(passwordEncoder.matches("secret", "hash")).thenReturn(true);
+
+        Authentication result = provider.authenticate(new TenantAuthenticationToken("Bravo", "admin", "secret"));
+
+        assertThat(result.getAuthorities()).extracting("authority").doesNotContain("ROLE_PLATFORM_ADMIN");
     }
 
     @Test
