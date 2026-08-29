@@ -179,7 +179,9 @@ public class StaffEntitlementProposalService {
     }
 
     private boolean supportsOnboardingBalance(LeaveEntitlementPolicy policy) {
-        return policy.getPolicyModel() != LeavePolicyModel.EVENT_BASED
+        boolean annualBalanceModel = policy.getPolicyModel() == LeavePolicyModel.ANNUAL_ENTITLEMENT
+                || policy.getPolicyModel() == LeavePolicyModel.CONDITIONAL_ANNUAL_ENTITLEMENT;
+        return annualBalanceModel
                 && policy.getEntitlementUnit() == EntitlementUnit.DAYS
                 && policy.getAccrualMethod() != AccrualMethod.PER_PAY_PERIOD;
     }
