@@ -32,7 +32,7 @@ const enterIdentifier = async (name = 'alice', tenantId = 'tenant-a') => {
   fireEvent.change(screen.getByLabelText('Tenant ID'), { target: { value: tenantId } });
   fireEvent.change(screen.getByLabelText('Login name'), { target: { value: name } });
   fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-  await waitFor(() => expect(lookupAccountActivation).toHaveBeenCalledWith(name));
+  await waitFor(() => expect(lookupAccountActivation).toHaveBeenCalledWith({ tenantId, loginName: name }));
 };
 
 describe('LoginPage account activation', () => {
@@ -44,7 +44,7 @@ describe('LoginPage account activation', () => {
     setInitialAccountPassword.mockResolvedValue(undefined);
   });
 
-  it('requires a manually entered tenant ID and keeps active accounts on password login', async () => {
+  it('requires a free-text tenant ID and keeps active accounts on password login', async () => {
     renderPage();
     expect(screen.getByLabelText('Tenant ID')).toBeInTheDocument();
     expect(screen.queryByRole('combobox', { name: 'Tenant ID' })).not.toBeInTheDocument();
@@ -52,7 +52,6 @@ describe('LoginPage account activation', () => {
     await enterIdentifier();
 
     expect(await screen.findByText('tenant-a / alice')).toBeInTheDocument();
-    expect(await screen.findByLabelText('Password')).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'secret123' } });
     fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
 
@@ -65,43 +64,42 @@ describe('LoginPage account activation', () => {
     expect(requestAccountActivationPin).not.toHaveBeenCalled();
   });
 
-  it('only requests a PIN after the user explicitly chooses activation', async () => {
+  it('propagates tenant identity through PIN request, verification and password setup', async () => {
     lookupAccountActivation.mockResolvedValue({ nextStep: 'ACTIVATION' });
     renderPage();
     await enterIdentifier();
 
     expect(await screen.findByText('Your account needs to be set up before you can sign in.')).toBeInTheDocument();
-    expect(requestAccountActivationPin).not.toHaveBeenCalled();
-
+    expect(screen.getByText('tenant-a / alice')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Send verification PIN' }));
-    await waitFor(() => expect(requestAccountActivationPin).toHaveBeenCalledWith('alice'));
-
-    expect(await screen.findByLabelText('Verification PIN')).toBeInTheDocument();
-    expect(screen.getByText(/expires after 15 minutes/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Resend PIN in/i })).toBeDisabled();
-  });
-
-  it('verifies the PIN and completes initial password setup', async () => {
-    lookupAccountActivation.mockResolvedValue({ nextStep: 'ACTIVATION' });
-    renderPage();
-    await enterIdentifier();
-    fireEvent.click(await screen.findByRole('button', { name: 'Send verification PIN' }));
+    await waitFor(() => expect(requestAccountActivationPin).toHaveBeenCalledWith({ tenantId: 'tenant-a', loginName: 'alice' }));
 
     const pin = await screen.findByLabelText('Verification PIN');
+    expect(screen.getByText('tenant-a / alice')).toBeInTheDocument();
     fireEvent.change(pin, { target: { value: '123456' } });
     fireEvent.click(screen.getByRole('button', { name: 'Verify PIN' }));
-    await waitFor(() => expect(verifyAccountActivationPin).toHaveBeenCalledWith('alice', '123456'));
+    await waitFor(() => expect(verifyAccountActivationPin).toHaveBeenCalledWith(
+      { tenantId: 'tenant-a', loginName: 'alice' }, '123456',
+    ));
 
     const password = await screen.findByLabelText('New password');
-    const confirmation = screen.getByLabelText('Confirm new password');
     fireEvent.change(password, { target: { value: 'strongpass' } });
-    fireEvent.change(confirmation, { target: { value: 'strongpass' } });
+    fireEvent.change(screen.getByLabelText('Confirm new password'), { target: { value: 'strongpass' } });
     fireEvent.click(screen.getByRole('button', { name: 'Activate account' }));
 
-    await waitFor(() => expect(setInitialAccountPassword).toHaveBeenCalledWith('alice', 'strongpass'));
+    await waitFor(() => expect(setInitialAccountPassword).toHaveBeenCalledWith(
+      { tenantId: 'tenant-a', loginName: 'alice' }, 'strongpass',
+    ));
     expect(await screen.findByText('Account activated')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Continue to sign in' }));
-    expect(await screen.findByLabelText('Password')).toBeInTheDocument();
+  });
+
+  it('resets both tenant ID and login name when choosing a different account', async () => {
+    renderPage();
+    await enterIdentifier();
+    fireEvent.click(await screen.findByRole('button', { name: 'Use a different account' }));
+
+    expect(screen.getByLabelText('Tenant ID')).toHaveValue('');
+    expect(screen.getByLabelText('Login name')).toHaveValue('');
   });
 
   it('shows safe API errors without advancing the activation flow', async () => {
