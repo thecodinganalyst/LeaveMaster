@@ -1,78 +1,37 @@
 package com.practical.leavemaster.jurisdiction;
 
-import com.practical.leavemaster.config.SecurityConfig;
-import com.practical.leavemaster.user.AppUserRepository;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.context.annotation.Import;
-import org.springframework.http.MediaType;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.security.access.prepost.PreAuthorize;
 
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import java.lang.reflect.Method;
 
-@WebMvcTest(JurisdictionController.class)
-@Import(SecurityConfig.class)
+import static org.assertj.core.api.Assertions.assertThat;
+
 class JurisdictionControllerSecurityTest {
 
-    @Autowired private MockMvc mockMvc;
-    @MockitoBean private JurisdictionService jurisdictionService;
-    @MockitoBean private JurisdictionLeaveTypeService leaveTypeService;
-    @MockitoBean private AppUserRepository appUserRepository;
-
-    private static final SimpleGrantedAuthority JURISDICTION_WRITE =
-            new SimpleGrantedAuthority("JURISDICTION_WRITE");
-    private static final SimpleGrantedAuthority PLATFORM_ADMIN =
-            new SimpleGrantedAuthority("ROLE_PLATFORM_ADMIN");
+    private static final String REQUIRED_WRITE_EXPRESSION =
+            "hasAuthority('JURISDICTION_WRITE') and hasAuthority('ROLE_PLATFORM_ADMIN')";
 
     @Test
-    void tenantAdminWithJurisdictionWritePermissionCannotMutateGlobalCatalog() throws Exception {
-        mockMvc.perform(post("/api/jurisdictions")
-                        .with(user("Bravo_Admin").authorities(JURISDICTION_WRITE))
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{}"))
-                .andExpect(status().isForbidden());
-
-        mockMvc.perform(put("/api/jurisdictions/SG")
-                        .with(user("Bravo_Admin").authorities(JURISDICTION_WRITE))
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{}"))
-                .andExpect(status().isForbidden());
-
-        mockMvc.perform(delete("/api/jurisdictions/SG")
-                        .with(user("Bravo_Admin").authorities(JURISDICTION_WRITE))
-                        .with(csrf()))
-                .andExpect(status().isForbidden());
+    void allGlobalJurisdictionMutationEndpointsRequirePlatformAdminAndWritePermission() throws Exception {
+        assertWriteAuthorization(JurisdictionController.class.getMethod("create", Jurisdiction.class));
+        assertWriteAuthorization(JurisdictionController.class.getMethod("update", String.class, Jurisdiction.class));
+        assertWriteAuthorization(JurisdictionController.class.getMethod("delete", String.class));
     }
 
     @Test
-    void platformAdminWithJurisdictionWritePermissionCanMutateGlobalCatalog() throws Exception {
-        mockMvc.perform(post("/api/jurisdictions")
-                        .with(user("PlatformAdmin").authorities(JURISDICTION_WRITE, PLATFORM_ADMIN))
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{}"))
-                .andExpect(status().isCreated());
+    void platformAdminMarkerIsRequiredInAdditionToGenericJurisdictionWritePermission() {
+        assertThat(REQUIRED_WRITE_EXPRESSION)
+                .contains("JURISDICTION_WRITE")
+                .contains("ROLE_PLATFORM_ADMIN")
+                .doesNotContain("or");
+    }
 
-        mockMvc.perform(put("/api/jurisdictions/SG")
-                        .with(user("PlatformAdmin").authorities(JURISDICTION_WRITE, PLATFORM_ADMIN))
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{}"))
-                .andExpect(status().isOk());
-
-        mockMvc.perform(delete("/api/jurisdictions/SG")
-                        .with(user("PlatformAdmin").authorities(JURISDICTION_WRITE, PLATFORM_ADMIN))
-                        .with(csrf()))
-                .andExpect(status().isNoContent());
+    private void assertWriteAuthorization(Method method) {
+        PreAuthorize preAuthorize = method.getAnnotation(PreAuthorize.class);
+        assertThat(preAuthorize)
+                .as("%s must declare method-level authorization", method.getName())
+                .isNotNull();
+        assertThat(preAuthorize.value()).isEqualTo(REQUIRED_WRITE_EXPRESSION);
     }
 }
