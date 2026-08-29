@@ -48,6 +48,22 @@ test('marketing surfaces stay light and the homepage starts on white', async () 
   assert.equal(globals.includes('#092b28'), false, 'global marketing background must not use near-black teal');
 });
 
+test('marketing pages use reusable product visuals', async () => {
+  const home = await read('../app/page.tsx');
+  const features = await read('../app/features/page.tsx');
+  const demo = await read('../app/demo/page.tsx');
+  const visuals = await read('./ProductVisuals.tsx');
+
+  assert.match(home, /<HeroProductVisual\s*\/>/);
+  assert.match(home, /<LeaveWorkflowVisual\s*\/>/);
+  assert.match(features, /<LeaveWorkflowVisual\s*\/>/);
+  assert.match(demo, /<PersonaVisual persona="employee"\s*\/>/);
+  assert.match(demo, /<PersonaVisual persona="manager"\s*\/>/);
+  assert.match(demo, /<PersonaVisual persona="hr"\s*\/>/);
+  assert.match(visuals, /Representative LeaveMaestro interface/);
+  assert.match(visuals, /Policy.*Eligibility.*Entitlement.*Request.*Approval.*Balance/s);
+});
+
 test('navigation uses the reusable Conductor LM brand mark', async () => {
   const navigation = await read('./Navigation.tsx');
   const logo = await read('./LeaveMaestroLogo.tsx');
