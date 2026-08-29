@@ -3,7 +3,7 @@ import { ContactForm } from '@/components/ContactForm';
 
 export const metadata: Metadata = {
   title: 'Contact',
-  description: 'Contact LeaveMaestro about product demos, pricing, leave-management requirements, or implementation questions.',
+  description: 'Contact LeaveMaestro about product demos, leave-management requirements, or implementation questions.',
 };
 
 export default function ContactPage() {
@@ -27,7 +27,7 @@ export default function ContactPage() {
               <li><strong className="text-slate-900">Product demo:</strong> employee, manager, and HR workflows.</li>
               <li><strong className="text-slate-900">Leave setup:</strong> leave types, entitlement policies, locations, balances, and approvers.</li>
               <li><strong className="text-slate-900">Access model:</strong> tenant-scoped roles and permissions for staff, managers, HR, and administrators.</li>
-              <li><strong className="text-slate-900">Commercial questions:</strong> pricing and rollout options as they become available.</li>
+              <li><strong className="text-slate-900">Rollout questions:</strong> implementation needs, onboarding considerations, and organizational requirements.</li>
             </ul>
           </div>
 
