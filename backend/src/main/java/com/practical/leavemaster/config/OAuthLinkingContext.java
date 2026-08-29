@@ -17,9 +17,16 @@ final class OAuthLinkingContext {
     }
 
     static void create(HttpSession session, String userId, String provider) {
+        clear(session);
         session.setAttribute(USER_ID_ATTRIBUTE, userId);
         session.setAttribute(PROVIDER_ATTRIBUTE, provider);
         session.setAttribute(EXPIRES_AT_ATTRIBUTE, Instant.now().plus(TTL).toEpochMilli());
+    }
+
+    static boolean hasContext(HttpSession session) {
+        return session.getAttribute(USER_ID_ATTRIBUTE) != null
+                || session.getAttribute(PROVIDER_ATTRIBUTE) != null
+                || session.getAttribute(EXPIRES_AT_ATTRIBUTE) != null;
     }
 
     static Optional<LinkRequest> consume(HttpSession session, String provider) {
