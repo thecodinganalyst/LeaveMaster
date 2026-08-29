@@ -102,7 +102,6 @@ export function ContactForm() {
             <option value="LEAVE_MANAGEMENT">Leave management</option>
             <option value="HR_PLATFORM">HR platform</option>
             <option value="PRODUCT_DEMO">Product demo</option>
-            <option value="PRICING">Pricing</option>
             <option value="PARTNERSHIP">Partnership</option>
             <option value="OTHER">Other</option>
           </select>
