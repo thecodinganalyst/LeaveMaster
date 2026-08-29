@@ -7,20 +7,26 @@ import com.practical.leavemaster.user.AppUser;
 import com.practical.leavemaster.user.AppUserNotFoundException;
 import com.practical.leavemaster.user.AppUserRepository;
 import com.practical.leavemaster.user.AppUserService;
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.net.URI;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/auth")
@@ -28,6 +34,7 @@ import java.util.Optional;
 public class AuthSessionController {
 
     private static final String PLATFORM_ADMIN_ROLE_ID = "PLATFORM_ADMIN";
+    private static final Set<String> LINKABLE_OAUTH_PROVIDERS = Set.of("google", "github");
 
     private final AppUserRepository appUserRepository;
     private final AppUserService appUserService;
@@ -44,6 +51,42 @@ public class AuthSessionController {
         return appUserRepository.findById(authentication.getName())
             .map(user -> ResponseEntity.ok(toResponse(user, authentication)))
             .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/oauth-link/status")
+    public ResponseEntity<OAuthLinkStatusResponse> oauthLinkStatus(Authentication authentication) {
+        return appUserRepository.findById(authentication.getName())
+            .filter(AppUser::isActive)
+            .filter(user -> user.getTenantId() != null)
+            .map(user -> ResponseEntity.ok(new OAuthLinkStatusResponse(
+                user.getOidcProvider() != null && user.getOidcSubject() != null,
+                user.getOidcProvider())))
+            .orElse(ResponseEntity.status(HttpStatus.FORBIDDEN).build());
+    }
+
+    @PostMapping("/oauth-link/{provider}/start")
+    public ResponseEntity<?> startOAuthLink(
+        @PathVariable String provider,
+        Authentication authentication,
+        HttpSession session
+    ) {
+        String normalizedProvider = provider == null ? "" : provider.trim().toLowerCase();
+        if (!LINKABLE_OAUTH_PROVIDERS.contains(normalizedProvider)) {
+            return ResponseEntity.badRequest().body(Map.of("error", "unsupported_provider"));
+        }
+
+        AppUser user = appUserRepository.findById(authentication.getName()).orElse(null);
+        if (user == null || !user.isActive() || user.getTenantId() == null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "account_not_eligible"));
+        }
+        if (user.getOidcProvider() != null || user.getOidcSubject() != null) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "already_linked"));
+        }
+
+        OAuthLinkingContext.create(session, user.getUserId(), normalizedProvider);
+        return ResponseEntity.status(HttpStatus.FOUND)
+            .location(URI.create("/oauth2/authorization/" + normalizedProvider))
+            .build();
     }
 
     @PutMapping("/change-password")
@@ -106,6 +149,9 @@ public class AuthSessionController {
         String newPassword,
         String confirmNewPassword
     ) {
+    }
+
+    public record OAuthLinkStatusResponse(boolean linked, String provider) {
     }
 
     public record CurrentUserResponse(

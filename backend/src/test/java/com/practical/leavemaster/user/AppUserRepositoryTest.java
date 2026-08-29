@@ -3,10 +3,12 @@ package com.practical.leavemaster.user;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DataJpaTest
 class AppUserRepositoryTest {
@@ -77,6 +79,40 @@ class AppUserRepositoryTest {
         Optional<AppUser> found = appUserRepository.findByOidcProviderAndOidcSubject("github", "12345");
         assertThat(found).isPresent();
         assertThat(found.get().getLoginName()).isEqualTo("alice");
+    }
+
+    @Test
+    void shouldRejectSameOauthIdentityAcrossDifferentTenants() {
+        appUserRepository.saveAndFlush(AppUser.builder()
+                .loginName("alice")
+                .tenantId("tenant-a")
+                .password("secret")
+                .active(true)
+                .oidcProvider("github")
+                .oidcSubject("same-account")
+                .build());
+
+        AppUser secondUser = AppUser.builder()
+                .loginName("bob")
+                .tenantId("tenant-b")
+                .password("secret")
+                .active(true)
+                .oidcProvider("github")
+                .oidcSubject("same-account")
+                .build();
+
+        assertThatThrownBy(() -> appUserRepository.saveAndFlush(secondUser))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void shouldAllowMultipleUnlinkedUsers() {
+        appUserRepository.saveAndFlush(AppUser.builder()
+                .loginName("alice").tenantId("tenant-a").password("secret").active(true).build());
+        appUserRepository.saveAndFlush(AppUser.builder()
+                .loginName("bob").tenantId("tenant-b").password("secret").active(true).build());
+
+        assertThat(appUserRepository.findAll()).hasSizeGreaterThanOrEqualTo(2);
     }
 
     @Test
