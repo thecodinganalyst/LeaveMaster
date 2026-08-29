@@ -78,18 +78,31 @@ New Singapore tenants that provision leave configuration receive these additiona
 
 These policies have no service-based increase by default. They are tenant-owned after provisioning and may be changed by an authorized tenant administrator.
 
-### Sick and hospitalisation leave — statutory templates
+### Sick and hospitalisation leave — statutory rule represented as separate balances
 
-The existing statutory service progression remains unchanged:
+Singapore's statutory paid medical-leave rule uses an outpatient sick-leave limit inside a larger combined medical-leave maximum. The statutory progression is:
 
-| Completed service | Outpatient sick leave | Hospitalisation leave |
+| Completed service | Outpatient sick-leave limit | Combined medical-leave maximum including outpatient sick leave |
 |---|---:|---:|
 | 3 to <4 months | 5 days | 15 days |
 | 4 to <5 months | 8 days | 30 days |
 | 5 to <6 months | 11 days | 45 days |
 | 6 months and later | 14 days | 60 days |
 
-The hospitalisation limit includes outpatient sick leave already taken. For example, an employee who has used all 14 outpatient sick-leave days has at most 46 additional hospitalisation-leave days from the 60-day combined statutory limit. LeaveMaestro currently stores the two entitlement ceilings separately, so downstream entitlement/balance generation must not treat 14 + 60 as an additive 74-day statutory allowance.
+LeaveMaster does not yet support a shared entitlement pool across leave types. To avoid presenting the outpatient and combined ceilings as additive balances, the Singapore seed deliberately stores the Hospitalisation Leave entitlement as only the **additional hospitalisation allowance after reserving the outpatient sick-leave component**:
+
+| Completed service | Seeded Sick Leave | Seeded Hospitalisation Leave (additional) | Combined seeded maximum |
+|---|---:|---:|---:|
+| 3 to <4 months | 5 days | 10 days | 15 days |
+| 4 to <5 months | 8 days | 22 days | 30 days |
+| 5 to <6 months | 11 days | 34 days | 45 days |
+| 6 months and later | 14 days | 46 days | 60 days |
+
+This is an intentional implementation simplification, **not** a statement that Singapore law itself defines hospitalisation leave as 10, 22, 34 or 46 days. Under the statutory rule, the larger 15/30/45/60-day figure is the overall medical-leave maximum and includes outpatient sick leave already taken.
+
+Operationally, LeaveMaster keeps Sick Leave and Hospitalisation Leave as independent balances whose sum equals that combined maximum. No shared-pool or cross-leave-type deduction logic is introduced by this representation.
+
+AskLeaveMaestro and other explanatory surfaces should therefore distinguish the statutory rule from the storage representation. For a staff member with at least 6 months of service, an appropriate explanation is: the statutory maximum is 60 days of paid medical leave including up to 14 days of outpatient sick leave; LeaveMaster represents that as 14 days Sick Leave plus 46 additional days Hospitalisation Leave.
 
 Source: Singapore Ministry of Manpower, [Sick leave eligibility and entitlement](https://www.mom.gov.sg/employment-practices/leave/sick-leave/eligibility-and-entitlement).
 
