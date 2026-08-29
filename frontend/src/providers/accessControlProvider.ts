@@ -30,12 +30,14 @@ const permissionByResource: Record<string, { read?: string; write?: string; appr
   },
 };
 
+const writeActions = ['create', 'edit', 'delete', 'write'];
+
 const requiredPermission = (resource: string, action: string) => {
   if (resource === 'dashboard') return undefined;
   const permissions = permissionByResource[resource];
   if (!permissions) return null;
   if (['list', 'show', 'read'].includes(action)) return permissions.read ?? null;
-  if (['create', 'edit', 'delete', 'write'].includes(action)) return permissions.write ?? null;
+  if (writeActions.includes(action)) return permissions.write ?? null;
   if (['approve', 'reject', 'approve-cancellation', 'reject-cancellation'].includes(action)) return permissions.approve ?? null;
   return null;
 };
@@ -47,6 +49,11 @@ export const accessControlProvider: AccessControlProvider = {
       if (resource === 'contact-enquiries') {
         const user = await getCurrentUser();
         return user.platformAdmin ? { can: true } : { can: false, reason: 'Platform administrator access required.' };
+      }
+      if (resource === 'jurisdictions' && writeActions.includes(action)) {
+        const user = await getCurrentUser();
+        const allowed = Boolean(user.platformAdmin) && user.authorities.includes('JURISDICTION_WRITE');
+        return allowed ? { can: true } : { can: false, reason: 'Platform administrator access required.' };
       }
       const permission = requiredPermission(resource, action);
       if (permission === undefined) {
