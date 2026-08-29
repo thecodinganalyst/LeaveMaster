@@ -52,6 +52,9 @@ public class Tenant {
     private LocalDateTime lastModified;
 
     @Transient
+    private String tenantAdminEmail;
+
+    @Transient
     @Builder.Default
     private List<TenantJurisdictionProvisionRequest> jurisdictions = new ArrayList<>();
 
