@@ -49,6 +49,9 @@ public class AppUser {
     @Column
     private String password;
 
+    @Column(length = 320)
+    private String email;
+
     @Column(nullable = false)
     private boolean active;
 

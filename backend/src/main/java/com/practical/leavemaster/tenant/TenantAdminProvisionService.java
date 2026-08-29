@@ -8,8 +8,6 @@ import com.practical.leavemaster.user.AppUser;
 import com.practical.leavemaster.user.AppUserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -82,16 +80,12 @@ public class TenantAdminProvisionService {
     private final AppRoleRepository appRoleRepository;
     private final AppPermissionRepository appPermissionRepository;
     private final AppUserRepository appUserRepository;
-    private final PasswordEncoder passwordEncoder;
-
-    @Value("${tenant.admin.default.password}")
-    private String tenantAdminDefaultPassword;
 
     @Transactional
-    public void provision(String tenantId, String tenantName) {
-        String tenantAdminId = tenantRoleId(tenantId, ADMIN_ROLE_SUFFIX);
+    public void provision(String tenantId, String tenantName, String tenantAdminEmail) {
+        String tenantAdminLogin = tenantRoleId(tenantId, ADMIN_ROLE_SUFFIX);
         AppRole tenantAdminRole = provisionRole(
-                tenantAdminId,
+                tenantAdminLogin,
                 tenantName + " Tenant Admin",
                 tenantId,
                 TENANT_ADMIN_PERMISSION_CODES
@@ -104,11 +98,12 @@ public class TenantAdminProvisionService {
         provisionRole(tenantRoleId(tenantId, HR_ROLE_SUFFIX), tenantName + " HR",
                 tenantId, HR_PERMISSION_CODES);
 
-        if (!appUserRepository.existsById(tenantAdminId)) {
-            log.info("Creating tenant admin user {} for tenant {}", tenantAdminId, tenantId);
+        if (!appUserRepository.existsByTenantIdAndLoginName(tenantId, tenantAdminLogin)) {
+            log.info("Creating tenant admin user for tenant {}", tenantId);
             AppUser admin = AppUser.builder()
-                    .loginName(tenantAdminId)
-                    .password(passwordEncoder.encode(tenantAdminDefaultPassword))
+                    .loginName(tenantAdminLogin)
+                    .password(null)
+                    .email(tenantAdminEmail)
                     .active(true)
                     .tenantId(tenantId)
                     .roles(Set.of(tenantAdminRole))

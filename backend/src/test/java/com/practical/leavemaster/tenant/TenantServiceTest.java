@@ -27,10 +27,14 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class TenantServiceTest {
+
+    private static final String ADMIN_EMAIL = "admin@tenant.example";
 
     @Mock private TenantRepository tenantRepository;
     @Mock private LeaveApplicationRepository leaveApplicationRepository;
@@ -71,7 +75,8 @@ class TenantServiceTest {
 
     @Test
     void shouldSaveTenantAndProvisionJurisdictionDefaults() {
-        Tenant tenant = Tenant.builder().id("t1").name("Tenant 1").jurisdictionId("SG").startDate(LocalDate.now()).status(TenantStatus.ACTIVE).build();
+        Tenant tenant = Tenant.builder().id("t1").name("Tenant 1").tenantAdminEmail("  " + ADMIN_EMAIL + "  ")
+                .jurisdictionId("SG").startDate(LocalDate.now()).status(TenantStatus.ACTIVE).build();
         when(jurisdictionRepository.existsById("SG")).thenReturn(true);
         when(tenantRepository.save(any(Tenant.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(tenantJurisdictionRepository.findById("t1:SG")).thenReturn(Optional.empty());
@@ -79,9 +84,10 @@ class TenantServiceTest {
         Tenant result = tenantService.save(tenant);
         assertThat(result.getId()).isEqualTo("t1");
         assertThat(result.getLastModified()).isNotNull();
+        assertThat(result.getTenantAdminEmail()).isEqualTo(ADMIN_EMAIL);
         verify(tenantJurisdictionRepository).save(any(TenantJurisdiction.class));
         verify(tenantLeaveConfigurationProvisionService).provision(result);
-        verify(tenantAdminProvisionService).provision("t1", "Tenant 1");
+        verify(tenantAdminProvisionService).provision("t1", "Tenant 1", ADMIN_EMAIL);
     }
 
     @Test
@@ -90,7 +96,8 @@ class TenantServiceTest {
         LocalDate calendarEnd = LocalDate.of(2026, 12, 31);
         TenantJurisdictionProvisionRequest sg = new TenantJurisdictionProvisionRequest("SG", true, true, null, null);
         TenantJurisdictionProvisionRequest my = new TenantJurisdictionProvisionRequest("MY", false, true, null, null);
-        Tenant tenant = Tenant.builder().id("t1").name("Tenant 1").startDate(LocalDate.of(2026, 1, 1)).status(TenantStatus.ACTIVE)
+        Tenant tenant = Tenant.builder().id("t1").name("Tenant 1").tenantAdminEmail(ADMIN_EMAIL)
+                .startDate(LocalDate.of(2026, 1, 1)).status(TenantStatus.ACTIVE)
                 .jurisdictions(List.of(sg, my)).calendarStart(calendarStart).calendarEnd(calendarEnd).build();
         when(jurisdictionRepository.existsById("SG")).thenReturn(true);
         when(jurisdictionRepository.existsById("MY")).thenReturn(true);
@@ -103,12 +110,30 @@ class TenantServiceTest {
         verify(tenantLeaveConfigurationProvisionService).provision(result,
                 new TenantJurisdictionProvisionRequest("SG", true, true, calendarStart, calendarEnd));
         verify(tenantLeaveConfigurationProvisionService).provision(result, my);
-        verify(tenantAdminProvisionService).provision("t1", "Tenant 1");
+        verify(tenantAdminProvisionService).provision("t1", "Tenant 1", ADMIN_EMAIL);
+    }
+
+    @Test
+    void shouldRejectMissingOrInvalidTenantAdminEmail() {
+        Tenant missing = Tenant.builder().id("t1").name("Tenant 1").jurisdictionId("SG")
+                .startDate(LocalDate.now()).status(TenantStatus.ACTIVE).build();
+        Tenant invalid = Tenant.builder().id("t2").name("Tenant 2").tenantAdminEmail("not-an-email").jurisdictionId("SG")
+                .startDate(LocalDate.now()).status(TenantStatus.ACTIVE).build();
+
+        assertThatThrownBy(() -> tenantService.save(missing))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("tenantAdminEmail");
+        assertThatThrownBy(() -> tenantService.save(invalid))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("tenantAdminEmail");
+        verify(tenantRepository, never()).save(any());
+        verify(tenantAdminProvisionService, never()).provision(any(), any(), any());
     }
 
     @Test
     void shouldRejectDuplicateJurisdictionsDuringTenantCreation() {
-        Tenant tenant = Tenant.builder().id("t1").name("Tenant 1").startDate(LocalDate.now()).status(TenantStatus.ACTIVE)
+        Tenant tenant = Tenant.builder().id("t1").name("Tenant 1").tenantAdminEmail(ADMIN_EMAIL)
+                .startDate(LocalDate.now()).status(TenantStatus.ACTIVE)
                 .jurisdictions(List.of(new TenantJurisdictionProvisionRequest("SG", true, true, null, null),
                         new TenantJurisdictionProvisionRequest("SG", false, false, null, null))).build();
         when(jurisdictionRepository.existsById("SG")).thenReturn(true);
@@ -137,7 +162,8 @@ class TenantServiceTest {
 
     @Test
     void shouldRejectTenantWithoutValidJurisdiction() {
-        Tenant tenant = Tenant.builder().id("t1").name("Tenant 1").startDate(LocalDate.now()).status(TenantStatus.ACTIVE).build();
+        Tenant tenant = Tenant.builder().id("t1").name("Tenant 1").tenantAdminEmail(ADMIN_EMAIL)
+                .startDate(LocalDate.now()).status(TenantStatus.ACTIVE).build();
         assertThatThrownBy(() -> tenantService.save(tenant)).isInstanceOf(IllegalArgumentException.class);
         verify(tenantRepository, never()).save(any());
     }

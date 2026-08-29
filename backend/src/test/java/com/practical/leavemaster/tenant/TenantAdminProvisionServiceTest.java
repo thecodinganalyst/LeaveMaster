@@ -7,15 +7,12 @@ import com.practical.leavemaster.rbac.AppRoleRepository;
 import com.practical.leavemaster.rbac.RbacPermissions;
 import com.practical.leavemaster.user.AppUser;
 import com.practical.leavemaster.user.AppUserRepository;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -28,7 +25,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class TenantAdminProvisionServiceTest {
@@ -36,18 +36,13 @@ class TenantAdminProvisionServiceTest {
     @Mock private AppRoleRepository appRoleRepository;
     @Mock private AppPermissionRepository appPermissionRepository;
     @Mock private AppUserRepository appUserRepository;
-    @Mock private PasswordEncoder passwordEncoder;
     @InjectMocks private TenantAdminProvisionService service;
 
-    @BeforeEach
-    void setUp() {
-        ReflectionTestUtils.setField(service, "tenantAdminDefaultPassword", "test-password");
-    }
-
     @Test
-    void shouldCreateTenantAdminAndThreeDefaultTenantRoles() {
+    void shouldCreateTenantAdminWithoutPasswordAndThreeDefaultTenantRoles() {
         String tenantId = "ACME";
         String tenantName = "Acme Corporation";
+        String tenantAdminEmail = "admin@acme.example";
         when(appRoleRepository.findById(anyString())).thenReturn(Optional.empty());
         when(appPermissionRepository.findAllById(anyCollection())).thenAnswer(invocation -> {
             Iterable<String> codes = invocation.getArgument(0);
@@ -56,11 +51,10 @@ class TenantAdminProvisionServiceTest {
             return permissions;
         });
         when(appRoleRepository.save(any(AppRole.class))).thenAnswer(i -> i.getArgument(0));
-        when(appUserRepository.existsById("ACME_Admin")).thenReturn(false);
-        when(passwordEncoder.encode("test-password")).thenReturn("$2a$encoded");
+        when(appUserRepository.existsByTenantIdAndLoginName("ACME", "ACME_Admin")).thenReturn(false);
         when(appUserRepository.save(any(AppUser.class))).thenAnswer(i -> i.getArgument(0));
 
-        service.provision(tenantId, tenantName);
+        service.provision(tenantId, tenantName, tenantAdminEmail);
 
         ArgumentCaptor<AppRole> roleCaptor = ArgumentCaptor.forClass(AppRole.class);
         verify(appRoleRepository, times(4)).save(roleCaptor.capture());
@@ -76,6 +70,8 @@ class TenantAdminProvisionServiceTest {
         AppUser createdUser = userCaptor.getValue();
         assertThat(createdUser.getLoginName()).isEqualTo("ACME_Admin");
         assertThat(createdUser.getTenantId()).isEqualTo(tenantId);
+        assertThat(createdUser.getEmail()).isEqualTo(tenantAdminEmail);
+        assertThat(createdUser.getPassword()).isNull();
         assertThat(createdUser.isActive()).isTrue();
         assertThat(createdUser.getRoles()).extracting(AppRole::getId).containsExactly("ACME_Admin");
     }
@@ -123,8 +119,8 @@ class TenantAdminProvisionServiceTest {
             String roleId = invocation.getArgument(0);
             return Optional.of(AppRole.builder().id(roleId).description(roleId).active(true).tenantId(tenantId).build());
         });
-        when(appUserRepository.existsById("ACME_Admin")).thenReturn(true);
-        service.provision(tenantId, "Acme Corporation");
+        when(appUserRepository.existsByTenantIdAndLoginName("ACME", "ACME_Admin")).thenReturn(true);
+        service.provision(tenantId, "Acme Corporation", "admin@acme.example");
         verify(appRoleRepository, never()).save(any());
         verify(appPermissionRepository, never()).findAllById(anyCollection());
         verify(appUserRepository, never()).save(any());

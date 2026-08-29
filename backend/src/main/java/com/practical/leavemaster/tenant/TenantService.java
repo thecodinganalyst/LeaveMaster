@@ -22,10 +22,13 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
 public class TenantService {
+
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
 
     private final TenantRepository tenantRepository;
     private final LeaveApplicationRepository leaveApplicationRepository;
@@ -53,6 +56,8 @@ public class TenantService {
 
     @Transactional
     public Tenant save(Tenant tenant) {
+        String tenantAdminEmail = validateTenantAdminEmail(tenant.getTenantAdminEmail());
+        tenant.setTenantAdminEmail(tenantAdminEmail);
         List<TenantJurisdictionProvisionRequest> requestedJurisdictions = tenant.getJurisdictions();
         boolean legacyRequest = requestedJurisdictions == null || requestedJurisdictions.isEmpty();
 
@@ -79,7 +84,7 @@ public class TenantService {
             }
         }
 
-        tenantAdminProvisionService.provision(saved.getId(), saved.getName());
+        tenantAdminProvisionService.provision(saved.getId(), saved.getName(), tenantAdminEmail);
         return saved;
     }
 
@@ -160,6 +165,13 @@ public class TenantService {
                 throw new IllegalArgumentException("Duplicate jurisdiction selected: " + request.jurisdictionId());
             }
         }
+    }
+
+    private String validateTenantAdminEmail(String email) {
+        if (email == null || email.isBlank() || email.length() > 320 || !EMAIL_PATTERN.matcher(email.trim()).matches()) {
+            throw new IllegalArgumentException("A valid tenantAdminEmail is required when creating a tenant");
+        }
+        return email.trim();
     }
 
     private void validateJurisdiction(String jurisdictionId) {
