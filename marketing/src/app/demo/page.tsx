@@ -39,20 +39,20 @@ export default function DemoPage() {
           </p>
         </div>
 
-        <div className="card bg-slate-950 text-white">
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-200">What the demo is for</p>
-          <h2 className="mt-3 text-3xl font-bold text-white">See the workflow, not just screenshots</h2>
-          <p className="mt-4 text-slate-300">
+        <div className="card border-brand-100 bg-brand-50/70">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-700">What the demo is for</p>
+          <h2 className="mt-3 text-3xl font-bold text-slate-950">See the workflow, not just screenshots</h2>
+          <p className="mt-4 text-slate-600">
             LeaveMaestro is designed around tenant-aware permissions. A public demo can showcase the same role boundaries so you can understand what employees, approvers, and HR teams each see.
           </p>
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-              <p className="font-semibold text-white">No tenant setup</p>
-              <p className="mt-2 text-sm text-slate-300">The planned public sandbox uses prepared demo data instead of asking visitors to configure a company first.</p>
+            <div className="rounded-2xl border border-brand-100 bg-white p-4">
+              <p className="font-semibold text-slate-900">No tenant setup</p>
+              <p className="mt-2 text-sm text-slate-600">The planned public sandbox uses prepared demo data instead of asking visitors to configure a company first.</p>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-              <p className="font-semibold text-white">Representative data</p>
-              <p className="mt-2 text-sm text-slate-300">The demo is intended to use fictional staff, leave balances, applications, and policies suitable for product evaluation.</p>
+            <div className="rounded-2xl border border-brand-100 bg-white p-4">
+              <p className="font-semibold text-slate-900">Representative data</p>
+              <p className="mt-2 text-sm text-slate-600">The demo is intended to use fictional staff, leave balances, applications, and policies suitable for product evaluation.</p>
             </div>
           </div>
         </div>

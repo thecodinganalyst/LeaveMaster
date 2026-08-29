@@ -114,9 +114,9 @@ export default function FeaturesPage() {
         </div>
       </div>
 
-      <div className="mt-12 rounded-[2rem] bg-slate-950 px-8 py-10 text-white">
-        <h2 className="text-3xl font-bold text-white">See how LeaveMaestro handles your leave-policy workflow</h2>
-        <p className="mt-4 max-w-2xl text-slate-300">
+      <div className="mt-12 rounded-[2rem] border border-brand-100 bg-brand-50 px-8 py-10">
+        <h2 className="text-3xl font-bold text-slate-950">See how LeaveMaestro handles your leave-policy workflow</h2>
+        <p className="mt-4 max-w-2xl text-slate-600">
           Explore the demo or contact us to discuss the jurisdictions, policies, entitlement rules, and approval workflows your organisation needs.
         </p>
         <div className="mt-8 flex flex-col gap-4 sm:flex-row">

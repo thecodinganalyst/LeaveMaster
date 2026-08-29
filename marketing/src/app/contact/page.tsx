@@ -31,12 +31,12 @@ export default function ContactPage() {
             </ul>
           </div>
 
-          <div className="card bg-slate-950 text-white">
-            <h2 className="text-xl font-semibold text-white">Still evaluating?</h2>
-            <p className="mt-3 text-slate-300">
+          <div className="card border-brand-100 bg-brand-50">
+            <h2 className="text-xl font-semibold text-slate-950">Still evaluating?</h2>
+            <p className="mt-3 text-slate-600">
               You can review the feature overview first, then use this form when you are ready to discuss your requirements.
             </p>
-            <a href="/features" className="mt-5 inline-block font-semibold text-brand-200 hover:text-white">
+            <a href="/features" className="mt-5 inline-block font-semibold text-brand-700 hover:text-brand-600">
               Explore features →
             </a>
           </div>

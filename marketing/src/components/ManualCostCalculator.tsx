@@ -87,19 +87,19 @@ export function ManualCostCalculator() {
           </div>
         </div>
 
-        <div className="rounded-2xl bg-slate-950 p-6 text-white" aria-live="polite">
-          <p className="text-sm font-medium text-slate-300">Estimated current annual administration cost</p>
-          <p className="mt-2 text-4xl font-bold">{formatCurrency(result.annualCost, currency)}</p>
+        <div className="rounded-2xl border border-brand-100 bg-brand-50 p-6" aria-live="polite">
+          <p className="text-sm font-medium text-brand-700">Estimated current annual administration cost</p>
+          <p className="mt-2 text-4xl font-bold text-slate-950">{formatCurrency(result.annualCost, currency)}</p>
 
-          <div className="mt-6 border-t border-slate-700 pt-6">
-            <p className="text-sm font-medium text-slate-300">Estimated HR time each year</p>
-            <p className="mt-2 text-3xl font-semibold">{result.annualHours.toLocaleString()} hours</p>
+          <div className="mt-6 border-t border-brand-100 pt-6">
+            <p className="text-sm font-medium text-brand-700">Estimated HR time each year</p>
+            <p className="mt-2 text-3xl font-semibold text-slate-950">{result.annualHours.toLocaleString()} hours</p>
           </div>
 
-          <p className="mt-6 text-sm leading-6 text-slate-300">
+          <p className="mt-6 text-sm leading-6 text-slate-600">
             Every month spent interpreting policies, checking eligibility, prorating entitlements, correcting balances, and answering routine leave questions has a measurable cost.
           </p>
-          <p className="mt-4 text-xs leading-5 text-slate-400">
+          <p className="mt-4 text-xs leading-5 text-slate-500">
             Estimates use the values you enter and are illustrative only. They do not represent guaranteed savings, ROI, or product pricing.
           </p>
         </div>
