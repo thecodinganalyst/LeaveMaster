@@ -20,6 +20,7 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -82,7 +83,7 @@ class TenantAdminAccountActivationServiceTest {
         when(appUserRepository.findByTenantIdAndLoginName("Bravo", "ordinary")).thenReturn(Optional.of(user));
 
         assertThat(service.requestPin("Bravo", "ordinary")).isFalse();
-        verify(emailService, never()).sendAccountActivationPin(anyString(), anyString(), anyString(), any(Integer.class));
+        verify(emailService, never()).sendAccountActivationPin(anyString(), anyString(), anyString(), anyInt());
     }
 
     private static AppUser pendingTenantAdmin(String userId, String email) {
