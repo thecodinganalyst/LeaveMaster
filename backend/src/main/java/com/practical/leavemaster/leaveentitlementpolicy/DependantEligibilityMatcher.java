@@ -15,13 +15,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-/**
- * Evaluates one jurisdiction-neutral dependant predicate against one dependant at a time.
- *
- * <p>The criterion value is a semicolon-separated set of key/value pairs. Supported keys are:
- * relationship, citizenship, residency, age_lt, age_lte, age_gt, age_gte and youngest.
- * Example: {@code relationship=CHILD;citizenship=SG;age_lt=7}.</p>
- */
 @Component
 @RequiredArgsConstructor
 public class DependantEligibilityMatcher {
@@ -30,8 +23,10 @@ public class DependantEligibilityMatcher {
 
     public boolean matches(Staff staff, LocalDate effectiveDate, String expression) {
         Map<String, String> criteria = parse(expression);
-        List<StaffDependant> dependants = dependantRepository
-                .findAllByTenantIdAndStaffId(staff.getTenantId(), staff.getId()).stream()
+        List<StaffDependant> previewDependants = staff.getPreviewDependants();
+        List<StaffDependant> dependants = (previewDependants != null
+                ? previewDependants
+                : dependantRepository.findAllByTenantIdAndStaffId(staff.getTenantId(), staff.getId())).stream()
                 .filter(dependant -> activeOn(dependant, effectiveDate))
                 .toList();
 
@@ -83,19 +78,11 @@ public class DependantEligibilityMatcher {
     }
 
     private boolean matches(StaffDependant dependant, LocalDate effectiveDate, Map<String, String> criteria) {
-        if (criteria.containsKey("relationship") && !equalsCode(dependant.getRelationshipCode(), criteria.get("relationship"))) {
-            return false;
-        }
-        if (criteria.containsKey("citizenship") && !equalsCode(dependant.getCitizenshipCode(), criteria.get("citizenship"))) {
-            return false;
-        }
-        if (criteria.containsKey("residency") && !equalsCode(dependant.getResidencyCode(), criteria.get("residency"))) {
-            return false;
-        }
+        if (criteria.containsKey("relationship") && !equalsCode(dependant.getRelationshipCode(), criteria.get("relationship"))) return false;
+        if (criteria.containsKey("citizenship") && !equalsCode(dependant.getCitizenshipCode(), criteria.get("citizenship"))) return false;
+        if (criteria.containsKey("residency") && !equalsCode(dependant.getResidencyCode(), criteria.get("residency"))) return false;
         if (criteria.keySet().stream().anyMatch(key -> key.startsWith("age_"))) {
-            if (dependant.getDateOfBirth() == null || dependant.getDateOfBirth().isAfter(effectiveDate)) {
-                return false;
-            }
+            if (dependant.getDateOfBirth() == null || dependant.getDateOfBirth().isAfter(effectiveDate)) return false;
             long age = ChronoUnit.YEARS.between(dependant.getDateOfBirth(), effectiveDate);
             if (criteria.containsKey("age_lt") && age >= number(criteria, "age_lt")) return false;
             if (criteria.containsKey("age_lte") && age > number(criteria, "age_lte")) return false;

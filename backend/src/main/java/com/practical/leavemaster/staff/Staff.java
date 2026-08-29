@@ -1,5 +1,6 @@
 package com.practical.leavemaster.staff;
 
+import com.practical.leavemaster.leaveeligibility.StaffDependant;
 import com.practical.leavemaster.leaveentitlement.LeaveEntitlement;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.CollectionTable;
@@ -73,6 +74,9 @@ public class Staff {
 
     @Transient
     private Set<String> roleIds;
+
+    @Transient
+    private List<StaffDependant> previewDependants;
 
     @Column(name = "tenant_id")
     private String tenantId;

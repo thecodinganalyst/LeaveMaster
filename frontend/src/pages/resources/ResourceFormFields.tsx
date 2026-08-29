@@ -9,6 +9,7 @@ import { JurisdictionSelect } from './JurisdictionSelect.tsx';
 import { LeaveApproverFormFields } from './LeaveApproverFormFields.tsx';
 import { PublicHolidayListField } from './PublicHolidayListField.tsx';
 import { RolePermissionCheckboxList } from './RolePermissionCheckboxList.tsx';
+import { StaffCreationFields } from './StaffCreationFields.tsx';
 import { StaffDependantsField } from './StaffDependantsField.tsx';
 import { StaffEmploymentTypeField } from './StaffEmploymentTypeField.tsx';
 import { StaffFormFields } from './StaffFormFields.tsx';
@@ -24,20 +25,22 @@ interface Props {
   preferredCountry?: string | null | undefined;
   platformAdmin?: boolean;
   recordId?: string;
+  staffCreationStep?: 0 | 1;
 }
 
-export const ResourceFormFields = ({ config, editing = false, platformAdmin = false, recordId }: Props) => {
+export const ResourceFormFields = ({ config, editing = false, platformAdmin = false, recordId, staffCreationStep = 0 }: Props) => {
   if (config.name === 'tenants' && !editing) return <TenantOnboardingFormFields />;
   if (config.name === 'tenant-jurisdictions' && !editing) return <TenantJurisdictionFormFields />;
 
   if (config.name === 'employees') {
+    if (!editing) return <StaffCreationFields step={staffCreationStep} />;
     return (
       <>
-        <StaffFormFields editing={editing} {...(recordId ? { staffId: recordId } : {})} />
+        <StaffFormFields editing {...(recordId ? { staffId: recordId } : {})} />
         <StaffEmploymentTypeField />
         <StaffRoleSelect />
-        <StaffDependantsField editing={editing} {...(recordId ? { staffId: recordId } : {})} />
-        <StaffLeaveApproversField editing={editing} {...(recordId ? { staffId: recordId } : {})} />
+        <StaffDependantsField editing {...(recordId ? { staffId: recordId } : {})} />
+        <StaffLeaveApproversField editing {...(recordId ? { staffId: recordId } : {})} />
       </>
     );
   }
