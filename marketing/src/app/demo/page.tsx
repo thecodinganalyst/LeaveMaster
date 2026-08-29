@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { CTAButton } from '@/components/CTAButton';
+import { PersonaVisual } from '@/components/ProductVisuals';
 
 const demoUrl = process.env.NEXT_PUBLIC_DEMO_URL ?? 'https://demo.leavemaestro.com';
 
@@ -11,52 +12,46 @@ export const metadata: Metadata = {
 export default function DemoPage() {
   return (
     <section className="section">
-      <div className="grid gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-start">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-600">Product demo</p>
-          <h1 className="mt-3 text-4xl font-bold tracking-tight">Explore LeaveMaestro from the perspective of each role</h1>
-          <p className="mt-5 text-lg">
-            The public demo experience is intended to let prospective customers explore representative employee, manager, and HR workflows without creating a tenant.
-          </p>
-          <div className="mt-8 space-y-4">
-            {[
-              ['Employee', 'Submit leave requests, review personal applications, and check leave balances.'],
-              ['Manager', 'Review requests for assigned staff and make approval decisions.'],
-              ['HR', 'Explore leave types, entitlement policies, staff, locations, approvers, and administration.'],
-            ].map(([role, description]) => (
-              <div key={role} className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-soft">
-                <p className="font-semibold text-slate-900">{role}</p>
-                <p className="mt-1 text-sm text-slate-600">{description}</p>
-              </div>
-            ))}
-          </div>
-          <div className="mt-8 flex flex-col gap-4 sm:flex-row">
-            <CTAButton href={demoUrl}>Open Demo</CTAButton>
-            <CTAButton href="/contact" variant="secondary">Request a Walkthrough</CTAButton>
-          </div>
-          <p className="mt-4 text-sm text-slate-500">
-            Demo availability and persona-based access depend on the configured public demo environment.
-          </p>
-        </div>
+      <div className="max-w-3xl">
+        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-600">Product demo</p>
+        <h1 className="mt-3 text-4xl font-bold tracking-tight">See LeaveMaestro from each role</h1>
+        <p className="mt-5 text-lg">Explore representative employee, manager, and HR workflows using prepared demo data.</p>
+      </div>
 
-        <div className="card border-brand-100 bg-brand-50/70">
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-700">What the demo is for</p>
-          <h2 className="mt-3 text-3xl font-bold text-slate-950">See the workflow, not just screenshots</h2>
-          <p className="mt-4 text-slate-600">
-            LeaveMaestro is designed around tenant-aware permissions. A public demo can showcase the same role boundaries so you can understand what employees, approvers, and HR teams each see.
-          </p>
-          <div className="mt-8 grid gap-4 sm:grid-cols-2">
-            <div className="rounded-2xl border border-brand-100 bg-white p-4">
-              <p className="font-semibold text-slate-900">No tenant setup</p>
-              <p className="mt-2 text-sm text-slate-600">The planned public sandbox uses prepared demo data instead of asking visitors to configure a company first.</p>
+      <div className="mt-10 grid gap-6 lg:grid-cols-3">
+        <div>
+          <PersonaVisual persona="employee" />
+          <p className="mt-3 text-center text-sm text-slate-500">Apply, track, and check balances.</p>
+        </div>
+        <div>
+          <PersonaVisual persona="manager" />
+          <p className="mt-3 text-center text-sm text-slate-500">Review requests for assigned staff.</p>
+        </div>
+        <div>
+          <PersonaVisual persona="hr" />
+          <p className="mt-3 text-center text-sm text-slate-500">Manage policies, staff, locations, and calendars.</p>
+        </div>
+      </div>
+
+      <div className="mt-10 rounded-[2rem] border border-brand-100 bg-brand-50 p-6 sm:p-8">
+        <div className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
+          <div>
+            <h2 className="text-2xl font-bold text-slate-950">See the workflow, not just screenshots</h2>
+            <p className="mt-3 max-w-2xl text-slate-600">The public sandbox is intended to use fictional data and preserve the role boundaries used by LeaveMaestro.</p>
+            <div className="mt-5 flex flex-wrap gap-2 text-xs font-medium text-brand-700">
+              {['Prepared demo tenant', 'Representative data', 'Role-aware access'].map((item) => (
+                <span key={item} className="rounded-full border border-brand-100 bg-white px-3 py-2">{item}</span>
+              ))}
             </div>
-            <div className="rounded-2xl border border-brand-100 bg-white p-4">
-              <p className="font-semibold text-slate-900">Representative data</p>
-              <p className="mt-2 text-sm text-slate-600">The demo is intended to use fictional staff, leave balances, applications, and policies suitable for product evaluation.</p>
-            </div>
+          </div>
+          <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
+            <CTAButton href={demoUrl}>Open Demo</CTAButton>
+            <CTAButton href="/contact" variant="secondary">Request Walkthrough</CTAButton>
           </div>
         </div>
       </div>
+
+      <p className="mt-6 text-center text-sm text-slate-500">Demo availability and persona-based access depend on the configured public demo environment.</p>
     </section>
   );
 }
