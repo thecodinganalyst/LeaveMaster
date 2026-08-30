@@ -12,6 +12,10 @@ image_tag = "replace-with-git-sha"
 
 deploy_service = false
 
+# Canonical browser origin. Production uses https://app.leavemaestro.com.
+# Other environments may omit this to fall back to their Firebase Hosting URL.
+public_app_url = "https://app.leavemaestro.com"
+
 enable_ai_assistant        = false
 ai_assistant_provider      = "openai"
 ai_assistant_model         = "gpt-5-mini"
