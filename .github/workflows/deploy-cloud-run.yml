@@ -32,6 +32,7 @@ env:
   TF_VAR_database_name: postgres
   TF_VAR_image_tag: ${{ github.sha }}
   TF_VAR_github_actions_service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
+  TF_VAR_public_app_url: ${{ vars.PUBLIC_APP_URL || 'https://app.leavemaestro.com' }}
   TF_VAR_allowed_frontend_origins: ${{ vars.ALLOWED_FRONTEND_ORIGINS || '[]' }}
   TF_VAR_enable_ai_assistant: ${{ vars.ENABLE_AI_ASSISTANT || 'false' }}
   TF_VAR_ai_assistant_provider: ${{ vars.AI_ASSISTANT_PROVIDER || 'openai' }}
@@ -60,14 +61,6 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
-
-      - name: Configure optional custom frontend URL
-        env:
-          PUBLIC_APP_URL: ${{ vars.PUBLIC_APP_URL }}
-        run: |
-          if [[ -n "${PUBLIC_APP_URL}" ]]; then
-            echo "TF_VAR_public_app_url=${PUBLIC_APP_URL}" >> "${GITHUB_ENV}"
-          fi
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v3
