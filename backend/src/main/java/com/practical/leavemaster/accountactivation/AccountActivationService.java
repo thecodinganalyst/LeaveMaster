@@ -194,37 +194,63 @@ public class AccountActivationService {
     }
 
     private Optional<ActivationContext> eligibleContext(String tenantId, String loginName) {
-        if (tenantId == null || loginName == null || AuthenticationRealm.isPlatformRealm(tenantId)) {
+        if (tenantId == null || loginName == null) {
+            logEligibilityFailure("tenant or login missing");
             return Optional.empty();
         }
+        if (AuthenticationRealm.isPlatformRealm(tenantId)) {
+            logEligibilityFailure("platform realm is not eligible");
+            return Optional.empty();
+        }
+
         Optional<AppUser> userOptional = appUserRepository.findByTenantIdAndLoginName(tenantId, loginName);
         if (userOptional.isEmpty()) {
+            logEligibilityFailure("account not found in requested tenant");
             return Optional.empty();
         }
+
         AppUser user = userOptional.get();
-        if (!user.isActive() || user.getPassword() != null) {
+        if (!user.isActive()) {
+            logEligibilityFailure("account is inactive");
+            return Optional.empty();
+        }
+        if (user.getPassword() != null) {
+            logEligibilityFailure("permanent password is already set");
             return Optional.empty();
         }
 
         if (user.getStaffId() != null && !user.getStaffId().isBlank()) {
             return eligibleStaffContext(tenantId, user);
         }
-        if (isTenantAdmin(tenantId, user) && user.getEmail() != null && !user.getEmail().isBlank()) {
-            return Optional.of(new ActivationContext(user, user.getEmail().trim(), "Tenant Administrator"));
+        if (!isTenantAdmin(tenantId, user)) {
+            logEligibilityFailure("tenant admin role is not present");
+            return Optional.empty();
         }
-        return Optional.empty();
+        if (user.getEmail() == null || user.getEmail().isBlank()) {
+            logEligibilityFailure("tenant admin email is missing");
+            return Optional.empty();
+        }
+        return Optional.of(new ActivationContext(user, user.getEmail().trim(), "Tenant Administrator"));
     }
 
     private Optional<ActivationContext> eligibleStaffContext(String tenantId, AppUser user) {
         Optional<Staff> staffOptional = staffRepository.findByIdAndTenantId(user.getStaffId(), tenantId);
         if (staffOptional.isEmpty()) {
+            logEligibilityFailure("staff record not found in requested tenant");
             return Optional.empty();
         }
         Staff staff = staffOptional.get();
         LocalDate today = LocalDate.now(ZoneOffset.UTC);
-        if (staff.getEmail() == null || staff.getEmail().isBlank()
-                || staff.getJoinDate() == null || staff.getJoinDate().isAfter(today)
-                || (staff.getTermDate() != null && !staff.getTermDate().isAfter(today))) {
+        if (staff.getEmail() == null || staff.getEmail().isBlank()) {
+            logEligibilityFailure("staff email is missing");
+            return Optional.empty();
+        }
+        if (staff.getJoinDate() == null || staff.getJoinDate().isAfter(today)) {
+            logEligibilityFailure("staff is not yet eligible by join date");
+            return Optional.empty();
+        }
+        if (staff.getTermDate() != null && !staff.getTermDate().isAfter(today)) {
+            logEligibilityFailure("staff employment has ended");
             return Optional.empty();
         }
         return Optional.of(new ActivationContext(user, staff.getEmail(), staff.getName()));
@@ -234,6 +260,10 @@ public class AccountActivationService {
         String tenantAdminRoleId = tenantId + TENANT_ADMIN_ROLE_SUFFIX;
         return user.getRoles() != null && user.getRoles().stream()
                 .anyMatch(role -> tenantAdminRoleId.equals(role.getId()));
+    }
+
+    private void logEligibilityFailure(String reason) {
+        log.info("Account activation eligibility rejected: {}", reason);
     }
 
     private String normalizeTenantId(String tenantId) {

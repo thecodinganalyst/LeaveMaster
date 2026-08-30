@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
 import java.util.Set;
 
 @Service
@@ -98,18 +99,61 @@ public class TenantAdminProvisionService {
         provisionRole(tenantRoleId(tenantId, HR_ROLE_SUFFIX), tenantName + " HR",
                 tenantId, HR_PERMISSION_CODES);
 
-        if (!appUserRepository.existsByTenantIdAndLoginName(tenantId, tenantAdminLogin)) {
-            log.info("Creating tenant admin user for tenant {}", tenantId);
-            AppUser admin = AppUser.builder()
-                    .loginName(tenantAdminLogin)
-                    .password(null)
-                    .email(tenantAdminEmail)
-                    .active(true)
-                    .tenantId(tenantId)
-                    .roles(Set.of(tenantAdminRole))
-                    .build();
-            appUserRepository.save(admin);
+        appUserRepository.findByTenantIdAndLoginName(tenantId, tenantAdminLogin)
+                .ifPresentOrElse(
+                        existing -> reconcilePendingTenantAdmin(
+                                existing, tenantId, tenantAdminLogin, tenantAdminEmail, tenantAdminRole),
+                        () -> createPendingTenantAdmin(
+                                tenantId, tenantAdminLogin, tenantAdminEmail, tenantAdminRole));
+    }
+
+    private void createPendingTenantAdmin(
+            String tenantId,
+            String tenantAdminLogin,
+            String tenantAdminEmail,
+            AppRole tenantAdminRole) {
+        log.info("Creating tenant admin user for tenant {}", tenantId);
+        AppUser admin = AppUser.builder()
+                .loginName(tenantAdminLogin)
+                .password(null)
+                .email(tenantAdminEmail)
+                .active(true)
+                .tenantId(tenantId)
+                .roles(Set.of(tenantAdminRole))
+                .build();
+        appUserRepository.save(admin);
+    }
+
+    private void reconcilePendingTenantAdmin(
+            AppUser admin,
+            String tenantId,
+            String tenantAdminLogin,
+            String tenantAdminEmail,
+            AppRole tenantAdminRole) {
+        Set<AppRole> roles = admin.getRoles() == null
+                ? new HashSet<>()
+                : new HashSet<>(admin.getRoles());
+        boolean hasAdminRole = roles.stream().anyMatch(role -> tenantAdminRole.getId().equals(role.getId()));
+        boolean needsRepair = admin.getPassword() != null
+                || !tenantAdminEmail.equals(admin.getEmail())
+                || !admin.isActive()
+                || !tenantId.equals(admin.getTenantId())
+                || !tenantAdminLogin.equals(admin.getLoginName())
+                || !hasAdminRole;
+
+        if (!needsRepair) {
+            return;
         }
+
+        log.warn("Repairing pre-existing tenant admin account into pending activation state for tenant {}", tenantId);
+        roles.add(tenantAdminRole);
+        admin.setLoginName(tenantAdminLogin);
+        admin.setTenantId(tenantId);
+        admin.setEmail(tenantAdminEmail);
+        admin.setPassword(null);
+        admin.setActive(true);
+        admin.setRoles(roles);
+        appUserRepository.save(admin);
     }
 
     private AppRole provisionRole(String roleId, String description, String tenantId, Set<String> permissionCodes) {

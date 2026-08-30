@@ -58,6 +58,10 @@ public class TenantService {
     public Tenant save(Tenant tenant) {
         String tenantAdminEmail = validateTenantAdminEmail(tenant.getTenantAdminEmail());
         tenant.setTenantAdminEmail(tenantAdminEmail);
+        if (tenant.getId() != null && !tenant.getId().isBlank() && tenantRepository.existsById(tenant.getId())) {
+            throw new IllegalArgumentException("Tenant already exists: " + tenant.getId());
+        }
+
         List<TenantJurisdictionProvisionRequest> requestedJurisdictions = tenant.getJurisdictions();
         boolean legacyRequest = requestedJurisdictions == null || requestedJurisdictions.isEmpty();
 
