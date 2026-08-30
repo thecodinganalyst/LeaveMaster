@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -109,6 +109,40 @@ describe('AppLayout navigation', () => {
     );
 
     expect(screen.queryByRole('link', { name: 'Tenants' })).not.toBeInTheDocument();
+  });
+
+  it('moves security and change password actions into the mobile menu', () => {
+    mocks.breakpoint.lg = false;
+    mocks.useCan.mockReturnValue({ data: { can: false } });
+
+    render(
+      <MemoryRouter>
+        <AppLayout><div>Page content</div></AppLayout>
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByRole('button', { name: 'Security' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Change password' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open menu' }));
+
+    expect(screen.getByRole('link', { name: 'Security' })).toHaveAttribute('href', '/account/security');
+    expect(screen.getByRole('link', { name: 'Change Password' })).toHaveAttribute('href', '/account/change-password');
+  });
+
+  it('keeps security and change password actions in the desktop header', () => {
+    mocks.useCan.mockReturnValue({ data: { can: false } });
+
+    render(
+      <MemoryRouter>
+        <AppLayout><div>Page content</div></AppLayout>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('button', { name: 'Security' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Change password' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Security' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Change Password' })).not.toBeInTheDocument();
   });
 
   it('renders a high-contrast mobile menu button hook on small screens', () => {

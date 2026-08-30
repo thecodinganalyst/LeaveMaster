@@ -70,8 +70,12 @@ export const AppLayout = ({ children }: PropsWithChildren) => {
       ...(platformAdmin && eligibilityRuleAccess?.can ? [{ key: '/leave-entitlement-policy-eligibility-rules', icon: <SolutionOutlined />, label: <Link to="/leave-entitlement-policy-eligibility-rules">Eligibility Rules</Link> }] : []),
       ...(calendarAccess?.can ? [{ key: '/leave-calendars', icon: <CalendarOutlined />, label: <Link to="/leave-calendars">Leave Calendars</Link> }] : []),
       ...(approverAccess?.can ? [{ key: '/leave-approvers', icon: <AuditOutlined />, label: <Link to="/leave-approvers">Leave Approvers</Link> }] : []),
+      ...(!isDesktop ? [
+        { key: '/account/security', icon: <SafetyCertificateOutlined />, label: <Link to="/account/security">Security</Link> },
+        { key: '/account/change-password', icon: <LockOutlined />, label: <Link to="/account/change-password">Change Password</Link> },
+      ] : []),
     ],
-    [approvalAccess?.can, approverAccess?.can, calendarAccess?.can, eligibilityRuleAccess?.can, employeeAccess?.can, entitlementPolicyAccess?.can, jurisdictionAccess?.can, jurisdictionLeaveTypeAccess?.can, leaveAccess?.can, leaveTypeAccess?.can, platformAdmin, publicHolidayAccess?.can, roleAccess?.can, tenantAccess?.can, userAccess?.can],
+    [approvalAccess?.can, approverAccess?.can, calendarAccess?.can, eligibilityRuleAccess?.can, employeeAccess?.can, entitlementPolicyAccess?.can, isDesktop, jurisdictionAccess?.can, jurisdictionLeaveTypeAccess?.can, leaveAccess?.can, leaveTypeAccess?.can, platformAdmin, publicHolidayAccess?.can, roleAccess?.can, tenantAccess?.can, userAccess?.can],
   );
 
   const selectedKeys = useMemo(() => {
@@ -118,12 +122,16 @@ export const AppLayout = ({ children }: PropsWithChildren) => {
             <Button icon={<MessageOutlined />} onClick={() => setAssistantOpen(true)} aria-label="Open Ask LeaveMaestro assistant">
               {isDesktop ? 'Ask LeaveMaestro' : null}
             </Button>
-            <Button icon={<SafetyCertificateOutlined />} onClick={() => navigate('/account/security')} aria-label="Security">
-              {isDesktop ? 'Security' : null}
-            </Button>
-            <Button icon={<LockOutlined />} onClick={() => navigate('/account/change-password')} aria-label="Change password">
-              {isDesktop ? 'Change password' : null}
-            </Button>
+            {isDesktop ? (
+              <>
+                <Button icon={<SafetyCertificateOutlined />} onClick={() => navigate('/account/security')} aria-label="Security">
+                  Security
+                </Button>
+                <Button icon={<LockOutlined />} onClick={() => navigate('/account/change-password')} aria-label="Change password">
+                  Change password
+                </Button>
+              </>
+            ) : null}
             <Button onClick={() => logout(undefined, { onSuccess: () => navigate('/login') })}>Sign out</Button>
           </Space>
         </Header>
