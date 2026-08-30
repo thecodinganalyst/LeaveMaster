@@ -26,7 +26,7 @@ export function ContactForm() {
       email: String(data.get('email') ?? ''),
       phone: String(data.get('phone') ?? ''),
       country: String(data.get('country') ?? ''),
-      enquiryType: String(data.get('enquiryType') ?? ''),
+      enquiryType: String(data.get('enquiryType') ?? '') as ContactPayload['enquiryType'],
       message: String(data.get('message') ?? ''),
       website: String(data.get('website') ?? ''),
     };
