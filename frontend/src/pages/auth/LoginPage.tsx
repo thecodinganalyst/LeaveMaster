@@ -111,27 +111,7 @@ export const LoginPage = () => {
               ? 'Sign in with Google, GitHub, or your LeaveMaestro account.'
               : 'Sign in or complete your account setup.'}
           </Typography.Text>
-          <Alert
-            type="warning"
-            showIcon
-            message="Hosted evaluation — test data only"
-            description="This project-hosted environment is for temporary testing and evaluation only. Do not enter real employee or personal data. Data may be reset or permanently deleted at any time."
-          />
           {error ? <Alert type="error" showIcon message={error} /> : null}
-
-          {step === 'IDENTIFIER' ? (
-            <>
-              <Space direction="vertical" style={{ width: '100%' }}>
-                <Button icon={<GoogleOutlined />} block onClick={() => startOAuthLogin('google')}>
-                  Continue with Google
-                </Button>
-                <Button icon={<GithubOutlined />} block onClick={() => startOAuthLogin('github')}>
-                  Continue with GitHub
-                </Button>
-              </Space>
-              <Divider plain>or use your LeaveMaestro account</Divider>
-            </>
-          ) : null}
 
           {step === 'IDENTIFIER' ? (
             <Form key={identifierFormKey} layout="vertical" onFinish={({ tenantId: tenantValue, loginName: loginValue }) => run(async () => {
@@ -155,6 +135,20 @@ export const LoginPage = () => {
               </Form.Item>
               <Button type="primary" htmlType="submit" block loading={busy}>Continue</Button>
             </Form>
+          ) : null}
+
+          {step === 'IDENTIFIER' ? (
+            <>
+              <Divider plain>or continue with</Divider>
+              <Space direction="vertical" style={{ width: '100%' }}>
+                <Button icon={<GoogleOutlined />} block onClick={() => startOAuthLogin('google')}>
+                  Continue with Google
+                </Button>
+                <Button icon={<GithubOutlined />} block onClick={() => startOAuthLogin('github')}>
+                  Continue with GitHub
+                </Button>
+              </Space>
+            </>
           ) : null}
 
           {step === 'PASSWORD' ? (
@@ -242,6 +236,13 @@ export const LoginPage = () => {
               <Button type="primary" block onClick={() => setStep('PASSWORD')}>Continue to sign in</Button>
             </Space>
           ) : null}
+
+          <Alert
+            type="warning"
+            showIcon
+            message="Hosted evaluation — test data only"
+            description="This project-hosted environment is for temporary testing and evaluation only. Do not enter real employee or personal data. Data may be reset or permanently deleted at any time."
+          />
         </Space>
       </Card>
     </div>
