@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Alert, Card, Col, Form, Input, Row, Select, Space, Spin, Steps, Typography } from 'antd';
+import { Alert, Card, Col, Form, Input, InputNumber, Row, Select, Space, Spin, Steps, Typography } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 
 import { apiFetch } from '../../api/http.ts';
@@ -22,6 +22,7 @@ interface LeaveTypeSource { id: string; name: string; }
 interface LeaveEntitlementValue {
   id?: string | null;
   leaveType?: LeaveTypeSource;
+  leaveTypeId?: string | null;
   from?: string;
   to?: string;
   entitlement?: number;
@@ -109,7 +110,12 @@ export const StaffCreationFields = ({ step }: Props) => {
       }),
     }).then((analysis) => {
       if (cancelled) return;
-      form.setFieldValue('leaveEntitlements', analysis.proposals);
+      form.setFieldValue('leaveEntitlements', analysis.proposals.map((proposal) => ({
+        ...proposal,
+        leaveTypeId: proposal.leaveType?.id,
+        baseEntitlementAmount: proposal.baseEntitlementAmount ?? proposal.entitlement ?? 0,
+        adjustmentAmount: 0,
+      })));
       setStatus(analysis.status);
     }).catch((cause: unknown) => {
       if (cancelled) return;
@@ -145,22 +151,50 @@ export const StaffCreationFields = ({ step }: Props) => {
       ) : (
         <Card size="small" title="Generated leave entitlements" style={{ marginBottom: 24 }}>
           <Typography.Paragraph type="secondary">
-            Review the entitlements generated from the staff details entered in Step 1. Nothing is saved until you confirm staff creation.
+            Review the policy-generated entitlements and adjust the final amount if required. Nothing is saved until you confirm staff creation.
           </Typography.Paragraph>
           {loading ? <Space><Spin size="small" /> Generating entitlements…</Space> : null}
           {error ? <Alert type="error" showIcon message={error} /> : null}
           {!loading && !error && status === 'NO_TEMPLATE' ? <Alert type="info" showIcon message="No entitlement policy templates are configured for this staff member" /> : null}
           {!loading && !error && status === 'NOT_ELIGIBLE_IN_PERIOD' ? <Alert type="info" showIcon message="This staff member is not eligible for an automatic entitlement in the current period" /> : null}
-          {!loading && !error && (entitlements ?? []).map((entitlement, index) => (
-            <Card key={`${entitlement.leaveType?.id ?? 'leave'}-${index}`} size="small" style={{ marginTop: 12 }}>
-              <Row gutter={12}>
-                <Col xs={24} md={8}><Typography.Text strong>{entitlement.leaveType?.name ?? entitlement.leaveType?.id ?? 'Leave entitlement'}</Typography.Text></Col>
-                <Col xs={12} md={5}>{entitlement.from ?? '—'} to {entitlement.to ?? '—'}</Col>
-                <Col xs={12} md={5}><Typography.Text strong>{entitlement.entitlement ?? 0} days</Typography.Text></Col>
-              </Row>
-            </Card>
-          ))}
-          <Form.Item name="leaveEntitlements" hidden><Input /></Form.Item>
+          {!loading && !error && (entitlements ?? []).map((entitlement, index) => {
+            const generated = entitlement.baseEntitlementAmount ?? entitlement.entitlement ?? 0;
+            const finalAmount = entitlement.entitlement ?? 0;
+            const adjusted = Math.abs(finalAmount - generated) > 0.0001;
+            return (
+              <Card key={`${entitlement.leaveType?.id ?? 'leave'}-${index}`} size="small" style={{ marginTop: 12 }}>
+                <Row gutter={12} align="middle">
+                  <Col xs={24} md={7}>
+                    <Typography.Text strong>{entitlement.leaveType?.name ?? entitlement.leaveType?.id ?? 'Leave entitlement'}</Typography.Text>
+                    <br />
+                    <Typography.Text type="secondary">{entitlement.from ?? '—'} to {entitlement.to ?? '—'}</Typography.Text>
+                  </Col>
+                  <Col xs={12} md={7}>
+                    <Typography.Text type="secondary">Calculated entitlement</Typography.Text><br />
+                    <Typography.Text strong>{generated} days</Typography.Text>
+                  </Col>
+                  <Col xs={12} md={7}>
+                    <Form.Item
+                      name={['leaveEntitlements', index, 'entitlement']}
+                      label="Final entitlement"
+                      style={{ marginBottom: 0 }}
+                      rules={[
+                        { required: true, message: 'Final entitlement is required' },
+                        { validator: (_, value?: number) => value == null || (value >= 0 && Number.isInteger(value * 2))
+                          ? Promise.resolve()
+                          : Promise.reject(new Error('Use 0.5-day increments')) },
+                      ]}
+                    >
+                      <InputNumber min={0} step={0.5} precision={1} addonAfter="days" style={{ width: '100%' }} />
+                    </Form.Item>
+                  </Col>
+                </Row>
+                {adjusted ? (
+                  <Typography.Text type="warning">Adjusted from {generated} days generated by policy</Typography.Text>
+                ) : null}
+              </Card>
+            );
+          })}
         </Card>
       )}
     </>

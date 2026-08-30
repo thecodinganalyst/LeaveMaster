@@ -24,28 +24,41 @@ const renderField = (editing = false, staffId?: string) => {
 describe('StaffDependantsField', () => {
   beforeEach(() => {
     mockedApiFetch.mockReset();
-    mockedApiFetch.mockResolvedValue([{
-      id: 'D1',
-      name: 'Child One',
-      relationshipCode: 'CHILD',
-      dateOfBirth: '2023-05-10',
-      citizenshipCode: 'SG',
-      active: true,
-    }]);
+    mockedApiFetch.mockImplementation(async (path) => {
+      if (path === '/api/jurisdictions') {
+        return [{ id: 'SG', code: 'SG', name: 'Singapore', parentId: null }] as never;
+      }
+      if (path === '/api/staff/S001/dependants') {
+        return [{
+          id: 'D1',
+          name: 'Child One',
+          relationshipCode: 'CHILD',
+          dateOfBirth: '2023-05-10',
+          citizenshipCode: 'SG',
+          residencyCode: 'PERMANENT_RESIDENT',
+          active: true,
+        }] as never;
+      }
+      return [] as never;
+    });
   });
 
-  it('loads existing dependant records while editing staff', async () => {
+  it('loads existing dependant records with normalized citizenship and residency labels', async () => {
     renderField(true, 'S001');
     expect(await screen.findByDisplayValue('Child One')).toBeInTheDocument();
     expect(screen.getByDisplayValue('2023-05-10')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('SG')).toBeInTheDocument();
+    expect(await screen.findByText('Singapore (SG)')).toBeInTheDocument();
+    expect(screen.getByText('Permanent resident')).toBeInTheDocument();
     expect(mockedApiFetch).toHaveBeenCalledWith('/api/staff/S001/dependants');
+    expect(mockedApiFetch).toHaveBeenCalledWith('/api/jurisdictions');
   });
 
   it('adds and removes a dependant in the staff form', async () => {
     renderField();
     fireEvent.click(screen.getByRole('button', { name: /Add dependant/i }));
     expect(screen.getByLabelText('Name')).toBeInTheDocument();
+    expect(screen.getByLabelText('Citizenship')).toBeInTheDocument();
+    expect(screen.getByLabelText('Residency status')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Remove dependant/i }));
     await waitFor(() => expect(screen.queryByLabelText('Name')).not.toBeInTheDocument());
   });
