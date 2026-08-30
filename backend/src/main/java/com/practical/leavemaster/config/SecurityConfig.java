@@ -132,13 +132,21 @@ public class SecurityConfig {
             ExistingUserOnlyOAuth2UserService existingUserOnlyOAuth2UserService = new ExistingUserOnlyOAuth2UserService(appUserRepository);
             http.oauth2Login(oauth2 -> oauth2
                 .userInfoEndpoint(userInfo -> userInfo.userService(existingUserOnlyOAuth2UserService))
-                .successHandler((request, response, authentication) -> response.sendRedirect(normalizedPublicAppUrl + "/"))
+                .successHandler((request, response, authentication) -> {
+                    boolean linkingFlow = OAuthLinkingContext.consumeLinkFlow(request.getSession(false));
+                    String destination = linkingFlow ? "/account/security?oauthLinked=true" : "/";
+                    response.sendRedirect(normalizedPublicAppUrl + destination);
+                })
                 .failureHandler((request, response, exception) -> {
                     String errorCode = exception instanceof OAuth2AuthenticationException oauthException
                         ? oauthException.getError().getErrorCode()
                         : "oauth_failed";
                     String encodedErrorCode = URLEncoder.encode(errorCode, StandardCharsets.UTF_8);
-                    response.sendRedirect(normalizedPublicAppUrl + "/login?oauthError=" + encodedErrorCode);
+                    boolean linkingFlow = OAuthLinkingContext.consumeLinkFlow(request.getSession(false));
+                    String destination = linkingFlow
+                        ? "/account/security?oauthError=" + encodedErrorCode
+                        : "/login?oauthError=" + encodedErrorCode;
+                    response.sendRedirect(normalizedPublicAppUrl + destination);
                 })
             );
         }

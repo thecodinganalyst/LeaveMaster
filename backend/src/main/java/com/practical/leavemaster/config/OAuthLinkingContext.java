@@ -11,6 +11,7 @@ final class OAuthLinkingContext {
     static final String USER_ID_ATTRIBUTE = OAuthLinkingContext.class.getName() + ".userId";
     static final String PROVIDER_ATTRIBUTE = OAuthLinkingContext.class.getName() + ".provider";
     static final String EXPIRES_AT_ATTRIBUTE = OAuthLinkingContext.class.getName() + ".expiresAt";
+    static final String LINK_FLOW_ATTRIBUTE = OAuthLinkingContext.class.getName() + ".linkFlow";
     static final Duration TTL = Duration.ofMinutes(10);
 
     private OAuthLinkingContext() {
@@ -21,6 +22,7 @@ final class OAuthLinkingContext {
         session.setAttribute(USER_ID_ATTRIBUTE, userId);
         session.setAttribute(PROVIDER_ATTRIBUTE, provider);
         session.setAttribute(EXPIRES_AT_ATTRIBUTE, Instant.now().plus(TTL).toEpochMilli());
+        session.setAttribute(LINK_FLOW_ATTRIBUTE, Boolean.TRUE);
     }
 
     static boolean hasContext(HttpSession session) {
@@ -33,7 +35,7 @@ final class OAuthLinkingContext {
         Object userId = session.getAttribute(USER_ID_ATTRIBUTE);
         Object expectedProvider = session.getAttribute(PROVIDER_ATTRIBUTE);
         Object expiresAt = session.getAttribute(EXPIRES_AT_ATTRIBUTE);
-        clear(session);
+        clearLinkRequest(session);
 
         if (!(userId instanceof String userIdValue)
                 || !(expectedProvider instanceof String providerValue)
@@ -46,7 +48,21 @@ final class OAuthLinkingContext {
         return Optional.of(new LinkRequest(userIdValue, providerValue));
     }
 
+    static boolean consumeLinkFlow(HttpSession session) {
+        if (session == null) {
+            return false;
+        }
+        boolean linkFlow = Boolean.TRUE.equals(session.getAttribute(LINK_FLOW_ATTRIBUTE));
+        session.removeAttribute(LINK_FLOW_ATTRIBUTE);
+        return linkFlow;
+    }
+
     static void clear(HttpSession session) {
+        clearLinkRequest(session);
+        session.removeAttribute(LINK_FLOW_ATTRIBUTE);
+    }
+
+    private static void clearLinkRequest(HttpSession session) {
         session.removeAttribute(USER_ID_ATTRIBUTE);
         session.removeAttribute(PROVIDER_ATTRIBUTE);
         session.removeAttribute(EXPIRES_AT_ATTRIBUTE);

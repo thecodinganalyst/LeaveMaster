@@ -118,6 +118,9 @@ export const AppLayout = ({ children }: PropsWithChildren) => {
             <Button icon={<MessageOutlined />} onClick={() => setAssistantOpen(true)} aria-label="Open Ask LeaveMaestro assistant">
               {isDesktop ? 'Ask LeaveMaestro' : null}
             </Button>
+            <Button icon={<SafetyCertificateOutlined />} onClick={() => navigate('/account/security')} aria-label="Security">
+              {isDesktop ? 'Security' : null}
+            </Button>
             <Button icon={<LockOutlined />} onClick={() => navigate('/account/change-password')} aria-label="Change password">
               {isDesktop ? 'Change password' : null}
             </Button>
