@@ -6,6 +6,7 @@ import com.practical.leavemaster.leaveapprover.LeaveApproverService;
 import com.practical.leavemaster.leaveeligibility.LeaveEligibilityFactService;
 import com.practical.leavemaster.leaveeligibility.StaffDependantWriteRequest;
 import com.practical.leavemaster.leaveentitlement.LeaveEntitlement;
+import com.practical.leavemaster.leavetype.LeaveType;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -55,25 +56,56 @@ class StaffWriteServiceTest {
     }
 
     @Test
-    void shouldReplaceClientEntitlementsWithAuthoritativeProposalAndCreateDependants() {
-        LeaveEntitlement authoritative = LeaveEntitlement.builder().entitlement(BigDecimal.valueOf(14)).build();
+    void shouldPersistReviewedEntitlementAdjustmentAndCreateDependants() {
+        LeaveEntitlement authoritative = entitlement(new BigDecimal("5.50"));
         when(entitlementProposalService.analyze(any())).thenReturn(new StaffEntitlementProposalAnalysis(
                 List.of(authoritative), StaffEntitlementProposalAnalysis.Status.AVAILABLE));
         Staff saved = Staff.builder().id("S001").name("Alice").build();
         when(staffService.save(any(Staff.class))).thenReturn(saved);
 
         StaffDependantWriteRequest dependant = new StaffDependantWriteRequest(
-                "Child", "CHILD", LocalDate.of(2022, 1, 1), "SG", null, null, null, null, true);
+                "Child", "CHILD", LocalDate.of(2022, 1, 1), "SG", "PERMANENT_RESIDENT", null, null, null, true);
         StaffWriteRequest request = new StaffWriteRequest(
                 "S001", "Alice", "alice@example.com", LocalDate.of(2026, 8, 27), List.of(), null,
-                "SG", List.of(), "alice", null, EmploymentType.FULL_TIME, null, List.of(dependant));
+                "SG", List.of(reviewed(new BigDecimal("7.0"))), "alice", null, EmploymentType.FULL_TIME, null, List.of(dependant));
 
         staffWriteService.create(request);
 
         ArgumentCaptor<Staff> staffCaptor = ArgumentCaptor.forClass(Staff.class);
         verify(staffService).save(staffCaptor.capture());
-        assertThat(staffCaptor.getValue().getLeaveEntitlements()).containsExactly(authoritative);
+        LeaveEntitlement persisted = staffCaptor.getValue().getLeaveEntitlements().getFirst();
+        assertThat(persisted.getLeaveType().getId()).isEqualTo("TENANT:ANNUAL_LEAVE");
+        assertThat(persisted.getBaseEntitlementAmount()).isEqualByComparingTo("5.50");
+        assertThat(persisted.getAdjustmentAmount()).isEqualByComparingTo("1.50");
+        assertThat(persisted.getEntitlement()).isEqualByComparingTo("7.00");
         verify(leaveEligibilityFactService).createDependant("S001", dependant);
+    }
+
+    @Test
+    void shouldRejectStaleReviewedEntitlementIdentity() {
+        when(entitlementProposalService.analyze(any())).thenReturn(new StaffEntitlementProposalAnalysis(
+                List.of(entitlement(new BigDecimal("5.50"))), StaffEntitlementProposalAnalysis.Status.AVAILABLE));
+        StaffWriteRequest.EntitlementInput stale = new StaffWriteRequest.EntitlementInput(
+                null, "TENANT:OTHER", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31), new BigDecimal("6.0"),
+                "POLICY-1", new BigDecimal("5.50"), BigDecimal.ZERO, new BigDecimal("0.50"));
+        StaffWriteRequest request = createRequest(List.of(stale));
+
+        assertThatThrownBy(() -> staffWriteService.create(request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("stale");
+        verify(staffService, never()).save(any());
+    }
+
+    @Test
+    void shouldRejectReviewedEntitlementOutsideHalfDayIncrement() {
+        when(entitlementProposalService.analyze(any())).thenReturn(new StaffEntitlementProposalAnalysis(
+                List.of(entitlement(new BigDecimal("5.50"))), StaffEntitlementProposalAnalysis.Status.AVAILABLE));
+        StaffWriteRequest request = createRequest(List.of(reviewed(new BigDecimal("5.75"))));
+
+        assertThatThrownBy(() -> staffWriteService.create(request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("0.5-day increments");
+        verify(staffService, never()).save(any());
     }
 
     @Test
@@ -124,6 +156,31 @@ class StaffWriteServiceTest {
     private void stubEmptyProposal() {
         when(entitlementProposalService.analyze(any())).thenReturn(new StaffEntitlementProposalAnalysis(
                 List.of(), StaffEntitlementProposalAnalysis.Status.NO_TEMPLATE));
+    }
+
+    private static LeaveEntitlement entitlement(BigDecimal base) {
+        return LeaveEntitlement.builder()
+                .leaveType(LeaveType.builder().id("TENANT:ANNUAL_LEAVE").name("Annual Leave").build())
+                .from(LocalDate.of(2026, 1, 1))
+                .to(LocalDate.of(2026, 12, 31))
+                .policyId("POLICY-1")
+                .baseEntitlementAmount(base)
+                .entitlement(base)
+                .carriedForwardAmount(BigDecimal.ZERO)
+                .adjustmentAmount(BigDecimal.ZERO)
+                .build();
+    }
+
+    private static StaffWriteRequest.EntitlementInput reviewed(BigDecimal finalAmount) {
+        return new StaffWriteRequest.EntitlementInput(
+                null, "TENANT:ANNUAL_LEAVE", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31), finalAmount,
+                "POLICY-1", new BigDecimal("5.50"), BigDecimal.ZERO, finalAmount.subtract(new BigDecimal("5.50")));
+    }
+
+    private static StaffWriteRequest createRequest(List<StaffWriteRequest.EntitlementInput> entitlements) {
+        return new StaffWriteRequest(
+                "S001", "Alice", "alice@example.com", LocalDate.of(2026, 8, 27), List.of(), null,
+                "SG", entitlements, "alice", null, EmploymentType.FULL_TIME, null, null);
     }
 
     private static StaffWriteRequest request(List<StaffWriteRequest.LeaveApproverInput> approvers) {
