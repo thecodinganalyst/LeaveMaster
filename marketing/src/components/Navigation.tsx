@@ -4,7 +4,7 @@ import { LeaveMaestroLogo } from '@/components/LeaveMaestroLogo';
 const links = [
   { href: '/', label: 'Home' },
   { href: '/features', label: 'Features' },
-  { href: '/demo', label: 'Demo' },
+  { href: '/demo', label: 'Evaluation' },
   { href: '/contact', label: 'Contact' },
   { href: '/privacy', label: 'Privacy' },
   { href: '/terms', label: 'Terms' },
