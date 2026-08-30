@@ -46,7 +46,8 @@ class TransactionalEmailConfigurationTest {
                 .run(context -> {
                     assertThat(context).hasFailed();
                     assertThat(context.getStartupFailure())
-                            .hasRootCauseInstanceOf(IllegalStateException.class)
+                            .rootCause()
+                            .isInstanceOf(IllegalStateException.class)
                             .hasMessageContaining("RESEND_API_KEY");
                 });
     }
