@@ -10,11 +10,9 @@ import {
   setInitialAccountPassword,
   verifyAccountActivationPin,
 } from '../../api/accountActivation.ts';
-import { ApiError, loginWithSession } from '../../api/http.ts';
+import { ApiError } from '../../api/http.ts';
 import {
-  clearRememberedOAuthProvider,
   getRememberedOAuthProvider,
-  startOAuthLink,
   startOAuthLogin,
   type OAuthProvider,
 } from '../../api/oauth.ts';
@@ -31,7 +29,7 @@ const oauthErrorMessage = (code: string | null, provider?: OAuthProvider) => {
   switch (code) {
     case 'not_linked':
     case 'link_context_invalid':
-      return `This ${label} account is not linked to LeaveMaestro yet. Verify your existing LeaveMaestro account to set it up.`;
+      return `This ${label} account is not linked to LeaveMaestro yet. Sign in with your LeaveMaestro account, then open Security to set up ${label} sign-in.`;
     case 'identity_in_use':
       return `This ${label} account is already linked to another LeaveMaestro account.`;
     case 'already_linked':
@@ -54,15 +52,11 @@ export const LoginPage = () => {
   const redirectPath = searchParams.get('to') ?? '/';
   const oauthError = searchParams.get('oauthError');
   const rememberedProvider = getRememberedOAuthProvider();
-  const initialSetupProvider = oauthError === 'not_linked' || oauthError === 'link_context_invalid'
-    ? rememberedProvider
-    : undefined;
 
   const [step, setStep] = useState<Step>('IDENTIFIER');
   const [tenantId, setTenantId] = useState('');
   const [loginName, setLoginName] = useState('');
   const [identifierFormKey, setIdentifierFormKey] = useState(0);
-  const [oauthSetupProvider, setOAuthSetupProvider] = useState<OAuthProvider | undefined>(initialSetupProvider);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>(() => oauthErrorMessage(oauthError, rememberedProvider));
   const [cooldownUntil, setCooldownUntil] = useState<number>(0);
@@ -70,7 +64,6 @@ export const LoginPage = () => {
 
   const cooldownRemaining = Math.max(0, Math.ceil((cooldownUntil - Date.now()) / 1000));
   const accountIdentity = { tenantId, loginName };
-  const oauthLabel = providerLabel(oauthSetupProvider);
 
   const run = async (action: () => Promise<void>) => {
     setBusy(true);
@@ -104,18 +97,6 @@ export const LoginPage = () => {
     setCooldownUntil(0);
   };
 
-  const backToLogin = () => {
-    restartAccount();
-    setOAuthSetupProvider(undefined);
-    clearRememberedOAuthProvider();
-  };
-
-  const continueOAuthSetup = async (password: string) => {
-    if (!oauthSetupProvider) return;
-    await loginWithSession(tenantId, loginName, password);
-    await startOAuthLink(oauthSetupProvider);
-  };
-
   const accountContext = step === 'IDENTIFIER' ? null : (
     <Typography.Text strong>{tenantId} / {loginName}</Typography.Text>
   );
@@ -126,15 +107,13 @@ export const LoginPage = () => {
         <Space direction="vertical" size={18} style={{ width: '100%' }}>
           <Typography.Title level={3} style={{ marginBottom: 0 }}>LeaveMaestro</Typography.Title>
           <Typography.Text type="secondary">
-            {oauthSetupProvider
-              ? `Set up ${oauthLabel} sign-in by verifying your existing LeaveMaestro account.`
-              : step === 'IDENTIFIER'
-                ? 'Sign in with Google, GitHub, or your LeaveMaestro account.'
-                : 'Sign in or complete your account setup.'}
+            {step === 'IDENTIFIER'
+              ? 'Sign in with Google, GitHub, or your LeaveMaestro account.'
+              : 'Sign in or complete your account setup.'}
           </Typography.Text>
           {error ? <Alert type="error" showIcon message={error} /> : null}
 
-          {step === 'IDENTIFIER' && !oauthSetupProvider ? (
+          {step === 'IDENTIFIER' ? (
             <>
               <Space direction="vertical" style={{ width: '100%' }}>
                 <Button icon={<GoogleOutlined />} block onClick={() => startOAuthLogin('google')}>
@@ -146,15 +125,6 @@ export const LoginPage = () => {
               </Space>
               <Divider plain>or use your LeaveMaestro account</Divider>
             </>
-          ) : null}
-
-          {step === 'IDENTIFIER' && oauthSetupProvider ? (
-            <Alert
-              type="info"
-              showIcon
-              message={`Set up ${oauthLabel} sign-in`}
-              description={`Enter the tenant ID and login name of the LeaveMaestro account you want to link to this ${oauthLabel} account.`}
-            />
           ) : null}
 
           {step === 'IDENTIFIER' ? (
@@ -178,28 +148,18 @@ export const LoginPage = () => {
                 <Input autoComplete="username" />
               </Form.Item>
               <Button type="primary" htmlType="submit" block loading={busy}>Continue</Button>
-              {oauthSetupProvider ? <Button type="link" block onClick={backToLogin}>Back to login</Button> : null}
             </Form>
           ) : null}
 
           {step === 'PASSWORD' ? (
-            <Form layout="vertical" onFinish={({ password }) => {
-              if (oauthSetupProvider) {
-                void run(() => continueOAuthSetup(password));
-              } else {
-                login({ tenantId, loginName, password, redirectPath });
-              }
-            }}>
+            <Form layout="vertical" onFinish={({ password }) => login({ tenantId, loginName, password, redirectPath })}>
               {accountContext}
               <Form.Item label="Password" name="password" rules={[{ required: true, message: 'Enter your password.' }]}>
                 <Input.Password autoComplete="current-password" autoFocus />
               </Form.Item>
               <Space direction="vertical" style={{ width: '100%' }}>
-                <Button type="primary" htmlType="submit" block loading={oauthSetupProvider ? busy : loginPending}>
-                  {oauthSetupProvider ? `Verify and set up ${oauthLabel} sign-in` : 'Sign in'}
-                </Button>
+                <Button type="primary" htmlType="submit" block loading={loginPending}>Sign in</Button>
                 <Button type="link" block onClick={restartAccount}>Use a different account</Button>
-                {oauthSetupProvider ? <Button type="link" block onClick={backToLogin}>Back to login</Button> : null}
               </Space>
             </Form>
           ) : null}
@@ -215,7 +175,6 @@ export const LoginPage = () => {
                 message.success('If the account is eligible, a verification PIN has been sent.');
               })}>Send verification PIN</Button>
               <Button type="link" block onClick={restartAccount}>Use a different account</Button>
-              {oauthSetupProvider ? <Button type="link" block onClick={backToLogin}>Back to login</Button> : null}
             </Space>
           ) : null}
 
@@ -248,11 +207,7 @@ export const LoginPage = () => {
           {step === 'SET_PASSWORD' ? (
             <Form layout="vertical" onFinish={({ password }) => run(async () => {
               await setInitialAccountPassword(accountIdentity, password);
-              if (oauthSetupProvider) {
-                await continueOAuthSetup(password);
-              } else {
-                setStep('COMPLETE');
-              }
+              setStep('COMPLETE');
             })}>
               {accountContext}
               <Typography.Text>Choose your permanent password.</Typography.Text>
@@ -270,9 +225,7 @@ export const LoginPage = () => {
               ]}>
                 <Input.Password autoComplete="new-password" />
               </Form.Item>
-              <Button type="primary" htmlType="submit" block loading={busy}>
-                {oauthSetupProvider ? `Activate and set up ${oauthLabel} sign-in` : 'Activate account'}
-              </Button>
+              <Button type="primary" htmlType="submit" block loading={busy}>Activate account</Button>
             </Form>
           ) : null}
 
