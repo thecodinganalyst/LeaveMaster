@@ -56,8 +56,7 @@ public class AuthSessionController {
     @GetMapping("/oauth-link/status")
     public ResponseEntity<OAuthLinkStatusResponse> oauthLinkStatus(Authentication authentication) {
         return appUserRepository.findById(authentication.getName())
-            .filter(AppUser::isActive)
-            .filter(user -> user.getTenantId() != null)
+            .filter(this::isOAuthLinkEligible)
             .map(user -> ResponseEntity.ok(new OAuthLinkStatusResponse(
                 user.getOidcProvider() != null && user.getOidcSubject() != null,
                 user.getOidcProvider())))
@@ -76,7 +75,7 @@ public class AuthSessionController {
         }
 
         AppUser user = appUserRepository.findById(authentication.getName()).orElse(null);
-        if (user == null || !user.isActive() || user.getTenantId() == null) {
+        if (!isOAuthLinkEligible(user)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "account_not_eligible"));
         }
         if (user.getOidcProvider() != null || user.getOidcSubject() != null) {
@@ -117,10 +116,7 @@ public class AuthSessionController {
             .sorted(Comparator.naturalOrder())
             .toList();
 
-        boolean platformAdmin = user.getRoles().stream()
-            .anyMatch(role -> role != null
-                && role.isActive()
-                && PLATFORM_ADMIN_ROLE_ID.equalsIgnoreCase(role.getId()));
+        boolean platformAdmin = hasActivePlatformAdminRole(user);
 
         String country = Optional.ofNullable(user.getStaffId())
             .flatMap(staffRepository::findById)
@@ -139,6 +135,21 @@ public class AuthSessionController {
             platformAdmin,
             authorities
         );
+    }
+
+    private boolean isOAuthLinkEligible(AppUser user) {
+        return user != null
+            && user.isActive()
+            && (user.getTenantId() != null || hasActivePlatformAdminRole(user));
+    }
+
+    private boolean hasActivePlatformAdminRole(AppUser user) {
+        return user != null
+            && user.getRoles() != null
+            && user.getRoles().stream()
+                .anyMatch(role -> role != null
+                    && role.isActive()
+                    && PLATFORM_ADMIN_ROLE_ID.equalsIgnoreCase(role.getId()));
     }
 
     public record CsrfResponse(String token, String headerName, String parameterName) {
