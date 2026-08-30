@@ -64,6 +64,21 @@ describe('LoginPage account activation and OAuth sign-in', () => {
     expect(startOAuthLogin).toHaveBeenCalledWith('github');
   });
 
+  it('renders account identifiers before OAuth choices and the evaluation notice last', () => {
+    renderPage();
+
+    const tenantId = screen.getByLabelText('Tenant ID');
+    const loginName = screen.getByLabelText('Login name');
+    const google = screen.getByRole('button', { name: /Continue with Google/i });
+    const github = screen.getByRole('button', { name: /Continue with GitHub/i });
+    const evaluationNotice = screen.getByText('Hosted evaluation — test data only');
+
+    expect(tenantId.compareDocumentPosition(loginName) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(loginName.compareDocumentPosition(google) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(google.compareDocumentPosition(github) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(github.compareDocumentPosition(evaluationNotice) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it('keeps unlinked OAuth users on normal login and directs setup to Security', () => {
     window.sessionStorage.setItem('leavemaster.oauthProvider', 'google');
     renderPage('/login?oauthError=not_linked');
