@@ -25,7 +25,6 @@ export function ContactForm() {
       company: String(data.get('company') ?? ''),
       email: String(data.get('email') ?? ''),
       phone: String(data.get('phone') ?? ''),
-      companySize: String(data.get('companySize') ?? ''),
       country: String(data.get('country') ?? ''),
       enquiryType: String(data.get('enquiryType') ?? ''),
       message: String(data.get('message') ?? ''),
@@ -77,39 +76,22 @@ export function ContactForm() {
           </div>
         </div>
 
-        <div className="grid gap-5 sm:grid-cols-2">
-          <div>
-            <label htmlFor="companySize" className="mb-2 block text-sm font-medium text-slate-900">Company size</label>
-            <select id="companySize" name="companySize" className={fieldClass} defaultValue="">
-              <option value="">Select size</option>
-              <option value="1-20">1–20 employees</option>
-              <option value="21-100">21–100 employees</option>
-              <option value="101-500">101–500 employees</option>
-              <option value="501-2000">501–2,000 employees</option>
-              <option value="2000+">2,000+ employees</option>
-            </select>
-          </div>
-          <div>
-            <label htmlFor="country" className="mb-2 block text-sm font-medium text-slate-900">Country</label>
-            <input id="country" name="country" type="text" maxLength={100} className={fieldClass} autoComplete="country-name" />
-          </div>
+        <div>
+          <label htmlFor="country" className="mb-2 block text-sm font-medium text-slate-900">Country</label>
+          <input id="country" name="country" type="text" maxLength={100} className={fieldClass} autoComplete="country-name" />
         </div>
 
         <div>
-          <label htmlFor="enquiryType" className="mb-2 block text-sm font-medium text-slate-900">I&apos;m interested in *</label>
-          <select id="enquiryType" name="enquiryType" required className={fieldClass} defaultValue="">
-            <option value="" disabled>Select an enquiry type</option>
-            <option value="LEAVE_MANAGEMENT">Leave management</option>
-            <option value="HR_PLATFORM">HR platform</option>
-            <option value="PRODUCT_DEMO">Product demo</option>
+          <label htmlFor="enquiryType" className="mb-2 block text-sm font-medium text-slate-900">Enquiry type *</label>
+          <select id="enquiryType" name="enquiryType" required className={fieldClass} defaultValue="GENERAL_ENQUIRY">
+            <option value="GENERAL_ENQUIRY">General Enquiry</option>
             <option value="PARTNERSHIP">Partnership</option>
-            <option value="OTHER">Other</option>
           </select>
         </div>
 
         <div>
           <label htmlFor="message" className="mb-2 block text-sm font-medium text-slate-900">Message *</label>
-          <textarea id="message" name="message" required maxLength={4000} rows={6} className={fieldClass} placeholder="Tell us about your leave management needs." />
+          <textarea id="message" name="message" required maxLength={4000} rows={6} className={fieldClass} placeholder="How can we help?" />
         </div>
 
         <div className="absolute -left-[10000px]" aria-hidden="true">
