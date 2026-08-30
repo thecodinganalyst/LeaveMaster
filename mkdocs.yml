@@ -65,6 +65,7 @@ nav:
   - Deployment and Operations:
       - Cloud Run deployment: cloudrun-deployment.md
       - Firebase Hosting: firebase-hosting.md
+      - Resend email operations: resend-operations.md
       - Environments and domains: environments-and-domains.md
   - Customer Enquiries: customer-enquiries.md
 

@@ -1,5 +1,6 @@
 package com.practical.leavemaster.accountactivation;
 
+import com.practical.leavemaster.email.EmailDeliveryException;
 import com.practical.leavemaster.email.EmailService;
 import com.practical.leavemaster.staff.Staff;
 import com.practical.leavemaster.staff.StaffRepository;
@@ -113,9 +114,18 @@ public class AccountActivationService {
                     pinExpiryMinutes);
             log.info("Account activation PIN delivery requested successfully");
             return true;
+        } catch (EmailDeliveryException ex) {
+            accountActivationRepository.deleteById(userId);
+            log.warn(
+                    "Account activation PIN delivery failed; activation record invalidated; category={} reason={}",
+                    ex.getClass().getSimpleName(),
+                    ex.getMessage());
+            return false;
         } catch (RuntimeException ex) {
             accountActivationRepository.deleteById(userId);
-            log.warn("Account activation PIN delivery failed; activation record invalidated");
+            log.warn(
+                    "Account activation PIN delivery failed; activation record invalidated; category=unexpected type={}",
+                    ex.getClass().getSimpleName());
             return false;
         }
     }
