@@ -142,6 +142,38 @@ variable "email_from_name" {
   default     = "LeaveMaster"
 }
 
+variable "github_oauth_client_id" {
+  description = "Production GitHub OAuth App client ID"
+  type        = string
+
+  validation {
+    condition     = length(trimspace(var.github_oauth_client_id)) > 0 && lower(trimspace(var.github_oauth_client_id)) != "replace-me"
+    error_message = "github_oauth_client_id must contain the real production GitHub OAuth App client ID."
+  }
+}
+
+variable "github_oauth_client_secret_id" {
+  description = "Existing Secret Manager secret containing the GitHub OAuth App client secret"
+  type        = string
+  default     = "leavemaster-github-oauth-client-secret"
+}
+
+variable "google_oauth_client_id" {
+  description = "Production Google OAuth client ID"
+  type        = string
+
+  validation {
+    condition     = length(trimspace(var.google_oauth_client_id)) > 0 && lower(trimspace(var.google_oauth_client_id)) != "replace-me"
+    error_message = "google_oauth_client_id must contain the real production Google OAuth client ID."
+  }
+}
+
+variable "google_oauth_client_secret_id" {
+  description = "Existing Secret Manager secret containing the Google OAuth client secret"
+  type        = string
+  default     = "leavemaster-google-oauth-client-secret"
+}
+
 variable "enable_platform_admin_password_secret" {
   description = "Whether Cloud Run should read PLATFORM_ADMIN_PASSWORD from Secret Manager"
   type        = bool

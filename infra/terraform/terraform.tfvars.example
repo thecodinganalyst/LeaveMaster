@@ -24,3 +24,10 @@ email_provider           = "resend"
 resend_api_key_secret_id = "leavemaster-resend-api-key"
 email_from_address       = "onboarding@resend.dev"
 email_from_name          = "LeaveMaster"
+
+# OAuth client IDs are non-secret deployment configuration. Store the client
+# secrets in Secret Manager and reference only their secret IDs here.
+github_oauth_client_id        = "your-github-oauth-client-id"
+github_oauth_client_secret_id = "leavemaster-github-oauth-client-secret"
+google_oauth_client_id        = "your-google-oauth-client-id"
+google_oauth_client_secret_id = "leavemaster-google-oauth-client-secret"

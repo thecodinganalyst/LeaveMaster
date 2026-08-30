@@ -60,6 +60,16 @@ data "google_secret_manager_secret" "resend_api_key" {
   secret_id = var.resend_api_key_secret_id
 }
 
+data "google_secret_manager_secret" "github_oauth_client_secret" {
+  project   = var.project_id
+  secret_id = var.github_oauth_client_secret_id
+}
+
+data "google_secret_manager_secret" "google_oauth_client_secret" {
+  project   = var.project_id
+  secret_id = var.google_oauth_client_secret_id
+}
+
 resource "google_project_service" "required" {
   for_each = local.required_apis
 
@@ -203,6 +213,20 @@ resource "google_secret_manager_secret_iam_member" "cloud_run_resend_api_key" {
   member    = "serviceAccount:${google_service_account.cloud_run.email}"
 }
 
+resource "google_secret_manager_secret_iam_member" "cloud_run_github_oauth_client_secret" {
+  project   = var.project_id
+  secret_id = data.google_secret_manager_secret.github_oauth_client_secret.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.cloud_run.email}"
+}
+
+resource "google_secret_manager_secret_iam_member" "cloud_run_google_oauth_client_secret" {
+  project   = var.project_id
+  secret_id = data.google_secret_manager_secret.google_oauth_client_secret.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.cloud_run.email}"
+}
+
 resource "google_storage_bucket_iam_member" "github_cloudbuild_source" {
   bucket = google_storage_bucket.cloudbuild_source.name
   role   = "roles/storage.admin"
@@ -313,6 +337,16 @@ resource "google_cloud_run_v2_service" "api" {
       }
 
       env {
+        name  = "GH_CLIENT_ID"
+        value = var.github_oauth_client_id
+      }
+
+      env {
+        name  = "GOOGLE_CLIENT_ID"
+        value = var.google_oauth_client_id
+      }
+
+      env {
         name  = "PLATFORM_ADMIN_RESET_PASSWORD"
         value = tostring(var.reset_platform_admin_password)
       }
@@ -323,6 +357,28 @@ resource "google_cloud_run_v2_service" "api" {
         value_source {
           secret_key_ref {
             secret  = google_secret_manager_secret.database_password.secret_id
+            version = "latest"
+          }
+        }
+      }
+
+      env {
+        name = "GH_CLIENT_SECRET"
+
+        value_source {
+          secret_key_ref {
+            secret  = data.google_secret_manager_secret.github_oauth_client_secret.secret_id
+            version = "latest"
+          }
+        }
+      }
+
+      env {
+        name = "GOOGLE_CLIENT_SECRET"
+
+        value_source {
+          secret_key_ref {
+            secret  = data.google_secret_manager_secret.google_oauth_client_secret.secret_id
             version = "latest"
           }
         }
@@ -396,7 +452,9 @@ resource "google_cloud_run_v2_service" "api" {
     google_secret_manager_secret_iam_member.cloud_run_platform_admin_password,
     google_secret_manager_secret_iam_member.cloud_run_openai_api_key,
     google_secret_manager_secret_iam_member.cloud_run_gemini_api_key,
-    google_secret_manager_secret_iam_member.cloud_run_resend_api_key
+    google_secret_manager_secret_iam_member.cloud_run_resend_api_key,
+    google_secret_manager_secret_iam_member.cloud_run_github_oauth_client_secret,
+    google_secret_manager_secret_iam_member.cloud_run_google_oauth_client_secret
   ]
 }
 
