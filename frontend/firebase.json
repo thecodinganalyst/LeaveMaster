@@ -23,6 +23,13 @@
         }
       },
       {
+        "source": "/account-activation/**",
+        "run": {
+          "serviceId": "leavemaster-api",
+          "region": "asia-southeast1"
+        }
+      },
+      {
         "source": "/oauth2/**",
         "run": {
           "serviceId": "leavemaster-api",

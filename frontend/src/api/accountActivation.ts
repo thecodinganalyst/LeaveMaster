@@ -1,4 +1,4 @@
-import { apiFetch } from './http.ts';
+import { ApiError, apiFetch } from './http.ts';
 
 export type AccountActivationNextStep = 'PASSWORD' | 'ACTIVATION';
 
@@ -15,11 +15,24 @@ interface AccountIdentity {
   loginName: string;
 }
 
-export const lookupAccountActivation = async ({ tenantId, loginName }: AccountIdentity) =>
-  apiFetch<LookupResponse>('/account-activation/lookup', {
+const isLookupResponse = (value: unknown): value is LookupResponse => {
+  if (!value || typeof value !== 'object' || !('nextStep' in value)) {
+    return false;
+  }
+  const nextStep = value.nextStep;
+  return nextStep === 'PASSWORD' || nextStep === 'ACTIVATION';
+};
+
+export const lookupAccountActivation = async ({ tenantId, loginName }: AccountIdentity) => {
+  const response = await apiFetch<unknown>('/account-activation/lookup', {
     method: 'POST',
     body: JSON.stringify({ tenantId, loginName }),
   });
+  if (!isLookupResponse(response)) {
+    throw new ApiError('Unexpected response from authentication service. Please try again.', 502);
+  }
+  return response;
+};
 
 export const requestAccountActivationPin = async ({ tenantId, loginName }: AccountIdentity) =>
   apiFetch<MessageResponse>('/account-activation/request', {

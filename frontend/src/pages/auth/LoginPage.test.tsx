@@ -209,6 +209,21 @@ describe('LoginPage account activation and OAuth onboarding', () => {
     expect(screen.getByLabelText('Login name')).toHaveValue('');
   });
 
+  it('shows lookup errors without silently advancing to password login', async () => {
+    lookupAccountActivation.mockRejectedValue(
+      new ApiError('Unexpected response from authentication service. Please try again.', 502),
+    );
+    renderPage();
+
+    await enterIdentifier('Bravo_Admin', 'Bravo');
+
+    expect(await screen.findByText('Unexpected response from authentication service. Please try again.')).toBeInTheDocument();
+    expect(screen.getByLabelText('Tenant ID')).toHaveValue('Bravo');
+    expect(screen.getByLabelText('Login name')).toHaveValue('Bravo_Admin');
+    expect(screen.queryByLabelText('Password')).not.toBeInTheDocument();
+    expect(screen.queryByText('Bravo / Bravo_Admin')).not.toBeInTheDocument();
+  });
+
   it('shows safe API errors without advancing the activation flow', async () => {
     lookupAccountActivation.mockResolvedValue({ nextStep: 'ACTIVATION' });
     requestAccountActivationPin.mockRejectedValue(new ApiError('Unable to send a verification PIN. Please try again later.', 503));

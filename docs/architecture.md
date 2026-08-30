@@ -24,9 +24,9 @@ flowchart LR
     API -. assistant enabled .-> OpenAI
 ```
 
-Firebase Hosting is the canonical production browser origin. It serves the Vite build and rewrites backend paths such as `/api/**`, `/auth/**`, `/login`, `/logout`, `/oauth2/**` and `/login/oauth2/**` to the Cloud Run service.
+Firebase Hosting is the canonical production browser origin. It serves the Vite build and rewrites backend paths such as `/api/**`, `/auth/**`, `/account-activation/**`, `/logout`, `/oauth2/**` and `/login/oauth2/**` to the Cloud Run service.
 
-This design keeps browser authentication same-origin. The Cloud Run profile uses the Firebase-supported `__session` cookie with `Secure`, `HttpOnly` and `SameSite=Lax` attributes.
+This design keeps browser authentication same-origin. The Cloud Run profile uses the Firebase-supported `__session` cookie with `Secure`, `HttpOnly` and `SameSite=Lax` attributes. The complete rewrite contract, SPA fallback behavior and maintenance checklist are documented in `docs/firebase-hosting-routing.md`.
 
 ## Monorepo boundaries
 
@@ -261,6 +261,7 @@ Path filters prevent unrelated deployments. Frontend PR CI never deploys product
 
 ## Related guides
 
+- `docs/firebase-hosting-routing.md`
 - `docs/development-and-ci.md`
 - `docs/assistant-security.md`
 - `docs/environments-and-domains.md`
