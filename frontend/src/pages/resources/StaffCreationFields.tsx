@@ -124,7 +124,7 @@ export const StaffCreationFields = ({ step }: Props) => {
     return () => { cancelled = true; };
   }, [form, step]);
 
-  const entitlements = Form.useWatch('leaveEntitlements', form) as LeaveEntitlementValue[] | undefined;
+  const entitlements = Form.useWatch('leaveEntitlements', { form, preserve: true }) as LeaveEntitlementValue[] | undefined;
   const noJurisdictions = !calendarsQuery.isLoading && !jurisdictionsQuery.isLoading && jurisdictionOptions.length === 0;
 
   return (
