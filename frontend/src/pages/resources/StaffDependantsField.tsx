@@ -1,8 +1,10 @@
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { Alert, Button, Card, Col, Divider, Form, Input, Row, Select, Space, Switch, Typography } from 'antd';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 
+import { apiFetch } from '../../api/http.ts';
+import { getJurisdictionOptions, type JurisdictionOptionSource } from './jurisdictions.ts';
 import { loadStaffDependants } from './staffDependants.ts';
 
 const RELATIONSHIP_OPTIONS = [
@@ -11,6 +13,15 @@ const RELATIONSHIP_OPTIONS = [
   { value: 'PARENT', label: 'Parent' },
   { value: 'OTHER', label: 'Other' },
 ];
+
+const RESIDENCY_OPTIONS = [
+  { value: 'CITIZEN', label: 'Citizen' },
+  { value: 'PERMANENT_RESIDENT', label: 'Permanent resident' },
+  { value: 'RESIDENT', label: 'Resident' },
+  { value: 'NON_RESIDENT', label: 'Non-resident' },
+];
+
+const loadJurisdictions = () => apiFetch<JurisdictionOptionSource[]>('/api/jurisdictions');
 
 interface Props {
   editing?: boolean;
@@ -24,6 +35,16 @@ export const StaffDependantsField = ({ editing = false, staffId }: Props) => {
     queryFn: () => loadStaffDependants(staffId!),
     enabled: Boolean(editing && staffId),
   });
+  const jurisdictionsQuery = useQuery({
+    queryKey: ['jurisdictions', 'options'],
+    queryFn: loadJurisdictions,
+    staleTime: 5 * 60_000,
+  });
+  const countryOptions = useMemo(
+    () => getJurisdictionOptions((jurisdictionsQuery.data ?? []).filter((jurisdiction) => !jurisdiction.parentId))
+      .map((option) => ({ ...option, label: `${option.label} (${option.value})` })),
+    [jurisdictionsQuery.data],
+  );
 
   useEffect(() => {
     if (!editing || !dependantsQuery.data || form.getFieldValue('dependants') !== undefined) return;
@@ -71,13 +92,24 @@ export const StaffDependantsField = ({ editing = false, staffId }: Props) => {
                     </Form.Item>
                   </Col>
                   <Col xs={24} md={8}>
-                    <Form.Item name={[field.name, 'citizenshipCode']} label="Citizenship code" extra="Use the ISO country code used by eligibility rules, e.g. SG.">
-                      <Input maxLength={64} placeholder="SG" />
+                    <Form.Item name={[field.name, 'citizenshipCode']} label="Citizenship" extra="Country citizenship used by dependant eligibility rules.">
+                      <Select
+                        options={countryOptions}
+                        loading={jurisdictionsQuery.isLoading}
+                        showSearch
+                        optionFilterProp="label"
+                        allowClear
+                        placeholder="Select citizenship"
+                      />
                     </Form.Item>
                   </Col>
                   <Col xs={24} md={8}>
-                    <Form.Item name={[field.name, 'residencyCode']} label="Residency code" extra="Optional jurisdiction-neutral residency code.">
-                      <Input maxLength={64} />
+                    <Form.Item
+                      name={[field.name, 'residencyCode']}
+                      label="Residency status"
+                      extra="Residency in the country of the staff member's current leave jurisdiction."
+                    >
+                      <Select options={RESIDENCY_OPTIONS} showSearch optionFilterProp="label" allowClear placeholder="Select residency status" />
                     </Form.Item>
                   </Col>
                   <Col xs={24} md={8}>
