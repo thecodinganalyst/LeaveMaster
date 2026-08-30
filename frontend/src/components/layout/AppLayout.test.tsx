@@ -51,6 +51,49 @@ describe('AppLayout navigation', () => {
     expect(screen.queryByRole('link', { name: 'Staff' })).not.toBeInTheDocument();
   });
 
+  it('shows Contact Enquiries navigation for platform administrators', () => {
+    mocks.identity.platformAdmin = true;
+    mocks.useCan.mockReturnValue({ data: { can: false } });
+
+    render(
+      <MemoryRouter initialEntries={['/contact-enquiries']}>
+        <AppLayout><div>Page content</div></AppLayout>
+      </MemoryRouter>,
+    );
+
+    const link = screen.getByRole('link', { name: 'Contact Enquiries' });
+    expect(link).toHaveAttribute('href', '/contact-enquiries');
+    expect(link.closest('.ant-menu-item')).toHaveClass('ant-menu-item-selected');
+  });
+
+  it('hides Contact Enquiries navigation from tenant-scoped users', () => {
+    mocks.useCan.mockReturnValue({ data: { can: true } });
+
+    render(
+      <MemoryRouter>
+        <AppLayout><div>Page content</div></AppLayout>
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByRole('link', { name: 'Contact Enquiries' })).not.toBeInTheDocument();
+  });
+
+  it('shows Contact Enquiries in the mobile drawer for platform administrators', () => {
+    mocks.breakpoint.lg = false;
+    mocks.identity.platformAdmin = true;
+    mocks.useCan.mockReturnValue({ data: { can: false } });
+
+    render(
+      <MemoryRouter>
+        <AppLayout><div>Page content</div></AppLayout>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open menu' }));
+
+    expect(screen.getByRole('link', { name: 'Contact Enquiries' })).toHaveAttribute('href', '/contact-enquiries');
+  });
+
   it('shows Public Holiday Templates without exposing tenant Leave Calendars', () => {
     mocks.useCan.mockImplementation(({ resource }: { resource: string }) => ({
       data: { can: resource === 'public-holidays' },
