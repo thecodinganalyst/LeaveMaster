@@ -111,6 +111,12 @@ export const LoginPage = () => {
               ? 'Sign in with Google, GitHub, or your LeaveMaestro account.'
               : 'Sign in or complete your account setup.'}
           </Typography.Text>
+          <Alert
+            type="warning"
+            showIcon
+            message="Hosted evaluation — test data only"
+            description="This project-hosted environment is for temporary testing and evaluation only. Do not enter real employee or personal data. Data may be reset or permanently deleted at any time."
+          />
           {error ? <Alert type="error" showIcon message={error} /> : null}
 
           {step === 'IDENTIFIER' ? (
