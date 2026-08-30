@@ -91,6 +91,21 @@ class TenantServiceTest {
     }
 
     @Test
+    void shouldRejectCreatingTenantWhenIdAlreadyExists() {
+        Tenant tenant = Tenant.builder().id("Bravo").name("Bravo").tenantAdminEmail(ADMIN_EMAIL)
+                .jurisdictionId("SG").startDate(LocalDate.now()).status(TenantStatus.ACTIVE).build();
+        when(tenantRepository.existsById("Bravo")).thenReturn(true);
+
+        assertThatThrownBy(() -> tenantService.save(tenant))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Tenant already exists: Bravo");
+
+        verify(tenantRepository, never()).save(any());
+        verify(tenantAdminProvisionService, never()).provision(any(), any(), any());
+        verifyNoInteractions(tenantLeaveConfigurationProvisionService);
+    }
+
+    @Test
     void shouldProvisionSelectedOptionsForMultipleJurisdictions() {
         LocalDate calendarStart = LocalDate.of(2026, 1, 1);
         LocalDate calendarEnd = LocalDate.of(2026, 12, 31);
