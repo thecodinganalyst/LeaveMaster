@@ -51,7 +51,7 @@ class TenantAdminProvisionServiceTest {
             return permissions;
         });
         when(appRoleRepository.save(any(AppRole.class))).thenAnswer(i -> i.getArgument(0));
-        when(appUserRepository.existsByTenantIdAndLoginName("ACME", "ACME_Admin")).thenReturn(false);
+        when(appUserRepository.findByTenantIdAndLoginName("ACME", "ACME_Admin")).thenReturn(Optional.empty());
         when(appUserRepository.save(any(AppUser.class))).thenAnswer(i -> i.getArgument(0));
 
         service.provision(tenantId, tenantName, tenantAdminEmail);
@@ -74,6 +74,48 @@ class TenantAdminProvisionServiceTest {
         assertThat(createdUser.getPassword()).isNull();
         assertThat(createdUser.isActive()).isTrue();
         assertThat(createdUser.getRoles()).extracting(AppRole::getId).containsExactly("ACME_Admin");
+    }
+
+    @Test
+    void shouldRepairPreExistingAdminIntoPendingActivationState() {
+        String tenantId = "Bravo";
+        String tenantAdminEmail = "admin@bravo.example";
+        AppRole adminRole = AppRole.builder()
+                .id("Bravo_Admin")
+                .description("Bravo Tenant Admin")
+                .active(true)
+                .tenantId(tenantId)
+                .build();
+        AppUser staleAdmin = AppUser.builder()
+                .userId("existing-user")
+                .loginName("Bravo_Admin")
+                .tenantId(tenantId)
+                .password("legacy-default-password-hash")
+                .email(null)
+                .active(false)
+                .roles(Set.of())
+                .build();
+
+        when(appRoleRepository.findById(anyString())).thenAnswer(invocation -> {
+            String roleId = invocation.getArgument(0);
+            if (roleId.equals("Bravo_Admin")) {
+                return Optional.of(adminRole);
+            }
+            return Optional.of(AppRole.builder().id(roleId).active(true).tenantId(tenantId).build());
+        });
+        when(appUserRepository.findByTenantIdAndLoginName(tenantId, "Bravo_Admin"))
+                .thenReturn(Optional.of(staleAdmin));
+        when(appUserRepository.save(any(AppUser.class))).thenAnswer(i -> i.getArgument(0));
+
+        service.provision(tenantId, "Bravo", tenantAdminEmail);
+
+        ArgumentCaptor<AppUser> userCaptor = ArgumentCaptor.forClass(AppUser.class);
+        verify(appUserRepository).save(userCaptor.capture());
+        AppUser repaired = userCaptor.getValue();
+        assertThat(repaired.getPassword()).isNull();
+        assertThat(repaired.getEmail()).isEqualTo(tenantAdminEmail);
+        assertThat(repaired.isActive()).isTrue();
+        assertThat(repaired.getRoles()).extracting(AppRole::getId).contains("Bravo_Admin");
     }
 
     @Test
@@ -113,14 +155,28 @@ class TenantAdminProvisionServiceTest {
     }
 
     @Test
-    void shouldBeIdempotentWhenTenantRolesAndAdminAlreadyExist() {
+    void shouldBeIdempotentWhenTenantRolesAndPendingAdminAlreadyExist() {
         String tenantId = "ACME";
+        AppRole adminRole = AppRole.builder().id("ACME_Admin").description("ACME_Admin").active(true).tenantId(tenantId).build();
         when(appRoleRepository.findById(anyString())).thenAnswer(invocation -> {
             String roleId = invocation.getArgument(0);
-            return Optional.of(AppRole.builder().id(roleId).description(roleId).active(true).tenantId(tenantId).build());
+            return Optional.of(roleId.equals("ACME_Admin")
+                    ? adminRole
+                    : AppRole.builder().id(roleId).description(roleId).active(true).tenantId(tenantId).build());
         });
-        when(appUserRepository.existsByTenantIdAndLoginName("ACME", "ACME_Admin")).thenReturn(true);
+        AppUser pendingAdmin = AppUser.builder()
+                .loginName("ACME_Admin")
+                .tenantId(tenantId)
+                .email("admin@acme.example")
+                .password(null)
+                .active(true)
+                .roles(Set.of(adminRole))
+                .build();
+        when(appUserRepository.findByTenantIdAndLoginName("ACME", "ACME_Admin"))
+                .thenReturn(Optional.of(pendingAdmin));
+
         service.provision(tenantId, "Acme Corporation", "admin@acme.example");
+
         verify(appRoleRepository, never()).save(any());
         verify(appPermissionRepository, never()).findAllById(anyCollection());
         verify(appUserRepository, never()).save(any());
