@@ -3,9 +3,8 @@ export type ContactPayload = {
   company: string;
   email: string;
   phone?: string;
-  companySize?: string;
   country?: string;
-  enquiryType: string;
+  enquiryType: 'GENERAL_ENQUIRY' | 'PARTNERSHIP';
   message: string;
   website?: string;
 };
