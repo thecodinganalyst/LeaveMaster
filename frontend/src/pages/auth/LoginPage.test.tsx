@@ -100,6 +100,22 @@ describe('LoginPage account activation and OAuth onboarding', () => {
     expect(requestAccountActivationPin).not.toHaveBeenCalled();
   });
 
+  it('routes a newly provisioned tenant admin to verification PIN activation', async () => {
+    lookupAccountActivation.mockResolvedValue({ nextStep: 'ACTIVATION' });
+    renderPage();
+
+    await enterIdentifier('Bravo_Admin', 'Bravo');
+
+    expect(await screen.findByText('Bravo / Bravo_Admin')).toBeInTheDocument();
+    expect(screen.getByText('Your account needs to be set up before you can sign in.')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Password')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Send verification PIN' }));
+    await waitFor(() => expect(requestAccountActivationPin).toHaveBeenCalledWith({
+      tenantId: 'Bravo',
+      loginName: 'Bravo_Admin',
+    }));
+  });
+
   it('turns an unlinked Google login into account-verification onboarding', async () => {
     window.sessionStorage.setItem('leavemaster.oauthProvider', 'google');
     renderPage('/login?oauthError=not_linked');
