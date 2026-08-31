@@ -17,6 +17,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -32,8 +33,7 @@ class StaffRoleAssignmentPolicyTest {
         appRoleRepository = mock(AppRoleRepository.class);
         appUserRepository = mock(AppUserRepository.class);
         policy = new StaffRoleAssignmentPolicy(appRoleRepository, appUserRepository);
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken("hr-user", "n/a", List.of()));
+        authenticate("hr-user");
     }
 
     @AfterEach
@@ -89,6 +89,33 @@ class StaffRoleAssignmentPolicyTest {
     }
 
     @Test
+    void acceptsAssignableRolesAndNormalizesWhitespace() {
+        AppRole hrRole = role("ACME_HR", true, RbacPermissions.STAFF_READ, RbacPermissions.STAFF_WRITE);
+        when(appUserRepository.findById("hr-user")).thenReturn(Optional.of(user("hr-user", "ACME", hrRole)));
+        when(appRoleRepository.findAllByTenantId("ACME"))
+                .thenReturn(List.of(role("ACME_Staff", true, RbacPermissions.STAFF_READ)));
+
+        assertThatCode(() -> policy.validateAssignableRoleIds(Set.of("  ACME_Staff  "))).doesNotThrowAnyException();
+    }
+
+    @Test
+    void rejectsBlankRoleId() {
+        AppRole hrRole = role("ACME_HR", true, RbacPermissions.STAFF_READ, RbacPermissions.STAFF_WRITE);
+        when(appUserRepository.findById("hr-user")).thenReturn(Optional.of(user("hr-user", "ACME", hrRole)));
+        when(appRoleRepository.findAllByTenantId("ACME")).thenReturn(List.of());
+
+        assertThatThrownBy(() -> policy.validateAssignableRoleIds(Set.of(" ")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Role id must not be blank");
+    }
+
+    @Test
+    void nullAndEmptyRoleSetsNeedNoValidation() {
+        assertThatCode(() -> policy.validateAssignableRoleIds(null)).doesNotThrowAnyException();
+        assertThatCode(() -> policy.validateAssignableRoleIds(Set.of())).doesNotThrowAnyException();
+    }
+
+    @Test
     void tenantAdminCanAssignRolesWithinItsOwnPermissionSet() {
         AppRole adminRole = role("ACME_Admin", true,
                 RbacPermissions.STAFF_READ,
@@ -103,6 +130,44 @@ class StaffRoleAssignmentPolicyTest {
         assertThat(policy.findAssignableRoles())
                 .extracting(AppRole::getId)
                 .containsExactly("ACME_Admin", "ACME_HR");
+    }
+
+    @Test
+    void returnsNoRolesWithoutAuthenticatedActiveTenantUser() {
+        SecurityContextHolder.clearContext();
+        assertThat(policy.findAssignableRoles()).isEmpty();
+
+        authenticate("inactive-user");
+        AppUser inactive = user("inactive-user", "ACME");
+        inactive.setActive(false);
+        when(appUserRepository.findById("inactive-user")).thenReturn(Optional.of(inactive));
+        assertThat(policy.findAssignableRoles()).isEmpty();
+
+        authenticate("no-tenant-user");
+        when(appUserRepository.findById("no-tenant-user"))
+                .thenReturn(Optional.of(user("no-tenant-user", " ")));
+        assertThat(policy.findAssignableRoles()).isEmpty();
+    }
+
+    @Test
+    void fallsBackToLoginNameAndHandlesRolesWithoutPermissions() {
+        when(appUserRepository.findById("hr-user")).thenReturn(Optional.empty());
+        AppUser current = user("hr-user", "ACME");
+        current.setRoles(null);
+        when(appUserRepository.findUniqueByLoginName("hr-user")).thenReturn(Optional.of(current));
+
+        AppRole permissionless = role("ACME_Observer", true);
+        permissionless.setPermissions(null);
+        when(appRoleRepository.findAllByTenantId("ACME")).thenReturn(List.of(permissionless));
+
+        assertThat(policy.findAssignableRoles())
+                .extracting(AppRole::getId)
+                .containsExactly("ACME_Observer");
+    }
+
+    private void authenticate(String principal) {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(principal, "n/a", List.of()));
     }
 
     private static AppUser user(String loginName, String tenantId, AppRole... roles) {
