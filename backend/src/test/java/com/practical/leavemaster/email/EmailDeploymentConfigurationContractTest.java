@@ -30,8 +30,8 @@ class EmailDeploymentConfigurationContractTest {
         assertThat(workflow)
                 .contains("TF_VAR_email_provider: ${{ vars.EMAIL_PROVIDER || 'disabled' }}")
                 .contains("TF_VAR_resend_api_key_secret_id: ${{ vars.RESEND_API_KEY_SECRET_ID || 'leavemaster-resend-api-key' }}")
-                .contains("TF_VAR_email_from_address: ${{ vars.EMAIL_FROM_ADDRESS || 'onboarding@resend.dev' }}")
-                .contains("TF_VAR_email_from_name: ${{ vars.EMAIL_FROM_NAME || 'LeaveMaster' }}");
+                .contains("TF_VAR_email_from_address: ${{ vars.EMAIL_FROM_ADDRESS || 'contact@leavemaestro.com' }}")
+                .contains("TF_VAR_email_from_name: ${{ vars.EMAIL_FROM_NAME || 'LeaveMaestro' }}");
 
         assertThat(terraform)
                 .contains("name  = \"EMAIL_PROVIDER\"")
