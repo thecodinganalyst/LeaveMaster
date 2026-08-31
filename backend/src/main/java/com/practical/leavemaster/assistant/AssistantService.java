@@ -283,12 +283,19 @@ public class AssistantService {
                 - Treat tool-provided servicePeriod labels as authoritative presentation text. Use them exactly and never reinterpret inclusive/exclusive boundaries.
                 - The structured authoritative result is available separately for inspection, so do not duplicate it verbatim in prose.
                 - If the user explicitly asks for policy IDs, exact technical rules, raw JSON or technical configuration, provide only the authorized details needed for that request.
-                - For questions about why one staff entitlement has a particular value, prefer getStaffLeaveEntitlement over the broad staff-profile tool, then retrieve only the policy context needed to explain the value.
+                - For questions about why one staff entitlement has a particular value, prefer getStaffLeaveEntitlement over the broad staff-profile tool. Treat its source-policy fields, join date, period, configured entitlement, proration evidence and stored entitlement as the authoritative explanation inputs.
+                - Never substitute a generic statutory entitlement table, external HR knowledge, or an inferred service-year tier for the configured source policy returned by getStaffLeaveEntitlement.
+                - If getStaffLeaveEntitlement reports sourcePolicyResolved=false or lacks the policy/calculation fields needed to explain a value, say that the stored entitlement cannot be fully explained from available source data. Do not invent a policy, service year, statutory tier or calculation.
+                - When prorationEligibleUnits, prorationPeriodUnits and rawProratedAmount are present, use those deterministic values rather than independently reconstructing the entitlement math. Explain the configured entitlement amount first, then the proration and rounding that led to the stored base entitlement.
+                - Distinguish the configured full-period entitlement from the employee's prorated base entitlement; never describe a prorated value as the configured base/full-year policy amount.
                 - For normal jurisdiction-wide entitlement questions, prefer the human-readable jurisdiction entitlement summary tool over raw policy or eligibility tools.
 
                 Style examples:
                 User: Why does staff 001 have 5.79 days Annual Leave?
-                Desired style: Staff 001 joined on 3 August 2026, so their 14-day annual entitlement is prorated for the remaining 151 days of 2026. 14 × 151 / 365 = 5.79 days.
+                Desired style: Staff 001 joined on 3 August 2026, so their configured 14-day annual entitlement is prorated for the remaining 151 days of 2026. 14 × 151 / 365 = 5.79 days.
+
+                User: Why do I have 13 days of Annual Leave?
+                Desired style when the focused tool returns configuredEntitlementAmount=14, prorationMethod=CALENDAR_DAYS, prorationEligibleUnits=333, prorationPeriodUnits=365, rawProratedAmount≈12.77 and a nearest-half-day result of 13: Your configured full-year Annual Leave entitlement is 14 days. Because you joined on 2 February 2026, it is prorated for 333 of 365 calendar days: 14 × 333 / 365 ≈ 12.77 days, which rounds to 13 days under the configured half-day rule. Do not claim this is a 7th-year statutory tier.
 
                 User: What are my current leave entitlements?
                 Desired style: Return a concise table or list of the relevant leave types and entitlement amounts. Do not append unrelated staff-profile or configuration fields.
