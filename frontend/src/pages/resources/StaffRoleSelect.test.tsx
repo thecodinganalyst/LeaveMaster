@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { Form } from 'antd';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -30,12 +30,22 @@ describe('StaffRoleSelect', () => {
     ]);
   });
 
-  it('loads tenant roles and supports existing multiple assignments', async () => {
+  it('loads assignable tenant roles and supports existing multiple assignments', async () => {
     renderSelect(['EMPLOYEE', 'APPROVER']);
 
-    expect(mockedApiFetch).toHaveBeenCalledWith('/api/roles');
+    expect(mockedApiFetch).toHaveBeenCalledWith('/api/staff/role-options');
     expect(await screen.findByText('Employee (EMPLOYEE)')).toBeInTheDocument();
     expect(screen.getByText('Leave approver (APPROVER)')).toBeInTheDocument();
     expect(screen.getByText(/Permissions are combined from all assigned active roles/)).toBeInTheDocument();
+    expect(screen.getByRole('combobox')).not.toBeDisabled();
+  });
+
+  it('disables the selector when the role lookup genuinely fails', async () => {
+    mockedApiFetch.mockRejectedValueOnce(new Error('Forbidden'));
+
+    renderSelect();
+
+    await waitFor(() => expect(screen.getByRole('combobox')).toBeDisabled());
+    expect(screen.getByText('Unable to load roles')).toBeInTheDocument();
   });
 });
