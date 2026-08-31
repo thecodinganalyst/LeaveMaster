@@ -24,12 +24,12 @@ TransactionalEmailSender
 
 The deployment workflow reads these GitHub Actions variables:
 
-| GitHub variable | Terraform input | Default |
+| GitHub variable | Terraform input | Production fallback |
 | --- | --- | --- |
 | `EMAIL_PROVIDER` | `email_provider` | `disabled` |
 | `RESEND_API_KEY_SECRET_ID` | `resend_api_key_secret_id` | `leavemaster-resend-api-key` |
-| `EMAIL_FROM_ADDRESS` | `email_from_address` | `onboarding@resend.dev` |
-| `EMAIL_FROM_NAME` | `email_from_name` | `LeaveMaster` |
+| `EMAIL_FROM_ADDRESS` | `email_from_address` | `contact@leavemaestro.com` |
+| `EMAIL_FROM_NAME` | `email_from_name` | `LeaveMaestro` |
 
 The Resend API key itself is **not** a GitHub variable. It remains in Google Secret Manager.
 
@@ -43,18 +43,7 @@ EMAIL_FROM_ADDRESS
 EMAIL_FROM_NAME
 ```
 
-`backend/src/main/resources/application.yaml` explicitly maps those runtime variables into Spring configuration:
-
-```yaml
-app:
-  email:
-    provider: ${EMAIL_PROVIDER:disabled}
-    from-address: ${EMAIL_FROM_ADDRESS:onboarding@resend.dev}
-    from-name: ${EMAIL_FROM_NAME:LeaveMaster}
-    resend:
-      api-key: ${RESEND_API_KEY:}
-      base-url: ${RESEND_BASE_URL:https://api.resend.com}
-```
+`backend/src/main/resources/application.yaml` explicitly maps those runtime variables into Spring configuration. Its `onboarding@resend.dev` fallback is retained for local/development use; the production workflow supplies the LeaveMaestro sender configuration.
 
 The Java email adapters use the `app.email.*` properties. This explicit mapping is the configuration contract; do not rely on an implicit environment-variable naming convention.
 
@@ -62,13 +51,30 @@ The Java email adapters use the `app.email.*` properties. This explicit mapping 
 
 To enable Resend in production:
 
-1. Add the GitHub Actions variable `EMAIL_PROVIDER=resend` to the production environment/repository variables used by the Cloud Run workflow.
-2. Create the Google Secret Manager secret containing the Resend API key. The default secret ID is `leavemaster-resend-api-key`.
-3. If a different secret ID is used, set `RESEND_API_KEY_SECRET_ID` to that **secret name**, not to the key value.
-4. Optionally configure `EMAIL_FROM_ADDRESS` and `EMAIL_FROM_NAME`.
-5. Run the **Deploy to Cloud Run** workflow so Terraform creates a new revision with the updated configuration.
+1. Add and verify `leavemaestro.com` in Resend.
+2. Add the DNS records supplied by Resend to Cloudflare DNS. Preserve the existing Cloudflare Email Routing records and do not create conflicting SPF records.
+3. Configure the GitHub Actions production variable `EMAIL_PROVIDER=resend`.
+4. Keep the Resend API key in Google Secret Manager. The default secret ID is `leavemaster-resend-api-key`.
+5. If a different secret ID is used, set `RESEND_API_KEY_SECRET_ID` to that **secret name**, not to the key value.
+6. Remove any stale production override such as `EMAIL_FROM_ADDRESS=onboarding@resend.dev`, or set it explicitly to `contact@leavemaestro.com`.
+7. Set `EMAIL_FROM_NAME=LeaveMaestro` if a production override exists.
+8. Run the **Deploy to Cloud Run** workflow so Terraform creates a new revision with the updated configuration.
 
 Changing a GitHub variable does not alter an already-running Cloud Run revision until the deployment workflow is run again.
+
+## Cloudflare inbound vs Resend outbound
+
+`contact@leavemaestro.com` serves two independent purposes:
+
+```text
+Inbound replies
+Internet -> contact@leavemaestro.com -> Cloudflare Email Routing -> configured destination inbox
+
+Outbound transactional email
+LeaveMaestro -> Resend -> From: LeaveMaestro <contact@leavemaestro.com> -> recipient
+```
+
+Cloudflare Email Routing does not send LeaveMaestro transactional mail. Resend does not replace the inbound forwarding rule. The same visible address can be used for both once `leavemaestro.com` is verified in Resend.
 
 ## Startup validation
 
@@ -105,39 +111,37 @@ Account activation PIN delivery requested successfully
 
 The PIN itself must never appear in application logs.
 
-## Diagnosing "Resend shows no email"
+## Diagnosing provider rejection
 
-If the API returns `202` but the Resend dashboard shows no email/request:
+If the API returns `202` but delivery fails, inspect the Resend adapter log. Rejections include the HTTP status plus sanitized provider metadata where Resend returns structured JSON:
 
-1. Check the Cloud Run startup log for `Transactional email provider: resend`.
-2. If it says `disabled`, verify the GitHub Actions variable `EMAIL_PROVIDER=resend` and redeploy Cloud Run.
-3. Confirm the deployment workflow passed `TF_VAR_email_provider=resend` to Terraform.
-4. Confirm the deployed revision has `EMAIL_PROVIDER=resend`.
-5. Confirm the revision has a secret-backed `RESEND_API_KEY` reference.
-6. Confirm the Secret Manager secret has an enabled version and the Cloud Run service account has `secretAccessor`.
-7. Look for `Sending account activation email through Resend`.
+```text
+Resend rejected account activation email with HTTP status 403 type=validation_error message=...
+```
 
-If that `Sending ... through Resend` message is absent, the failure occurred before an HTTP request was made to Resend. The Resend dashboard will therefore have nothing to show.
+The adapter logs only selected provider fields (`type`/`name`/`code` and `message`), normalizes line breaks, and truncates long messages. It never logs the request body, Authorization header, API key, or PIN.
 
-If the message is present, inspect the next safe log entry:
+If Resend returns a non-JSON error body, the raw response body is deliberately not copied into logs. The log records a generic `unparseable` provider error instead.
 
-- `Resend accepted ...` — Resend accepted the request.
-- `Resend rejected ... with HTTP status <code>` — provider rejected the request.
-- `Resend ... delivery failed due to a transport error` — connection/transport failure.
+A common 403 during testing is caused by using `onboarding@resend.dev` to send to recipients not permitted by Resend's testing-domain restrictions. Production should use the verified `contact@leavemaestro.com` sender instead.
 
-The account activation service invalidates the generated activation record when email delivery fails. Its failure log now includes a safe failure category/reason or unexpected exception type, while excluding PINs, API keys and authorization headers.
+The account activation service invalidates the generated activation record when email delivery fails. The public endpoint remains generic and the failed PIN cannot subsequently be verified.
 
 ## Common configuration mistakes
 
 ### Secret exists but provider remains disabled
 
-Creating `leavemaster-resend-api-key` in Secret Manager is not sufficient by itself. `EMAIL_PROVIDER` defaults to `disabled` in the deployment workflow. Set:
+Creating `leavemaster-resend-api-key` in Secret Manager is not sufficient by itself. Set:
 
 ```text
 EMAIL_PROVIDER=resend
 ```
 
 and redeploy.
+
+### Stale sender override
+
+The production workflow now falls back to `contact@leavemaestro.com`, but an existing GitHub production variable overrides that fallback. If `EMAIL_FROM_ADDRESS` is still set to `onboarding@resend.dev`, update or remove that variable before deployment.
 
 ### GitHub variable was changed but behavior did not change
 
@@ -155,7 +159,12 @@ Do not put the Resend API key value in that GitHub variable.
 
 ### Sender rejected by Resend
 
-`onboarding@resend.dev` is useful for supported testing. For normal production delivery, configure a sender on a domain verified in Resend and set `EMAIL_FROM_ADDRESS` accordingly.
+Confirm `leavemaestro.com` is verified in Resend and that the deployed revision receives:
+
+```text
+EMAIL_FROM_ADDRESS=contact@leavemaestro.com
+EMAIL_FROM_NAME=LeaveMaestro
+```
 
 ## Security rules
 
@@ -164,9 +173,10 @@ Never log or commit:
 - `RESEND_API_KEY`;
 - activation PINs;
 - Authorization headers;
-- Secret Manager payloads.
+- Secret Manager payloads;
+- complete provider request bodies.
 
-Safe diagnostics may include provider name, HTTP status, exception class/category and non-secret configuration names.
+Safe diagnostics may include provider name, HTTP status, provider error type/code, and a bounded sanitized provider error message.
 
 ## Related documentation
 
