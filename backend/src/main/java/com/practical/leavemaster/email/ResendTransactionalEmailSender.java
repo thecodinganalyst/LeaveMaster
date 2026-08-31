@@ -1,5 +1,8 @@
 package com.practical.leavemaster.email;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -16,6 +19,9 @@ import java.util.List;
 @ConditionalOnProperty(name = "app.email.provider", havingValue = "resend")
 @Slf4j
 public class ResendTransactionalEmailSender implements TransactionalEmailSender {
+
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final int MAX_PROVIDER_MESSAGE_LENGTH = 300;
 
     private final RestClient restClient;
     private final String fromAddress;
@@ -82,12 +88,55 @@ public class ResendTransactionalEmailSender implements TransactionalEmailSender 
                     .retrieve().toBodilessEntity();
             log.info("Resend accepted {} email", purpose);
         } catch (RestClientResponseException ex) {
-            log.warn("Resend rejected {} email with HTTP status {}", purpose, ex.getStatusCode().value());
+            ResendProviderError providerError = parseProviderError(ex.getResponseBodyAsString());
+            log.warn("Resend rejected {} email with HTTP status {} type={} message={}",
+                    purpose,
+                    ex.getStatusCode().value(),
+                    providerError.type(),
+                    providerError.message());
             throw new EmailDeliveryException("Transactional email provider rejected the request", ex);
         } catch (RestClientException ex) {
             log.warn("Resend {} email delivery failed due to a transport error", purpose);
             throw new EmailDeliveryException("Transactional email provider is unavailable", ex);
         }
+    }
+
+    private static ResendProviderError parseProviderError(String responseBody) {
+        if (responseBody == null || responseBody.isBlank()) {
+            return new ResendProviderError("unknown", "No provider error message returned");
+        }
+
+        try {
+            JsonNode root = OBJECT_MAPPER.readTree(responseBody);
+            String type = firstText(root, "type", "name", "code");
+            String message = firstText(root, "message", "error");
+            return new ResendProviderError(
+                    sanitizeProviderValue(type, "unknown"),
+                    sanitizeProviderValue(message, "Provider returned an unstructured error"));
+        } catch (JsonProcessingException ex) {
+            return new ResendProviderError("unparseable", "Provider returned a non-JSON error response");
+        }
+    }
+
+    private static String firstText(JsonNode root, String... fieldNames) {
+        for (String fieldName : fieldNames) {
+            JsonNode value = root.get(fieldName);
+            if (value != null && value.isValueNode() && !value.asText().isBlank()) {
+                return value.asText();
+            }
+        }
+        return null;
+    }
+
+    private static String sanitizeProviderValue(String value, String fallback) {
+        if (value == null || value.isBlank()) {
+            return fallback;
+        }
+        String sanitized = value.replaceAll("[\\r\\n\\t]+", " ").trim();
+        if (sanitized.length() > MAX_PROVIDER_MESSAGE_LENGTH) {
+            return sanitized.substring(0, MAX_PROVIDER_MESSAGE_LENGTH) + "...";
+        }
+        return sanitized;
     }
 
     private static String escapeHtml(String value) {
@@ -97,4 +146,6 @@ public class ResendTransactionalEmailSender implements TransactionalEmailSender 
     }
 
     record ResendEmailRequest(String from, List<String> to, String subject, String html) {}
+
+    record ResendProviderError(String type, String message) {}
 }
