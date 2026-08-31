@@ -129,9 +129,16 @@ public class SecurityConfig {
             );
 
         if (clientRegistrationRepositoryProvider.getIfAvailable() != null) {
-            ExistingUserOnlyOAuth2UserService existingUserOnlyOAuth2UserService = new ExistingUserOnlyOAuth2UserService(appUserRepository);
+            ExistingUserOAuthAccountResolver accountResolver = new ExistingUserOAuthAccountResolver(appUserRepository);
+            ExistingUserOnlyOAuth2UserService existingUserOnlyOAuth2UserService =
+                new ExistingUserOnlyOAuth2UserService(accountResolver, new org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService());
+            ExistingUserOnlyOidcUserService existingUserOnlyOidcUserService =
+                new ExistingUserOnlyOidcUserService(accountResolver, new org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService());
+
             http.oauth2Login(oauth2 -> oauth2
-                .userInfoEndpoint(userInfo -> userInfo.userService(existingUserOnlyOAuth2UserService))
+                .userInfoEndpoint(userInfo -> userInfo
+                    .userService(existingUserOnlyOAuth2UserService)
+                    .oidcUserService(existingUserOnlyOidcUserService))
                 .successHandler((request, response, authentication) -> {
                     boolean linkingFlow = OAuthLinkingContext.consumeLinkFlow(request.getSession(false));
                     String destination = linkingFlow ? "/account/security?oauthLinked=true" : "/";
