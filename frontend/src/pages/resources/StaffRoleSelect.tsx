@@ -9,7 +9,7 @@ interface RoleSource {
   active: boolean;
 }
 
-const loadRoles = () => apiFetch<RoleSource[]>('/api/roles');
+const loadRoles = () => apiFetch<RoleSource[]>('/api/staff/role-options');
 
 export const StaffRoleSelect = () => {
   const rolesQuery = useQuery({

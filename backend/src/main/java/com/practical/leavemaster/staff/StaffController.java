@@ -1,5 +1,6 @@
 package com.practical.leavemaster.staff;
 
+import com.practical.leavemaster.rbac.AppRole;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpStatus;
@@ -17,10 +18,17 @@ public class StaffController {
 
     private final StaffService staffService;
     private final ObjectProvider<StaffWriteService> staffWriteServiceProvider;
+    private final ObjectProvider<StaffRoleAssignmentPolicy> staffRoleAssignmentPolicyProvider;
 
     @GetMapping
     public List<Staff> getAll() {
         return staffService.findAll();
+    }
+
+    @GetMapping("/role-options")
+    public List<AppRole> getRoleOptions() {
+        StaffRoleAssignmentPolicy policy = staffRoleAssignmentPolicyProvider.getIfAvailable();
+        return policy == null ? List.of() : policy.findAssignableRoles();
     }
 
     @GetMapping("/{id}")
@@ -33,6 +41,7 @@ public class StaffController {
     @PostMapping
     public ResponseEntity<?> create(@RequestBody StaffWriteRequest request) {
         try {
+            validateRoleAssignments(request);
             StaffWriteService writeService = staffWriteServiceProvider.getIfAvailable();
             Staff saved = writeService == null ? staffService.save(request.toStaff()) : writeService.create(request);
             return ResponseEntity.status(HttpStatus.CREATED).body(saved);
@@ -44,6 +53,7 @@ public class StaffController {
     @PutMapping("/{id}")
     public ResponseEntity<?> update(@PathVariable String id, @RequestBody StaffWriteRequest request) {
         try {
+            validateRoleAssignments(request);
             StaffWriteService writeService = staffWriteServiceProvider.getIfAvailable();
             Staff updated = writeService == null ? staffService.update(id, request.toStaff()) : writeService.update(id, request);
             return ResponseEntity.ok(updated);
@@ -75,6 +85,13 @@ public class StaffController {
             return ResponseEntity.notFound().build();
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    private void validateRoleAssignments(StaffWriteRequest request) {
+        StaffRoleAssignmentPolicy policy = staffRoleAssignmentPolicyProvider.getIfAvailable();
+        if (policy != null) {
+            policy.validateAssignableRoleIds(request.roleIds());
         }
     }
 }
