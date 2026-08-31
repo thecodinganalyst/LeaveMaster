@@ -1,7 +1,10 @@
 package com.practical.leavemaster.mcp;
 
 import com.practical.leavemaster.leaveentitlement.LeaveEntitlement;
+import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicy;
+import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicyRepository;
 import com.practical.leavemaster.leaveentitlementpolicy.LeaveProrationRounding;
+import com.practical.leavemaster.leaveentitlementpolicy.ProrationMethod;
 import com.practical.leavemaster.staff.DaySchedule;
 import com.practical.leavemaster.staff.Staff;
 import com.practical.leavemaster.staff.StaffRepository;
@@ -10,9 +13,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.YearMonth;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 
@@ -20,9 +26,13 @@ import java.util.Optional;
 public class StaffAssistantReadService {
 
     private final StaffRepository staffRepository;
+    private final LeaveEntitlementPolicyRepository policyRepository;
 
-    public StaffAssistantReadService(StaffRepository staffRepository) {
+    public StaffAssistantReadService(
+            StaffRepository staffRepository,
+            LeaveEntitlementPolicyRepository policyRepository) {
         this.staffRepository = staffRepository;
+        this.policyRepository = policyRepository;
     }
 
     @Transactional(readOnly = true)
@@ -79,6 +89,13 @@ public class StaffAssistantReadService {
     }
 
     private StaffLeaveEntitlementResult toStaffLeaveEntitlementResult(Staff staff, LeaveEntitlement entitlement) {
+        Optional<LeaveEntitlementPolicy> sourcePolicy = Optional.ofNullable(entitlement.getPolicyId())
+                .filter(policyId -> !policyId.isBlank())
+                .flatMap(policyRepository::findById);
+        ProrationEvidence proration = sourcePolicy
+                .map(policy -> prorationEvidence(policy, staff.getJoinDate(), entitlement.getFrom(), entitlement.getTo()))
+                .orElse(ProrationEvidence.none());
+
         return new StaffLeaveEntitlementResult(
                 staff.getName(),
                 staff.getJoinDate(),
@@ -90,8 +107,58 @@ public class StaffAssistantReadService {
                 entitlement.getBaseEntitlementAmount(),
                 entitlement.getCarriedForwardAmount(),
                 entitlement.getAdjustmentAmount(),
+                sourcePolicy.map(LeaveEntitlementPolicy::getId).orElse(entitlement.getPolicyId()),
+                sourcePolicy.map(LeaveEntitlementPolicy::getName).orElse(null),
+                sourcePolicy.map(LeaveEntitlementPolicy::getEntitlementAmount).orElse(null),
+                sourcePolicy.map(policy -> policy.getEntitlementUnit() == null ? null : policy.getEntitlementUnit().name()).orElse(null),
+                sourcePolicy.map(policy -> policy.getAccrualMethod() == null ? null : policy.getAccrualMethod().name()).orElse(null),
+                sourcePolicy.map(policy -> policy.getProrationMethod() == null ? null : policy.getProrationMethod().name()).orElse(null),
+                sourcePolicy.map(LeaveEntitlementPolicy::isCarryForwardAllowed).orElse(false),
+                sourcePolicy.map(LeaveEntitlementPolicy::getCarryForwardLimit).orElse(null),
+                sourcePolicy.map(LeaveEntitlementPolicy::getCarryForwardExpiryMonths).orElse(null),
+                proration.eligibleUnits(),
+                proration.periodUnits(),
+                proration.rawProratedAmount(),
                 LeaveProrationRounding.HALF_DAY,
-                "NEAREST_HALF_DAY");
+                "NEAREST_HALF_DAY",
+                sourcePolicy.isPresent());
+    }
+
+    private ProrationEvidence prorationEvidence(
+            LeaveEntitlementPolicy policy,
+            LocalDate joinDate,
+            LocalDate periodStart,
+            LocalDate periodEnd) {
+        if (policy.getEntitlementAmount() == null
+                || policy.getProrationMethod() == null
+                || policy.getProrationMethod() == ProrationMethod.NONE
+                || joinDate == null
+                || periodStart == null
+                || periodEnd == null
+                || !joinDate.isAfter(periodStart)
+                || joinDate.isAfter(periodEnd)) {
+            return ProrationEvidence.none();
+        }
+
+        return switch (policy.getProrationMethod()) {
+            case CALENDAR_DAYS -> {
+                long periodDays = ChronoUnit.DAYS.between(periodStart, periodEnd) + 1;
+                long eligibleDays = ChronoUnit.DAYS.between(joinDate, periodEnd) + 1;
+                BigDecimal raw = policy.getEntitlementAmount()
+                        .multiply(BigDecimal.valueOf(eligibleDays))
+                        .divide(BigDecimal.valueOf(periodDays), 8, RoundingMode.HALF_UP);
+                yield new ProrationEvidence(eligibleDays, periodDays, raw);
+            }
+            case MONTHS -> {
+                long periodMonths = ChronoUnit.MONTHS.between(YearMonth.from(periodStart), YearMonth.from(periodEnd)) + 1;
+                long eligibleMonths = ChronoUnit.MONTHS.between(YearMonth.from(joinDate), YearMonth.from(periodEnd)) + 1;
+                BigDecimal raw = policy.getEntitlementAmount()
+                        .multiply(BigDecimal.valueOf(eligibleMonths))
+                        .divide(BigDecimal.valueOf(periodMonths), 8, RoundingMode.HALF_UP);
+                yield new ProrationEvidence(eligibleMonths, periodMonths, raw);
+            }
+            case NONE -> ProrationEvidence.none();
+        };
     }
 
     private StaffResult toResult(Staff staff) {
@@ -175,8 +242,27 @@ public class StaffAssistantReadService {
             BigDecimal baseEntitlementAmount,
             BigDecimal carriedForwardAmount,
             BigDecimal adjustmentAmount,
+            String sourcePolicyId,
+            String sourcePolicyName,
+            BigDecimal configuredEntitlementAmount,
+            String entitlementUnit,
+            String accrualMethod,
+            String prorationMethod,
+            boolean carryForwardAllowed,
+            BigDecimal carryForwardLimit,
+            Integer carryForwardExpiryMonths,
+            Long prorationEligibleUnits,
+            Long prorationPeriodUnits,
+            BigDecimal rawProratedAmount,
             BigDecimal prorationDenominationDays,
-            String prorationRoundingRule
+            String prorationRoundingRule,
+            boolean sourcePolicyResolved
     ) {
+    }
+
+    private record ProrationEvidence(Long eligibleUnits, Long periodUnits, BigDecimal rawProratedAmount) {
+        private static ProrationEvidence none() {
+            return new ProrationEvidence(null, null, null);
+        }
     }
 }
