@@ -17,6 +17,12 @@ interface LeaveMasterIdentity {
   platformAdmin?: boolean;
 }
 
+export const createSubmissionValues = (
+  isStaffCreation: boolean,
+  submittedValues: Record<string, unknown>,
+  allFormValues: Record<string, unknown>,
+) => isStaffCreation ? allFormValues : submittedValues;
+
 export const ResourceCreatePage = () => {
   const { resource } = useResource();
   const config = getAdminResourceConfig(resource?.name);
@@ -38,7 +44,9 @@ export const ResourceCreatePage = () => {
   const submit = async (values: Record<string, unknown>) => {
     if (isStaffCreation && staffCreationStep === 0) return;
     try {
-      const payload = normaliseFormValues(config, values);
+      const allFormValues = form.getFieldsValue(true) as Record<string, unknown>;
+      const submissionValues = createSubmissionValues(isStaffCreation, values, allFormValues);
+      const payload = normaliseFormValues(config, submissionValues);
       await mutateAsync({ resource: config.name, values: payload });
       message.success(`${config.singular} created`);
       navigate(`/${config.name}`);
