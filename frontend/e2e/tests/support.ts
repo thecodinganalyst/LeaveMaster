@@ -105,5 +105,17 @@ export const mockAuthenticatedBackend = async (
 
   // Resource list pages use Refine's REST provider. Empty deterministic collections are enough
   // for browser/RBAC smoke coverage and keep these E2E tests independent of production data.
-  await page.route('**/api/**', (route) => json(route, []));
+  await page.route('**/api/**', (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === `/api/staff/${currentUser.staffId}`) {
+      return json(route, {
+        id: currentUser.staffId,
+        name: `E2E ${role}`,
+        joinDate: '2026-09-01',
+        termDate: '2026-09-30',
+        tenantId: 'E2E',
+      });
+    }
+    return json(route, []);
+  });
 };
