@@ -1,10 +1,12 @@
 package com.practical.leavemaster.staff;
 
 import com.practical.leavemaster.rbac.AppRole;
+import com.practical.leavemaster.rbac.RbacPermissions;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -21,17 +23,20 @@ public class StaffController {
     private final ObjectProvider<StaffRoleAssignmentPolicy> staffRoleAssignmentPolicyProvider;
 
     @GetMapping
+    @PreAuthorize("hasAuthority('" + RbacPermissions.STAFF_READ + "')")
     public List<Staff> getAll() {
         return staffService.findAll();
     }
 
     @GetMapping("/role-options")
+    @PreAuthorize("hasAuthority('" + RbacPermissions.STAFF_READ + "')")
     public List<AppRole> getRoleOptions() {
         StaffRoleAssignmentPolicy policy = staffRoleAssignmentPolicyProvider.getIfAvailable();
         return policy == null ? List.of() : policy.findAssignableRoles();
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("@staffReadAuthorization.canRead(#id, authentication)")
     public ResponseEntity<Staff> getById(@PathVariable String id) {
         return staffService.findById(id)
                 .map(ResponseEntity::ok)
