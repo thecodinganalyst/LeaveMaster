@@ -83,9 +83,11 @@ public class StaffEntitlementProposalService {
             validateTemplatePolicyIdentity(policy, sourceLeaveTypeId);
             if (!supportsOnboardingBalance(policy)) continue;
 
-            LocalDate entitlementStart = resolved.futureEligibility() ? resolved.eligibleFrom() : periodStart;
-            LocalDate prorationStart = resolved.futureEligibility() ? resolved.eligibleFrom() : laterOf(periodStart, profile.getJoinDate());
-            BigDecimal base = calculateBase(policy, prorationStart, periodStart, periodEnd);
+            LocalDate entitlementStart = laterOf(periodStart, profile.getJoinDate());
+            if (resolved.futureEligibility()) {
+                entitlementStart = laterOf(entitlementStart, resolved.eligibleFrom());
+            }
+            BigDecimal base = calculateBase(policy, entitlementStart, periodStart, periodEnd);
             proposals.add(LeaveEntitlement.builder()
                     .leaveType(leaveType)
                     .from(entitlementStart)
