@@ -91,12 +91,31 @@ class StaffEntitlementProposalServiceTest {
         assertThat(result).hasSize(1);
         LeaveEntitlement entitlement = result.getFirst();
         assertThat(entitlement.getLeaveType()).isEqualTo(annual);
-        assertThat(entitlement.getFrom()).isEqualTo(LocalDate.of(2026, 1, 1));
+        assertThat(entitlement.getFrom()).isEqualTo(joinDate);
         assertThat(entitlement.getTo()).isEqualTo(LocalDate.of(2026, 12, 31));
         assertThat(entitlement.getEntitlement()).isEqualByComparingTo("10.00");
         assertThat(entitlement.getBaseEntitlementAmount()).isEqualByComparingTo("10.00");
         assertThat(entitlement.getCarriedForwardAmount()).isEqualByComparingTo("0.00");
         assertThat(entitlement.getPolicyId()).isEqualTo("policy-annual");
+    }
+
+    @Test
+    void shouldKeepCalendarStartWhenStaffJoinsOnCalendarStart() {
+        LocalDate calendarStart = calendar.getStart();
+        LeaveType annual = leaveType();
+        LeaveEntitlementPolicy policy = templatePolicy(
+                "policy-calendar-start", new BigDecimal("20.00"), AccrualMethod.ANNUAL, ProrationMethod.CALENDAR_DAYS);
+        when(leaveCalendarService.getCalendarFor("SG", calendarStart)).thenReturn(Optional.of(calendar));
+        when(leaveTypeRepository.findAllByTenantId("tenant-a")).thenReturn(List.of(annual));
+        when(resolutionService.resolveTemplate(any(Staff.class), eq(SOURCE_LEAVE_TYPE_ID), any(LocalDate.class)))
+                .thenReturn(new PolicyResolutionResult("__preview__", SOURCE_LEAVE_TYPE_ID, "policy-calendar-start", false, "matched", List.of()));
+        when(policyRepository.findById("policy-calendar-start")).thenReturn(Optional.of(policy));
+
+        LeaveEntitlement entitlement = proposalService.propose(
+                new StaffEntitlementProposalRequest(null, "SG", calendarStart, null)).getFirst();
+
+        assertThat(entitlement.getFrom()).isEqualTo(calendarStart);
+        assertThat(entitlement.getEntitlement()).isEqualByComparingTo("20.00");
     }
 
     @Test
