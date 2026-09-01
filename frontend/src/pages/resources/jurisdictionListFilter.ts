@@ -10,6 +10,13 @@ const FILTERED_RESOURCES = new Set<string>(['leave-types', 'leave-calendars']);
 export const supportsJurisdictionFilter = (resourceName?: string): resourceName is JurisdictionFilteredResource =>
   Boolean(resourceName && FILTERED_RESOURCES.has(resourceName));
 
+export const canUseJurisdictionFilter = (
+  resourceSupportsFilter: boolean,
+  platformAdmin: boolean,
+  canReadJurisdictions: boolean,
+  canReadTenantJurisdictions: boolean,
+) => resourceSupportsFilter && canReadJurisdictions && (platformAdmin || canReadTenantJurisdictions);
+
 export const buildLeaveTypeJurisdictionMap = (sources: JurisdictionLeaveTypeSource[]) => {
   const result = new Map<string, string>();
   for (const source of sources) {

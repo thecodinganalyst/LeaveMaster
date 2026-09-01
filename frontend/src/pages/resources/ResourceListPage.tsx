@@ -11,6 +11,7 @@ import { PageHeader } from '../../components/common/PageHeader.tsx';
 import type { AdminField } from './resourceConfigResolver.ts';
 import { getAdminResourceConfig, isAdminFieldVisible, toFormValues } from './resourceConfigResolver.ts';
 import {
+  canUseJurisdictionFilter,
   filterRecordsByJurisdiction,
   supportsJurisdictionFilter,
 } from './jurisdictionListFilter.ts';
@@ -44,7 +45,15 @@ export const ResourceListPage = () => {
   const [pageSize, setPageSize] = useState(10);
   const navigate = useNavigate();
   const { message } = App.useApp();
-  const jurisdictionFilterEnabled = supportsJurisdictionFilter(config?.name);
+  const jurisdictionFilterSupported = supportsJurisdictionFilter(config?.name);
+  const { data: canReadJurisdictions } = useCan({ resource: 'jurisdictions', action: 'list' });
+  const { data: canReadTenantJurisdictions } = useCan({ resource: 'tenant-jurisdictions', action: 'list' });
+  const jurisdictionFilterEnabled = canUseJurisdictionFilter(
+    jurisdictionFilterSupported,
+    platformAdmin,
+    Boolean(canReadJurisdictions?.can),
+    Boolean(canReadTenantJurisdictions?.can),
+  );
   const listQuery = useList({ resource: config?.name ?? '', pagination: { mode: 'off' }, queryOptions: { enabled: Boolean(config) } });
   const jurisdictionsQuery = useList({
     resource: 'jurisdictions',
