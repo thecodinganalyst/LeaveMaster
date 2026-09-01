@@ -26,6 +26,8 @@ const renderPage = () => render(
 
 describe('ApplyLeavePage runtime response resilience', () => {
   beforeEach(() => {
+    mockedGetCurrentUser.mockReset();
+    mockedGetLeaveTypes.mockReset();
     mockedGetCurrentUser.mockResolvedValue({
       loginName: 'staff',
       staffId: 'S1',
@@ -33,7 +35,6 @@ describe('ApplyLeavePage runtime response resilience', () => {
       active: true,
       authorities: ['LEAVE_APPLICATION_WRITE'],
     });
-    mockedGetLeaveTypes.mockReset();
   });
 
   it('keeps the route rendered when leave types returns null with HTTP 200 semantics', async () => {
