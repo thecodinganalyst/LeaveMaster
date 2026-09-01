@@ -59,7 +59,7 @@ export const mockAuthenticatedBackend = async (
   await page.route('**/account-activation/lookup', (route) => json(route, { nextStep: 'PASSWORD' }));
   await page.route('**/auth/login', (route) => {
     authenticated = true;
-    return route.fulfill({ status: 204 });
+    return route.fulfill({ status: 200 });
   });
   await page.route('**/leave-application-options/leave-types', (route) => json(route, [
     { id: 'E2E:ANNUAL_LEAVE', name: 'Annual Leave' },
