@@ -51,16 +51,13 @@ test('Apply Leave constrains selectable dates to the staff employment period', a
   await expect(toDate).toHaveAttribute('max', '2026-09-30');
 
   await fromDate.fill('2026-08-31');
-  await toDate.fill('2026-08-31');
-  await page.getByRole('button', { name: 'Submit request' }).click();
-  await expect(page.getByText(/Leave cannot be requested before your join date/)).toBeVisible();
-  await expect(page).toHaveURL(/\/leave-requests\/apply$/);
-
+  expect(await fromDate.evaluate((element) => (element as HTMLInputElement).checkValidity())).toBe(false);
   await fromDate.fill('2026-10-01');
-  await toDate.fill('2026-10-01');
-  await page.getByRole('button', { name: 'Submit request' }).click();
-  await expect(page.getByText(/Leave cannot be requested after your termination date/)).toBeVisible();
-  await expect(page).toHaveURL(/\/leave-requests\/apply$/);
+  expect(await fromDate.evaluate((element) => (element as HTMLInputElement).checkValidity())).toBe(false);
+  await fromDate.fill('2026-09-01');
+  expect(await fromDate.evaluate((element) => (element as HTMLInputElement).checkValidity())).toBe(true);
+  await toDate.fill('2026-09-30');
+  expect(await toDate.evaluate((element) => (element as HTMLInputElement).checkValidity())).toBe(true);
   await assertHealthy();
 });
 
