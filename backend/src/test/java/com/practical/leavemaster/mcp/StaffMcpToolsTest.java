@@ -61,7 +61,10 @@ class StaffMcpToolsTest {
                 "Alice", LocalDate.of(2026, 8, 3), "SG", "Annual Leave",
                 LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31),
                 new BigDecimal("6.00"), new BigDecimal("6.00"), BigDecimal.ZERO, BigDecimal.ZERO,
-                new BigDecimal("0.50"), "NEAREST_HALF_DAY");
+                "annual-policy", "Singapore Annual Leave - less than 2 years service",
+                new BigDecimal("14.00"), "DAYS", "NONE", "CALENDAR_DAYS",
+                false, null, null, 151L, 365L, new BigDecimal("5.79178082"),
+                new BigDecimal("0.50"), "NEAREST_HALF_DAY", true);
         when(staffAssistantReadService.findLeaveEntitlement("001", "Annual Leave", 2026))
                 .thenReturn(Optional.of(entitlement));
 
@@ -70,8 +73,11 @@ class StaffMcpToolsTest {
 
         assertThat(result).isPresent().get().satisfies(value -> {
             assertThat(value.entitlement()).isEqualByComparingTo("6.00");
+            assertThat(value.configuredEntitlementAmount()).isEqualByComparingTo("14.00");
+            assertThat(value.prorationMethod()).isEqualTo("CALENDAR_DAYS");
             assertThat(value.prorationDenominationDays()).isEqualByComparingTo("0.50");
             assertThat(value.prorationRoundingRule()).isEqualTo("NEAREST_HALF_DAY");
+            assertThat(value.sourcePolicyResolved()).isTrue();
         });
         verify(staffAssistantReadService).findLeaveEntitlement("001", "Annual Leave", 2026);
     }
