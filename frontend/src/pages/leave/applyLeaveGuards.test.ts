@@ -14,12 +14,18 @@ describe('apply leave response guards', () => {
       null,
       { id: 'SICK' },
       { id: 3, name: 'Invalid' },
+      { id: '', name: 'Empty id' },
     ])).toEqual([{ id: 'AL', name: 'Annual Leave' }]);
   });
 
   it('rejects malformed policy metadata', () => {
     expect(normalizePolicyMetadata(null)).toBeUndefined();
     expect(normalizePolicyMetadata({ policyModel: 'EVENT_BASED' })).toBeUndefined();
+    expect(normalizePolicyMetadata({
+      policyModel: 'UNKNOWN',
+      eventBased: false,
+      eventRequiresVerification: false,
+    })).toBeUndefined();
   });
 
   it('accepts valid policy metadata', () => {
@@ -31,6 +37,17 @@ describe('apply leave response guards', () => {
       policyModel: 'EVENT_BASED',
       eventBased: true,
       eventRequiresVerification: true,
+    });
+  });
+
+  it('accepts policy metadata without a policy model', () => {
+    expect(normalizePolicyMetadata({
+      eventBased: false,
+      eventRequiresVerification: false,
+    })).toEqual({
+      policyModel: undefined,
+      eventBased: false,
+      eventRequiresVerification: false,
     });
   });
 });
