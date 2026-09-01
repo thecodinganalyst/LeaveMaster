@@ -130,8 +130,16 @@ export const ApplyLeavePage = () => {
       <PageHeader title="Apply for leave" subtitle="Submit a leave request for one or more working days." />
       {error ? <Alert type="error" showIcon message={error} style={{ marginBottom: 16 }} /> : null}
       {!staffId && !loading && !error ? <Alert type="warning" showIcon message="Your account is not linked to a staff record, so leave cannot be submitted." style={{ marginBottom: 16 }} /> : null}
-      <Card loading={loading}>
-        <Form form={form} layout="vertical" onFinish={submit} initialValues={{ leaveDuration: 'FULL' }} style={{ maxWidth: 640 }}>
+      <Card>
+        {loading ? <Typography.Paragraph type="secondary">Loading leave application…</Typography.Paragraph> : null}
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={submit}
+          initialValues={{ leaveDuration: 'FULL' }}
+          style={{ maxWidth: 640 }}
+          disabled={loading || canWrite !== true}
+        >
           <Form.Item name="leaveTypeId" label="Leave type" rules={[{ required: true, message: 'Select a leave type' }]}>
             <Select options={leaveTypes.map((leaveType) => ({ value: leaveType.id, label: leaveType.name }))} placeholder="Select leave type" />
           </Form.Item>

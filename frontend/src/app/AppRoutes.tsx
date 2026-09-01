@@ -3,8 +3,9 @@ import { NavigateToResource } from '@refinedev/react-router-v6';
 import { Spin, Typography } from 'antd';
 import { Outlet, Route, Routes } from 'react-router-dom';
 
-import { AppLayout } from '../components/layout/AppLayout.tsx';
 import { ErrorState } from '../components/common/ErrorState.tsx';
+import { RouteErrorBoundary } from '../components/common/RouteErrorBoundary.tsx';
+import { AppLayout } from '../components/layout/AppLayout.tsx';
 import { AccountSecurityPage } from '../pages/auth/AccountSecurityPage.tsx';
 import { ChangePasswordPage } from '../pages/auth/ChangePasswordPage.tsx';
 import { LoginPage } from '../pages/auth/LoginPage.tsx';
@@ -25,6 +26,12 @@ const AuthenticationLoadingState = () => (
     <Spin size="large" />
     <Typography.Text>Checking your session…</Typography.Text>
   </main>
+);
+
+const ApplyLeaveRoute = () => (
+  <RouteErrorBoundary>
+    <ApplyLeavePage />
+  </RouteErrorBoundary>
 );
 
 export const AppRoutes = () => {
@@ -48,8 +55,8 @@ export const AppRoutes = () => {
         <Route path="/account/security" element={<AccountSecurityPage />} />
         <Route path="/account/change-password" element={<ChangePasswordPage />} />
         <Route path="/leave-requests" element={<MyLeavePage />} />
-        <Route path="/leave-requests/apply" element={<ApplyLeavePage />} />
-        <Route path="/leave-requests/create" element={<ApplyLeavePage />} />
+        <Route path="/leave-requests/apply" element={<ApplyLeaveRoute />} />
+        <Route path="/leave-requests/create" element={<ApplyLeaveRoute />} />
         <Route path="/leave-requests/show/:id" element={<LeaveDetailsPage />} />
         <Route path="/leave-requests/edit/:id" element={<LeaveDetailsPage />} />
         <Route path="/approvals" element={<ApprovalInboxPage />} />
