@@ -37,6 +37,30 @@ test('staff can open Apply Leave and submit a deterministic request', async ({ p
   await assertHealthy();
 });
 
+test('Apply Leave constrains selectable dates to the staff employment period', async ({ page }) => {
+  await mockAuthenticatedBackend(page, 'staff');
+  const assertHealthy = installFailureGuards(page);
+
+  await page.goto('/leave-requests/apply');
+  const fromDate = page.getByLabel('From date');
+  const toDate = page.getByLabel('To date');
+
+  await expect(fromDate).toHaveAttribute('min', '2026-09-01');
+  await expect(fromDate).toHaveAttribute('max', '2026-09-30');
+  await expect(toDate).toHaveAttribute('min', '2026-09-01');
+  await expect(toDate).toHaveAttribute('max', '2026-09-30');
+
+  await fromDate.fill('2026-08-31');
+  expect(await fromDate.evaluate((element) => (element as HTMLInputElement).checkValidity())).toBe(false);
+  await fromDate.fill('2026-10-01');
+  expect(await fromDate.evaluate((element) => (element as HTMLInputElement).checkValidity())).toBe(false);
+  await fromDate.fill('2026-09-01');
+  expect(await fromDate.evaluate((element) => (element as HTMLInputElement).checkValidity())).toBe(true);
+  await toDate.fill('2026-09-30');
+  expect(await toDate.evaluate((element) => (element as HTMLInputElement).checkValidity())).toBe(true);
+  await assertHealthy();
+});
+
 test('Apply Leave cannot regress to an empty React page', async ({ page }) => {
   await mockAuthenticatedBackend(page, 'staff');
   const assertHealthy = installFailureGuards(page);

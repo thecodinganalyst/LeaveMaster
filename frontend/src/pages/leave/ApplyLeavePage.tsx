@@ -4,6 +4,7 @@ import type { UploadFile } from 'antd';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import { apiFetch } from '../../api/http.ts';
 import { getCurrentUser } from '../../auth/session.ts';
 import { PageContainer } from '../../components/common/PageContainer.tsx';
 import { PageHeader } from '../../components/common/PageHeader.tsx';
@@ -29,8 +30,29 @@ interface FormValues {
   attachment?: UploadFile[];
 }
 
+interface StaffEmploymentDates {
+  id: string;
+  joinDate: string;
+  termDate?: string | null;
+}
+
+const employmentDateError = (
+  date: string | undefined,
+  employmentDates: StaffEmploymentDates | undefined,
+) => {
+  if (!date || !employmentDates) return undefined;
+  if (date < employmentDates.joinDate) {
+    return `Leave cannot be requested before your join date (${employmentDates.joinDate}).`;
+  }
+  if (employmentDates.termDate && date > employmentDates.termDate) {
+    return `Leave cannot be requested after your termination date (${employmentDates.termDate}).`;
+  }
+  return undefined;
+};
+
 export const ApplyLeavePage = () => {
   const [staffId, setStaffId] = useState<string | null>(null);
+  const [employmentDates, setEmploymentDates] = useState<StaffEmploymentDates>();
   const [canWrite, setCanWrite] = useState<boolean | null>(null);
   const [leaveTypes, setLeaveTypes] = useState<LeaveTypeSummary[]>([]);
   const [policyMetadata, setPolicyMetadata] = useState<LeaveApplicationPolicyMetadata>();
@@ -51,9 +73,21 @@ export const ApplyLeavePage = () => {
         const user = await getCurrentUser();
         const authorities = Array.isArray(user.authorities) ? user.authorities : [];
         const allowedToApply = authorities.includes('LEAVE_APPLICATION_WRITE');
-        setStaffId(typeof user.staffId === 'string' ? user.staffId : null);
+        const currentStaffId = typeof user.staffId === 'string' ? user.staffId : null;
+        setStaffId(currentStaffId);
         setCanWrite(allowedToApply);
-        if (allowedToApply) {
+        if (allowedToApply && currentStaffId) {
+          const [leaveTypeResponse, staffResponse] = await Promise.all([
+            getLeaveTypes(),
+            apiFetch<StaffEmploymentDates>(`/api/staff/${encodeURIComponent(currentStaffId)}`),
+          ]);
+          const normalized = normalizeLeaveTypes(leaveTypeResponse);
+          setLeaveTypes(normalized);
+          setEmploymentDates(staffResponse);
+          if (!Array.isArray(leaveTypeResponse)) {
+            setError('Leave types could not be loaded because the server returned an unexpected response.');
+          }
+        } else if (allowedToApply) {
           const response = await getLeaveTypes();
           const normalized = normalizeLeaveTypes(response);
           setLeaveTypes(normalized);
@@ -107,6 +141,12 @@ export const ApplyLeavePage = () => {
 
   const submit = async (values: FormValues) => {
     if (!staffId || !canWrite) return;
+    const startDateError = employmentDateError(values.fromDate, employmentDates);
+    const endDateError = employmentDateError(values.toDate, employmentDates);
+    if (startDateError || endDateError) {
+      setError(startDateError ?? endDateError);
+      return;
+    }
     setSubmitting(true);
     setError(undefined);
     try {
@@ -160,8 +200,20 @@ export const ApplyLeavePage = () => {
           <Form.Item name="leaveTypeId" label="Leave type" rules={[{ required: true, message: 'Select a leave type' }]}>
             <Select options={leaveTypes.map((leaveType) => ({ value: leaveType.id, label: leaveType.name }))} placeholder="Select leave type" />
           </Form.Item>
-          <Form.Item name="fromDate" label="From date" rules={[{ required: true, message: 'Select a start date' }]}>
-            <Input type="date" allowClear />
+          <Form.Item
+            name="fromDate"
+            label="From date"
+            rules={[
+              { required: true, message: 'Select a start date' },
+              () => ({
+                validator: (_, value: string | undefined) => {
+                  const validationError = employmentDateError(value, employmentDates);
+                  return validationError ? Promise.reject(new Error(validationError)) : Promise.resolve();
+                },
+              }),
+            ]}
+          >
+            <Input type="date" allowClear min={employmentDates?.joinDate} max={employmentDates?.termDate ?? undefined} />
           </Form.Item>
           <Form.Item
             name="toDate"
@@ -172,14 +224,16 @@ export const ApplyLeavePage = () => {
               ({ getFieldValue }) => ({
                 validator: (_, value: string | undefined) => {
                   const start = getFieldValue('fromDate') as string | undefined;
-                  return start && value && value < start
-                    ? Promise.reject(new Error('End date must be on or after start date'))
-                    : Promise.resolve();
+                  if (start && value && value < start) {
+                    return Promise.reject(new Error('End date must be on or after start date'));
+                  }
+                  const validationError = employmentDateError(value, employmentDates);
+                  return validationError ? Promise.reject(new Error(validationError)) : Promise.resolve();
                 },
               }),
             ]}
           >
-            <Input type="date" allowClear />
+            <Input type="date" allowClear min={employmentDates?.joinDate} max={employmentDates?.termDate ?? undefined} />
           </Form.Item>
           <Form.Item name="leaveDuration" label="Duration" rules={[{ required: true }]}>
             <Select options={[
