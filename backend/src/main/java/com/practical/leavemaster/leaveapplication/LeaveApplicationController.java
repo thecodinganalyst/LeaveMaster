@@ -27,6 +27,9 @@ public class LeaveApplicationController {
     @Autowired(required = false)
     private LeaveApplicationPolicyMetadataService policyMetadataService;
 
+    @Autowired(required = false)
+    private LeaveEmploymentDateValidator employmentDateValidator;
+
     @GetMapping
     @PreAuthorize("@leaveAuthorization.canAccessStaff(authentication, #staffId)")
     public ResponseEntity<?> getAll(@RequestParam String staffId) {
@@ -104,6 +107,7 @@ public class LeaveApplicationController {
             @RequestPart("request") LeaveApplicationRequest request,
             @RequestPart(value = "file", required = false) MultipartFile file) {
         try {
+            validateEmploymentDates(request);
             if (policyMetadataService != null) {
                 policyMetadataService.validateAttachmentRequirement(request, file != null && !file.isEmpty());
             }
@@ -120,6 +124,7 @@ public class LeaveApplicationController {
     @PreAuthorize("@leaveAuthorization.canApplyForStaff(authentication, #request.staffId)")
     public ResponseEntity<?> applyJson(@RequestBody LeaveApplicationRequest request) {
         try {
+            validateEmploymentDates(request);
             if (policyMetadataService != null) {
                 policyMetadataService.validateAttachmentRequirement(request, false);
             }
@@ -228,6 +233,12 @@ public class LeaveApplicationController {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (LeaveApplicationNotFoundException e) {
             return ResponseEntity.notFound().build();
+        }
+    }
+
+    private void validateEmploymentDates(LeaveApplicationRequest request) {
+        if (employmentDateValidator != null) {
+            employmentDateValidator.validate(request);
         }
     }
 }
