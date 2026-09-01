@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { apiFetch } from '../../api/http.ts';
 import { getCurrentUser } from '../../auth/session.ts';
 import {
   applyForLeave,
@@ -11,6 +12,7 @@ import {
 } from '../../features/leave/leaveApi.ts';
 import { ApplyLeavePage } from './ApplyLeavePage.tsx';
 
+vi.mock('../../api/http.ts', () => ({ apiFetch: vi.fn() }));
 vi.mock('../../auth/session.ts', () => ({ getCurrentUser: vi.fn() }));
 vi.mock('../../features/leave/leaveApi.ts', async () => {
   const actual = await vi.importActual<typeof import('../../features/leave/leaveApi.ts')>('../../features/leave/leaveApi.ts');
@@ -22,6 +24,7 @@ vi.mock('../../features/leave/leaveApi.ts', async () => {
   };
 });
 
+const mockedApiFetch = vi.mocked(apiFetch);
 const mockedGetCurrentUser = vi.mocked(getCurrentUser);
 const mockedGetLeaveTypes = vi.mocked(getLeaveTypes);
 const mockedGetPolicyMetadata = vi.mocked(getLeaveApplicationPolicyMetadata);
@@ -43,10 +46,12 @@ const selectLeaveType = async (label: string) => {
 
 describe('ApplyLeavePage policy-aware event fields', () => {
   beforeEach(() => {
+    mockedApiFetch.mockReset();
     mockedGetCurrentUser.mockReset();
     mockedGetLeaveTypes.mockReset();
     mockedGetPolicyMetadata.mockReset();
     mockedApplyForLeave.mockReset();
+    mockedApiFetch.mockResolvedValue({ id: 'S1', joinDate: '2023-01-01', termDate: null });
     mockedGetCurrentUser.mockResolvedValue({
       loginName: 'alice',
       staffId: 'S1',
@@ -69,9 +74,22 @@ describe('ApplyLeavePage policy-aware event fields', () => {
 
     expect(await screen.findByText('Apply for leave')).toBeInTheDocument();
     await waitFor(() => expect(mockedGetLeaveTypes).toHaveBeenCalledTimes(1));
+    expect(mockedApiFetch).toHaveBeenCalledWith('/api/staff/S1');
     expect(screen.getByText('Leave type')).toBeInTheDocument();
     expect(screen.getAllByRole('combobox').length).toBeGreaterThan(0);
     expect(screen.queryByText('You do not have permission to submit leave applications.')).not.toBeInTheDocument();
+  });
+
+  it('applies staff employment boundaries to both leave date inputs', async () => {
+    mockedApiFetch.mockResolvedValue({ id: 'S1', joinDate: '2026-09-01', termDate: '2026-09-30' });
+
+    renderPage();
+
+    await waitFor(() => expect(mockedApiFetch).toHaveBeenCalledWith('/api/staff/S1'));
+    expect(screen.getByLabelText('From date')).toHaveAttribute('min', '2026-09-01');
+    expect(screen.getByLabelText('From date')).toHaveAttribute('max', '2026-09-30');
+    expect(screen.getByLabelText('To date')).toHaveAttribute('min', '2026-09-01');
+    expect(screen.getByLabelText('To date')).toHaveAttribute('max', '2026-09-30');
   });
 
   it('shows a permission warning and does not load leave types without leave application write access', async () => {
@@ -87,6 +105,7 @@ describe('ApplyLeavePage policy-aware event fields', () => {
 
     expect(await screen.findByText('You do not have permission to submit leave applications.')).toBeInTheDocument();
     expect(mockedGetLeaveTypes).not.toHaveBeenCalled();
+    expect(mockedApiFetch).not.toHaveBeenCalled();
     expect(screen.queryByText('Apply for leave')).not.toBeInTheDocument();
   });
 
