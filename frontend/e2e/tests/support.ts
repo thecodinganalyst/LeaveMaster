@@ -22,7 +22,15 @@ export const installFailureGuards = (page: Page, allowedStatuses: number[] = [])
   page.on('console', (message) => {
     if (message.type() === 'error') consoleErrors.push(message.text());
   });
-  page.on('requestfailed', (request) => failedRequests.push(`${request.method()} ${request.url()} ${request.failure()?.errorText ?? ''}`));
+  page.on('requestfailed', (request) => {
+    const failure = request.failure()?.errorText ?? '';
+    const path = new URL(request.url()).pathname;
+    // Chromium may cancel the intercepted login response body once Refine performs the
+    // successful SPA redirect. The authenticated /auth/me call and shell assertion below
+    // verify that login completed; every other failed request remains fatal.
+    if (request.method() === 'POST' && path === '/auth/login' && failure === 'net::ERR_ABORTED') return;
+    failedRequests.push(`${request.method()} ${request.url()} ${failure}`);
+  });
   page.on('response', (response) => {
     if (response.status() >= 400 && !allowedStatuses.includes(response.status())) {
       badResponses.push(`${response.status()} ${response.request().method()} ${response.url()}`);
