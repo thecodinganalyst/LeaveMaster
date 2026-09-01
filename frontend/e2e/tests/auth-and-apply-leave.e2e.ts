@@ -9,7 +9,7 @@ test('password login reaches the authenticated application shell without runtime
   await expect(page.getByRole('heading', { name: 'LeaveMaestro' })).toBeVisible();
   await page.getByLabel('Tenant ID').fill('E2E');
   await page.getByLabel('Login name').fill('e2e-staff');
-  await page.getByRole('button', { name: 'Continue' }).click();
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await expect(page.getByText('E2E / e2e-staff')).toBeVisible();
   await page.getByLabel('Password').fill('e2e-password');
   const assertHealthy = installFailureGuards(page);
