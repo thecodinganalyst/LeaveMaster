@@ -1,13 +1,46 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { apiFetch } from '../../api/http.ts';
 import {
   formatEffectivePeriod,
   formatEligibilitySummary,
   formatEntitlement,
+  loadLeaveTypeEntitlements,
   shouldUseCompactEntitlementLayout,
   type EligibilityRuleSummary,
   type LeaveEntitlementPolicySummary,
 } from './LeaveTypeEntitlementsTable.tsx';
+
+vi.mock('../../api/http.ts', () => ({ apiFetch: vi.fn() }));
+
+const mockedApiFetch = vi.mocked(apiFetch);
+
+describe('LeaveTypeEntitlementsTable loading', () => {
+  beforeEach(() => {
+    mockedApiFetch.mockReset();
+  });
+
+  it('loads the staff-safe entitlement view scoped to the leave type', async () => {
+    const response: LeaveEntitlementPolicySummary[] = [{
+      id: 'policy-1',
+      entitlementAmount: 14,
+      entitlementUnit: 'DAYS',
+      effectiveFrom: '2026-01-01',
+      active: true,
+      eligibilityRules: [{
+        criterionType: 'SERVICE_MONTHS',
+        operator: 'GREATER_THAN_OR_EQUAL',
+        value: '3',
+        active: true,
+        sortOrder: 1,
+      }],
+    }];
+    mockedApiFetch.mockResolvedValue(response);
+
+    await expect(loadLeaveTypeEntitlements('annual leave')).resolves.toEqual(response);
+    expect(mockedApiFetch).toHaveBeenCalledWith('/api/leave-types/annual%20leave/entitlements');
+  });
+});
 
 describe('LeaveTypeEntitlementsTable formatting', () => {
   it('combines entitlement amount and unit into one value', () => {
@@ -23,8 +56,6 @@ describe('LeaveTypeEntitlementsTable formatting', () => {
   it('summarizes multiple eligibility rules in sort order', () => {
     const rules: EligibilityRuleSummary[] = [
       {
-        id: 'rule-2',
-        policyId: 'policy-1',
         criterionType: 'SERVICE_MONTHS',
         operator: 'LESS_THAN',
         value: '48',
@@ -32,8 +63,6 @@ describe('LeaveTypeEntitlementsTable formatting', () => {
         sortOrder: 2,
       },
       {
-        id: 'rule-1',
-        policyId: 'policy-1',
         criterionType: 'SERVICE_MONTHS',
         operator: 'GREATER_THAN_OR_EQUAL',
         value: '24',
@@ -51,8 +80,6 @@ describe('LeaveTypeEntitlementsTable formatting', () => {
 
   it('marks inactive eligibility rules without dropping them', () => {
     const rules: EligibilityRuleSummary[] = [{
-      id: 'rule-1',
-      policyId: 'policy-1',
       criterionType: 'JURISDICTION_CODE',
       operator: 'EQUALS',
       value: 'SG',
