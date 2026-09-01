@@ -2,7 +2,7 @@
 
 LeaveMaestro serves the production React SPA from Firebase Hosting and the Spring Boot API from Google Cloud Run. The browser intentionally talks to the Firebase origin for both frontend assets and application requests. Firebase Hosting rewrites selected URL paths to the `leavemaster-api` Cloud Run service.
 
-This same-origin design is important for LeaveMaestro's session and CSRF model. In production the frontend leaves `VITE_API_URL` unset, so `frontend/src/config/env.ts` resolves the API base URL to an empty string. Requests such as `/auth/csrf`, `/api/staff` and `/account-activation/lookup` therefore go to the current Firebase Hosting origin rather than directly to a Cloud Run URL. Firebase decides whether each path should be served as a frontend resource, forwarded to Cloud Run, or handled by the SPA fallback.
+This same-origin design is important for LeaveMaestro's session and CSRF model. In production the frontend leaves `VITE_API_URL` unset, so `frontend/src/config/env.ts` resolves the API base URL to an empty string. Requests such as `/auth/csrf`, `/api/staff`, `/leave-application-options/leave-types` and `/account-activation/lookup` therefore go to the current Firebase Hosting origin rather than directly to a Cloud Run URL. Firebase decides whether each path should be served as a frontend resource, forwarded to Cloud Run, or handled by the SPA fallback.
 
 ## How the routing works
 
@@ -49,6 +49,7 @@ The production Hosting configuration routes these path families to `leavemaster-
 | `/logout` | Session logout |
 | `/leave-applications` | Legacy/non-`/api` leave application endpoint |
 | `/leave-applications/**` | Legacy/non-`/api` leave application subpaths |
+| `/leave-application-options/**` | Apply Leave option endpoints such as the active leave-type list |
 
 Everything else eventually reaches the SPA fallback unless it is a static file.
 
@@ -56,7 +57,7 @@ Everything else eventually reaches the SPA fallback unless it is a static file.
 
 LeaveMaestro uses server-side Spring Security sessions. Production session cookies use the Firebase-compatible `__session` cookie name. Keeping browser requests on the Firebase origin lets the browser send the session and CSRF context consistently while Firebase proxies backend requests to Cloud Run.
 
-This also means frontend code must not assume that a successful HTTP response necessarily came from the backend. A missing Hosting rewrite can cause Firebase to return the SPA document instead. API clients should validate important response shapes, especially authentication and account-activation decisions.
+This also means frontend code must not assume that a successful HTTP response necessarily came from the backend. A missing Hosting rewrite can cause Firebase to return the SPA document instead. API clients should validate important response shapes, especially authentication, account-activation and leave-application option decisions.
 
 ## Incident example: missing account activation rewrite
 
@@ -74,6 +75,14 @@ The observed sequence was:
 
 The fix added the missing Hosting rewrite and made the activation API client reject malformed or unexpected responses instead of silently choosing password login.
 
+## Incident example: Apply Leave options returned HTML with HTTP 200
+
+Issue #498 was caused by `/leave-application-options/**` being omitted from `frontend/firebase.json`.
+
+`ApplyLeavePage` requested `/leave-application-options/leave-types`. Because the path did not match a backend rewrite, Firebase served the SPA `index.html` through the catch-all rule with HTTP 200. The request therefore produced no Cloud Run error and could look successful in server logs, while the frontend received HTML instead of the expected leave-type JSON array.
+
+The fix added `/leave-application-options/**` to the Cloud Run rewrites and extended the routing regression test. The frontend response guards introduced in #496 remain useful because they prevent a malformed successful response from crashing the route, but the Hosting rewrite is what ensures the production request reaches the backend.
+
 This is an important diagnostic pattern: if a frontend operation appears to succeed or changes UI state but there is no corresponding Cloud Run request, inspect Firebase Hosting rewrites before debugging database or service logic.
 
 ## Adding a new backend route
@@ -86,7 +95,7 @@ When adding a frontend-used backend endpoint outside an already covered family:
 2. Add a Cloud Run rewrite for that path in `frontend/firebase.json`.
 3. Place it before the `** -> /index.html` fallback.
 4. Route it to `leavemaster-api` in `asia-southeast1` unless the architecture has intentionally changed.
-5. Extend `frontend/src/config/firebaseRouting.test.ts` so the routing contract explicitly covers the new family.
+5. Extend `frontend/src/config/firebaseHosting.test.ts` so the routing contract explicitly covers the new family.
 6. Add or update API-client tests for the endpoint.
 7. For security-sensitive response decisions, validate the runtime response shape rather than relying only on TypeScript types.
 8. Update this document if the production routing model changes.
@@ -95,7 +104,7 @@ Do not solve a missing rewrite by hard-coding the Cloud Run service URL into pro
 
 ## Automated verification
 
-Frontend CI runs Vitest as part of the normal quality gate. `firebaseRouting.test.ts` reads `frontend/firebase.json` and verifies that required backend path families:
+Frontend CI runs Vitest as part of the normal quality gate. `firebaseHosting.test.ts` reads `frontend/firebase.json` and verifies that required backend path families:
 
 - exist as Cloud Run rewrites;
 - target `leavemaster-api`;
@@ -128,8 +137,9 @@ For an API request that should reach Cloud Run:
 2. Perform the action that invokes the endpoint.
 3. Check the browser Network panel when available and confirm the expected request path and status.
 4. Check Cloud Run request logs for the same method and path.
-5. For account activation specifically, submitting tenant ID and login name should produce `POST /account-activation/lookup` in Cloud Run logs.
-6. Requesting a PIN should then produce `POST /account-activation/request` and the corresponding account-activation/email service logs.
+5. For Apply Leave, opening the page should produce `GET /leave-application-options/leave-types` in Cloud Run logs and return JSON rather than the SPA document.
+6. For account activation specifically, submitting tenant ID and login name should produce `POST /account-activation/lookup` in Cloud Run logs.
+7. Requesting a PIN should then produce `POST /account-activation/request` and the corresponding account-activation/email service logs.
 
 The Firebase deployment workflow log also identifies the exact Hosting site. Production currently resolves to `leavemaster-production` when no explicit `FIREBASE_HOSTING_SITE` override is configured.
 
@@ -162,7 +172,7 @@ Whenever frontend code adds or changes a backend call:
 - Is the endpoint under an already routed family such as `/api/**`?
 - If not, was `frontend/firebase.json` updated?
 - Is the backend rewrite before the `**` SPA fallback?
-- Does `firebaseRouting.test.ts` cover the path family?
+- Does `firebaseHosting.test.ts` cover the path family?
 - Does the API client validate security-sensitive response shapes?
 - Did frontend lint, typecheck, tests, coverage and build pass?
 - After merge, did the Firebase production deployment run for the expected commit?
