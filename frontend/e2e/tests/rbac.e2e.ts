@@ -18,7 +18,7 @@ test('staff and manager do not get leave-calendar write controls', async ({ page
   for (const role of ['staff', 'manager'] as E2ERole[]) {
     await mockAuthenticatedBackend(page, role);
     await page.goto('/leave-calendars');
-    await expect(page.getByRole('link', { name: /create/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Create' })).toHaveCount(0);
   }
 });
 
@@ -26,6 +26,6 @@ test('HR and tenant admin get leave-calendar write controls', async ({ page }) =
   for (const role of ['hr', 'admin'] as E2ERole[]) {
     await mockAuthenticatedBackend(page, role);
     await page.goto('/leave-calendars');
-    await expect(page.getByRole('link', { name: /create/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Create' })).toBeVisible();
   }
 });
