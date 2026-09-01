@@ -62,6 +62,9 @@ export const mockAuthenticatedBackend = async (
     authorities: roleAuthorities[role],
   };
 
+  // Keep framework analytics from making the deterministic browser suite depend on
+  // an external telemetry service or Chromium's cross-origin response blocking.
+  await page.route('https://telemetry.refine.dev/**', (route) => json(route, {}));
   await page.route('**/auth/csrf', (route) => json(route, { token: 'e2e-csrf', headerName: 'X-CSRF-TOKEN', parameterName: '_csrf' }));
   await page.route('**/auth/me', (route) => authenticated ? json(route, currentUser) : json(route, { message: 'Unauthenticated' }, 401));
   await page.route('**/account-activation/lookup', (route) => json(route, { nextStep: 'PASSWORD' }));
