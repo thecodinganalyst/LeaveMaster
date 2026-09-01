@@ -121,14 +121,38 @@ class TenantAdminProvisionServiceTest {
     @Test
     void shouldUseExactStaffPermissions() {
         assertThat(TenantAdminProvisionService.STAFF_PERMISSION_CODES).containsExactlyInAnyOrder(
-                RbacPermissions.LEAVE_APPLICATION_READ, RbacPermissions.LEAVE_APPLICATION_WRITE, RbacPermissions.LEAVE_TYPE_READ);
+                RbacPermissions.LEAVE_APPLICATION_READ,
+                RbacPermissions.LEAVE_APPLICATION_WRITE,
+                RbacPermissions.LEAVE_TYPE_READ,
+                RbacPermissions.LEAVE_CALENDAR_READ);
     }
 
     @Test
     void shouldUseExactManagerPermissions() {
         assertThat(TenantAdminProvisionService.MANAGER_PERMISSION_CODES).containsExactlyInAnyOrder(
-                RbacPermissions.LEAVE_APPLICATION_READ, RbacPermissions.LEAVE_APPLICATION_WRITE,
-                RbacPermissions.LEAVE_APPLICATION_APPROVE, RbacPermissions.LEAVE_TYPE_READ);
+                RbacPermissions.LEAVE_APPLICATION_READ,
+                RbacPermissions.LEAVE_APPLICATION_WRITE,
+                RbacPermissions.LEAVE_APPLICATION_APPROVE,
+                RbacPermissions.LEAVE_TYPE_READ,
+                RbacPermissions.LEAVE_CALENDAR_READ);
+    }
+
+    @Test
+    void staffAndManagerShouldHaveReadOnlyLeaveCalendarAccess() {
+        assertThat(TenantAdminProvisionService.STAFF_PERMISSION_CODES)
+                .contains(RbacPermissions.LEAVE_CALENDAR_READ)
+                .doesNotContain(RbacPermissions.LEAVE_CALENDAR_WRITE);
+        assertThat(TenantAdminProvisionService.MANAGER_PERMISSION_CODES)
+                .contains(RbacPermissions.LEAVE_CALENDAR_READ)
+                .doesNotContain(RbacPermissions.LEAVE_CALENDAR_WRITE);
+    }
+
+    @Test
+    void hrAndAdminShouldHaveWriteLeaveCalendarAccess() {
+        assertThat(TenantAdminProvisionService.HR_PERMISSION_CODES)
+                .contains(RbacPermissions.LEAVE_CALENDAR_READ, RbacPermissions.LEAVE_CALENDAR_WRITE);
+        assertThat(TenantAdminProvisionService.TENANT_ADMIN_PERMISSION_CODES)
+                .contains(RbacPermissions.LEAVE_CALENDAR_READ, RbacPermissions.LEAVE_CALENDAR_WRITE);
     }
 
     @Test
