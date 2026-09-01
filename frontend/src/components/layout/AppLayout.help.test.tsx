@@ -54,18 +54,18 @@ describe('AppLayout help links', () => {
   it('links manager approvals to manager instructions', () => {
     renderAt('/approvals');
     expect(screen.getByRole('link', { name: 'Help with leave approvals' }))
-      .toHaveAttribute('href', expect.stringContaining('/user-guide/manager/#review-and-decide-leave-requests'));
+      .toHaveAttribute('href', expect.stringContaining('/user-guide/manager/#review-requests-awaiting-your-action'));
   });
 
   it('links HR staff creation and Admin leave types to their role guides', () => {
     const { unmount } = renderAt('/employees/create');
     expect(screen.getByRole('link', { name: 'Help creating staff' }))
-      .toHaveAttribute('href', expect.stringContaining('/user-guide/hr/#create-staff'));
+      .toHaveAttribute('href', expect.stringContaining('/user-guide/hr/#create-a-staff-member'));
     unmount();
 
     renderAt('/leave-types');
     expect(screen.getByRole('link', { name: 'Help with leave types' }))
-      .toHaveAttribute('href', expect.stringContaining('/user-guide/admin/#manage-leave-types'));
+      .toHaveAttribute('href', expect.stringContaining('/user-guide/admin/#leave-types'));
   });
 
   it('keeps the global User Guide discoverable in the mobile menu', () => {
