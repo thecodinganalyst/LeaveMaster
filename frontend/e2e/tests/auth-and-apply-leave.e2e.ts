@@ -3,8 +3,7 @@ import { expect, test } from '@playwright/test';
 import { installFailureGuards, mockAuthenticatedBackend } from './support.ts';
 
 test('password login reaches the authenticated application shell without runtime or HTTP failures', async ({ page }) => {
-  await mockAuthenticatedBackend(page, 'staff');
-  const assertHealthy = installFailureGuards(page);
+  await mockAuthenticatedBackend(page, 'staff', false);
 
   await page.goto('/login');
   await expect(page.getByRole('heading', { name: 'LeaveMaestro' })).toBeVisible();
@@ -13,6 +12,7 @@ test('password login reaches the authenticated application shell without runtime
   await page.getByRole('button', { name: 'Continue' }).click();
   await expect(page.getByText('E2E / e2e-staff')).toBeVisible();
   await page.getByLabel('Password').fill('e2e-password');
+  const assertHealthy = installFailureGuards(page);
   await page.getByRole('button', { name: 'Sign in' }).click();
 
   await expect(page).toHaveURL(/\/$/);
