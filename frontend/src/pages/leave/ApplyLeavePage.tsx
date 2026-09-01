@@ -1,5 +1,4 @@
 import { UploadOutlined } from '@ant-design/icons';
-import { useCan } from '@refinedev/core';
 import { App, Alert, Button, Card, Divider, Form, Input, Select, Space, Typography, Upload } from 'antd';
 import type { UploadFile } from 'antd';
 import { useEffect, useState } from 'react';
@@ -31,6 +30,7 @@ interface FormValues {
 
 export const ApplyLeavePage = () => {
   const [staffId, setStaffId] = useState<string | null>(null);
+  const [canWrite, setCanWrite] = useState<boolean | null>(null);
   const [leaveTypes, setLeaveTypes] = useState<LeaveTypeSummary[]>([]);
   const [policyMetadata, setPolicyMetadata] = useState<LeaveApplicationPolicyMetadata>();
   const [policyLoading, setPolicyLoading] = useState(false);
@@ -40,7 +40,6 @@ export const ApplyLeavePage = () => {
   const [form] = Form.useForm<FormValues>();
   const navigate = useNavigate();
   const { message } = App.useApp();
-  const { data: canWrite } = useCan({ resource: 'leave-requests', action: 'create' });
   const selectedLeaveTypeId = Form.useWatch('leaveTypeId', form);
   const fromDate = Form.useWatch('fromDate', form);
   const eventDate = Form.useWatch('eventDate', form);
@@ -49,8 +48,10 @@ export const ApplyLeavePage = () => {
     void (async () => {
       try {
         const user = await getCurrentUser();
+        const allowedToApply = user.authorities.includes('LEAVE_APPLICATION_WRITE');
         setStaffId(user.staffId);
-        if (user.authorities.includes('LEAVE_APPLICATION_WRITE')) {
+        setCanWrite(allowedToApply);
+        if (allowedToApply) {
           setLeaveTypes(await getLeaveTypes());
         }
       } catch (cause) {
@@ -91,7 +92,7 @@ export const ApplyLeavePage = () => {
   }, [form, policyMetadata?.eventBased]);
 
   const submit = async (values: FormValues) => {
-    if (!staffId || !canWrite?.can) return;
+    if (!staffId || !canWrite) return;
     setSubmitting(true);
     setError(undefined);
     try {
@@ -120,7 +121,7 @@ export const ApplyLeavePage = () => {
     }
   };
 
-  if (canWrite && !canWrite.can) {
+  if (!loading && canWrite === false) {
     return <PageContainer><Alert type="warning" showIcon message="You do not have permission to submit leave applications." /></PageContainer>;
   }
 
@@ -128,7 +129,7 @@ export const ApplyLeavePage = () => {
     <PageContainer>
       <PageHeader title="Apply for leave" subtitle="Submit a leave request for one or more working days." />
       {error ? <Alert type="error" showIcon message={error} style={{ marginBottom: 16 }} /> : null}
-      {!staffId && !loading ? <Alert type="warning" showIcon message="Your account is not linked to a staff record, so leave cannot be submitted." style={{ marginBottom: 16 }} /> : null}
+      {!staffId && !loading && !error ? <Alert type="warning" showIcon message="Your account is not linked to a staff record, so leave cannot be submitted." style={{ marginBottom: 16 }} /> : null}
       <Card loading={loading}>
         <Form form={form} layout="vertical" onFinish={submit} initialValues={{ leaveDuration: 'FULL' }} style={{ maxWidth: 640 }}>
           <Form.Item name="leaveTypeId" label="Leave type" rules={[{ required: true, message: 'Select a leave type' }]}>
@@ -213,7 +214,7 @@ export const ApplyLeavePage = () => {
             <Typography.Paragraph type="secondary">Event-based policies create or reuse the qualifying event automatically. If verification is required, this leave attachment is used as the supporting evidence and the request moves to normal approval after verification.</Typography.Paragraph>
           ) : null}
           <Space>
-            <Button type="primary" htmlType="submit" loading={submitting || policyLoading} disabled={!staffId}>Submit request</Button>
+            <Button type="primary" htmlType="submit" loading={submitting || policyLoading} disabled={!staffId || canWrite !== true}>Submit request</Button>
             <Button onClick={() => navigate('/leave-requests')}>Cancel</Button>
           </Space>
         </Form>
