@@ -45,7 +45,6 @@ describe('apply leave response guards', () => {
       eventBased: false,
       eventRequiresVerification: false,
     })).toEqual({
-      policyModel: undefined,
       eventBased: false,
       eventRequiresVerification: false,
     });
