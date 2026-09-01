@@ -1,11 +1,19 @@
-import type { LeaveApplicationPolicyMetadata, LeaveTypeSummary } from '../../features/leave/leaveApi.ts';
+import type { LeaveApplicationPolicyMetadata, LeavePolicyModel, LeaveTypeSummary } from '../../features/leave/leaveApi.ts';
+
+const leavePolicyModels: ReadonlySet<LeavePolicyModel> = new Set([
+  'ANNUAL_ENTITLEMENT',
+  'CONDITIONAL_ANNUAL_ENTITLEMENT',
+  'EVENT_BASED',
+  'REQUEST_BASED',
+]);
 
 export const normalizeLeaveTypes = (value: unknown): LeaveTypeSummary[] => {
   if (!Array.isArray(value)) return [];
   return value.filter((item): item is LeaveTypeSummary => {
     if (!item || typeof item !== 'object') return false;
     const candidate = item as Partial<LeaveTypeSummary>;
-    return typeof candidate.id === 'string' && typeof candidate.name === 'string';
+    return typeof candidate.id === 'string' && candidate.id.length > 0
+      && typeof candidate.name === 'string' && candidate.name.length > 0;
   });
 };
 
@@ -15,6 +23,13 @@ export const normalizePolicyMetadata = (value: unknown): LeaveApplicationPolicyM
   if (typeof candidate.eventBased !== 'boolean' || typeof candidate.eventRequiresVerification !== 'boolean') {
     return undefined;
   }
-  if (typeof candidate.policyModel !== 'string') return undefined;
-  return candidate as LeaveApplicationPolicyMetadata;
+  const policyModel = candidate.policyModel;
+  if (policyModel !== undefined && policyModel !== null && !leavePolicyModels.has(policyModel)) {
+    return undefined;
+  }
+  return {
+    policyModel,
+    eventBased: candidate.eventBased,
+    eventRequiresVerification: candidate.eventRequiresVerification,
+  };
 };
