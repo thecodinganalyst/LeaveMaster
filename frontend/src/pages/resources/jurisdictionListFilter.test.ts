@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildLeaveTypeJurisdictionMap,
+  canUseJurisdictionFilter,
   filterRecordsByJurisdiction,
   getRecordJurisdictionId,
   supportsJurisdictionFilter,
@@ -12,6 +13,18 @@ describe('jurisdictionListFilter', () => {
     expect(supportsJurisdictionFilter('leave-types')).toBe(true);
     expect(supportsJurisdictionFilter('leave-calendars')).toBe(true);
     expect(supportsJurisdictionFilter('employees')).toBe(false);
+  });
+
+  it('only enables tenant jurisdiction filtering when both supporting reads are authorized', () => {
+    expect(canUseJurisdictionFilter(true, false, true, true)).toBe(true);
+    expect(canUseJurisdictionFilter(true, false, false, true)).toBe(false);
+    expect(canUseJurisdictionFilter(true, false, true, false)).toBe(false);
+    expect(canUseJurisdictionFilter(false, false, true, true)).toBe(false);
+  });
+
+  it('lets platform administrators filter with jurisdiction read access alone', () => {
+    expect(canUseJurisdictionFilter(true, true, true, false)).toBe(true);
+    expect(canUseJurisdictionFilter(true, true, false, true)).toBe(false);
   });
 
   it('builds a source leave type to jurisdiction lookup', () => {
