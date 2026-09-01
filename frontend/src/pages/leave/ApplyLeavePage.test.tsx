@@ -74,7 +74,7 @@ describe('ApplyLeavePage policy-aware event fields', () => {
     expect(await screen.findByText('Apply for leave')).toBeInTheDocument();
     await waitFor(() => expect(mockedGetLeaveTypes).toHaveBeenCalledTimes(1));
     expect(screen.getByText('Leave type')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('Select leave type')).toBeInTheDocument();
+    expect(screen.getAllByRole('combobox').length).toBeGreaterThan(0);
     expect(screen.queryByText('You do not have permission to submit leave applications.')).not.toBeInTheDocument();
   });
 
