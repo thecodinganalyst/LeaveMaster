@@ -7,16 +7,16 @@ export const docsLinks = {
   gettingStarted: joinDocsUrl('user-guide/getting-started/'),
   accountSecurity: joinDocsUrl('user-guide/account-security/'),
   applyLeave: joinDocsUrl('user-guide/employee/#apply-for-leave'),
-  leaveBalances: joinDocsUrl('user-guide/employee/#view-your-leave-balances-and-entitlements'),
+  leaveBalances: joinDocsUrl('user-guide/employee/#view-your-staff-information-and-leave-entitlements'),
   employeeLeaveCalendar: joinDocsUrl('user-guide/employee/#view-the-leave-calendar'),
   leaveRequests: joinDocsUrl('user-guide/employee/#view-your-leave-requests'),
-  approvals: joinDocsUrl('user-guide/manager/#review-and-decide-leave-requests'),
+  approvals: joinDocsUrl('user-guide/manager/#review-requests-awaiting-your-action'),
   managerLeaveCalendar: joinDocsUrl('user-guide/manager/#view-team-leave'),
-  createStaff: joinDocsUrl('user-guide/hr/#create-staff'),
-  staffAndApprovers: joinDocsUrl('user-guide/hr/#maintain-staff-and-leave-approvers'),
-  leaveTypes: joinDocsUrl('user-guide/admin/#manage-leave-types'),
-  leaveCalendars: joinDocsUrl('user-guide/admin/#manage-leave-calendars-and-public-holidays'),
-  entitlementPolicies: joinDocsUrl('user-guide/admin/#manage-entitlement-policies-and-eligibility'),
+  createStaff: joinDocsUrl('user-guide/hr/#create-a-staff-member'),
+  staffAndApprovers: joinDocsUrl('user-guide/hr/#configure-leave-approvers'),
+  leaveTypes: joinDocsUrl('user-guide/admin/#leave-types'),
+  leaveCalendars: joinDocsUrl('user-guide/admin/#leave-calendars-and-public-holidays'),
+  entitlementPolicies: joinDocsUrl('user-guide/admin/#entitlement-policies-and-eligibility'),
 } as const;
 
 export interface ContextualHelpLink {
