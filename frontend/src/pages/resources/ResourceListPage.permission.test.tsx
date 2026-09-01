@@ -55,7 +55,7 @@ describe('ResourceListPage jurisdiction lookup permissions', () => {
     const tenantJurisdictionCall = useList.mock.calls.find(([args]) => args.resource === 'tenant-jurisdictions')?.[0];
     expect(jurisdictionCall.queryOptions.enabled).toBe(false);
     expect(tenantJurisdictionCall.queryOptions.enabled).toBe(false);
-    expect(screen.queryByLabelText('Jurisdiction')).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: 'Jurisdiction' })).not.toBeInTheDocument();
   });
 
   it('enables both supporting queries when a tenant user has the required permissions', () => {
@@ -67,6 +67,6 @@ describe('ResourceListPage jurisdiction lookup permissions', () => {
     const tenantJurisdictionCall = useList.mock.calls.find(([args]) => args.resource === 'tenant-jurisdictions')?.[0];
     expect(jurisdictionCall.queryOptions.enabled).toBe(true);
     expect(tenantJurisdictionCall.queryOptions.enabled).toBe(true);
-    expect(screen.getByLabelText('Jurisdiction')).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Jurisdiction' })).toBeInTheDocument();
   });
 });
