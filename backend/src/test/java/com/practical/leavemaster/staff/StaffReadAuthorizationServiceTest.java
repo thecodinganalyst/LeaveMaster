@@ -12,7 +12,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
-import java.util.List;
+import java.util.Arrays;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -77,6 +77,15 @@ class StaffReadAuthorizationServiceTest {
     }
 
     @Test
+    void deniesReadWhenRequestedStaffDoesNotExist() {
+        AppUser user = AppUser.builder().userId("user-1").tenantId("tenant-a").staffId("S001").build();
+        when(appUserRepository.findById("user-1")).thenReturn(Optional.of(user));
+        when(staffRepository.findById("S001")).thenReturn(Optional.empty());
+
+        assertThat(service.canRead("S001", authentication("user-1"))).isFalse();
+    }
+
+    @Test
     void allowsPlatformAdministrator() {
         Authentication auth = authentication("platform-user", "ROLE_PLATFORM_ADMIN");
         assertThat(service.canRead("S001", auth)).isTrue();
@@ -92,6 +101,6 @@ class StaffReadAuthorizationServiceTest {
         return new UsernamePasswordAuthenticationToken(
                 principal,
                 "n/a",
-                List.of(authorities).stream().map(SimpleGrantedAuthority::new).toList());
+                Arrays.stream(authorities).map(SimpleGrantedAuthority::new).toList());
     }
 }
