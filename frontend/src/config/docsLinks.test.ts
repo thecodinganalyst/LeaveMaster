@@ -10,12 +10,12 @@ describe('documentation links', () => {
 
   it.each([
     ['/leave-requests/apply', 'employee/#apply-for-leave'],
-    ['/approvals', 'manager/#review-and-decide-leave-requests'],
-    ['/employees/create', 'hr/#create-staff'],
-    ['/leave-approvers', 'hr/#maintain-staff-and-leave-approvers'],
-    ['/leave-types', 'admin/#manage-leave-types'],
-    ['/leave-calendars', 'admin/#manage-leave-calendars-and-public-holidays'],
-    ['/leave-entitlement-policies', 'admin/#manage-entitlement-policies-and-eligibility'],
+    ['/approvals', 'manager/#review-requests-awaiting-your-action'],
+    ['/employees/create', 'hr/#create-a-staff-member'],
+    ['/leave-approvers', 'hr/#configure-leave-approvers'],
+    ['/leave-types', 'admin/#leave-types'],
+    ['/leave-calendars', 'admin/#leave-calendars-and-public-holidays'],
+    ['/leave-entitlement-policies', 'admin/#entitlement-policies-and-eligibility'],
     ['/account/security', 'account-security/'],
   ])('maps %s to the relevant user guide section', (pathname, expectedPath) => {
     expect(contextualHelpForPath(pathname)?.href).toContain(expectedPath);
