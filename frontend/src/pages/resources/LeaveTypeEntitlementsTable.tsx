@@ -7,24 +7,22 @@ import { Link } from 'react-router-dom';
 
 import { apiFetch } from '../../api/http.ts';
 
-export interface LeaveEntitlementPolicySummary {
-  id: string;
-  leaveTypeId?: string | null;
-  entitlementAmount?: number | null;
-  entitlementUnit?: string | null;
-  effectiveFrom?: string | null;
-  effectiveTo?: string | null;
-  active?: boolean | null;
-}
-
 export interface EligibilityRuleSummary {
-  id: string;
-  policyId: string;
   criterionType?: string | null;
   operator?: string | null;
   value?: string | null;
   active?: boolean | null;
   sortOrder?: number | null;
+}
+
+export interface LeaveEntitlementPolicySummary {
+  id: string;
+  entitlementAmount?: number | null;
+  entitlementUnit?: string | null;
+  effectiveFrom?: string | null;
+  effectiveTo?: string | null;
+  active?: boolean | null;
+  eligibilityRules?: EligibilityRuleSummary[];
 }
 
 interface Props {
@@ -43,8 +41,9 @@ const operatorLabels: Record<string, string> = {
   LESS_THAN_OR_EQUAL: '≤',
 };
 
-const loadPolicies = () => apiFetch<LeaveEntitlementPolicySummary[]>('/api/leave-entitlement-policies');
-const loadEligibilityRules = () => apiFetch<EligibilityRuleSummary[]>('/api/leave-entitlement-policy-eligibility-rules');
+export const loadLeaveTypeEntitlements = (leaveTypeId: string) => apiFetch<LeaveEntitlementPolicySummary[]>(
+  `/api/leave-types/${encodeURIComponent(leaveTypeId)}/entitlements`,
+);
 
 const titleCaseUnit = (unit: string | null | undefined, amount: number | null | undefined) => {
   if (!unit) return '—';
@@ -101,27 +100,16 @@ export const shouldUseCompactEntitlementLayout = (containerWidth: number, tableW
 export const LeaveTypeEntitlementsTable = ({ leaveTypeId, canEdit = false }: Props) => {
   const { data: canCreatePolicy } = useCan({ resource: 'leave-entitlement-policies', action: 'create' });
   const { data: canCreateRule } = useCan({ resource: 'leave-entitlement-policy-eligibility-rules', action: 'create' });
-  const policiesQuery = useQuery({
-    queryKey: ['leave-entitlement-policies', 'leave-type-details', leaveTypeId],
-    queryFn: loadPolicies,
-  });
-  const eligibilityQuery = useQuery({
-    queryKey: ['leave-entitlement-policy-eligibility-rules', 'leave-type-details', leaveTypeId],
-    queryFn: loadEligibilityRules,
+  const entitlementsQuery = useQuery({
+    queryKey: ['leave-type-entitlements', 'leave-type-details', leaveTypeId],
+    queryFn: () => loadLeaveTypeEntitlements(leaveTypeId),
   });
   const containerRef = useRef<HTMLDivElement>(null);
   const tableRef = useRef<HTMLDivElement>(null);
   const measuredTableWidthRef = useRef(0);
   const [useCompactLayout, setUseCompactLayout] = useState(false);
 
-  const rulesByPolicy = new Map<string, EligibilityRuleSummary[]>();
-  for (const rule of eligibilityQuery.data ?? []) {
-    const rules = rulesByPolicy.get(rule.policyId) ?? [];
-    rules.push(rule);
-    rulesByPolicy.set(rule.policyId, rules);
-  }
-
-  const rows = (policiesQuery.data ?? []).filter((policy) => policy.leaveTypeId === leaveTypeId);
+  const rows = entitlementsQuery.data ?? [];
   const columns: ColumnsType<LeaveEntitlementPolicySummary> = [
     {
       title: 'Entitlement',
@@ -131,7 +119,7 @@ export const LeaveTypeEntitlementsTable = ({ leaveTypeId, canEdit = false }: Pro
     {
       title: 'Eligibility',
       key: 'eligibility',
-      render: (_, policy) => formatEligibilitySummary(rulesByPolicy.get(policy.id) ?? []),
+      render: (_, policy) => formatEligibilitySummary(policy.eligibilityRules ?? []),
     },
     {
       title: 'Effective Period',
@@ -151,7 +139,7 @@ export const LeaveTypeEntitlementsTable = ({ leaveTypeId, canEdit = false }: Pro
       ),
     }] : []),
   ];
-  const loading = policiesQuery.isLoading || eligibilityQuery.isLoading;
+  const loading = entitlementsQuery.isLoading;
 
   const updateResponsiveLayout = useCallback(() => {
     const container = containerRef.current;
@@ -183,7 +171,7 @@ export const LeaveTypeEntitlementsTable = ({ leaveTypeId, canEdit = false }: Pro
     return () => resizeObserver.disconnect();
   }, [updateResponsiveLayout, rows.length, canEdit, loading]);
 
-  if (policiesQuery.isError || eligibilityQuery.isError) {
+  if (entitlementsQuery.isError) {
     return <Alert type="error" showIcon message="Unable to load entitlements" />;
   }
 
@@ -207,7 +195,7 @@ export const LeaveTypeEntitlementsTable = ({ leaveTypeId, canEdit = false }: Pro
                   <Card key={policy.id} size="small">
                     <Descriptions column={1} size="small" colon={false}>
                       <Descriptions.Item label="Entitlement">{formatEntitlement(policy)}</Descriptions.Item>
-                      <Descriptions.Item label="Eligibility">{formatEligibilitySummary(rulesByPolicy.get(policy.id) ?? [])}</Descriptions.Item>
+                      <Descriptions.Item label="Eligibility">{formatEligibilitySummary(policy.eligibilityRules ?? [])}</Descriptions.Item>
                       <Descriptions.Item label="Effective Period">{formatEffectivePeriod(policy)}</Descriptions.Item>
                       <Descriptions.Item label="Status"><Tag>{policy.active === false ? 'Inactive' : 'Active'}</Tag></Descriptions.Item>
                       {canEdit ? (
