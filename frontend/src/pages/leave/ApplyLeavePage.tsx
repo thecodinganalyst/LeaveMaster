@@ -15,6 +15,7 @@ import {
   type LeaveDuration,
   type LeaveTypeSummary,
 } from '../../features/leave/leaveApi.ts';
+import { normalizeLeaveTypes, normalizePolicyMetadata } from './applyLeaveGuards.ts';
 
 interface FormValues {
   leaveTypeId: string;
@@ -48,13 +49,20 @@ export const ApplyLeavePage = () => {
     void (async () => {
       try {
         const user = await getCurrentUser();
-        const allowedToApply = user.authorities.includes('LEAVE_APPLICATION_WRITE');
-        setStaffId(user.staffId);
+        const authorities = Array.isArray(user.authorities) ? user.authorities : [];
+        const allowedToApply = authorities.includes('LEAVE_APPLICATION_WRITE');
+        setStaffId(typeof user.staffId === 'string' ? user.staffId : null);
         setCanWrite(allowedToApply);
         if (allowedToApply) {
-          setLeaveTypes(await getLeaveTypes());
+          const response = await getLeaveTypes();
+          const normalized = normalizeLeaveTypes(response);
+          setLeaveTypes(normalized);
+          if (!Array.isArray(response)) {
+            setError('Leave types could not be loaded because the server returned an unexpected response.');
+          }
         }
       } catch (cause) {
+        console.error('ApplyLeavePage initialization failed', cause);
         setError(cause instanceof Error ? cause.message : 'Unable to initialize leave application.');
       } finally {
         setLoading(false);
@@ -71,10 +79,16 @@ export const ApplyLeavePage = () => {
     setPolicyLoading(true);
     void getLeaveApplicationPolicyMetadata(staffId, selectedLeaveTypeId, eventDate || fromDate)
       .then((metadata) => {
-        if (!cancelled) setPolicyMetadata(metadata);
+        if (cancelled) return;
+        const normalized = normalizePolicyMetadata(metadata);
+        setPolicyMetadata(normalized);
+        if (!normalized) {
+          setError('Leave policy details could not be loaded because the server returned an unexpected response.');
+        }
       })
       .catch((cause: unknown) => {
         if (!cancelled) {
+          console.error('ApplyLeavePage policy lookup failed', cause);
           setPolicyMetadata(undefined);
           setError(cause instanceof Error ? cause.message : 'Unable to resolve leave policy.');
         }
@@ -109,12 +123,15 @@ export const ApplyLeavePage = () => {
         ...(policyMetadata?.eventBased && values.eventEndDate ? { eventEndDate: values.eventEndDate } : {}),
         ...(policyMetadata?.eventBased && values.eventExternalReference ? { eventExternalReference: values.eventExternalReference } : {}),
       }, attachment);
-      const awaitingVerification = applications.some((application) => application.status === 'PENDING_VERIFICATION');
+      const awaitingVerification = Array.isArray(applications)
+        && applications.some((application) => application.status === 'PENDING_VERIFICATION');
+      const count = Array.isArray(applications) ? applications.length : 0;
       message.success(awaitingVerification
         ? 'Leave request recorded and is awaiting qualifying-event verification.'
-        : `Leave request submitted for ${applications.length} working day${applications.length === 1 ? '' : 's'}.`);
+        : `Leave request submitted for ${count} working day${count === 1 ? '' : 's'}.`);
       navigate('/leave-requests');
     } catch (cause) {
+      console.error('ApplyLeavePage submission failed', cause);
       setError(cause instanceof Error ? cause.message : 'Unable to submit leave request.');
     } finally {
       setSubmitting(false);
