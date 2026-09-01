@@ -30,6 +30,7 @@ const backendRoutes = [
   '/logout',
   '/leave-applications',
   '/leave-applications/**',
+  '/leave-application-options/**',
 ];
 
 describe('Firebase Hosting configuration', () => {

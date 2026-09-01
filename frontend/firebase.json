@@ -65,6 +65,13 @@
         }
       },
       {
+        "source": "/leave-application-options/**",
+        "run": {
+          "serviceId": "leavemaster-api",
+          "region": "asia-southeast1"
+        }
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }
