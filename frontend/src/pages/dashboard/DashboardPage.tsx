@@ -65,6 +65,7 @@ export const DashboardPage = () => {
 
   const tenants = (tenantList.data?.data ?? []) as TenantSummary[];
   const tenantCounts = summariseTenants(tenants);
+  const myStaffLink = staffId ? `/employees/show/${encodeURIComponent(staffId)}` : null;
 
   if (tenantAdmin) {
     return (
@@ -74,6 +75,7 @@ export const DashboardPage = () => {
           subtitle="Manage LeaveMaster tenants and their lifecycle from one place."
           extra={
             <Space wrap>
+              {myStaffLink ? <Button><Link to={myStaffLink}>My staff details</Link></Button> : null}
               <Button><Link to="/tenants">Manage all tenants</Link></Button>
               {canWriteTenants?.can ? <Button type="primary"><Link to="/tenants/create">Create tenant</Link></Button> : null}
             </Space>
@@ -127,6 +129,7 @@ export const DashboardPage = () => {
         subtitle="Balances, upcoming leave and requests that need attention."
         extra={
           <Space wrap>
+            {myStaffLink ? <Button><Link to={myStaffLink}>My staff details</Link></Button> : null}
             {canApprove?.can ? <Button><Link to="/approvals">Approval inbox</Link></Button> : null}
             {canWrite?.can && staffId ? <Button type="primary"><Link to="/leave-requests/apply">Apply for leave</Link></Button> : null}
           </Space>

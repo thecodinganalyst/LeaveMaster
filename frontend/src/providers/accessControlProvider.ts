@@ -55,6 +55,10 @@ export const accessControlProvider: AccessControlProvider = {
         const allowed = Boolean(user.platformAdmin) && user.authorities.includes('JURISDICTION_WRITE');
         return allowed ? { can: true } : { can: false, reason: 'Platform administrator access required.' };
       }
+      if ((resource === 'employees' || resource === 'staff') && action === 'show') {
+        const user = await getCurrentUser();
+        if (user.staffId) return { can: true };
+      }
       const permission = requiredPermission(resource, action);
       if (permission === undefined) {
         await getCurrentUser();
