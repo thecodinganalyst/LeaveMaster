@@ -11,10 +11,6 @@ import {
 } from '../../features/leave/leaveApi.ts';
 import { ApplyLeavePage } from './ApplyLeavePage.tsx';
 
-vi.mock('@refinedev/core', () => ({
-  useCan: () => ({ data: { can: true } }),
-}));
-
 vi.mock('../../auth/session.ts', () => ({ getCurrentUser: vi.fn() }));
 vi.mock('../../features/leave/leaveApi.ts', async () => {
   const actual = await vi.importActual<typeof import('../../features/leave/leaveApi.ts')>('../../features/leave/leaveApi.ts');
@@ -78,6 +74,22 @@ describe('ApplyLeavePage policy-aware event fields', () => {
     expect(screen.queryByText('You do not have permission to submit leave applications.')).not.toBeInTheDocument();
   });
 
+  it('shows a permission warning and does not load leave types without leave application write access', async () => {
+    mockedGetCurrentUser.mockResolvedValue({
+      loginName: 'readonly',
+      staffId: 'S2',
+      tenantId: 'T1',
+      active: true,
+      authorities: ['LEAVE_APPLICATION_READ'],
+    });
+
+    renderPage();
+
+    expect(await screen.findByText('You do not have permission to submit leave applications.')).toBeInTheDocument();
+    expect(mockedGetLeaveTypes).not.toHaveBeenCalled();
+    expect(screen.queryByText('Apply for leave')).not.toBeInTheDocument();
+  });
+
   it('shows an initialization error instead of a blank page', async () => {
     mockedGetCurrentUser.mockRejectedValue(new Error('Unable to load session'));
 
@@ -85,6 +97,7 @@ describe('ApplyLeavePage policy-aware event fields', () => {
 
     expect(await screen.findByText('Apply for leave')).toBeInTheDocument();
     expect(await screen.findByText('Unable to load session')).toBeInTheDocument();
+    expect(screen.queryByText('Your account is not linked to a staff record, so leave cannot be submitted.')).not.toBeInTheDocument();
   });
 
   it('hides qualifying-event inputs for non-event leave and shows them for event leave', async () => {
