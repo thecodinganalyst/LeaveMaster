@@ -68,6 +68,25 @@ describe('ApplyLeavePage policy-aware event fields', () => {
     mockedApplyForLeave.mockResolvedValue([]);
   });
 
+  it('renders the leave form for a normal staff user with only leave application write access', async () => {
+    renderPage();
+
+    expect(await screen.findByText('Apply for leave')).toBeInTheDocument();
+    await waitFor(() => expect(mockedGetLeaveTypes).toHaveBeenCalledTimes(1));
+    expect(screen.getByText('Leave type')).toBeInTheDocument();
+    expect(screen.getAllByRole('combobox').length).toBeGreaterThan(0);
+    expect(screen.queryByText('You do not have permission to submit leave applications.')).not.toBeInTheDocument();
+  });
+
+  it('shows an initialization error instead of a blank page', async () => {
+    mockedGetCurrentUser.mockRejectedValue(new Error('Unable to load session'));
+
+    renderPage();
+
+    expect(await screen.findByText('Apply for leave')).toBeInTheDocument();
+    expect(await screen.findByText('Unable to load session')).toBeInTheDocument();
+  });
+
   it('hides qualifying-event inputs for non-event leave and shows them for event leave', async () => {
     renderPage();
 
