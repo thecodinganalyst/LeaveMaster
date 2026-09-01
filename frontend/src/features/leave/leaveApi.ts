@@ -67,7 +67,8 @@ export const getLeaveBalances = (staffId: string) =>
 export const getLeaveApplication = (id: string) =>
   apiFetch<LeaveApplication>(`/leave-applications/${encodeURIComponent(id)}`);
 
-export const getLeaveTypes = () => apiFetch<LeaveTypeSummary[]>('/leave-types');
+export const getLeaveTypes = () =>
+  apiFetch<LeaveTypeSummary[]>('/leave-application-options/leave-types');
 
 export const getLeaveApplicationPolicyMetadata = (staffId: string, leaveTypeId: string, effectiveDate?: string) => {
   const params = new URLSearchParams({ staffId, leaveTypeId });
