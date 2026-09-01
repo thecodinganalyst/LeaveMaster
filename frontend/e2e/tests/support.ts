@@ -38,9 +38,13 @@ export const installFailureGuards = (page: Page, allowedStatuses: number[] = [])
   };
 };
 
-export const mockAuthenticatedBackend = async (page: Page, role: E2ERole = 'staff') => {
-  await page.route('**/auth/csrf', (route) => json(route, { token: 'e2e-csrf', headerName: 'X-CSRF-TOKEN', parameterName: '_csrf' }));
-  await page.route('**/auth/me', (route) => json(route, {
+export const mockAuthenticatedBackend = async (
+  page: Page,
+  role: E2ERole = 'staff',
+  initiallyAuthenticated = true,
+) => {
+  let authenticated = initiallyAuthenticated;
+  const currentUser = {
     loginName: `e2e-${role}`,
     staffId: role === 'admin' ? 'E2E-ADMIN' : `E2E-${role.toUpperCase()}`,
     tenantId: 'E2E',
@@ -48,9 +52,15 @@ export const mockAuthenticatedBackend = async (page: Page, role: E2ERole = 'staf
     active: true,
     platformAdmin: false,
     authorities: roleAuthorities[role],
-  }));
+  };
+
+  await page.route('**/auth/csrf', (route) => json(route, { token: 'e2e-csrf', headerName: 'X-CSRF-TOKEN', parameterName: '_csrf' }));
+  await page.route('**/auth/me', (route) => authenticated ? json(route, currentUser) : json(route, { message: 'Unauthenticated' }, 401));
   await page.route('**/account-activation/lookup', (route) => json(route, { nextStep: 'PASSWORD' }));
-  await page.route('**/auth/login', (route) => route.fulfill({ status: 204 }));
+  await page.route('**/auth/login', (route) => {
+    authenticated = true;
+    return route.fulfill({ status: 204 });
+  });
   await page.route('**/leave-application-options/leave-types', (route) => json(route, [
     { id: 'E2E:ANNUAL_LEAVE', name: 'Annual Leave' },
     { id: 'E2E:SICK_LEAVE', name: 'Sick Leave' },
@@ -60,7 +70,14 @@ export const mockAuthenticatedBackend = async (page: Page, role: E2ERole = 'staf
     eventBased: false,
     eventRequiresVerification: false,
   }));
-  await page.route('**/leave-applications', async (route) => {
+  await page.route('**/leave-applications/staff/**/balance', (route) => json(route, [{
+    leaveType: { id: 'E2E:ANNUAL_LEAVE', name: 'Annual Leave' }, entitlement: 14, used: 2, balance: 12,
+  }]));
+  await page.route('**/leave-applications**', async (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname.endsWith('/policy-metadata') || url.pathname.includes('/staff/')) {
+      return route.fallback();
+    }
     if (route.request().method() === 'POST') {
       return json(route, [{
         id: 'E2E-LEAVE-1',
@@ -74,9 +91,6 @@ export const mockAuthenticatedBackend = async (page: Page, role: E2ERole = 'staf
     }
     return json(route, []);
   });
-  await page.route('**/leave-applications/staff/**/balance', (route) => json(route, [{
-    leaveType: { id: 'E2E:ANNUAL_LEAVE', name: 'Annual Leave' }, entitlement: 14, used: 2, balance: 12,
-  }]));
 
   // Resource list pages use Refine's REST provider. Empty deterministic collections are enough
   // for browser/RBAC smoke coverage and keep these E2E tests independent of production data.
