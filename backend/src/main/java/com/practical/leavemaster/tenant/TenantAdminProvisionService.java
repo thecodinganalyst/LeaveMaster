@@ -27,14 +27,16 @@ public class TenantAdminProvisionService {
     static final Set<String> STAFF_PERMISSION_CODES = Set.of(
             RbacPermissions.LEAVE_APPLICATION_READ,
             RbacPermissions.LEAVE_APPLICATION_WRITE,
-            RbacPermissions.LEAVE_TYPE_READ
+            RbacPermissions.LEAVE_TYPE_READ,
+            RbacPermissions.LEAVE_CALENDAR_READ
     );
 
     static final Set<String> MANAGER_PERMISSION_CODES = Set.of(
             RbacPermissions.LEAVE_APPLICATION_READ,
             RbacPermissions.LEAVE_APPLICATION_WRITE,
             RbacPermissions.LEAVE_APPLICATION_APPROVE,
-            RbacPermissions.LEAVE_TYPE_READ
+            RbacPermissions.LEAVE_TYPE_READ,
+            RbacPermissions.LEAVE_CALENDAR_READ
     );
 
     static final Set<String> HR_PERMISSION_CODES = Set.of(
