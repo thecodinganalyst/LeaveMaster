@@ -28,7 +28,7 @@ export const normalizePolicyMetadata = (value: unknown): LeaveApplicationPolicyM
     return undefined;
   }
   return {
-    policyModel,
+    ...(policyModel !== undefined ? { policyModel } : {}),
     eventBased: candidate.eventBased,
     eventRequiresVerification: candidate.eventRequiresVerification,
   };
