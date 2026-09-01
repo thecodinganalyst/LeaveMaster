@@ -1,5 +1,12 @@
 package com.practical.leavemaster.leavetype;
 
+import com.practical.leavemaster.leaveentitlementpolicy.EligibilityCriterionType;
+import com.practical.leavemaster.leaveentitlementpolicy.EligibilityOperator;
+import com.practical.leavemaster.leaveentitlementpolicy.EntitlementUnit;
+import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicy;
+import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicyEligibilityRule;
+import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicyEligibilityService;
+import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicyService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -10,6 +17,8 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -31,6 +40,12 @@ class LeaveTypeControllerTest {
 
     @MockitoBean
     private LeaveTypeService leaveTypeService;
+
+    @MockitoBean
+    private LeaveEntitlementPolicyService entitlementPolicyService;
+
+    @MockitoBean
+    private LeaveEntitlementPolicyEligibilityService eligibilityService;
 
     @MockitoBean
     private SecurityFilterChain securityFilterChain;
@@ -60,6 +75,70 @@ class LeaveTypeControllerTest {
                 .andExpect(jsonPath("$.id").value("annual"))
                 .andExpect(jsonPath("$.name").value("Annual Leave"))
                 .andExpect(jsonPath("$.used").value(false));
+    }
+
+    @Test
+    void shouldReturnStaffSafeEntitlementViewForLeaveType() throws Exception {
+        LeaveType leaveType = LeaveType.builder().id("annual").tenantId("TENANT-A").name("Annual Leave").build();
+        LeaveEntitlementPolicy matching = LeaveEntitlementPolicy.builder()
+                .id("policy-1")
+                .tenantId("TENANT-A")
+                .leaveTypeId("annual")
+                .name("internal policy name")
+                .entitlementAmount(BigDecimal.valueOf(14))
+                .entitlementUnit(EntitlementUnit.DAYS)
+                .effectiveFrom(LocalDate.of(2026, 1, 1))
+                .active(true)
+                .build();
+        LeaveEntitlementPolicy other = LeaveEntitlementPolicy.builder()
+                .id("policy-2")
+                .tenantId("TENANT-A")
+                .leaveTypeId("medical")
+                .name("other")
+                .entitlementAmount(BigDecimal.valueOf(14))
+                .entitlementUnit(EntitlementUnit.DAYS)
+                .effectiveFrom(LocalDate.of(2026, 1, 1))
+                .active(true)
+                .build();
+        LeaveEntitlementPolicyEligibilityRule rule = LeaveEntitlementPolicyEligibilityRule.builder()
+                .id("rule-1")
+                .policyId("policy-1")
+                .criterionType(EligibilityCriterionType.SERVICE_MONTHS)
+                .operator(EligibilityOperator.GREATER_THAN_OR_EQUAL)
+                .value("3")
+                .active(true)
+                .sortOrder(1)
+                .build();
+
+        when(leaveTypeService.findById("annual")).thenReturn(Optional.of(leaveType));
+        when(entitlementPolicyService.findAll()).thenReturn(List.of(matching, other));
+        when(eligibilityService.findAll("policy-1")).thenReturn(List.of(rule));
+
+        mockMvc.perform(get("/api/leave-types/annual/entitlements"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].id").value("policy-1"))
+                .andExpect(jsonPath("$[0].entitlementAmount").value(14))
+                .andExpect(jsonPath("$[0].entitlementUnit").value("DAYS"))
+                .andExpect(jsonPath("$[0].effectiveFrom").value("2026-01-01"))
+                .andExpect(jsonPath("$[0].active").value(true))
+                .andExpect(jsonPath("$[0].eligibilityRules[0].criterionType").value("SERVICE_MONTHS"))
+                .andExpect(jsonPath("$[0].eligibilityRules[0].operator").value("GREATER_THAN_OR_EQUAL"))
+                .andExpect(jsonPath("$[0].eligibilityRules[0].value").value("3"))
+                .andExpect(jsonPath("$[0].tenantId").doesNotExist())
+                .andExpect(jsonPath("$[0].name").doesNotExist())
+                .andExpect(jsonPath("$[0].eligibilityRules[0].id").doesNotExist())
+                .andExpect(jsonPath("$[0].eligibilityRules[0].policyId").doesNotExist());
+    }
+
+    @Test
+    void shouldReturn404WhenEntitlementLeaveTypeNotFound() throws Exception {
+        when(leaveTypeService.findById("nonexistent")).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/api/leave-types/nonexistent/entitlements"))
+                .andExpect(status().isNotFound());
+
+        verifyNoInteractions(entitlementPolicyService, eligibilityService);
     }
 
     @Test
