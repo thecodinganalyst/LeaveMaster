@@ -37,6 +37,18 @@ test('staff can open Apply Leave and submit a deterministic request', async ({ p
   await assertHealthy();
 });
 
+test('Apply Leave exposes contextual Help without loading the external docs site', async ({ page }) => {
+  await mockAuthenticatedBackend(page, 'staff');
+  const assertHealthy = installFailureGuards(page);
+
+  await page.goto('/leave-requests/apply');
+  const helpLink = page.getByRole('link', { name: 'How to apply for leave' });
+  await expect(helpLink).toBeVisible();
+  await expect(helpLink).toHaveAttribute('target', '_blank');
+  await expect(helpLink).toHaveAttribute('href', /\/user-guide\/employee\/#apply-for-leave$/);
+  await assertHealthy();
+});
+
 test('Apply Leave constrains selectable dates to the staff employment period', async ({ page }) => {
   await mockAuthenticatedBackend(page, 'staff');
   const assertHealthy = installFailureGuards(page);
