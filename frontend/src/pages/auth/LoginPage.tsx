@@ -65,6 +65,7 @@ export const LoginPage = () => {
 
   const cooldownRemaining = Math.max(0, Math.ceil((cooldownUntil - Date.now()) / 1000));
   const accountIdentity = { tenantId, loginName };
+  const helpLabel = step === 'IDENTIFIER' ? 'Help signing in' : 'Help with account activation';
 
   const run = async (action: () => Promise<void>) => {
     setBusy(true);
@@ -118,9 +119,10 @@ export const LoginPage = () => {
             href={step === 'IDENTIFIER' ? docsLinks.gettingStarted : docsLinks.accountSecurity}
             target="_blank"
             rel="noopener noreferrer"
+            aria-label={helpLabel}
             style={{ paddingInline: 0, alignSelf: 'flex-start' }}
           >
-            {step === 'IDENTIFIER' ? 'Help signing in' : 'Help with account activation'}
+            {helpLabel}
           </Button>
           {error ? <Alert type="error" showIcon message={error} /> : null}
 
