@@ -4,11 +4,13 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { LoginPage } from './LoginPage.tsx';
 
-const lookupAccountActivation = vi.fn();
+const mocks = vi.hoisted(() => ({
+  lookupAccountActivation: vi.fn(),
+}));
 
 vi.mock('@refinedev/core', () => ({ useLogin: () => ({ mutate: vi.fn(), isPending: false }) }));
 vi.mock('../../api/accountActivation.ts', () => ({
-  lookupAccountActivation: (...args: unknown[]) => lookupAccountActivation(...args),
+  lookupAccountActivation: (...args: unknown[]) => mocks.lookupAccountActivation(...args),
   requestAccountActivationPin: vi.fn(),
   verifyAccountActivationPin: vi.fn(),
   setInitialAccountPassword: vi.fn(),
@@ -30,7 +32,7 @@ describe('LoginPage help links', () => {
   });
 
   it('switches to account activation help for newly provisioned accounts', async () => {
-    lookupAccountActivation.mockResolvedValueOnce({ nextStep: 'ACTIVATION' });
+    mocks.lookupAccountActivation.mockResolvedValueOnce({ nextStep: 'ACTIVATION' });
     renderPage();
     fireEvent.change(screen.getByLabelText('Tenant ID'), { target: { value: 'Demo' } });
     fireEvent.change(screen.getByLabelText('Login name'), { target: { value: 'demo-user' } });
