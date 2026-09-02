@@ -41,7 +41,6 @@ export const AppLayout = ({ children }: PropsWithChildren) => {
   const { mutate: logout } = useLogout();
   const { data: identity } = useGetIdentity<LeaveMasterIdentity>();
   const platformAdmin = Boolean(identity?.platformAdmin);
-  const contextualHelp = contextualHelpForPath(location.pathname);
   const { data: leaveAccess } = useCan({ resource: 'leave-requests', action: 'list' });
   const { data: approvalAccess } = useCan({ resource: 'leave-requests', action: 'approve' });
   const { data: employeeAccess } = useCan({ resource: 'employees', action: 'list' });
@@ -55,7 +54,12 @@ export const AppLayout = ({ children }: PropsWithChildren) => {
   const { data: entitlementPolicyAccess } = useCan({ resource: 'leave-entitlement-policies', action: 'list' });
   const { data: eligibilityRuleAccess } = useCan({ resource: 'leave-entitlement-policy-eligibility-rules', action: 'list' });
   const { data: calendarAccess } = useCan({ resource: 'leave-calendars', action: 'list' });
+  const { data: calendarEditAccess } = useCan({ resource: 'leave-calendars', action: 'edit' });
   const { data: approverAccess } = useCan({ resource: 'leave-approvers', action: 'list' });
+  const contextualHelp = contextualHelpForPath(location.pathname, {
+    canApproveLeave: Boolean(approvalAccess?.can),
+    canEditLeaveCalendars: Boolean(calendarEditAccess?.can),
+  });
 
   const menuItems = useMemo(
     () => [
