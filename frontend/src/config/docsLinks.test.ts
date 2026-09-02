@@ -14,11 +14,27 @@ describe('documentation links', () => {
     ['/employees/create', 'hr/#create-a-staff-member'],
     ['/leave-approvers', 'hr/#configure-leave-approvers'],
     ['/leave-types', 'admin/#leave-types'],
-    ['/leave-calendars', 'admin/#leave-calendars-and-public-holidays'],
     ['/leave-entitlement-policies', 'admin/#entitlement-policies-and-eligibility'],
     ['/account/security', 'account-security/'],
   ])('maps %s to the relevant user guide section', (pathname, expectedPath) => {
     expect(contextualHelpForPath(pathname)?.href).toContain(expectedPath);
+  });
+
+  it('maps read-only staff leave calendar access to the employee guide', () => {
+    expect(contextualHelpForPath('/leave-calendars')?.href)
+      .toContain('employee/#view-the-leave-calendar');
+  });
+
+  it('maps approver leave calendar access to the manager guide', () => {
+    expect(contextualHelpForPath('/leave-calendars', { canApproveLeave: true })?.href)
+      .toContain('manager/#view-team-leave');
+  });
+
+  it('maps writable leave calendar access to the administrator guide', () => {
+    expect(contextualHelpForPath('/leave-calendars', {
+      canApproveLeave: true,
+      canEditLeaveCalendars: true,
+    })?.href).toContain('admin/#leave-calendars-and-public-holidays');
   });
 
   it('returns no contextual link for unrelated administration pages', () => {
