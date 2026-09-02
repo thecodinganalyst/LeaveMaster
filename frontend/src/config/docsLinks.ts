@@ -24,7 +24,15 @@ export interface ContextualHelpLink {
   label: string;
 }
 
-export const contextualHelpForPath = (pathname: string): ContextualHelpLink | null => {
+export interface ContextualHelpCapabilities {
+  canApproveLeave?: boolean;
+  canEditLeaveCalendars?: boolean;
+}
+
+export const contextualHelpForPath = (
+  pathname: string,
+  capabilities: ContextualHelpCapabilities = {},
+): ContextualHelpLink | null => {
   if (pathname === '/leave-requests/apply') return { href: docsLinks.applyLeave, label: 'How to apply for leave' };
   if (pathname === '/leave-requests' || pathname.startsWith('/leave-requests/show/')) return { href: docsLinks.leaveRequests, label: 'Help with leave requests' };
   if (pathname === '/approvals' || pathname.startsWith('/approvals/')) return { href: docsLinks.approvals, label: 'Help with leave approvals' };
@@ -32,7 +40,11 @@ export const contextualHelpForPath = (pathname: string): ContextualHelpLink | nu
   if (pathname.startsWith('/employees/') || pathname === '/employees') return { href: docsLinks.staffAndApprovers, label: 'Help with staff and approvers' };
   if (pathname.startsWith('/leave-approvers')) return { href: docsLinks.staffAndApprovers, label: 'Help with leave approvers' };
   if (pathname.startsWith('/leave-types')) return { href: docsLinks.leaveTypes, label: 'Help with leave types' };
-  if (pathname.startsWith('/leave-calendars')) return { href: docsLinks.leaveCalendars, label: 'Help with leave calendars' };
+  if (pathname.startsWith('/leave-calendars')) {
+    if (capabilities.canEditLeaveCalendars) return { href: docsLinks.leaveCalendars, label: 'Help managing leave calendars' };
+    if (capabilities.canApproveLeave) return { href: docsLinks.managerLeaveCalendar, label: 'Help with the team leave calendar' };
+    return { href: docsLinks.employeeLeaveCalendar, label: 'Help with the leave calendar' };
+  }
   if (pathname.startsWith('/leave-entitlement-policies') || pathname.startsWith('/leave-entitlement-policy-eligibility-rules')) {
     return { href: docsLinks.entitlementPolicies, label: 'Help with entitlement policies' };
   }
