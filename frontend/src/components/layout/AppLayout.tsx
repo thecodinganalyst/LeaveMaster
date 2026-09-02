@@ -13,6 +13,7 @@ import {
   MailOutlined,
   MenuOutlined,
   MessageOutlined,
+  QuestionCircleOutlined,
   SafetyCertificateOutlined,
   SolutionOutlined,
   TagsOutlined,
@@ -21,6 +22,7 @@ import {
 } from '@ant-design/icons';
 import { Button, Drawer, Grid, Layout, Menu, Space, Typography } from 'antd';
 
+import { docsLinks, contextualHelpForPath } from '../../config/docsLinks.ts';
 import { AssistantPanel } from '../../features/assistant/AssistantPanel.tsx';
 
 const { Header, Sider, Content } = Layout;
@@ -52,7 +54,12 @@ export const AppLayout = ({ children }: PropsWithChildren) => {
   const { data: entitlementPolicyAccess } = useCan({ resource: 'leave-entitlement-policies', action: 'list' });
   const { data: eligibilityRuleAccess } = useCan({ resource: 'leave-entitlement-policy-eligibility-rules', action: 'list' });
   const { data: calendarAccess } = useCan({ resource: 'leave-calendars', action: 'list' });
+  const { data: calendarEditAccess } = useCan({ resource: 'leave-calendars', action: 'edit' });
   const { data: approverAccess } = useCan({ resource: 'leave-approvers', action: 'list' });
+  const contextualHelp = contextualHelpForPath(location.pathname, {
+    canApproveLeave: Boolean(approvalAccess?.can),
+    canEditLeaveCalendars: Boolean(calendarEditAccess?.can),
+  });
 
   const menuItems = useMemo(
     () => [
@@ -73,6 +80,7 @@ export const AppLayout = ({ children }: PropsWithChildren) => {
       ...(calendarAccess?.can ? [{ key: '/leave-calendars', icon: <CalendarOutlined />, label: <Link to="/leave-calendars">Leave Calendars</Link> }] : []),
       ...(approverAccess?.can ? [{ key: '/leave-approvers', icon: <AuditOutlined />, label: <Link to="/leave-approvers">Leave Approvers</Link> }] : []),
       ...(!isDesktop ? [
+        { key: 'user-guide', icon: <QuestionCircleOutlined />, label: <a href={docsLinks.userGuide} target="_blank" rel="noopener noreferrer">User Guide</a> },
         { key: '/account/security', icon: <SafetyCertificateOutlined />, label: <Link to="/account/security">Security</Link> },
         { key: '/account/change-password', icon: <LockOutlined />, label: <Link to="/account/change-password">Change Password</Link> },
       ] : []),
@@ -81,7 +89,7 @@ export const AppLayout = ({ children }: PropsWithChildren) => {
   );
 
   const selectedKeys = useMemo(() => {
-    const key = menuItems.find((item) => location.pathname === item.key || location.pathname.startsWith(`${item.key}/`))?.key;
+    const key = menuItems.find((item) => typeof item.key === 'string' && item.key.startsWith('/') && (location.pathname === item.key || location.pathname.startsWith(`${item.key}/`)))?.key;
     return key ? [key] : ['/'];
   }, [location.pathname, menuItems]);
 
@@ -121,6 +129,28 @@ export const AppLayout = ({ children }: PropsWithChildren) => {
             <Typography.Title level={4} style={{ color: '#eaf2ff', margin: 0 }}>LeaveMaestro</Typography.Title>
           </Space>
           <Space>
+            {contextualHelp ? (
+              <Button
+                icon={<QuestionCircleOutlined />}
+                href={contextualHelp.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={contextualHelp.label}
+              >
+                {isDesktop ? contextualHelp.label : null}
+              </Button>
+            ) : null}
+            {isDesktop ? (
+              <Button
+                icon={<QuestionCircleOutlined />}
+                href={docsLinks.userGuide}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Open LeaveMaestro User Guide"
+              >
+                User Guide
+              </Button>
+            ) : null}
             <Button icon={<MessageOutlined />} onClick={() => setAssistantOpen(true)} aria-label="Open Ask LeaveMaestro assistant">
               {isDesktop ? 'Ask LeaveMaestro' : null}
             </Button>

@@ -1,4 +1,4 @@
-import { GithubOutlined, GoogleOutlined } from '@ant-design/icons';
+import { GithubOutlined, GoogleOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import { useLogin } from '@refinedev/core';
 import { Alert, Button, Card, Divider, Form, Input, Space, Typography, message } from 'antd';
 import { useState } from 'react';
@@ -16,6 +16,7 @@ import {
   startOAuthLogin,
   type OAuthProvider,
 } from '../../api/oauth.ts';
+import { docsLinks } from '../../config/docsLinks.ts';
 
 type Step = 'IDENTIFIER' | 'PASSWORD' | 'ACTIVATION' | 'PIN' | 'SET_PASSWORD' | 'COMPLETE';
 
@@ -64,6 +65,7 @@ export const LoginPage = () => {
 
   const cooldownRemaining = Math.max(0, Math.ceil((cooldownUntil - Date.now()) / 1000));
   const accountIdentity = { tenantId, loginName };
+  const helpLabel = step === 'IDENTIFIER' ? 'Help signing in' : 'Help with account activation';
 
   const run = async (action: () => Promise<void>) => {
     setBusy(true);
@@ -111,6 +113,17 @@ export const LoginPage = () => {
               ? 'Sign in with Google, GitHub, or your LeaveMaestro account.'
               : 'Sign in or complete your account setup.'}
           </Typography.Text>
+          <Button
+            type="link"
+            icon={<QuestionCircleOutlined />}
+            href={step === 'IDENTIFIER' ? docsLinks.gettingStarted : docsLinks.accountSecurity}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={helpLabel}
+            style={{ paddingInline: 0, alignSelf: 'flex-start' }}
+          >
+            {helpLabel}
+          </Button>
           {error ? <Alert type="error" showIcon message={error} /> : null}
 
           {step === 'IDENTIFIER' ? (
