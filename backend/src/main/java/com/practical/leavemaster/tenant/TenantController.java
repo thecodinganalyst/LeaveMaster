@@ -20,15 +20,17 @@ import java.util.List;
 public class TenantController {
 
     private final TenantService tenantService;
+    private final TenantJurisdictionViewService tenantJurisdictionViewService;
 
     @GetMapping
     public List<Tenant> getAll() {
-        return tenantService.findAll();
+        return tenantJurisdictionViewService.enrichAll(tenantService.findAll());
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<Tenant> getById(@PathVariable String id) {
         return tenantService.findById(id)
+                .map(tenantJurisdictionViewService::enrich)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
