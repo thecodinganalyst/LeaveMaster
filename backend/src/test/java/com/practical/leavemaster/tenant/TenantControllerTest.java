@@ -1,5 +1,6 @@
 package com.practical.leavemaster.tenant;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -34,7 +35,16 @@ class TenantControllerTest {
     private TenantService tenantService;
 
     @MockitoBean
+    private TenantJurisdictionViewService tenantJurisdictionViewService;
+
+    @MockitoBean
     private SecurityFilterChain securityFilterChain;
+
+    @BeforeEach
+    void passThroughJurisdictionEnrichment() {
+        when(tenantJurisdictionViewService.enrich(any(Tenant.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(tenantJurisdictionViewService.enrichAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
+    }
 
     @Test
     void shouldReturnAllTenants() throws Exception {
@@ -49,6 +59,8 @@ class TenantControllerTest {
                 .andExpect(jsonPath("$.length()").value(2))
                 .andExpect(jsonPath("$[0].id").value("t1"))
                 .andExpect(jsonPath("$[1].id").value("t2"));
+
+        verify(tenantJurisdictionViewService).enrichAll(tenants);
     }
 
     @Test
@@ -61,6 +73,8 @@ class TenantControllerTest {
                 .andExpect(jsonPath("$.id").value("t1"))
                 .andExpect(jsonPath("$.name").value("Tenant 1"))
                 .andExpect(jsonPath("$.status").value("ACTIVE"));
+
+        verify(tenantJurisdictionViewService).enrich(tenant);
     }
 
     @Test
