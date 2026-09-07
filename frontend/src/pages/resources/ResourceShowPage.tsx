@@ -17,6 +17,7 @@ import { RoleMembershipCard } from './RoleMembershipCard.tsx';
 import { RolePermissionCheckboxList } from './RolePermissionCheckboxList.tsx';
 import { StaffLeaveEntitlementsField, StaffWorkScheduleField } from './StaffDetailStructuredFields.tsx';
 import { TenantEntitlementPolicySummary } from './TenantEntitlementPolicySummary.tsx';
+import { TenantJurisdictionsDisplay } from './TenantJurisdictionsDisplay.tsx';
 import { TenantLeaveTypeName } from './TenantLeaveTypeName.tsx';
 import { shouldHideTenantInternalId, shouldShowResourceIdSubtitle } from './tenantInternalIdVisibility.ts';
 
@@ -83,6 +84,7 @@ export const ResourceShowPage = () => {
       return <RolePermissionCheckboxList value={(record[field.name] as string[] | undefined) ?? []} disabled />;
     }
     if (field.type === 'holiday-list') return <PublicHolidayTable value={record[field.name]} />;
+    if (config.name === 'tenants' && field.name === 'jurisdictionId') return <TenantJurisdictionsDisplay record={record} />;
     if (isStaff && field.name === 'jurisdictionId') return jurisdictionName ?? displayValue(field, record[field.name]);
     if (isStaff && field.name === 'employmentType') return employmentTypeLabel(record[field.name]);
     if (config.name === 'leave-types' && field.name === 'sourceUrl' && !platformAdmin) return tenantLeaveTypeSourceLink(record[field.name]);
@@ -112,7 +114,7 @@ export const ResourceShowPage = () => {
           }}
         >
           {detailFields.map((field) => (
-            <Descriptions.Item key={field.name} label={field.label}>
+            <Descriptions.Item key={field.name} label={config.name === 'tenants' && field.name === 'jurisdictionId' ? 'Jurisdictions' : field.label}>
               {renderFieldValue(field)}
             </Descriptions.Item>
           ))}
