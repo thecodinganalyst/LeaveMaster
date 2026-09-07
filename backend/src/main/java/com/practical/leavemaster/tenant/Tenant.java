@@ -38,6 +38,10 @@ public class Tenant {
     @Column(name = "jurisdiction_id", nullable = false, length = 32)
     private String jurisdictionId;
 
+    @Transient
+    @Builder.Default
+    private List<String> jurisdictionIds = new ArrayList<>();
+
     @Column(name = "start_date", nullable = false)
     private LocalDate startDate;
 
