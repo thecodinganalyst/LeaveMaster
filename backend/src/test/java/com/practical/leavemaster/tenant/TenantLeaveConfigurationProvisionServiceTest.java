@@ -80,7 +80,7 @@ class TenantLeaveConfigurationProvisionServiceTest {
         when(leaveTypeRepository.save(any(LeaveType.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(policyRepository.findAllByScopeAndJurisdictionIdAndActiveTrue(ConfigurationScope.PLATFORM_TEMPLATE, "SG")).thenReturn(List.of(template));
         when(jurisdictionLeaveTypeRepository.findById(annual.getId())).thenReturn(Optional.of(annual));
-        when(policyRepository.existsByTenantIdAndSourceTemplateId("acme", template.getId())).thenReturn(false);
+        when(policyRepository.findAllByTenantId("acme")).thenReturn(List.of());
         when(policyRepository.save(any(LeaveEntitlementPolicy.class))).thenAnswer(invocation -> {
             LeaveEntitlementPolicy policy = invocation.getArgument(0);
             if (policy.getId() == null) policy.setId("tenant-policy");
@@ -94,6 +94,8 @@ class TenantLeaveConfigurationProvisionServiceTest {
 
         verify(leaveTypeRepository).save(argThat(leaveType ->
                 leaveType.getName().equals("Annual Leave")
+                        && "SG".equals(leaveType.getJurisdictionId())
+                        && "acme:SG:ANNUAL_LEAVE".equals(leaveType.getId())
                         && leaveType.isActive()
                         && leaveType.isStatutory()
                         && Boolean.TRUE.equals(leaveType.getPaid())
@@ -102,7 +104,9 @@ class TenantLeaveConfigurationProvisionServiceTest {
                         && LocalDate.of(2026, 1, 1).equals(leaveType.getEffectiveFrom())
                         && LocalDate.of(2026, 12, 31).equals(leaveType.getEffectiveTo())
                         && annual.getId().equals(leaveType.getSourceJurisdictionLeaveTypeId())));
-        verify(policyRepository).save(any(LeaveEntitlementPolicy.class));
+        verify(policyRepository).save(argThat(policy ->
+                "SG".equals(policy.getJurisdictionId())
+                        && "acme:SG:ANNUAL_LEAVE".equals(policy.getLeaveTypeId())));
         verify(eligibilityRepository).save(any(LeaveEntitlementPolicyEligibilityRule.class));
         verify(leaveCalendarRepository).save(any(LeaveCalendar.class));
     }
@@ -120,6 +124,10 @@ class TenantLeaveConfigurationProvisionServiceTest {
         LeaveEntitlementPolicy template = LeaveEntitlementPolicy.builder()
                 .id("template-annual").scope(ConfigurationScope.PLATFORM_TEMPLATE).jurisdictionId("SG")
                 .jurisdictionLeaveTypeId(annual.getId()).name("Standard Annual Leave").active(true).build();
+        LeaveEntitlementPolicy existingPolicy = LeaveEntitlementPolicy.builder()
+                .id("tenant-policy").tenantId("acme").scope(ConfigurationScope.TENANT)
+                .jurisdictionId("SG").leaveTypeId(existing.getId()).sourceTemplateId(template.getId())
+                .name("Tenant Standard Annual Leave").active(true).build();
         LeaveCalendar calendar = LeaveCalendar.builder().id("sg-2026").scope(ConfigurationScope.PLATFORM_TEMPLATE)
                 .jurisdictionId("SG").start(LocalDate.of(2026, 1, 1)).end(LocalDate.of(2026, 12, 31)).build();
 
@@ -128,7 +136,7 @@ class TenantLeaveConfigurationProvisionServiceTest {
         when(leaveTypeRepository.findAllByTenantId("acme")).thenReturn(List.of(existing));
         when(jurisdictionLeaveTypeRepository.findById(annual.getId())).thenReturn(Optional.of(annual));
         when(policyRepository.findAllByScopeAndJurisdictionIdAndActiveTrue(ConfigurationScope.PLATFORM_TEMPLATE, "SG")).thenReturn(List.of(template));
-        when(policyRepository.existsByTenantIdAndSourceTemplateId("acme", template.getId())).thenReturn(true);
+        when(policyRepository.findAllByTenantId("acme")).thenReturn(List.of(existingPolicy));
         when(leaveCalendarRepository.findAllByScopeAndJurisdictionId(ConfigurationScope.PLATFORM_TEMPLATE, "SG")).thenReturn(List.of(calendar));
         when(leaveCalendarRepository.existsByTenantIdAndSourceTemplateId("acme", calendar.getId())).thenReturn(true);
 

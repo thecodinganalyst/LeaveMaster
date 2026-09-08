@@ -29,6 +29,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -83,8 +84,10 @@ public class TenantLeaveConfigurationProvisionService {
     private Map<String, LeaveType> seedLeaveTypes(Tenant tenant, String jurisdictionId) {
         Map<String, LeaveType> byCode = new LinkedHashMap<>();
         for (LeaveType leaveType : leaveTypeRepository.findAllByTenantId(tenant.getId())) {
-            if (leaveType.getSourceJurisdictionLeaveTypeId() == null) continue;
-            jurisdictionLeaveTypeRepository.findById(leaveType.getSourceJurisdictionLeaveTypeId())
+            if (!appliesToJurisdiction(leaveType, jurisdictionId)) continue;
+            String sourceId = leaveType.getSourceJurisdictionLeaveTypeId();
+            if (sourceId == null || sourceId.isBlank()) continue;
+            jurisdictionLeaveTypeRepository.findById(sourceId)
                     .ifPresent(source -> byCode.put(source.getCode(), leaveType));
         }
 
@@ -92,7 +95,7 @@ public class TenantLeaveConfigurationProvisionService {
             LeaveType leaveType = byCode.get(source.getCode());
             if (leaveType == null) {
                 leaveType = LeaveType.builder()
-                        .id(tenant.getId() + ":" + source.getCode())
+                        .id(tenantLeaveTypeId(tenant.getId(), jurisdictionId, source.getCode()))
                         .name(source.getName())
                         .used(false)
                         .active(source.isActive())
@@ -103,6 +106,7 @@ public class TenantLeaveConfigurationProvisionService {
                         .effectiveFrom(source.getEffectiveFrom())
                         .effectiveTo(source.getEffectiveTo())
                         .tenantId(tenant.getId())
+                        .jurisdictionId(jurisdictionId)
                         .sourceJurisdictionLeaveTypeId(source.getId())
                         .build();
                 leaveType = leaveTypeRepository.save(leaveType);
@@ -112,14 +116,34 @@ public class TenantLeaveConfigurationProvisionService {
         return byCode;
     }
 
+    private boolean appliesToJurisdiction(LeaveType leaveType, String jurisdictionId) {
+        String applicable = leaveType.getJurisdictionId();
+        if (applicable != null && !applicable.isBlank()) {
+            return jurisdictionId.equals(applicable);
+        }
+
+        // Backward compatibility for records created before applicable jurisdiction was persisted.
+        // Reuse a legacy row only when its source is directly defined for the requested jurisdiction.
+        // An inherited parent source (for example AU:ANNUAL_LEAVE while provisioning AU-NSW)
+        // is intentionally not reused because its applicable child jurisdiction cannot be inferred.
+        String sourceId = leaveType.getSourceJurisdictionLeaveTypeId();
+        if (sourceId == null || sourceId.isBlank()) return false;
+        return jurisdictionLeaveTypeRepository.findById(sourceId)
+                .map(source -> jurisdictionId.equals(source.getJurisdictionId()))
+                .orElse(false);
+    }
+
+    private String tenantLeaveTypeId(String tenantId, String jurisdictionId, String code) {
+        return tenantId + ":" + jurisdictionId + ":" + code;
+    }
+
     private void seedPoliciesAndEligibility(Tenant tenant, String jurisdictionId, Map<String, LeaveType> tenantLeaveTypesByCode) {
         for (LeaveEntitlementPolicy template : effectivePolicyTemplates(jurisdictionId).values()) {
-            if (policyRepository.existsByTenantIdAndSourceTemplateId(tenant.getId(), template.getId())) continue;
-
             JurisdictionLeaveType sourceLeaveType = jurisdictionLeaveTypeRepository.findById(template.getJurisdictionLeaveTypeId())
                     .orElseThrow(() -> new IllegalStateException("Policy template references missing jurisdiction leave type: " + template.getJurisdictionLeaveTypeId()));
             LeaveType tenantLeaveType = tenantLeaveTypesByCode.get(sourceLeaveType.getCode());
             if (tenantLeaveType == null) continue;
+            if (policyAlreadyProvisioned(tenant.getId(), jurisdictionId, template.getId(), tenantLeaveType.getId())) continue;
 
             AccrualMethod accrualMethod = template.getAccrualMethod() == AccrualMethod.ANNUAL
                     ? AccrualMethod.NONE
@@ -129,6 +153,7 @@ public class TenantLeaveConfigurationProvisionService {
             LeaveEntitlementPolicy copied = LeaveEntitlementPolicy.builder()
                     .tenantId(tenant.getId())
                     .scope(ConfigurationScope.TENANT)
+                    .jurisdictionId(jurisdictionId)
                     .leaveTypeId(tenantLeaveType.getId())
                     .sourceTemplateId(template.getId())
                     .name(template.getName())
@@ -164,6 +189,15 @@ public class TenantLeaveConfigurationProvisionService {
                         .build());
             }
         }
+    }
+
+    private boolean policyAlreadyProvisioned(
+            String tenantId, String jurisdictionId, String sourceTemplateId, String leaveTypeId) {
+        return policyRepository.findAllByTenantId(tenantId).stream()
+                .filter(policy -> Objects.equals(sourceTemplateId, policy.getSourceTemplateId()))
+                .anyMatch(policy -> jurisdictionId.equals(policy.getJurisdictionId())
+                        || ((policy.getJurisdictionId() == null || policy.getJurisdictionId().isBlank())
+                        && Objects.equals(leaveTypeId, policy.getLeaveTypeId())));
     }
 
     private BigDecimal derivedAccrualRate(AccrualMethod method, BigDecimal entitlementAmount) {
@@ -258,7 +292,7 @@ public class TenantLeaveConfigurationProvisionService {
         }
 
         String lineage = sourceTemplateLineage(templates);
-        if (!java.util.Objects.equals(lineage, calendar.getSourceTemplateId())) {
+        if (!Objects.equals(lineage, calendar.getSourceTemplateId())) {
             calendar.setSourceTemplateId(lineage);
             changed = true;
         }

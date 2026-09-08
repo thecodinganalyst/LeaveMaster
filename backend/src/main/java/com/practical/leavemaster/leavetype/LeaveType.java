@@ -4,7 +4,6 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import jakarta.persistence.Transient;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -53,14 +52,15 @@ public class LeaveType {
     @Column(name = "tenant_id")
     private String tenantId;
 
+    /**
+     * The tenant jurisdiction where this leave type applies. This is deliberately separate
+     * from sourceJurisdictionLeaveTypeId because an inherited platform leave type can originate
+     * from a parent jurisdiction (for example AU) while applying to a child jurisdiction
+     * selected by the tenant (for example AU-NSW).
+     */
+    @Column(name = "jurisdiction_id", length = 32)
+    private String jurisdictionId;
+
     @Column(name = "source_jurisdiction_leave_type_id", length = 128)
     private String sourceJurisdictionLeaveTypeId;
-
-    /**
-     * Tenant-safe derived value used by the frontend jurisdiction filter. This is resolved
-     * from the platform catalogue internally so tenant users do not need direct access to
-     * the platform-only jurisdiction-leave-types endpoint.
-     */
-    @Transient
-    private String jurisdictionId;
 }

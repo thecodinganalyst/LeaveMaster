@@ -42,14 +42,14 @@ public class LeaveTypeService {
         } else {
             leaveTypes = leaveTypeRepository.findAll();
         }
-        enrichJurisdictionIds(leaveTypes);
+        enrichLegacyJurisdictionIds(leaveTypes);
         return leaveTypes;
     }
 
     public Optional<LeaveType> findById(String id) {
         Optional<LeaveType> leaveType = leaveTypeRepository.findById(id)
                 .filter(this::isAccessibleToCurrentUser);
-        leaveType.ifPresent(this::enrichJurisdictionId);
+        leaveType.ifPresent(this::enrichLegacyJurisdictionId);
         return leaveType;
     }
 
@@ -60,7 +60,7 @@ public class LeaveTypeService {
         }
         leaveType.setUsed(false);
         LeaveType saved = leaveTypeRepository.save(leaveType);
-        enrichJurisdictionId(saved);
+        enrichLegacyJurisdictionId(saved);
         tenantActivityService.touch(saved.getTenantId());
         return saved;
     }
@@ -77,7 +77,7 @@ public class LeaveTypeService {
         existing.setEffectiveFrom(updated.getEffectiveFrom());
         existing.setEffectiveTo(updated.getEffectiveTo());
         LeaveType saved = leaveTypeRepository.save(existing);
-        enrichJurisdictionId(saved);
+        enrichLegacyJurisdictionId(saved);
         tenantActivityService.touch(saved.getTenantId());
         return saved;
     }
@@ -92,9 +92,10 @@ public class LeaveTypeService {
         tenantActivityService.touch(leaveType.getTenantId());
     }
 
-    private void enrichJurisdictionIds(Collection<LeaveType> leaveTypes) {
+    private void enrichLegacyJurisdictionIds(Collection<LeaveType> leaveTypes) {
         Map<String, JurisdictionLeaveType> sourcesById = jurisdictionLeaveTypeRepository.findAllById(
                         leaveTypes.stream()
+                                .filter(leaveType -> leaveType.getJurisdictionId() == null || leaveType.getJurisdictionId().isBlank())
                                 .map(LeaveType::getSourceJurisdictionLeaveTypeId)
                                 .filter(Objects::nonNull)
                                 .map(String::trim)
@@ -104,13 +105,19 @@ public class LeaveTypeService {
                 .collect(Collectors.toMap(JurisdictionLeaveType::getId, Function.identity()));
 
         for (LeaveType leaveType : leaveTypes) {
+            if (leaveType.getJurisdictionId() != null && !leaveType.getJurisdictionId().isBlank()) {
+                continue;
+            }
             String sourceId = leaveType.getSourceJurisdictionLeaveTypeId();
             JurisdictionLeaveType source = sourceId == null ? null : sourcesById.get(sourceId.trim());
             leaveType.setJurisdictionId(source == null ? null : source.getJurisdictionId());
         }
     }
 
-    private void enrichJurisdictionId(LeaveType leaveType) {
+    private void enrichLegacyJurisdictionId(LeaveType leaveType) {
+        if (leaveType.getJurisdictionId() != null && !leaveType.getJurisdictionId().isBlank()) {
+            return;
+        }
         String sourceId = leaveType.getSourceJurisdictionLeaveTypeId();
         if (sourceId == null || sourceId.isBlank()) {
             leaveType.setJurisdictionId(null);

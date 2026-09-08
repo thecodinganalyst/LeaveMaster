@@ -68,7 +68,7 @@ class SingaporeCompanyDefaultProvisionTest {
         LeaveEntitlementPolicy unpaidPolicy = requestPolicy(unpaid.getId());
         when(policyRepository.findAllByScopeAndJurisdictionIdAndActiveTrue(ConfigurationScope.PLATFORM_TEMPLATE, "SG"))
                 .thenReturn(List.of(compassionatePolicy, marriagePolicy, unpaidPolicy));
-        when(policyRepository.existsByTenantIdAndSourceTemplateId(any(), any())).thenReturn(false);
+        when(policyRepository.findAllByTenantId("acme-sg")).thenReturn(List.of());
         when(policyRepository.save(any(LeaveEntitlementPolicy.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(eligibilityRepository.findAllByPolicyIdOrderBySortOrderAsc(any())).thenReturn(List.of());
 
@@ -82,6 +82,7 @@ class SingaporeCompanyDefaultProvisionTest {
                         org.assertj.core.groups.Tuple.tuple("SG_COMPASSIONATE_DEFAULT", LeavePolicyModel.EVENT_BASED),
                         org.assertj.core.groups.Tuple.tuple("SG_MARRIAGE_DEFAULT", LeavePolicyModel.EVENT_BASED),
                         org.assertj.core.groups.Tuple.tuple("SG_UNPAID_DEFAULT", LeavePolicyModel.REQUEST_BASED));
+        assertThat(captor.getAllValues()).allMatch(policy -> "SG".equals(policy.getJurisdictionId()));
         assertThat(captor.getAllValues().stream()
                 .filter(policy -> "SG_UNPAID_DEFAULT".equals(policy.getSourceTemplateId()))
                 .findFirst().orElseThrow().getEntitlementAmount()).isEqualByComparingTo(BigDecimal.ZERO);
