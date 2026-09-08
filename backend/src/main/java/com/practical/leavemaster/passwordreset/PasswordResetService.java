@@ -6,7 +6,6 @@ import com.practical.leavemaster.staff.Staff;
 import com.practical.leavemaster.staff.StaffRepository;
 import com.practical.leavemaster.user.AppUser;
 import com.practical.leavemaster.user.AppUserRepository;
-import com.practical.leavemaster.user.AppUserService;
 import com.practical.leavemaster.user.AuthenticationRealm;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,12 +28,12 @@ public class PasswordResetService {
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final int PIN_BOUND = 1_000_000;
+    private static final int MIN_PASSWORD_LENGTH = 8;
 
     private final AppUserRepository appUserRepository;
     private final StaffRepository staffRepository;
     private final PasswordResetRepository passwordResetRepository;
     private final PasswordEncoder passwordEncoder;
-    private final AppUserService appUserService;
     private final EmailService emailService;
 
     @Value("${app.password-reset.pin-expiry-minutes:${app.account-activation.pin-expiry-minutes:15}}")
@@ -169,7 +168,18 @@ public class PasswordResetService {
             return false;
         }
 
-        appUserService.resetPasswordByUserId(context.get().user().getUserId(), newPassword);
+        validatePassword(newPassword);
+        AppUser user = appUserRepository.findById(context.get().user().getUserId())
+                .orElseThrow(() -> new IllegalStateException("Account is not eligible for password reset"));
+        if (!user.isActive() || user.getPassword() == null || user.getPassword().isBlank()) {
+            throw new IllegalStateException("Account is not eligible for password reset");
+        }
+        if (passwordEncoder.matches(newPassword, user.getPassword())) {
+            throw new IllegalArgumentException("New password must be different from the current password");
+        }
+        user.setPassword(passwordEncoder.encode(newPassword));
+        appUserRepository.save(user);
+
         reset.setConsumedAt(now);
         reset.setPinHash(null);
         passwordResetRepository.save(reset);
@@ -216,6 +226,15 @@ public class PasswordResetService {
         return staff.getJoinDate() != null
                 && !staff.getJoinDate().isAfter(today)
                 && (staff.getTermDate() == null || staff.getTermDate().isAfter(today));
+    }
+
+    private void validatePassword(String newPassword) {
+        if (newPassword == null || newPassword.isBlank()) {
+            throw new IllegalArgumentException("New password must not be blank");
+        }
+        if (newPassword.length() < MIN_PASSWORD_LENGTH) {
+            throw new IllegalArgumentException("New password must be at least " + MIN_PASSWORD_LENGTH + " characters long");
+        }
     }
 
     private void invalidateGeneratedPin(PasswordReset reset) {
