@@ -4,6 +4,14 @@ LeaveMaster creates the default `PlatformAdmin` account only when no user is ass
 
 Production should not rely on the local fallback password `changeme`.
 
+## Preferred recovery after initial setup
+
+After signing in as `PlatformAdmin`, open **Security** and configure a **Recovery email**. The PlatformAdmin account uses the special `PLATFORM` realm and is not tied to a tenant or staff record.
+
+Once a recovery email is configured, the login page **Forgot password?** flow can send a short-lived 6-digit password-reset PIN to that address. The public reset endpoints use generic responses so they do not reveal whether PlatformAdmin exists or whether an email is configured.
+
+Existing installations whose PlatformAdmin has no recovery email must use the Secret Manager break-glass procedure below. After recovery, sign in and add a recovery email for future self-service resets.
+
 ## Secret Manager setup
 
 Terraform creates the Secret Manager resource:
@@ -49,6 +57,8 @@ This alone does not overwrite an existing PlatformAdmin password hash.
 
 ## Recover/reset the existing PlatformAdmin password
 
+Use this break-glass procedure when PlatformAdmin cannot use email recovery, such as an older installation with no recovery email.
+
 For one deployment only, also set:
 
 ```text
@@ -86,6 +96,8 @@ Then temporarily set `RESET_PLATFORM_ADMIN_PASSWORD=true`, deploy once, verify l
 
 ## Safety notes
 
+- Prefer the recovery-email PIN flow for routine self-service recovery after it has been configured.
+- Keep Secret Manager recovery as a controlled break-glass path.
 - Do not commit the password or place it in a `VITE_*` variable.
 - Do not leave `RESET_PLATFORM_ADMIN_PASSWORD=true` after recovery.
 - Do not grant Secret Manager administration to the Cloud Run runtime service account.
