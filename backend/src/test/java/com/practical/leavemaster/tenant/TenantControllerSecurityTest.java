@@ -3,6 +3,7 @@ package com.practical.leavemaster.tenant;
 import com.practical.leavemaster.config.SecurityConfig;
 import com.practical.leavemaster.rbac.RbacPermissions;
 import com.practical.leavemaster.user.AppUserRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -17,6 +18,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
@@ -44,7 +46,16 @@ class TenantControllerSecurityTest {
     private TenantService tenantService;
 
     @MockitoBean
+    private TenantJurisdictionViewService tenantJurisdictionViewService;
+
+    @MockitoBean
     private AppUserRepository appUserRepository;
+
+    @BeforeEach
+    void passThroughJurisdictionEnrichment() {
+        when(tenantJurisdictionViewService.enrich(any(Tenant.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(tenantJurisdictionViewService.enrichAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
+    }
 
     @Test
     void platformAdminAuthoritiesAllowTenantCrud() throws Exception {

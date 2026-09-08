@@ -17,6 +17,7 @@ import {
 } from './jurisdictionListFilter.ts';
 import { getJurisdictionOptions, type JurisdictionOptionSource } from './jurisdictions.ts';
 import { TenantEntitlementPolicySummary } from './TenantEntitlementPolicySummary.tsx';
+import { TenantJurisdictionsDisplay } from './TenantJurisdictionsDisplay.tsx';
 import { TenantLeaveTypeName } from './TenantLeaveTypeName.tsx';
 import { shouldHideTenantInternalId } from './tenantInternalIdVisibility.ts';
 
@@ -112,14 +113,16 @@ export const ResourceListPage = () => {
       && isAdminFieldVisible(field, platformAdmin)
       && !shouldHideTenantInternalId(config.name, config.idField, field.name, platformAdmin))
     .map((field) => ({
-      title: field.label,
+      title: config.name === 'tenants' && field.name === 'jurisdictionId' ? 'Jurisdictions' : field.label,
       dataIndex: field.name,
       sorter: (a, b) => String(a[field.name] ?? '').localeCompare(String(b[field.name] ?? ''), undefined, { numeric: true }),
-      render: (value: unknown) => config.name === 'leave-entitlement-policies' && field.name === 'leaveTypeId' && !platformAdmin
-        ? <TenantLeaveTypeName leaveTypeId={String(value ?? '')} />
-        : config.name === 'leave-entitlement-policy-eligibility-rules' && field.name === 'policyId' && !platformAdmin
-          ? <TenantEntitlementPolicySummary policyId={String(value ?? '')} />
-          : displayValue(field, value),
+      render: (value: unknown, row: Record<string, unknown>) => config.name === 'tenants' && field.name === 'jurisdictionId'
+        ? <TenantJurisdictionsDisplay record={row} />
+        : config.name === 'leave-entitlement-policies' && field.name === 'leaveTypeId' && !platformAdmin
+          ? <TenantLeaveTypeName leaveTypeId={String(value ?? '')} />
+          : config.name === 'leave-entitlement-policy-eligibility-rules' && field.name === 'policyId' && !platformAdmin
+            ? <TenantEntitlementPolicySummary policyId={String(value ?? '')} />
+            : displayValue(field, value),
     }));
 
   columns?.push({
