@@ -1,5 +1,15 @@
 ALTER TABLE leave_type ADD COLUMN jurisdiction_id VARCHAR(32);
 
+-- V18 required tenant policies to have jurisdiction_id IS NULL. Tenant policies are now
+-- scoped to their applicable jurisdiction, so relax that legacy constraint before any
+-- backfill writes a jurisdiction id. Platform-template invariants remain unchanged.
+ALTER TABLE leave_entitlement_policy DROP CONSTRAINT CK_leave_entitlement_policy_scope;
+ALTER TABLE leave_entitlement_policy ADD CONSTRAINT CK_leave_entitlement_policy_scope CHECK (
+    (scope = 'PLATFORM_TEMPLATE' AND tenant_id IS NULL AND leave_type_id IS NULL AND jurisdiction_id IS NOT NULL AND jurisdiction_leave_type_id IS NOT NULL)
+    OR
+    (scope = 'TENANT' AND tenant_id IS NOT NULL AND leave_type_id IS NOT NULL AND jurisdiction_leave_type_id IS NULL)
+);
+
 -- Existing tenant leave types that were sourced directly from a jurisdiction can be
 -- attributed safely when that jurisdiction is associated with the tenant.
 UPDATE leave_type lt
@@ -29,8 +39,8 @@ WHERE lt.jurisdiction_id IS NULL
       WHERE tj.tenant_id = lt.tenant_id
   );
 
--- Preserve existing policy ids and references; only fill the already-existing policy
--- jurisdiction column from the linked tenant leave type when it was previously omitted.
+-- Preserve existing policy ids and references; fill the policy jurisdiction from the
+-- linked tenant leave type after the scope constraint has been made jurisdiction-aware.
 UPDATE leave_entitlement_policy lep
 SET jurisdiction_id = lt.jurisdiction_id
 FROM leave_type lt
