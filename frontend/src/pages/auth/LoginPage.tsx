@@ -16,9 +16,23 @@ import {
   startOAuthLogin,
   type OAuthProvider,
 } from '../../api/oauth.ts';
+import {
+  requestPasswordResetPin,
+  setResetPassword,
+  verifyPasswordResetPin,
+} from '../../api/passwordReset.ts';
 import { docsLinks } from '../../config/docsLinks.ts';
 
-type Step = 'IDENTIFIER' | 'PASSWORD' | 'ACTIVATION' | 'PIN' | 'SET_PASSWORD' | 'COMPLETE';
+type Step =
+  | 'IDENTIFIER'
+  | 'PASSWORD'
+  | 'ACTIVATION'
+  | 'PIN'
+  | 'SET_PASSWORD'
+  | 'COMPLETE'
+  | 'RESET_PIN'
+  | 'RESET_PASSWORD'
+  | 'RESET_COMPLETE';
 
 const PIN_EXPIRY_MINUTES = 15;
 const RESEND_COOLDOWN_SECONDS = 60;
@@ -65,7 +79,7 @@ export const LoginPage = () => {
 
   const cooldownRemaining = Math.max(0, Math.ceil((cooldownUntil - Date.now()) / 1000));
   const accountIdentity = { tenantId, loginName };
-  const helpLabel = step === 'IDENTIFIER' ? 'Help signing in' : 'Help with account activation';
+  const helpLabel = step === 'IDENTIFIER' ? 'Help signing in' : 'Help with account security';
 
   const run = async (action: () => Promise<void>) => {
     setBusy(true);
@@ -111,7 +125,7 @@ export const LoginPage = () => {
           <Typography.Text type="secondary">
             {step === 'IDENTIFIER'
               ? 'Sign in with Google, GitHub, or your LeaveMaestro account.'
-              : 'Sign in or complete your account setup.'}
+              : 'Sign in or manage your account access.'}
           </Typography.Text>
           <Button
             type="link"
@@ -172,6 +186,12 @@ export const LoginPage = () => {
               </Form.Item>
               <Space direction="vertical" style={{ width: '100%' }}>
                 <Button type="primary" htmlType="submit" block loading={loginPending}>Sign in</Button>
+                <Button type="link" block loading={busy} onClick={() => run(async () => {
+                  await requestPasswordResetPin(accountIdentity);
+                  startCooldown();
+                  setStep('RESET_PIN');
+                  message.success('If the account is eligible, a password reset PIN has been sent.');
+                })}>Forgot password?</Button>
                 <Button type="link" block onClick={restartAccount}>Use a different account</Button>
               </Space>
             </Form>
@@ -246,6 +266,68 @@ export const LoginPage = () => {
             <Space direction="vertical" style={{ width: '100%' }}>
               {accountContext}
               <Alert type="success" showIcon message="Account activated" description="Your password has been set. You can now sign in." />
+              <Button type="primary" block onClick={() => setStep('PASSWORD')}>Continue to sign in</Button>
+            </Space>
+          ) : null}
+
+          {step === 'RESET_PIN' ? (
+            <Form layout="vertical" onFinish={({ pin }) => run(async () => {
+              await verifyPasswordResetPin(accountIdentity, String(pin));
+              setStep('RESET_PASSWORD');
+            })}>
+              {accountContext}
+              <Typography.Text>
+                If this account is eligible for password recovery, enter the 6-digit PIN sent to its registered email. It expires after {PIN_EXPIRY_MINUTES} minutes.
+              </Typography.Text>
+              <Form.Item label="Password reset PIN" name="pin" rules={[
+                { required: true, message: 'Enter the password reset PIN.' },
+                { pattern: /^\d{6}$/, message: 'PIN must contain exactly 6 digits.' },
+              ]}>
+                <Input inputMode="numeric" autoComplete="one-time-code" maxLength={6} autoFocus />
+              </Form.Item>
+              <Space direction="vertical" style={{ width: '100%' }}>
+                <Button type="primary" htmlType="submit" block loading={busy}>Verify PIN</Button>
+                <Button block disabled={busy || cooldownRemaining > 0} onClick={() => run(async () => {
+                  await requestPasswordResetPin(accountIdentity);
+                  startCooldown();
+                  message.success('If the account is eligible, a new password reset PIN has been sent.');
+                })}>
+                  {cooldownRemaining > 0 ? `Resend PIN in ${cooldownRemaining}s` : 'Resend PIN'}
+                </Button>
+                <Button type="link" block onClick={() => setStep('PASSWORD')}>Back to password sign in</Button>
+              </Space>
+            </Form>
+          ) : null}
+
+          {step === 'RESET_PASSWORD' ? (
+            <Form layout="vertical" onFinish={({ password }) => run(async () => {
+              await setResetPassword(accountIdentity, password);
+              setStep('RESET_COMPLETE');
+            })}>
+              {accountContext}
+              <Typography.Text>Choose a new password for this account.</Typography.Text>
+              <Form.Item name="password" label="New password" rules={[
+                { required: true, message: 'Enter a new password.' },
+                { min: 8, message: 'New password must be at least 8 characters long.' },
+              ]}>
+                <Input.Password autoComplete="new-password" autoFocus />
+              </Form.Item>
+              <Form.Item name="confirmPassword" label="Confirm new password" dependencies={['password']} rules={[
+                { required: true, message: 'Confirm your new password.' },
+                ({ getFieldValue }) => ({ validator(_, value) {
+                  return !value || value === getFieldValue('password') ? Promise.resolve() : Promise.reject(new Error('Passwords must match.'));
+                } }),
+              ]}>
+                <Input.Password autoComplete="new-password" />
+              </Form.Item>
+              <Button type="primary" htmlType="submit" block loading={busy}>Reset password</Button>
+            </Form>
+          ) : null}
+
+          {step === 'RESET_COMPLETE' ? (
+            <Space direction="vertical" style={{ width: '100%' }}>
+              {accountContext}
+              <Alert type="success" showIcon message="Password reset" description="Your password has been updated. You can now sign in with the new password." />
               <Button type="primary" block onClick={() => setStep('PASSWORD')}>Continue to sign in</Button>
             </Space>
           ) : null}
