@@ -6,6 +6,8 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Locale;
+
 @Component
 @RequiredArgsConstructor
 public class JurisdictionHierarchyReconciliationInitializer implements ApplicationRunner {
@@ -15,27 +17,50 @@ public class JurisdictionHierarchyReconciliationInitializer implements Applicati
     @Transactional
     public void run(ApplicationArguments args) {
         for (Jurisdiction jurisdiction : jurisdictionRepository.findAll()) {
-            if (!needsCountryParent(jurisdiction)) {
+            if (jurisdiction == null || jurisdiction.getJurisdictionType() == JurisdictionType.COUNTRY) {
                 continue;
             }
-            if (!jurisdictionRepository.existsById(jurisdiction.getCountryCode())) {
+
+            String countryCode = resolveCountryCode(jurisdiction);
+            if (countryCode == null || !jurisdictionRepository.existsById(countryCode)) {
                 continue;
             }
-            jurisdiction.setParentId(jurisdiction.getCountryCode());
-            jurisdictionRepository.save(jurisdiction);
+
+            boolean changed = false;
+            if (jurisdiction.getCountryCode() == null || jurisdiction.getCountryCode().isBlank()) {
+                jurisdiction.setCountryCode(countryCode);
+                changed = true;
+            }
+            if ((jurisdiction.getSubdivisionCode() == null || jurisdiction.getSubdivisionCode().isBlank())
+                    && jurisdiction.getId() != null && jurisdiction.getId().contains("-")) {
+                jurisdiction.setSubdivisionCode(jurisdiction.getId());
+                changed = true;
+            }
+            if (jurisdiction.getParentId() == null || jurisdiction.getParentId().isBlank()) {
+                jurisdiction.setParentId(countryCode);
+                changed = true;
+            }
+
+            if (changed) {
+                jurisdictionRepository.save(jurisdiction);
+            }
         }
     }
 
-    private boolean needsCountryParent(Jurisdiction jurisdiction) {
-        if (jurisdiction == null || jurisdiction.getJurisdictionType() == JurisdictionType.COUNTRY) {
-            return false;
+    private String resolveCountryCode(Jurisdiction jurisdiction) {
+        String existingCountryCode = jurisdiction.getCountryCode();
+        if (existingCountryCode != null && !existingCountryCode.isBlank()) {
+            return existingCountryCode.trim().toUpperCase(Locale.ROOT);
         }
-        if (jurisdiction.getParentId() != null && !jurisdiction.getParentId().isBlank()) {
-            return false;
+
+        String id = jurisdiction.getId();
+        if (id == null || id.isBlank()) {
+            return null;
         }
-        String countryCode = jurisdiction.getCountryCode();
-        return countryCode != null
-                && !countryCode.isBlank()
-                && !countryCode.equals(jurisdiction.getId());
+        int separator = id.indexOf('-');
+        if (separator <= 0) {
+            return null;
+        }
+        return id.substring(0, separator).trim().toUpperCase(Locale.ROOT);
     }
 }
