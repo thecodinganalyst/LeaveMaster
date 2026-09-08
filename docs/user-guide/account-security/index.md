@@ -1,6 +1,6 @@
 # Account & Security
 
-Use this section to activate your account, sign in, connect a supported provider and understand common account-linking outcomes.
+Use this section to activate your account, recover a forgotten password, sign in, connect a supported provider and understand common account-linking outcomes.
 
 ## Activate a new account
 
@@ -16,6 +16,30 @@ See [Getting Started](../getting-started/index.md) for the full first-login flow
 ## Password sign-in
 
 Enter Tenant ID and Login name first. If the account is activated, LeaveMaestro then asks for the password. Use **Use a different account** if the displayed tenant/login combination is not yours.
+
+## Forgot password
+
+For an activated account that uses a LeaveMaestro password:
+
+1. Enter the **Tenant ID** and **Login name**, then select **Continue**.
+2. On the password screen, select **Forgot password?**.
+3. LeaveMaestro returns the same generic response whether or not the account exists or can receive recovery email.
+4. If the account is eligible, a 6-digit password-reset PIN is sent to its registered email.
+5. Enter the PIN and select **Verify PIN**.
+6. Choose and confirm a new password of at least 8 characters, then select **Reset password**.
+7. Return to sign-in and use the new password.
+
+Password-reset PINs are short lived, rate limited and single-use. Requesting a new PIN replaces the previous PIN. Resetting the local password does not remove a linked Google or GitHub identity.
+
+OAuth-only accounts that do not have a local LeaveMaestro password do not use this reset flow.
+
+## PlatformAdmin recovery email
+
+The `PlatformAdmin` account uses the special `PLATFORM` realm and is not tied to a tenant or staff record.
+
+After signing in as PlatformAdmin, open **Security** and set a **Recovery email**. Once configured, the normal **Forgot password?** flow can send a password-reset PIN to that address.
+
+If an existing PlatformAdmin has no recovery email, the public reset flow deliberately does not reveal that fact. Use the documented Secret Manager break-glass password recovery procedure instead, sign in, then configure a recovery email for future self-service resets.
 
 ## Connect Google sign-in
 
@@ -47,6 +71,7 @@ Follow the same process, selecting **Set up GitHub sign-in**. After success, the
 | Google/GitHub account already linked elsewhere | Use a different provider identity or contact your administrator if you believe the link is incorrect |
 | OAuth setup session expired/invalid | Return to Security and restart setup |
 | Authorization cancelled/denied | Retry and approve the provider authorization if you want to link it |
+| Password reset PIN is invalid or expired | Request a new password-reset PIN after the resend cooldown |
 
 ## Log out
 
