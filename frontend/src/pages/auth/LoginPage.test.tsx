@@ -10,6 +10,9 @@ const lookupAccountActivation = vi.fn();
 const requestAccountActivationPin = vi.fn();
 const verifyAccountActivationPin = vi.fn();
 const setInitialAccountPassword = vi.fn();
+const requestPasswordResetPin = vi.fn();
+const verifyPasswordResetPin = vi.fn();
+const setResetPassword = vi.fn();
 const startOAuthLogin = vi.fn();
 
 vi.mock('@refinedev/core', () => ({
@@ -21,6 +24,12 @@ vi.mock('../../api/accountActivation.ts', () => ({
   requestAccountActivationPin: (...args: unknown[]) => requestAccountActivationPin(...args),
   verifyAccountActivationPin: (...args: unknown[]) => verifyAccountActivationPin(...args),
   setInitialAccountPassword: (...args: unknown[]) => setInitialAccountPassword(...args),
+}));
+
+vi.mock('../../api/passwordReset.ts', () => ({
+  requestPasswordResetPin: (...args: unknown[]) => requestPasswordResetPin(...args),
+  verifyPasswordResetPin: (...args: unknown[]) => verifyPasswordResetPin(...args),
+  setResetPassword: (...args: unknown[]) => setResetPassword(...args),
 }));
 
 vi.mock('../../api/oauth.ts', () => ({
@@ -44,7 +53,7 @@ const enterIdentifier = async (name = 'alice', tenantId = 'tenant-a') => {
   await waitFor(() => expect(lookupAccountActivation).toHaveBeenCalledWith({ tenantId, loginName: name }));
 };
 
-describe('LoginPage account activation and OAuth sign-in', () => {
+describe('LoginPage account activation, password reset and OAuth sign-in', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.sessionStorage.clear();
@@ -52,6 +61,9 @@ describe('LoginPage account activation and OAuth sign-in', () => {
     requestAccountActivationPin.mockResolvedValue({ message: 'accepted' });
     verifyAccountActivationPin.mockResolvedValue({ message: 'verified' });
     setInitialAccountPassword.mockResolvedValue(undefined);
+    requestPasswordResetPin.mockResolvedValue({ message: 'accepted' });
+    verifyPasswordResetPin.mockResolvedValue({ message: 'verified' });
+    setResetPassword.mockResolvedValue(undefined);
   });
 
   it('shows Google and GitHub as sign-in choices', () => {
@@ -144,6 +156,63 @@ describe('LoginPage account activation and OAuth sign-in', () => {
       { tenantId: 'tenant-a', loginName: 'alice' }, 'strongpass',
     ));
     expect(await screen.findByText('Account activated')).toBeInTheDocument();
+  });
+
+  it('runs the forgot-password request, PIN verification, password reset and success journey', async () => {
+    renderPage();
+    await enterIdentifier('alice', 'tenant-a');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Forgot password?' }));
+    await waitFor(() => expect(requestPasswordResetPin).toHaveBeenCalledWith({
+      tenantId: 'tenant-a', loginName: 'alice',
+    }));
+    expect(await screen.findByText(/If this account is eligible for password recovery/i)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Password reset PIN'), { target: { value: '123456' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Verify PIN' }));
+    await waitFor(() => expect(verifyPasswordResetPin).toHaveBeenCalledWith(
+      { tenantId: 'tenant-a', loginName: 'alice' }, '123456',
+    ));
+
+    fireEvent.change(await screen.findByLabelText('New password'), { target: { value: 'new-password' } });
+    fireEvent.change(screen.getByLabelText('Confirm new password'), { target: { value: 'new-password' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Reset password' }));
+    await waitFor(() => expect(setResetPassword).toHaveBeenCalledWith(
+      { tenantId: 'tenant-a', loginName: 'alice' }, 'new-password',
+    ));
+    expect(await screen.findByText('Password reset')).toBeInTheDocument();
+  });
+
+  it('uses the platform realm unchanged during forgot-password recovery', async () => {
+    renderPage();
+    await enterIdentifier('PlatformAdmin', 'PLATFORM');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Forgot password?' }));
+
+    await waitFor(() => expect(requestPasswordResetPin).toHaveBeenCalledWith({
+      tenantId: 'PLATFORM', loginName: 'PlatformAdmin',
+    }));
+  });
+
+  it('keeps forgot-password request messaging generic when no email can be delivered', async () => {
+    requestPasswordResetPin.mockResolvedValue({ message: 'accepted' });
+    renderPage();
+    await enterIdentifier('PlatformAdmin', 'PLATFORM');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Forgot password?' }));
+
+    expect(await screen.findByText(/If this account is eligible for password recovery/i)).toBeInTheDocument();
+    expect(screen.queryByText(/no email/i)).not.toBeInTheDocument();
+  });
+
+  it('returns from reset PIN entry to password sign-in without losing account context', async () => {
+    renderPage();
+    await enterIdentifier();
+    fireEvent.click(await screen.findByRole('button', { name: 'Forgot password?' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Back to password sign in' }));
+
+    expect(await screen.findByLabelText('Password')).toBeInTheDocument();
+    expect(screen.getByText('tenant-a / alice')).toBeInTheDocument();
   });
 
   it('shows a privacy-safe message when the external identity is already linked elsewhere', () => {
