@@ -79,6 +79,7 @@ class AustraliaLeaveTypeInheritanceProvisionTest {
             tenantLeaveTypes.add(value);
             return value;
         });
+        when(policyRepository.findAllByTenantId("acme-au")).thenReturn(List.of());
         when(policyRepository.findAllByScopeAndJurisdictionIdAndActiveTrue(
                 ConfigurationScope.PLATFORM_TEMPLATE, "AU")).thenReturn(List.of());
         when(policyRepository.findAllByScopeAndJurisdictionIdAndActiveTrue(
@@ -93,27 +94,36 @@ class AustraliaLeaveTypeInheritanceProvisionTest {
                 "AU-NSW", false, true, null, null));
 
         assertThat(tenantLeaveTypes).hasSize(3);
+        assertThat(tenantLeaveTypes).allMatch(item -> "AU-NSW".equals(item.getJurisdictionId()));
         assertThat(tenantLeaveTypes).extracting(LeaveType::getName)
                 .containsExactlyInAnyOrder("Annual Leave", "Personal / Carer's Leave", "Long Service Leave");
+        LeaveType annual = tenantLeaveTypes.stream()
+                .filter(item -> item.getId().equals("acme-au:AU-NSW:ANNUAL_LEAVE"))
+                .findFirst().orElseThrow();
+        assertThat(annual.getSourceJurisdictionLeaveTypeId()).isEqualTo("AU:ANNUAL_LEAVE");
+
         LeaveType longService = tenantLeaveTypes.stream()
-                .filter(item -> item.getId().equals("acme-au:LONG_SERVICE_LEAVE"))
+                .filter(item -> item.getId().equals("acme-au:AU-NSW:LONG_SERVICE_LEAVE"))
                 .findFirst().orElseThrow();
         assertThat(longService.getSourceJurisdictionLeaveTypeId()).isEqualTo("AU-NSW:LONG_SERVICE_LEAVE");
         assertThat(longService.getSourceName()).isEqualTo("NSW Industrial Relations");
     }
 
     @Test
-    void shouldNotDuplicateLeaveTypesWhenParentThenChildAreProvisioned() {
+    void shouldKeepParentAndChildAsSeparateApplicableJurisdictionsWithoutDuplicates() {
         Tenant tenant = Tenant.builder().id("acme-au").build();
 
         service.provision(tenant, new TenantJurisdictionProvisionRequest(
                 "AU", false, true, null, null));
         service.provision(tenant, new TenantJurisdictionProvisionRequest(
                 "AU-NSW", false, true, null, null));
+        service.provision(tenant, new TenantJurisdictionProvisionRequest(
+                "AU-NSW", false, true, null, null));
 
-        assertThat(tenantLeaveTypes).hasSize(3);
-        assertThat(tenantLeaveTypes).extracting(LeaveType::getId)
-                .doesNotHaveDuplicates();
+        assertThat(tenantLeaveTypes).hasSize(6);
+        assertThat(tenantLeaveTypes).extracting(LeaveType::getId).doesNotHaveDuplicates();
+        assertThat(tenantLeaveTypes.stream().filter(item -> "AU".equals(item.getJurisdictionId()))).hasSize(3);
+        assertThat(tenantLeaveTypes.stream().filter(item -> "AU-NSW".equals(item.getJurisdictionId()))).hasSize(3);
     }
 
     private Jurisdiction jurisdiction(String id, String parentId, JurisdictionType type) {
