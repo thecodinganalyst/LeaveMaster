@@ -26,10 +26,27 @@ class JurisdictionHierarchyReconciliationInitializerTest {
     }
 
     @Test
+    void shouldRestoreCountryAndParentForLegacyAustralianSubdivisionMissingBoth() throws Exception {
+        JurisdictionRepository repository = mock(JurisdictionRepository.class);
+        Jurisdiction wa = subdivision("AU-WA", null, null);
+        wa.setSubdivisionCode(null);
+        when(repository.findAll()).thenReturn(List.of(wa));
+        when(repository.existsById("AU")).thenReturn(true);
+
+        new JurisdictionHierarchyReconciliationInitializer(repository).run(null);
+
+        assertThat(wa.getCountryCode()).isEqualTo("AU");
+        assertThat(wa.getParentId()).isEqualTo("AU");
+        assertThat(wa.getSubdivisionCode()).isEqualTo("AU-WA");
+        verify(repository).save(wa);
+    }
+
+    @Test
     void shouldPreserveExplicitParentForNestedHierarchy() throws Exception {
         JurisdictionRepository repository = mock(JurisdictionRepository.class);
         Jurisdiction locality = subdivision("AU-NSW-SYD", "AU", "AU-NSW");
         when(repository.findAll()).thenReturn(List.of(locality));
+        when(repository.existsById("AU")).thenReturn(true);
 
         new JurisdictionHierarchyReconciliationInitializer(repository).run(null);
 
