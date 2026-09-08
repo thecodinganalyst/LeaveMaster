@@ -203,9 +203,6 @@ public class PasswordResetService {
         if (!user.isActive() || user.getPassword() == null || user.getPassword().isBlank()) {
             return Optional.empty();
         }
-        if (user.getEmail() == null || user.getEmail().isBlank()) {
-            return Optional.empty();
-        }
 
         if (!AuthenticationRealm.isPlatformRealm(tenantId)
                 && user.getStaffId() != null && !user.getStaffId().isBlank()) {
@@ -213,11 +210,18 @@ public class PasswordResetService {
             if (staffOptional.isEmpty() || !eligibleEmployment(staffOptional.get())) {
                 return Optional.empty();
             }
-            String displayName = staffOptional.get().getName() == null || staffOptional.get().getName().isBlank()
-                    ? user.getLoginName() : staffOptional.get().getName();
-            return Optional.of(new ResetContext(user, user.getEmail().trim(), displayName));
+            Staff staff = staffOptional.get();
+            if (staff.getEmail() == null || staff.getEmail().isBlank()) {
+                return Optional.empty();
+            }
+            String displayName = staff.getName() == null || staff.getName().isBlank()
+                    ? user.getLoginName() : staff.getName();
+            return Optional.of(new ResetContext(user, staff.getEmail().trim(), displayName));
         }
 
+        if (user.getEmail() == null || user.getEmail().isBlank()) {
+            return Optional.empty();
+        }
         return Optional.of(new ResetContext(user, user.getEmail().trim(), user.getLoginName()));
     }
 
