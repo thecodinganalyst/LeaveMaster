@@ -39,3 +39,7 @@ jobs:
       - name: Terraform validate
         working-directory: infra/terraform
         run: terraform validate
+
+      - name: Terraform tests
+        working-directory: infra/terraform
+        run: terraform test
