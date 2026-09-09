@@ -2,16 +2,16 @@ mock_provider "google" {}
 mock_provider "google-beta" {}
 
 variables {
-  project_id                      = "leavemaster"
-  image_tag                       = "test"
-  database_host                   = "db.example.com"
-  database_username               = "leavemaster"
-  github_actions_service_account  = "github-actions@example.iam.gserviceaccount.com"
-  github_oauth_client_id          = "github-client-id"
-  google_oauth_client_id          = "google-client-id"
-  enable_firebase_hosting         = true
-  frontend_environment            = "production"
-  public_app_url                  = "https://app.leavemaestro.com"
+  project_id                     = "leavemaster"
+  image_tag                      = "test"
+  database_host                  = "db.example.com"
+  database_username              = "leavemaster"
+  github_actions_service_account = "github-actions@example.iam.gserviceaccount.com"
+  github_oauth_client_id         = "github-client-id"
+  google_oauth_client_id         = "google-client-id"
+  enable_firebase_hosting        = true
+  frontend_environment           = "production"
+  public_app_url                 = "https://app.leavemaestro.com"
 }
 
 run "includes_canonical_and_firebase_aliases" {
