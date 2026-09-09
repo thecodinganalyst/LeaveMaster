@@ -13,6 +13,11 @@ public class DisabledTransactionalEmailSender implements TransactionalEmailSende
     }
 
     @Override
+    public void sendPasswordResetPin(String recipient, String displayName, String pin, int expiryMinutes) {
+        throw new EmailDeliveryException("Transactional email provider is not configured");
+    }
+
+    @Override
     public void sendContactEnquiryReply(String recipient, String contactName, String originalMessage, String replyBody) {
         throw new EmailDeliveryException("Transactional email provider is not configured");
     }

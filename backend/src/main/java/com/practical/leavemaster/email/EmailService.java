@@ -46,13 +46,22 @@ public class EmailService {
     }
 
     public void sendAccountActivationPin(String recipient, String staffName, String pin, int expiryMinutes) {
+        requireTransactionalEmail(recipient, "Activation email recipient must not be blank");
+        transactionalEmailSender.sendAccountActivationPin(recipient, staffName, pin, expiryMinutes);
+    }
+
+    public void sendPasswordResetPin(String recipient, String displayName, String pin, int expiryMinutes) {
+        requireTransactionalEmail(recipient, "Password reset email recipient must not be blank");
+        transactionalEmailSender.sendPasswordResetPin(recipient, displayName, pin, expiryMinutes);
+    }
+
+    private void requireTransactionalEmail(String recipient, String blankRecipientMessage) {
         if (recipient == null || recipient.isBlank()) {
-            throw new IllegalArgumentException("Activation email recipient must not be blank");
+            throw new IllegalArgumentException(blankRecipientMessage);
         }
         if (transactionalEmailSender == null) {
             throw new EmailDeliveryException("Transactional email provider is not configured");
         }
-        transactionalEmailSender.sendAccountActivationPin(recipient, staffName, pin, expiryMinutes);
     }
 
     private void sendLeaveDecisionNotification(LeaveApplication application, String decision, String subject) {

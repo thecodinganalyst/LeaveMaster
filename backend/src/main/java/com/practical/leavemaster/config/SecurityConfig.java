@@ -65,6 +65,8 @@ public class SecurityConfig {
                     "/api/users/login",
                     "/account-activation/**",
                     "/api/account-activation/**",
+                    "/password-reset/**",
+                    "/api/password-reset/**",
                     "/auth/csrf",
                     "/auth/login",
                     "/oauth2/**",
@@ -76,6 +78,8 @@ public class SecurityConfig {
                     "/h2-console/**"
                 ).permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/public/contact").permitAll()
+                .requestMatchers(HttpMethod.PUT, "/platform-admin/recovery-email", "/api/platform-admin/recovery-email")
+                    .hasAuthority("ROLE_PLATFORM_ADMIN")
                 .requestMatchers(HttpMethod.GET, "/users/**", "/api/users/**").hasAuthority(RbacPermissions.USER_READ)
                 .requestMatchers(HttpMethod.POST, "/users/**", "/api/users/**").hasAuthority(RbacPermissions.USER_WRITE)
                 .requestMatchers(HttpMethod.PUT, "/users/**", "/api/users/**").hasAuthority(RbacPermissions.USER_WRITE)

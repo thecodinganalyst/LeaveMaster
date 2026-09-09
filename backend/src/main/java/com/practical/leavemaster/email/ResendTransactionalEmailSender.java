@@ -64,6 +64,23 @@ public class ResendTransactionalEmailSender implements TransactionalEmailSender 
     }
 
     @Override
+    public void sendPasswordResetPin(String recipient, String displayNameValue, String pin, int expiryMinutes) {
+        String displayName = displayNameValue == null || displayNameValue.isBlank()
+                ? "there" : escapeHtml(displayNameValue.trim());
+        String html = """
+                <div style=\"font-family:Arial,sans-serif;line-height:1.5;color:#1f2937\">
+                  <h2>LeaveMaster password reset</h2>
+                  <p>Hello %s,</p>
+                  <p>Use the verification PIN below to reset your LeaveMaster password.</p>
+                  <p style=\"font-size:28px;font-weight:700;letter-spacing:6px\">%s</p>
+                  <p>This PIN expires in %d minutes and can be used only for this password reset.</p>
+                  <p>If you did not request a password reset, ignore this email. Your existing password remains unchanged.</p>
+                </div>
+                """.formatted(displayName, pin, expiryMinutes);
+        sendHtmlEmail(recipient, "Reset your LeaveMaster password", html, "password reset");
+    }
+
+    @Override
     public void sendContactEnquiryReply(String recipient, String contactName, String originalMessage, String replyBody) {
         String displayName = contactName == null || contactName.isBlank() ? "there" : escapeHtml(contactName.trim());
         String html = """

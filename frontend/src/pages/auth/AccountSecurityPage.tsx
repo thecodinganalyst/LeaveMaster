@@ -1,10 +1,16 @@
-import { GithubOutlined, GoogleOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
-import { Alert, Button, Card, Space, Spin, Tag, Typography } from 'antd';
+import { GithubOutlined, GoogleOutlined, MailOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
+import { useGetIdentity } from '@refinedev/core';
+import { Alert, Button, Card, Form, Input, Space, Spin, Tag, Typography, message } from 'antd';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 import { ApiError } from '../../api/http.ts';
 import { getOAuthLinkStatus, startOAuthLink, type OAuthLinkStatus, type OAuthProvider } from '../../api/oauth.ts';
+import { updatePlatformAdminRecoveryEmail } from '../../api/platformAdmin.ts';
+
+interface LeaveMasterIdentity {
+  platformAdmin?: boolean;
+}
 
 const providerLabel = (provider: string | null | undefined) => provider === 'google'
   ? 'Google'
@@ -34,9 +40,11 @@ const linkingErrorMessage = (code: string | null) => {
 
 export const AccountSecurityPage = () => {
   const [searchParams] = useSearchParams();
+  const { data: identity } = useGetIdentity<LeaveMasterIdentity>();
   const [status, setStatus] = useState<OAuthLinkStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [startingProvider, setStartingProvider] = useState<OAuthProvider | null>(null);
+  const [savingRecoveryEmail, setSavingRecoveryEmail] = useState(false);
   const [error, setError] = useState<string | undefined>(() => linkingErrorMessage(searchParams.get('oauthError')));
 
   useEffect(() => {
@@ -74,6 +82,21 @@ export const AccountSecurityPage = () => {
     }
   };
 
+  const saveRecoveryEmail = async ({ email }: { email: string }) => {
+    setSavingRecoveryEmail(true);
+    setError(undefined);
+    try {
+      await updatePlatformAdminRecoveryEmail(email.trim());
+      message.success('Recovery email updated.');
+    } catch (caught) {
+      setError(caught instanceof ApiError || caught instanceof Error
+        ? caught.message
+        : 'Unable to update the recovery email.');
+    } finally {
+      setSavingRecoveryEmail(false);
+    }
+  };
+
   const linkedProvider = status?.linked ? providerLabel(status.provider) : null;
   const linkedSuccess = searchParams.get('oauthLinked') === 'true' && linkedProvider;
 
@@ -86,6 +109,29 @@ export const AccountSecurityPage = () => {
 
       {linkedSuccess ? <Alert type="success" showIcon message={`${linkedProvider} sign-in is now connected.`} /> : null}
       {error ? <Alert type="error" showIcon message={error} /> : null}
+
+      {identity?.platformAdmin ? (
+        <Card title={<Space><MailOutlined /><span>Recovery email</span></Space>}>
+          <Space direction="vertical" size={14} style={{ width: '100%' }}>
+            <Typography.Text>
+              Add an email address so the PlatformAdmin account can use the Forgot password flow. If no recovery email is configured, the Secret Manager break-glass recovery procedure remains available.
+            </Typography.Text>
+            <Form layout="vertical" onFinish={saveRecoveryEmail}>
+              <Form.Item
+                label="Recovery email"
+                name="email"
+                rules={[
+                  { required: true, message: 'Enter a recovery email address.' },
+                  { type: 'email', message: 'Enter a valid recovery email address.' },
+                ]}
+              >
+                <Input type="email" autoComplete="email" placeholder="admin@example.com" />
+              </Form.Item>
+              <Button type="primary" htmlType="submit" loading={savingRecoveryEmail}>Save recovery email</Button>
+            </Form>
+          </Space>
+        </Card>
+      ) : null}
 
       <Card title={<Space><SafetyCertificateOutlined /><span>Sign-in methods</span></Space>}>
         {loading ? (
