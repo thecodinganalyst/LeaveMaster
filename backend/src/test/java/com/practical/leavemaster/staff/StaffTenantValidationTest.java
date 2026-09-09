@@ -109,14 +109,11 @@ class StaffTenantValidationTest {
     void shouldRejectUpdatingStaffOwnedByAnotherTenant() {
         authenticate("tenant-a");
         LocalDate joinDate = LocalDate.of(2026, 1, 1);
-        Staff existing = Staff.builder()
-                .id("S1").name("Alice").joinDate(joinDate).jurisdictionId("SG").tenantId("tenant-b").build();
-        when(staffRepository.findById("S1")).thenReturn(Optional.of(existing));
+        when(staffRepository.findByIdAndTenantId("S1", "tenant-a")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> staffService.update("S1", Staff.builder()
                 .name("Updated").joinDate(joinDate).jurisdictionId("SG").build()))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("current tenant");
+                .isInstanceOf(StaffNotFoundException.class);
     }
 
     @Test
