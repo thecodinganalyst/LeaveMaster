@@ -18,11 +18,11 @@ run "includes_canonical_and_firebase_aliases" {
   command = plan
 
   assert {
-    condition = output.cors_allowed_origins == [
+    condition = tolist(output.cors_allowed_origins) == tolist([
       "https://app.leavemaestro.com",
       "https://leavemaster-production.web.app",
       "https://leavemaster-production.firebaseapp.com"
-    ]
+    ])
     error_message = "CORS origins must include the canonical app URL and both Firebase Hosting aliases."
   }
 }
@@ -38,12 +38,12 @@ run "merges_explicit_additional_origins" {
   }
 
   assert {
-    condition = output.cors_allowed_origins == [
+    condition = tolist(output.cors_allowed_origins) == tolist([
       "https://app.leavemaestro.com",
       "https://leavemaster-production.web.app",
       "https://leavemaster-production.firebaseapp.com",
       "https://preview.example.com"
-    ]
+    ])
     error_message = "Explicit origins must be merged with, rather than replace, canonical and Firebase origins."
   }
 }
@@ -56,11 +56,11 @@ run "uses_explicit_hosting_site_id" {
   }
 
   assert {
-    condition = output.cors_allowed_origins == [
+    condition = tolist(output.cors_allowed_origins) == tolist([
       "https://app.leavemaestro.com",
       "https://leave-demo.web.app",
       "https://leave-demo.firebaseapp.com"
-    ]
+    ])
     error_message = "Firebase aliases must be derived from the configured Hosting site ID."
   }
 }
