@@ -48,7 +48,7 @@ test('tenant admin staff page renders only staff returned for the authenticated 
     ]),
   }));
 
-  await page.goto('/staff');
+  await page.goto('/employees');
 
   await expect(page.locator('body')).toContainText('Tenant E2E Admin');
   await expect(page.locator('body')).not.toContainText('Other Tenant Staff');
