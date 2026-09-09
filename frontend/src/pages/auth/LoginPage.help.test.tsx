@@ -31,14 +31,14 @@ describe('LoginPage help links', () => {
     expect(link).toHaveAttribute('href', expect.stringContaining('/user-guide/getting-started/'));
   });
 
-  it('switches to account activation help for newly provisioned accounts', async () => {
+  it('switches to account security help for newly provisioned accounts', async () => {
     mocks.lookupAccountActivation.mockResolvedValueOnce({ nextStep: 'ACTIVATION' });
     renderPage();
     fireEvent.change(screen.getByLabelText('Tenant ID'), { target: { value: 'Demo' } });
     fireEvent.change(screen.getByLabelText('Login name'), { target: { value: 'demo-user' } });
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    await waitFor(() => expect(screen.getByRole('link', { name: 'Help with account activation' })).toBeInTheDocument());
-    expect(screen.getByRole('link', { name: 'Help with account activation' }))
+    await waitFor(() => expect(screen.getByRole('link', { name: 'Help with account security' })).toBeInTheDocument());
+    expect(screen.getByRole('link', { name: 'Help with account security' }))
       .toHaveAttribute('href', expect.stringContaining('/user-guide/account-security/'));
   });
 });
