@@ -46,13 +46,16 @@ public class StaffService {
     private final AppUserRepository appUserRepository;
 
     public List<Staff> findAll() {
-        List<Staff> staff = staffRepository.findAll();
+        Optional<AppUser> user = currentUser();
+        List<Staff> staff = user.isPresent() && !isPlatformAdmin(user.get())
+                ? staffRepository.findAllByTenantId(requireTenantId(user.get()))
+                : staffRepository.findAll();
         staff.forEach(this::hydrateRoleIds);
         return staff;
     }
 
     public Optional<Staff> findById(String id) {
-        return staffRepository.findById(id).map(this::hydrateRoleIds);
+        return findAccessibleStaffById(id).map(this::hydrateRoleIds);
     }
 
     @Transactional
@@ -74,7 +77,7 @@ public class StaffService {
 
     @Transactional
     public Staff update(String id, Staff updated) {
-        Staff existing = staffRepository.findById(id)
+        Staff existing = findAccessibleStaffById(id)
                 .orElseThrow(() -> new StaffNotFoundException(id));
         existing.setName(updated.getName());
         existing.setEmail(updated.getEmail());
@@ -99,7 +102,7 @@ public class StaffService {
     }
 
     public void delete(String id) {
-        Staff existing = staffRepository.findById(id)
+        Staff existing = findAccessibleStaffById(id)
                 .orElseThrow(() -> new StaffNotFoundException(id));
         if (leaveApplicationRepository.existsByStaffId(id) || leaveApplicationRepository.existsByApproverId(id)) {
             throw new StaffInUseException(id);
@@ -109,7 +112,7 @@ public class StaffService {
     }
 
     public TerminationResult terminate(String id, LocalDate termDate) {
-        Staff existing = staffRepository.findById(id)
+        Staff existing = findAccessibleStaffById(id)
                 .orElseThrow(() -> new StaffNotFoundException(id));
 
         if (termDate == null) {
@@ -172,15 +175,28 @@ public class StaffService {
         return staff;
     }
 
+    private Optional<Staff> findAccessibleStaffById(String id) {
+        Optional<AppUser> user = currentUser();
+        if (user.isPresent() && !isPlatformAdmin(user.get())) {
+            return staffRepository.findByIdAndTenantId(id, requireTenantId(user.get()));
+        }
+        return staffRepository.findById(id);
+    }
+
+    private String requireTenantId(AppUser user) {
+        String tenantId = user.getTenantId();
+        if (tenantId == null || tenantId.isBlank()) {
+            throw new IllegalArgumentException("Authenticated tenant user does not have a tenant id");
+        }
+        return tenantId;
+    }
+
     private void enforceCurrentTenantAndJurisdiction(Staff staff, boolean existingStaff) {
         Optional<AppUser> user = currentUser();
         if (user.isEmpty() || isPlatformAdmin(user.get())) {
             return;
         }
-        String tenantId = user.get().getTenantId();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new IllegalArgumentException("Authenticated tenant user does not have a tenant id");
-        }
+        String tenantId = requireTenantId(user.get());
         if (existingStaff && staff.getTenantId() != null && !tenantId.equals(staff.getTenantId())) {
             throw new IllegalArgumentException("Staff does not belong to the current tenant");
         }
