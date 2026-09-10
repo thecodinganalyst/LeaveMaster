@@ -26,9 +26,15 @@ locals {
 
   default_public_app_url = "https://${local.frontend_hosting_site_id}.firebaseapp.com"
   public_app_url         = trimsuffix(coalesce(var.public_app_url, local.default_public_app_url), "/")
-  cors_allowed_origins = length(var.allowed_frontend_origins) > 0 ? var.allowed_frontend_origins : [
-    local.public_app_url
-  ]
+  firebase_hosting_origins = var.enable_firebase_hosting ? [
+    "https://${local.frontend_hosting_site_id}.web.app",
+    "https://${local.frontend_hosting_site_id}.firebaseapp.com"
+  ] : []
+  cors_allowed_origins = distinct(concat(
+    [local.public_app_url],
+    local.firebase_hosting_origins,
+    var.allowed_frontend_origins
+  ))
 
   attachment_bucket_name = "${var.project_id}-leavemaster-attachments-${data.google_project.current.number}"
   assistant_provider     = lower(var.ai_assistant_provider)
