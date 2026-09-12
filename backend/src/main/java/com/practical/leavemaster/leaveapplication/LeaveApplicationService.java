@@ -122,6 +122,9 @@ public class LeaveApplicationService {
         }
         Staff staff = staffRepository.findById(request.getStaffId())
                 .orElseThrow(() -> new StaffNotFoundException(request.getStaffId()));
+        if (request.getFromDate().isBefore(staff.getJoinDate())) {
+            throw new IllegalArgumentException("Cannot apply for leave before employment start date " + staff.getJoinDate());
+        }
         if (staff.getTermDate() != null && request.getToDate().isAfter(staff.getTermDate())) {
             throw new IllegalArgumentException("Cannot apply for leave after termination date " + staff.getTermDate());
         }

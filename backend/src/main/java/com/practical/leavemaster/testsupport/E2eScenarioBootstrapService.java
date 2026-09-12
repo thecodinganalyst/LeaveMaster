@@ -1,6 +1,9 @@
 package com.practical.leavemaster.testsupport;
 
+import com.practical.leavemaster.rbac.AppPermissionRepository;
+import com.practical.leavemaster.rbac.AppRole;
 import com.practical.leavemaster.rbac.AppRoleRepository;
+import com.practical.leavemaster.rbac.RbacPermissions;
 import com.practical.leavemaster.tenant.TenantJurisdiction;
 import com.practical.leavemaster.tenant.TenantRepository;
 import com.practical.leavemaster.tenant.TenantService;
@@ -15,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 @Profile("e2e")
@@ -24,8 +28,62 @@ public class E2eScenarioBootstrapService {
     static final String TENANT_PREFIX = "E2E-";
     static final String DEFAULT_PASSWORD = "e2e-password";
 
+    private static final Set<String> STAFF_PERMISSIONS = Set.of(
+            RbacPermissions.LEAVE_APPLICATION_READ,
+            RbacPermissions.LEAVE_APPLICATION_WRITE,
+            RbacPermissions.LEAVE_TYPE_READ,
+            RbacPermissions.LEAVE_CALENDAR_READ
+    );
+    private static final Set<String> MANAGER_PERMISSIONS = Set.of(
+            RbacPermissions.LEAVE_APPLICATION_READ,
+            RbacPermissions.LEAVE_APPLICATION_WRITE,
+            RbacPermissions.LEAVE_APPLICATION_APPROVE,
+            RbacPermissions.LEAVE_TYPE_READ,
+            RbacPermissions.LEAVE_CALENDAR_READ
+    );
+    private static final Set<String> HR_PERMISSIONS = Set.of(
+            RbacPermissions.USER_READ,
+            RbacPermissions.USER_WRITE,
+            RbacPermissions.STAFF_READ,
+            RbacPermissions.STAFF_WRITE,
+            RbacPermissions.JURISDICTION_READ,
+            RbacPermissions.LEAVE_TYPE_READ,
+            RbacPermissions.LEAVE_TYPE_WRITE,
+            RbacPermissions.LEAVE_ENTITLEMENT_POLICY_READ,
+            RbacPermissions.LEAVE_ENTITLEMENT_POLICY_WRITE,
+            RbacPermissions.LEAVE_ENTITLEMENT_GENERATE,
+            RbacPermissions.LEAVE_APPROVER_READ,
+            RbacPermissions.LEAVE_APPROVER_WRITE,
+            RbacPermissions.LEAVE_CALENDAR_READ,
+            RbacPermissions.LEAVE_CALENDAR_WRITE,
+            RbacPermissions.LEAVE_APPLICATION_READ,
+            RbacPermissions.LEAVE_APPLICATION_WRITE,
+            RbacPermissions.LEAVE_APPLICATION_APPROVE
+    );
+    private static final Set<String> ADMIN_PERMISSIONS = Set.of(
+            RbacPermissions.USER_READ,
+            RbacPermissions.USER_WRITE,
+            RbacPermissions.ROLE_MANAGE,
+            RbacPermissions.STAFF_READ,
+            RbacPermissions.STAFF_WRITE,
+            RbacPermissions.JURISDICTION_READ,
+            RbacPermissions.LEAVE_TYPE_READ,
+            RbacPermissions.LEAVE_TYPE_WRITE,
+            RbacPermissions.LEAVE_ENTITLEMENT_POLICY_READ,
+            RbacPermissions.LEAVE_ENTITLEMENT_POLICY_WRITE,
+            RbacPermissions.LEAVE_ENTITLEMENT_GENERATE,
+            RbacPermissions.LEAVE_APPROVER_READ,
+            RbacPermissions.LEAVE_APPROVER_WRITE,
+            RbacPermissions.LEAVE_CALENDAR_READ,
+            RbacPermissions.LEAVE_CALENDAR_WRITE,
+            RbacPermissions.LEAVE_APPLICATION_READ,
+            RbacPermissions.LEAVE_APPLICATION_WRITE,
+            RbacPermissions.LEAVE_APPLICATION_APPROVE
+    );
+
     private final TenantRepository tenantRepository;
     private final AppRoleRepository appRoleRepository;
+    private final AppPermissionRepository appPermissionRepository;
     private final TenantService tenantService;
     private final PasswordEncoder passwordEncoder;
     private final EntityManager entityManager;
@@ -42,6 +100,13 @@ public class E2eScenarioBootstrapService {
         if (tenantRepository.existsById(tenantId)) {
             throw new ScenarioAlreadyExistsException(scenarioId);
         }
+
+        // Browser-driven E2E tests authenticate through the real security stack, so the seeded
+        // roles must carry the same permission sets as production tenant roles.
+        applyPermissions(scenario.roles().get("staff"), STAFF_PERMISSIONS);
+        applyPermissions(scenario.roles().get("manager"), MANAGER_PERMISSIONS);
+        applyPermissions(scenario.roles().get("hr"), HR_PERMISSIONS);
+        applyPermissions(scenario.roles().get("admin"), ADMIN_PERMISSIONS);
 
         // The in-memory factory can use descriptive IDs/source metadata, but persistence must
         // respect the production entity mappings and foreign keys. Entitlements and approvers use
@@ -82,6 +147,12 @@ public class E2eScenarioBootstrapService {
                 scenario.referenceDate(),
                 DEFAULT_PASSWORD,
                 users);
+    }
+
+    private void applyPermissions(AppRole role, Set<String> permissionCodes) {
+        if (role != null) {
+            role.setPermissions(Set.copyOf(appPermissionRepository.findAllById(permissionCodes)));
+        }
     }
 
     @Transactional
