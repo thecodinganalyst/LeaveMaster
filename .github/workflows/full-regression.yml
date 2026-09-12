@@ -98,12 +98,18 @@ jobs:
       - name: Generate business scenario regression report
         if: always()
         run: |
+          set +e
           node scripts/testing/generate-scenario-report.mjs \
             --suite regression \
             --backend-results backend/build/test-results/regressionTest \
             --playwright-results frontend/e2e/test-results/playwright-results.json \
             --output build/scenario-report-regression
-          cat build/scenario-report-regression/scenario-report.md >> "$GITHUB_STEP_SUMMARY"
+          report_status=$?
+          set -e
+          if [ -f build/scenario-report-regression/scenario-report.md ]; then
+            cat build/scenario-report-regression/scenario-report.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit "$report_status"
 
       - name: Upload business scenario regression report
         if: always()
