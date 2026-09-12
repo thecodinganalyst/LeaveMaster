@@ -5,14 +5,17 @@ import com.practical.leavemaster.leaveeligibility.StaffDependant;
 import com.practical.leavemaster.leaveentitlement.LeaveEntitlement;
 import com.practical.leavemaster.leavetype.LeaveType;
 import com.practical.leavemaster.rbac.AppRole;
+import com.practical.leavemaster.staff.DaySchedule;
 import com.practical.leavemaster.staff.EmploymentType;
 import com.practical.leavemaster.staff.Staff;
+import com.practical.leavemaster.staff.WorkScheduleDay;
 import com.practical.leavemaster.tenant.Tenant;
 import com.practical.leavemaster.tenant.TenantStatus;
 import com.practical.leavemaster.user.AppUser;
 
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -158,10 +161,25 @@ public final class ScenarioDataFactory {
                 .joinDate(joinDate)
                 .jurisdictionId(jurisdictionId)
                 .employmentType(EmploymentType.FULL_TIME)
+                .workSchedule(weekdaySchedule())
                 .tenantId(tenantId)
                 .loginName(alias)
                 .roleIds(new LinkedHashSet<>(roleIds))
                 .build();
+    }
+
+    private static List<WorkScheduleDay> weekdaySchedule() {
+        return List.of(
+                workDay(DayOfWeek.MONDAY),
+                workDay(DayOfWeek.TUESDAY),
+                workDay(DayOfWeek.WEDNESDAY),
+                workDay(DayOfWeek.THURSDAY),
+                workDay(DayOfWeek.FRIDAY)
+        );
+    }
+
+    private static WorkScheduleDay workDay(DayOfWeek dayOfWeek) {
+        return WorkScheduleDay.builder().dayOfWeek(dayOfWeek).daySchedule(DaySchedule.FULL).build();
     }
 
     private static AppRole role(String tenantId, String id, String description) {
