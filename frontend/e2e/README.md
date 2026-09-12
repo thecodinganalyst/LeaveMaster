@@ -26,9 +26,22 @@ The standard scenario includes:
 - deterministic tenant-scoped IDs and Annual Leave identifiers;
 - approver aliases for the positive workflow cases.
 
-Use `createStandardSingaporeScenario('<unique-id>')` when a browser test needs direct access to scenario metadata. `mockAuthenticatedBackend(...)` already consumes this scenario by default and accepts an optional scenario ID as its fourth argument. Use a unique ID derived from the test/worker when parallel tests need isolated identifiers.
+Use `createStandardSingaporeScenario('<unique-id>')` when a browser test only needs deterministic metadata. `mockAuthenticatedBackend(...)` consumes this scenario by default and accepts an optional scenario ID as its fourth argument.
 
-The browser scenario intentionally describes fixture data only. Persisting/resetting it through a test-only backend endpoint belongs to issue #527.
+## Persisted E2E scenarios
+
+For tests that need actual backend state, the backend exposes scenario bootstrap endpoints only when the explicit `e2e` Spring profile is active:
+
+```text
+POST   /test/scenarios/standard-sg-company?scenarioId=<id>&referenceDate=2026-09-12
+DELETE /test/scenarios/<id>
+```
+
+`tests/scenario-api.ts` wraps these endpoints and `tests/scenario-fixture.ts` provides a reusable Playwright fixture that creates a unique scenario and deletes it in teardown. The response includes the generated tenant ID, test-user aliases/login names, staff IDs, and the E2E password.
+
+The controller, bootstrap service, and matching security chain are all annotated with `@Profile("e2e")`; they are not registered in the default or production runtime. Reset logic also refuses to target anything outside the reserved `E2E-*` tenant namespace.
+
+CI starts the backend with the `e2e` profile against its own in-memory H2 database before Playwright runs. Do not enable this profile in production or point the E2E workflow at a production database.
 
 ## Run locally
 
@@ -36,6 +49,12 @@ From `frontend`:
 
 ```bash
 npm ci
+```
+
+Start the backend in a separate terminal from `backend`:
+
+```bash
+SPRING_PROFILES_ACTIVE=e2e ./gradlew bootRun --args='--spring.profiles.active=e2e'
 ```
 
 Then from `frontend/e2e`:
@@ -46,7 +65,7 @@ npx playwright install chromium
 npm test
 ```
 
-Playwright builds and starts the frontend preview server automatically on `http://127.0.0.1:4173`.
+Playwright builds and starts the frontend preview server automatically on `http://127.0.0.1:4173`. The persisted scenario helper defaults to `http://127.0.0.1:8080` for the backend; override it with `E2E_BACKEND_URL` when necessary.
 
 For interactive debugging:
 
@@ -60,6 +79,7 @@ Playwright retains a trace, screenshot, and video when a test fails. CI uploads:
 
 - `playwright-report`
 - `playwright-test-results`
+- `e2e-backend-log` when the workflow fails
 
 Open the HTML report or trace locally to inspect browser actions, console output, and network activity around the failure.
 
