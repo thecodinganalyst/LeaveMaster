@@ -14,6 +14,22 @@ The initial suite covers:
 
 The browser tests use deterministic request fixtures instead of production accounts or production data. Backend unit/integration tests and JaCoCo verification run in the same CI job before Playwright, while the browser fixtures provide stable frontend/RBAC contract data.
 
+## Reusable scenario data
+
+`tests/scenario-data.ts` defines the browser representation of the standard Singapore test scenario used by the backend `ScenarioDataFactory`.
+
+The standard scenario includes:
+
+- one Tenant Admin and one HR user;
+- two Managers;
+- five Staff covering a normal employee, mid-year joiner, recent joiner, jurisdiction-override candidate, and missing-approver case;
+- deterministic tenant-scoped IDs and Annual Leave identifiers;
+- approver aliases for the positive workflow cases.
+
+Use `createStandardSingaporeScenario('<unique-id>')` when a browser test needs direct access to scenario metadata. `mockAuthenticatedBackend(...)` already consumes this scenario by default and accepts an optional scenario ID as its fourth argument. Use a unique ID derived from the test/worker when parallel tests need isolated identifiers.
+
+The browser scenario intentionally describes fixture data only. Persisting/resetting it through a test-only backend endpoint belongs to issue #527.
+
 ## Run locally
 
 From `frontend`:

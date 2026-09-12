@@ -1,6 +1,7 @@
 import { expect, type Page, type Route } from '@playwright/test';
+import { createStandardSingaporeScenario, personForRole, type ScenarioRole } from './scenario-data';
 
-export type E2ERole = 'staff' | 'manager' | 'hr' | 'admin';
+export type E2ERole = ScenarioRole;
 
 const roleAuthorities: Record<E2ERole, string[]> = {
   staff: ['LEAVE_APPLICATION_READ', 'LEAVE_APPLICATION_WRITE', 'LEAVE_CALENDAR_READ'],
@@ -25,9 +26,6 @@ export const installFailureGuards = (page: Page, allowedStatuses: number[] = [])
   page.on('requestfailed', (request) => {
     const failure = request.failure()?.errorText ?? '';
     const path = new URL(request.url()).pathname;
-    // Chromium may cancel the intercepted login response body once Refine performs the
-    // successful SPA redirect. The authenticated /auth/me call and shell assertion below
-    // verify that login completed; every other failed request remains fatal.
     if (request.method() === 'POST' && path === '/auth/login' && failure === 'net::ERR_ABORTED') return;
     failedRequests.push(`${request.method()} ${request.url()} ${failure}`);
   });
@@ -50,20 +48,21 @@ export const mockAuthenticatedBackend = async (
   page: Page,
   role: E2ERole = 'staff',
   initiallyAuthenticated = true,
+  scenarioId = 'browser-smoke',
 ) => {
   let authenticated = initiallyAuthenticated;
+  const scenario = createStandardSingaporeScenario(scenarioId);
+  const person = personForRole(scenario, role);
   const currentUser = {
-    loginName: `e2e-${role}`,
-    staffId: role === 'admin' ? 'E2E-ADMIN' : `E2E-${role.toUpperCase()}`,
-    tenantId: 'E2E',
-    country: 'SG',
+    loginName: person.loginName,
+    staffId: person.staffId,
+    tenantId: scenario.tenantId,
+    country: scenario.jurisdictionId,
     active: true,
     platformAdmin: false,
     authorities: roleAuthorities[role],
   };
 
-  // Keep framework analytics from making the deterministic browser suite depend on
-  // an external telemetry service or Chromium's cross-origin response blocking.
   await page.route('https://telemetry.refine.dev/**', (route) => json(route, {}));
   await page.route('**/auth/csrf', (route) => json(route, { token: 'e2e-csrf', headerName: 'X-CSRF-TOKEN', parameterName: '_csrf' }));
   await page.route('**/auth/me', (route) => authenticated ? json(route, currentUser) : json(route, { message: 'Unauthenticated' }, 401));
@@ -73,8 +72,8 @@ export const mockAuthenticatedBackend = async (
     return json(route, {});
   });
   await page.route('**/leave-application-options/leave-types', (route) => json(route, [
-    { id: 'E2E:ANNUAL_LEAVE', name: 'Annual Leave' },
-    { id: 'E2E:SICK_LEAVE', name: 'Sick Leave' },
+    { id: scenario.annualLeaveTypeId, name: 'Annual Leave' },
+    { id: `${scenario.tenantId}:SG:SICK_LEAVE`, name: 'Sick Leave' },
   ]));
   await page.route('**/leave-applications/policy-metadata**', (route) => json(route, {
     policyModel: 'ANNUAL_ENTITLEMENT',
@@ -82,7 +81,7 @@ export const mockAuthenticatedBackend = async (
     eventRequiresVerification: false,
   }));
   await page.route('**/leave-applications/staff/**/balance', (route) => json(route, [{
-    leaveType: { id: 'E2E:ANNUAL_LEAVE', name: 'Annual Leave' }, entitlement: 14, used: 2, balance: 12,
+    leaveType: { id: scenario.annualLeaveTypeId, name: 'Annual Leave' }, entitlement: 14, used: 2, balance: 12,
   }]));
   await page.route('**/leave-applications**', async (route) => {
     const url = new URL(route.request().url());
@@ -91,10 +90,10 @@ export const mockAuthenticatedBackend = async (
     }
     if (route.request().method() === 'POST') {
       return json(route, [{
-        id: 'E2E-LEAVE-1',
-        staff: { id: 'E2E-STAFF', name: 'E2E Staff' },
+        id: `${scenario.tenantId}-leave-1`,
+        staff: { id: person.staffId, name: person.name },
         leaveDate: '2026-09-10',
-        leaveType: { id: 'E2E:ANNUAL_LEAVE', name: 'Annual Leave' },
+        leaveType: { id: scenario.annualLeaveTypeId, name: 'Annual Leave' },
         leaveDuration: 'FULL',
         status: 'PENDING',
         applicationDate: '2026-09-01',
@@ -103,19 +102,25 @@ export const mockAuthenticatedBackend = async (
     return json(route, []);
   });
 
-  // Resource list pages use Refine's REST provider. Empty deterministic collections are enough
-  // for browser/RBAC smoke coverage and keep these E2E tests independent of production data.
   await page.route('**/api/**', (route) => {
     const path = new URL(route.request().url()).pathname;
     if (path === `/api/staff/${currentUser.staffId}`) {
+      // The existing Apply Leave browser test intentionally verifies the HTML date bounds
+      // against this fixed employment window. Keep that contract deterministic while the
+      // reusable scenario factory supplies the authenticated identity and other scenario data.
+      const joinDate = role === 'staff' ? '2026-09-01' : person.joinDate;
+      const termDate = role === 'staff' ? '2026-09-30' : person.termDate;
       return json(route, {
-        id: currentUser.staffId,
-        name: `E2E ${role}`,
-        joinDate: '2026-09-01',
-        termDate: '2026-09-30',
-        tenantId: 'E2E',
+        id: person.staffId,
+        name: person.name,
+        joinDate,
+        termDate,
+        jurisdictionId: person.jurisdictionId,
+        tenantId: scenario.tenantId,
       });
     }
     return json(route, []);
   });
+
+  return scenario;
 };

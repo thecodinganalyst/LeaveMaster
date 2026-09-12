@@ -30,7 +30,7 @@ import java.util.Set;
 @Entity
 @Table(name = "staff")
 @Data
-@Builder
+@Builder(toBuilder = true)
 @NoArgsConstructor
 @AllArgsConstructor
 public class Staff {
