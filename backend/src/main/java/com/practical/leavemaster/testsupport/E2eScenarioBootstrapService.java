@@ -43,10 +43,13 @@ public class E2eScenarioBootstrapService {
             throw new ScenarioAlreadyExistsException(scenarioId);
         }
 
-        // The factory intentionally assigns deterministic identifiers for pure object tests.
-        // Entitlements and approvers use @GeneratedValue in production, so clear their fixture IDs
-        // before persistence and let Hibernate generate UUIDs exactly as it does in the application.
-        scenario.entitlements().values().forEach(entitlement -> entitlement.setId(null));
+        // The in-memory factory can use descriptive IDs/source metadata, but persistence must
+        // respect the production entity mappings and foreign keys. Entitlements and approvers use
+        // generated UUIDs, and this baseline scenario does not create entitlement-policy rows.
+        scenario.entitlements().values().forEach(entitlement -> {
+            entitlement.setId(null);
+            entitlement.setPolicyId(null);
+        });
         scenario.approvers().forEach(approver -> approver.setId(null));
 
         // Assigned-ID scenario entities are known to be new. Persist them explicitly rather than
