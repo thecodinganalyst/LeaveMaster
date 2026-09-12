@@ -4,6 +4,8 @@ import { createPersistedScenario, deletePersistedScenario } from './scenario-api
 import { test } from './scenario-fixture';
 import { installFailureGuards } from './support';
 
+const backendUrl = process.env.E2E_BACKEND_URL ?? 'http://127.0.0.1:8080';
+
 const login = async (
   page: Page,
   tenantId: string,
@@ -42,6 +44,21 @@ const reviewRequest = async (page: Page, staffName: string, decision: 'Approve' 
   await expect(page.getByText(decision === 'Approve' ? 'Request approved.' : 'Request rejected.')).toBeVisible();
 };
 
+const annualBalance = async (page: Page, staffId: string) => page.evaluate(
+  async ({ url, id }) => {
+    const response = await fetch(`${url}/leave-applications/staff/${encodeURIComponent(id)}/balance`, {
+      credentials: 'include',
+      headers: { Accept: 'application/json' },
+    });
+    if (!response.ok) throw new Error(`Balance request failed with ${response.status}`);
+    const balances = await response.json() as Array<{ leaveType: { name: string }; entitlement: number; used: number; balance: number }>;
+    const annual = balances.find((item) => item.leaveType.name === 'Annual Leave');
+    if (!annual) throw new Error('Annual Leave balance not returned');
+    return annual;
+  },
+  { url: backendUrl, id: staffId },
+);
+
 test('staff apply -> assigned manager approve -> staff sees approved request and reduced balance', async ({ page, scenario }) => {
   const assertHealthy = installFailureGuards(page);
   const staff = scenario.users.staff001;
@@ -57,8 +74,7 @@ test('staff apply -> assigned manager approve -> staff sees approved request and
   await login(page, scenario.tenantId, staff.loginName, scenario.password);
   await page.goto('/leave-requests');
   await expect(page.getByText('Approved', { exact: true }).first()).toBeVisible();
-  await page.goto('/');
-  await expect(page.locator('body')).toContainText(/13(?:\.0+)?/);
+  expect(await annualBalance(page, staff.staffId)).toMatchObject({ entitlement: 14, used: 1, balance: 13 });
   await assertHealthy();
 });
 
@@ -76,8 +92,7 @@ test('staff apply -> assigned manager reject -> staff sees rejected request with
   await login(page, scenario.tenantId, staff.loginName, scenario.password);
   await page.goto('/leave-requests');
   await expect(page.getByText('Rejected', { exact: true }).first()).toBeVisible();
-  await page.goto('/');
-  await expect(page.locator('body')).toContainText(/14(?:\.0+)?/);
+  expect(await annualBalance(page, staff.staffId)).toMatchObject({ entitlement: 14, used: 0, balance: 14 });
   await assertHealthy();
 });
 
