@@ -12,6 +12,9 @@ const login = async (
   loginName: string,
   password: string,
 ) => {
+  // Move off the authenticated application before clearing cookies so in-flight app
+  // requests do not emit expected 401 console errors during a deliberate user switch.
+  await page.goto('about:blank');
   await page.context().clearCookies();
   await page.goto('/login');
   await page.getByLabel('Tenant ID').fill(tenantId);
@@ -93,7 +96,7 @@ test('staff apply -> assigned manager reject -> staff sees rejected request with
 
   await login(page, scenario.tenantId, staff.loginName, scenario.password);
   await page.goto('/leave-requests');
-  await expect(page.getByText('Rejected', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('Denied', { exact: true }).first()).toBeVisible();
   expect(await annualBalance(page, staff.staffId)).toMatchObject({ entitlement: 14, used: 0, balance: 14 });
   await assertHealthy();
 });
@@ -122,7 +125,7 @@ test('browser staff list remains isolated between persisted tenants', async ({ p
 
   try {
     await login(page, scenario.tenantId, scenario.users.hr.loginName, scenario.password);
-    await page.goto('/staff');
+    await page.goto('/employees');
     await expect(page.getByText('E2E Normal Staff', { exact: true })).toBeVisible();
     await expect(page.locator('body')).not.toContainText(second.tenantId);
     await expect(page.locator('body')).not.toContainText(second.users.staff001.staffId);
@@ -146,11 +149,11 @@ test('role matrix exposes staff self-service, manager approvals, HR staff manage
   await expect(page.getByRole('heading', { name: 'Approval inbox' })).toBeVisible();
 
   await login(page, scenario.tenantId, scenario.users.hr.loginName, scenario.password);
-  await page.goto('/staff');
+  await page.goto('/employees');
   await expect(page.getByRole('heading', { name: /staff/i }).first()).toBeVisible();
 
   await login(page, scenario.tenantId, scenario.users.admin.loginName, scenario.password);
-  await page.goto('/staff');
+  await page.goto('/employees');
   await expect(page.getByRole('heading', { name: /staff/i }).first()).toBeVisible();
   await assertHealthy();
 });
