@@ -54,7 +54,6 @@ class CoreBusinessScenarioRegressionTest {
     @BeforeEach
     void setUpScenario() {
         scenario = ScenarioDataFactory.standardSingaporeScenario("core-regression", REFERENCE_DATE);
-        when(eventLeaveEntitlementService.prepareForRequest(any(), any(), any())).thenReturn(Optional.empty());
     }
 
     @Test
@@ -156,16 +155,11 @@ class CoreBusinessScenarioRegressionTest {
                 .build();
         when(staffRepository.findById(staff.getId())).thenReturn(Optional.of(staff));
         when(leaveTypeRepository.findById(leaveType.getId())).thenReturn(Optional.of(leaveType));
-        when(leaveCalendarService.getCalendarForTenantAndJurisdiction(
-                scenario.tenant().getId(), "SG", LocalDate.of(2026, 9, 7))).thenReturn(Optional.of(calendar));
-        when(leaveCalendarService.getCalendarForTenantAndJurisdiction(
-                scenario.tenant().getId(), "SG", LocalDate.of(2026, 9, 8))).thenReturn(Optional.of(calendar));
-        when(leaveCalendarService.getCalendarForTenantAndJurisdiction(
-                scenario.tenant().getId(), "SG", LocalDate.of(2026, 9, 9))).thenReturn(Optional.of(calendar));
-        when(leaveCalendarService.getCalendarForTenantAndJurisdiction(
-                scenario.tenant().getId(), "SG", LocalDate.of(2026, 9, 10))).thenReturn(Optional.of(calendar));
-        when(leaveCalendarService.getCalendarForTenantAndJurisdiction(
-                scenario.tenant().getId(), "SG", LocalDate.of(2026, 9, 11))).thenReturn(Optional.of(calendar));
+        when(leaveCalendarService.getCalendarFor("SG", LocalDate.of(2026, 9, 7))).thenReturn(Optional.of(calendar));
+        when(leaveCalendarService.getCalendarFor("SG", LocalDate.of(2026, 9, 8))).thenReturn(Optional.of(calendar));
+        when(leaveCalendarService.getCalendarFor("SG", LocalDate.of(2026, 9, 9))).thenReturn(Optional.of(calendar));
+        when(leaveCalendarService.getCalendarFor("SG", LocalDate.of(2026, 9, 10))).thenReturn(Optional.of(calendar));
+        when(leaveCalendarService.getCalendarFor("SG", LocalDate.of(2026, 9, 11))).thenReturn(Optional.of(calendar));
         when(leaveApplicationRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         List<LeaveApplication> result = leaveApplicationService.apply(
@@ -202,10 +196,8 @@ class CoreBusinessScenarioRegressionTest {
 
         leaveApplicationService.apply(request(staff, leaveType, date, date), null);
 
-        verify(leaveCalendarService).getCalendarForTenantAndJurisdiction(
-                scenario.tenant().getId(), "AU-NSW", date);
-        verify(leaveCalendarService, never()).getCalendarForTenantAndJurisdiction(
-                scenario.tenant().getId(), "SG", date);
+        verify(leaveCalendarService).getCalendarFor("AU-NSW", date);
+        verify(leaveCalendarService, never()).getCalendarFor("SG", date);
     }
 
     private LeaveApplicationRequest request(Staff staff, LeaveType leaveType, LocalDate from, LocalDate to) {
