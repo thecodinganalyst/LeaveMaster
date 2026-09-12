@@ -73,6 +73,7 @@ nav:
       - Development and Testing:
           - Development and CI: development-and-ci.md
           - Frontend testing: frontend-testing.md
+          - Automated regression: testing/automated-regression.md
           - Troubleshooting: troubleshooting.md
           - Routing notes: issue-168-routing-notes.md
       - Deployment and Operations:
