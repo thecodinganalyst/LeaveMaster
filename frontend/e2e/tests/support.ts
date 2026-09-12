@@ -105,11 +105,16 @@ export const mockAuthenticatedBackend = async (
   await page.route('**/api/**', (route) => {
     const path = new URL(route.request().url()).pathname;
     if (path === `/api/staff/${currentUser.staffId}`) {
+      // The existing Apply Leave browser test intentionally verifies the HTML date bounds
+      // against this fixed employment window. Keep that contract deterministic while the
+      // reusable scenario factory supplies the authenticated identity and other scenario data.
+      const joinDate = role === 'staff' ? '2026-09-01' : person.joinDate;
+      const termDate = role === 'staff' ? '2026-09-30' : person.termDate;
       return json(route, {
         id: person.staffId,
         name: person.name,
-        joinDate: person.joinDate,
-        termDate: person.termDate,
+        joinDate,
+        termDate,
         jurisdictionId: person.jurisdictionId,
         tenantId: scenario.tenantId,
       });
