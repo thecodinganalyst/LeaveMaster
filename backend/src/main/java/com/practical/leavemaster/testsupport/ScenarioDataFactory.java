@@ -12,6 +12,7 @@ import com.practical.leavemaster.tenant.TenantStatus;
 import com.practical.leavemaster.user.AppUser;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -21,6 +22,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * Reusable, persistence-agnostic object factory for automated business scenarios.
@@ -134,7 +136,7 @@ public final class ScenarioDataFactory {
 
     public static StaffDependant dependant(String tenantId, Staff staff, String alias, LocalDate dateOfBirth) {
         return StaffDependant.builder()
-                .id(tenantId + "-dependant-" + alias)
+                .id(stableUuid(tenantId + ":dependant:" + alias))
                 .tenantId(tenantId)
                 .staffId(staff.getId())
                 .name("E2E " + alias)
@@ -168,7 +170,7 @@ public final class ScenarioDataFactory {
 
     private static AppUser user(String tenantId, String alias, Staff staff, AppRole role) {
         return AppUser.builder()
-                .userId(tenantId + "-user-" + alias)
+                .userId(stableUuid(tenantId + ":user:" + alias))
                 .loginName(alias)
                 .password("e2e-password")
                 .email(staff.getEmail())
@@ -191,6 +193,10 @@ public final class ScenarioDataFactory {
                 .adminDate(effectiveFrom)
                 .tenantId(tenantId)
                 .build();
+    }
+
+    private static String stableUuid(String value) {
+        return UUID.nameUUIDFromBytes(value.getBytes(StandardCharsets.UTF_8)).toString();
     }
 
     public static String normalizeScenarioId(String scenarioId) {
