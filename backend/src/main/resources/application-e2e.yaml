@@ -1,0 +1,16 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:leavemaster-e2e;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+app:
+  public-url: http://127.0.0.1:4173
+  cors:
+    allowed-origins: http://127.0.0.1:4173,http://localhost:4173
+  assistant:
+    enabled: false
