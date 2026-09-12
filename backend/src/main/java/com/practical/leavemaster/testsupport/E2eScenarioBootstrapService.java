@@ -1,16 +1,11 @@
 package com.practical.leavemaster.testsupport;
 
-import com.practical.leavemaster.leaveapprover.LeaveApproverRepository;
-import com.practical.leavemaster.leaveeligibility.StaffDependantRepository;
-import com.practical.leavemaster.leavetype.LeaveTypeRepository;
 import com.practical.leavemaster.rbac.AppRoleRepository;
-import com.practical.leavemaster.staff.StaffRepository;
 import com.practical.leavemaster.tenant.TenantJurisdiction;
-import com.practical.leavemaster.tenant.TenantJurisdictionRepository;
 import com.practical.leavemaster.tenant.TenantRepository;
 import com.practical.leavemaster.tenant.TenantService;
 import com.practical.leavemaster.user.AppUser;
-import com.practical.leavemaster.user.AppUserRepository;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -30,15 +25,10 @@ public class E2eScenarioBootstrapService {
     static final String DEFAULT_PASSWORD = "e2e-password";
 
     private final TenantRepository tenantRepository;
-    private final TenantJurisdictionRepository tenantJurisdictionRepository;
     private final AppRoleRepository appRoleRepository;
-    private final StaffRepository staffRepository;
-    private final LeaveTypeRepository leaveTypeRepository;
-    private final StaffDependantRepository staffDependantRepository;
-    private final LeaveApproverRepository leaveApproverRepository;
-    private final AppUserRepository appUserRepository;
     private final TenantService tenantService;
     private final PasswordEncoder passwordEncoder;
+    private final EntityManager entityManager;
 
     @Transactional
     public ScenarioBootstrapResult createStandardSingaporeScenario(String requestedScenarioId, LocalDate referenceDate) {
@@ -53,20 +43,26 @@ public class E2eScenarioBootstrapService {
             throw new ScenarioAlreadyExistsException(scenarioId);
         }
 
-        tenantRepository.save(scenario.tenant());
-        tenantJurisdictionRepository.save(TenantJurisdiction.builder()
+        // The factory intentionally assigns deterministic string IDs. Spring Data save() treats
+        // assigned-ID entities as candidates for merge, while these scenario objects are known to
+        // be new. Persist them explicitly in dependency order to avoid stale-state merge handling.
+        entityManager.persist(scenario.tenant());
+        entityManager.persist(TenantJurisdiction.builder()
                 .id(TenantJurisdiction.idFor(tenantId, scenario.tenant().getJurisdictionId()))
                 .tenantId(tenantId)
                 .jurisdictionId(scenario.tenant().getJurisdictionId())
                 .build());
-        appRoleRepository.saveAll(scenario.roles().values());
-        leaveTypeRepository.saveAll(scenario.leaveTypes());
-        staffRepository.saveAll(scenario.staff().values());
-        staffDependantRepository.saveAll(scenario.dependants());
-        leaveApproverRepository.saveAll(scenario.approvers());
+        scenario.roles().values().forEach(entityManager::persist);
+        scenario.leaveTypes().forEach(entityManager::persist);
+        scenario.staff().values().forEach(entityManager::persist);
+        scenario.dependants().forEach(entityManager::persist);
+        scenario.approvers().forEach(entityManager::persist);
 
-        scenario.users().values().forEach(user -> user.setPassword(passwordEncoder.encode(DEFAULT_PASSWORD)));
-        appUserRepository.saveAll(scenario.users().values());
+        scenario.users().values().forEach(user -> {
+            user.setPassword(passwordEncoder.encode(DEFAULT_PASSWORD));
+            entityManager.persist(user);
+        });
+        entityManager.flush();
 
         Map<String, ScenarioUser> users = new LinkedHashMap<>();
         scenario.users().forEach((alias, user) -> users.put(alias, toScenarioUser(alias, user)));
