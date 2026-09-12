@@ -1,4 +1,4 @@
-name: End-to-end tests
+name: End-to-end PR smoke tests
 
 on:
   pull_request:
@@ -7,11 +7,12 @@ on:
       - 'frontend/**'
       - 'backend/**'
       - '.github/workflows/e2e.yml'
+      - '.github/workflows/full-regression.yml'
   workflow_dispatch:
 
 jobs:
   e2e:
-    name: Playwright E2E
+    name: Playwright PR smoke
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -30,6 +31,10 @@ jobs:
       - name: Run backend tests and coverage verification
         working-directory: backend
         run: ./gradlew test jacocoTestReport jacocoTestCoverageVerification
+
+      - name: Run backend business smoke scenarios
+        working-directory: backend
+        run: ./gradlew smokeTest
 
       - name: Start isolated E2E backend
         working-directory: backend
@@ -72,18 +77,27 @@ jobs:
         working-directory: frontend/e2e
         run: npx playwright install --with-deps chromium
 
-      - name: Run Playwright tests
+      - name: Run Playwright PR smoke tests
         working-directory: frontend/e2e
         env:
           E2E_BACKEND_URL: http://127.0.0.1:8080
-        run: npm test
+        run: npm run test:smoke
 
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-smoke-report
           path: frontend/e2e/playwright-report/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload backend test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-smoke-test-reports
+          path: backend/build/reports/tests/
           if-no-files-found: warn
           retention-days: 14
 
@@ -91,7 +105,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-test-results
+          name: playwright-smoke-test-results
           path: frontend/e2e/test-results/
           if-no-files-found: warn
           retention-days: 14
@@ -100,7 +114,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-backend-log
+          name: e2e-smoke-backend-log
           path: e2e-backend.log
           if-no-files-found: warn
           retention-days: 14
