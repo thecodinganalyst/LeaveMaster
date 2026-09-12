@@ -59,6 +59,24 @@ tasks.named('test') {
 	finalizedBy jacocoTestReport
 }
 
+tasks.register('smokeTest', Test) {
+	description = 'Runs the backend business scenarios tagged smoke.'
+	group = 'verification'
+	useJUnitPlatform {
+		includeTags 'smoke'
+	}
+	shouldRunAfter test
+}
+
+tasks.register('regressionTest', Test) {
+	description = 'Runs the backend business scenarios tagged regression.'
+	group = 'verification'
+	useJUnitPlatform {
+		includeTags 'regression'
+	}
+	shouldRunAfter test
+}
+
 jacocoTestReport {
 	dependsOn test
 	reports {
