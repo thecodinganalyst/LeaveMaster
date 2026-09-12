@@ -9,7 +9,11 @@ export default defineConfig({
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 2 : undefined,
-  reporter: [['list'], ['html', { outputFolder: 'playwright-report', open: 'never' }]],
+  reporter: [
+    ['list'],
+    ['html', { outputFolder: 'playwright-report', open: 'never' }],
+    ['json', { outputFile: 'test-results/playwright-results.json' }],
+  ],
   use: {
     baseURL: process.env.E2E_BASE_URL ?? 'http://127.0.0.1:4173',
     trace: 'retain-on-failure',

@@ -9,7 +9,11 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/full-regression.yml'
+      - '.github/workflows/e2e.yml'
+      - 'scripts/testing/**'
+      - 'docs/testing/scenario-catalogue.json'
       - 'frontend/e2e/package.json'
+      - 'frontend/e2e/playwright.config.ts'
       - 'frontend/e2e/tests/**'
       - 'backend/build.gradle'
       - 'backend/src/test/java/com/practical/leavemaster/leaveapplication/CoreBusinessScenarioRegressionTest.java'
@@ -90,6 +94,31 @@ jobs:
         env:
           E2E_BACKEND_URL: http://127.0.0.1:8080
         run: npm run test:regression
+
+      - name: Generate business scenario regression report
+        if: always()
+        run: |
+          set +e
+          node scripts/testing/generate-scenario-report.mjs \
+            --suite regression \
+            --backend-results backend/build/test-results/test \
+            --playwright-results frontend/e2e/test-results/playwright-results.json \
+            --output build/scenario-report-regression
+          report_status=$?
+          set -e
+          if [ -f build/scenario-report-regression/scenario-report.md ]; then
+            cat build/scenario-report-regression/scenario-report.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit "$report_status"
+
+      - name: Upload business scenario regression report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scenario-coverage-full-regression
+          path: build/scenario-report-regression/
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Upload Playwright report
         if: always()

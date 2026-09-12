@@ -1,0 +1,115 @@
+{
+  "version": 1,
+  "scenarios": [
+    {
+      "id": "SCN-001",
+      "name": "Create tenant and generate staff entitlement",
+      "area": "Provisioning",
+      "roles": ["Admin"],
+      "jurisdictions": ["SG"],
+      "suites": ["smoke", "regression"],
+      "required": { "smoke": true, "regression": true },
+      "automationStatus": "automated",
+      "tests": { "backend": ["standardScenarioContainsTenantStaffAndAnnualEntitlements"], "playwright": ["scenario bootstrap endpoint creates deterministic reusable company data"] }
+    },
+    {
+      "id": "SCN-002",
+      "name": "Mid-year joiner Annual Leave proration",
+      "area": "Leave calculation",
+      "roles": ["Staff"],
+      "jurisdictions": ["SG"],
+      "suites": ["smoke", "regression"],
+      "required": { "smoke": true, "regression": true },
+      "automationStatus": "automated",
+      "tests": { "backend": ["midYearJoinerStartsEntitlementOnJoinDateAndReceivesProratedAmount"], "playwright": [] }
+    },
+    {
+      "id": "SCN-003",
+      "name": "Prevent leave before employment start date",
+      "area": "Employment lifecycle",
+      "roles": ["Staff"],
+      "jurisdictions": ["Any"],
+      "suites": ["smoke", "regression"],
+      "required": { "smoke": true, "regression": true },
+      "automationStatus": "automated",
+      "tests": { "backend": ["cannotApplyBeforeEmploymentStartDate"], "playwright": ["Apply Leave constrains selectable dates to the staff employment period"] }
+    },
+    {
+      "id": "SCN-004",
+      "name": "Prevent leave after employment end date",
+      "area": "Employment lifecycle",
+      "roles": ["Staff"],
+      "jurisdictions": ["Any"],
+      "suites": ["regression"],
+      "required": { "smoke": false, "regression": true },
+      "automationStatus": "automated",
+      "tests": { "backend": ["cannotApplyAfterTerminationDate"], "playwright": ["Apply Leave constrains selectable dates to the staff employment period"] }
+    },
+    {
+      "id": "SCN-005",
+      "name": "Staff applies leave and manager approves",
+      "area": "Leave workflow",
+      "roles": ["Staff", "Manager"],
+      "jurisdictions": ["SG"],
+      "suites": ["smoke", "regression"],
+      "required": { "smoke": true, "regression": true },
+      "automationStatus": "automated",
+      "tests": { "backend": ["assignedManagerCanApproveAndUnrelatedManagerCannotAct"], "playwright": ["staff apply -> assigned manager approve -> staff sees approved request and reduced balance"] }
+    },
+    {
+      "id": "SCN-006",
+      "name": "Staff applies leave and manager rejects",
+      "area": "Leave workflow",
+      "roles": ["Staff", "Manager"],
+      "jurisdictions": ["SG"],
+      "suites": ["regression"],
+      "required": { "smoke": false, "regression": true },
+      "automationStatus": "automated",
+      "tests": { "backend": ["assignedManagerCanRejectPendingRequest"], "playwright": ["staff apply -> assigned manager reject -> staff sees rejected request without consuming balance"] }
+    },
+    {
+      "id": "SCN-007",
+      "name": "Weekend and public-holiday leave calculation",
+      "area": "Leave calculation",
+      "roles": ["Staff"],
+      "jurisdictions": ["SG"],
+      "suites": ["regression"],
+      "required": { "smoke": false, "regression": true },
+      "automationStatus": "automated",
+      "tests": { "backend": ["weekendAndPublicHolidayAreNotCharged"], "playwright": [] }
+    },
+    {
+      "id": "SCN-008",
+      "name": "Role-based access",
+      "area": "Permissions",
+      "roles": ["Staff", "Manager", "HR", "Admin"],
+      "jurisdictions": ["Any"],
+      "suites": ["smoke", "regression"],
+      "required": { "smoke": true, "regression": true },
+      "automationStatus": "automated",
+      "tests": { "backend": [], "playwright": ["role matrix exposes staff self-service, manager approvals, HR staff management and tenant admin management", "unrelated manager cannot see or act on another manager's pending request"] }
+    },
+    {
+      "id": "SCN-009",
+      "name": "Tenant isolation",
+      "area": "Tenant isolation",
+      "roles": ["HR", "Admin"],
+      "jurisdictions": ["Any"],
+      "suites": ["smoke", "regression"],
+      "required": { "smoke": true, "regression": true },
+      "automationStatus": "automated",
+      "tests": { "backend": ["tenantBoundaryRejectsLeaveTypeFromAnotherTenant"], "playwright": ["browser staff list remains isolated between persisted tenants"] }
+    },
+    {
+      "id": "SCN-010",
+      "name": "Multi-jurisdiction employee calculation",
+      "area": "Multi-jurisdiction",
+      "roles": ["Staff"],
+      "jurisdictions": ["SG", "AU-NSW"],
+      "suites": ["regression"],
+      "required": { "smoke": false, "regression": true },
+      "automationStatus": "automated",
+      "tests": { "backend": ["applicableStaffJurisdictionSelectsCalendarInMultiJurisdictionContext"], "playwright": [] }
+    }
+  ]
+}

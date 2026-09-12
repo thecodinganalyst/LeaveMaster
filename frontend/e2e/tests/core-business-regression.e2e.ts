@@ -62,7 +62,7 @@ const annualBalance = async (page: Page, staffId: string) => page.evaluate(
   { url: backendUrl, id: staffId },
 );
 
-test('staff apply -> assigned manager approve -> staff sees approved request and reduced balance @smoke', async ({ page, scenario }) => {
+test('SCN-005 staff apply -> assigned manager approve -> staff sees approved request and reduced balance @smoke', async ({ page, scenario }) => {
   const assertHealthy = installFailureGuards(page);
   const staff = scenario.users.staff001;
   const manager = scenario.users.manager01;
@@ -81,7 +81,7 @@ test('staff apply -> assigned manager approve -> staff sees approved request and
   await assertHealthy();
 });
 
-test('staff apply -> assigned manager reject -> staff sees rejected request without consuming balance', async ({ page, scenario }) => {
+test('SCN-006 staff apply -> assigned manager reject -> staff sees rejected request without consuming balance', async ({ page, scenario }) => {
   const assertHealthy = installFailureGuards(page);
   const staff = scenario.users.staff001;
   const manager = scenario.users.manager01;
@@ -99,7 +99,7 @@ test('staff apply -> assigned manager reject -> staff sees rejected request with
   await assertHealthy();
 });
 
-test('unrelated manager cannot see or act on another manager\'s pending request @smoke', async ({ page, scenario }) => {
+test("SCN-008 unrelated manager cannot see or act on another manager's pending request @smoke", async ({ page, scenario }) => {
   const assertHealthy = installFailureGuards(page);
   const staff = scenario.users.staff001;
   const unrelatedManager = scenario.users.manager02;
@@ -114,7 +114,7 @@ test('unrelated manager cannot see or act on another manager\'s pending request 
   await assertHealthy();
 });
 
-test('browser staff list remains isolated between persisted tenants @smoke', async ({ page, request, scenario }, testInfo) => {
+test('SCN-009 browser staff list remains isolated between persisted tenants @smoke', async ({ page, request, scenario }, testInfo) => {
   const secondScenarioId = `tenant-b-${testInfo.workerIndex}-${testInfo.testId}`
     .replace(/[^A-Za-z0-9_-]/g, '-')
     .slice(0, 70);
@@ -133,7 +133,7 @@ test('browser staff list remains isolated between persisted tenants @smoke', asy
   }
 });
 
-test('role matrix exposes staff self-service, manager approvals, HR staff management and tenant admin management @smoke', async ({ page, scenario }) => {
+test('SCN-008 role matrix exposes staff self-service, manager approvals, HR staff management and tenant admin management @smoke', async ({ page, scenario }) => {
   const assertHealthy = installFailureGuards(page);
 
   await login(page, scenario.tenantId, scenario.users.staff001.loginName, scenario.password);
