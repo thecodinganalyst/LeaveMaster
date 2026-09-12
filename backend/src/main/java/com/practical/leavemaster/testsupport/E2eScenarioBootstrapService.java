@@ -43,9 +43,14 @@ public class E2eScenarioBootstrapService {
             throw new ScenarioAlreadyExistsException(scenarioId);
         }
 
-        // The factory intentionally assigns deterministic string IDs. Spring Data save() treats
-        // assigned-ID entities as candidates for merge, while these scenario objects are known to
-        // be new. Persist them explicitly in dependency order to avoid stale-state merge handling.
+        // The factory intentionally assigns deterministic identifiers for pure object tests.
+        // Entitlements and approvers use @GeneratedValue in production, so clear their fixture IDs
+        // before persistence and let Hibernate generate UUIDs exactly as it does in the application.
+        scenario.entitlements().values().forEach(entitlement -> entitlement.setId(null));
+        scenario.approvers().forEach(approver -> approver.setId(null));
+
+        // Assigned-ID scenario entities are known to be new. Persist them explicitly rather than
+        // using Spring Data save(), whose merge semantics can treat assigned IDs as detached rows.
         entityManager.persist(scenario.tenant());
         entityManager.persist(TenantJurisdiction.builder()
                 .id(TenantJurisdiction.idFor(tenantId, scenario.tenant().getJurisdictionId()))
