@@ -12,6 +12,7 @@ import com.practical.leavemaster.tenant.TenantStatus;
 import com.practical.leavemaster.user.AppUser;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -21,13 +22,14 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 /**
- * Reusable, persistence-agnostic object factory for backend and browser scenario tests.
+ * Reusable, persistence-agnostic object factory for automated business scenarios.
  *
- * <p>The factory deliberately builds the same domain objects used by production code while
- * leaving persistence/bootstrap orchestration to the caller. Issue #527 can therefore expose
- * these scenarios through an E2E-only bootstrap API without duplicating fixture definitions.</p>
+ * <p>The factory lives in shared source so the E2E-only bootstrap service can reuse exactly the
+ * same fixture definition as backend tests. Nothing here registers a Spring bean or exposes an
+ * endpoint; runtime exposure is controlled separately by the {@code e2e} profile.</p>
  */
 public final class ScenarioDataFactory {
 
@@ -37,11 +39,6 @@ public final class ScenarioDataFactory {
     private ScenarioDataFactory() {
     }
 
-    /**
-     * Creates the standard Singapore scenario requested by the E2E/test strategy.
-     * The supplied scenarioId becomes part of every tenant-scoped identifier so parallel runs
-     * can remain isolated simply by choosing a unique scenarioId (for example a worker/run id).
-     */
     public static Scenario standardSingaporeScenario(String scenarioId, LocalDate referenceDate) {
         String key = requireScenarioId(scenarioId);
         String tenantId = "E2E-" + key;
@@ -125,22 +122,12 @@ public final class ScenarioDataFactory {
         approvers.add(approver(tenantId, staff.get("staff002"), staff.get("manager01"), staff.get("admin"), yearStart));
         approvers.add(approver(tenantId, staff.get("staff003"), staff.get("manager02"), staff.get("admin"), yearStart));
         approvers.add(approver(tenantId, staff.get("staff004"), staff.get("manager02"), staff.get("admin"), yearStart));
-        // staff005 intentionally has no approver for negative/exception-path tests.
 
         StaffDependant dependant = dependant(tenantId, staff.get("staff001"), "child01", referenceDate.minusYears(2));
         staff.get("staff001").setPreviewDependants(List.of(dependant));
 
-        return new Scenario(
-                key,
-                tenant,
-                roles,
-                users,
-                staff,
-                List.of(annualLeave),
-                entitlements,
-                approvers,
-                List.of(dependant),
-                referenceDate);
+        return new Scenario(key, tenant, roles, users, staff, List.of(annualLeave), entitlements,
+                approvers, List.of(dependant), referenceDate);
     }
 
     public static Staff withJurisdiction(Staff source, String jurisdictionId) {
@@ -149,7 +136,7 @@ public final class ScenarioDataFactory {
 
     public static StaffDependant dependant(String tenantId, Staff staff, String alias, LocalDate dateOfBirth) {
         return StaffDependant.builder()
-                .id(tenantId + "-dependant-" + alias)
+                .id(stableUuid(tenantId + ":dependant:" + alias))
                 .tenantId(tenantId)
                 .staffId(staff.getId())
                 .name("E2E " + alias)
@@ -162,7 +149,8 @@ public final class ScenarioDataFactory {
                 .build();
     }
 
-    private static Staff staff(String tenantId, String alias, String name, LocalDate joinDate, String jurisdictionId, Set<String> roleIds) {
+    private static Staff staff(String tenantId, String alias, String name, LocalDate joinDate,
+                               String jurisdictionId, Set<String> roleIds) {
         return Staff.builder()
                 .id(tenantId + "-" + alias)
                 .name(name)
@@ -177,19 +165,14 @@ public final class ScenarioDataFactory {
     }
 
     private static AppRole role(String tenantId, String id, String description) {
-        return AppRole.builder()
-                .id(id)
-                .description(description)
-                .active(true)
-                .tenantId(tenantId)
-                .build();
+        return AppRole.builder().id(id).description(description).active(true).tenantId(tenantId).build();
     }
 
     private static AppUser user(String tenantId, String alias, Staff staff, AppRole role) {
         return AppUser.builder()
-                .userId(tenantId + "-user-" + alias)
+                .userId(stableUuid(tenantId + ":user:" + alias))
                 .loginName(alias)
-                .password("{noop}e2e-password")
+                .password("e2e-password")
                 .email(staff.getEmail())
                 .active(true)
                 .staffId(staff.getId())
@@ -198,7 +181,8 @@ public final class ScenarioDataFactory {
                 .build();
     }
 
-    private static LeaveApprover approver(String tenantId, Staff employee, Staff manager, Staff admin, LocalDate effectiveFrom) {
+    private static LeaveApprover approver(String tenantId, Staff employee, Staff manager, Staff admin,
+                                          LocalDate effectiveFrom) {
         return LeaveApprover.builder()
                 .id(tenantId + "-approver-" + employee.getLoginName())
                 .staff(employee)
@@ -211,38 +195,39 @@ public final class ScenarioDataFactory {
                 .build();
     }
 
+    private static String stableUuid(String value) {
+        return UUID.nameUUIDFromBytes(value.getBytes(StandardCharsets.UTF_8)).toString();
+    }
+
+    public static String normalizeScenarioId(String scenarioId) {
+        return requireScenarioId(scenarioId);
+    }
+
     private static String requireScenarioId(String scenarioId) {
         if (scenarioId == null || scenarioId.isBlank()) {
             throw new IllegalArgumentException("scenarioId must not be blank");
         }
-        return scenarioId.trim().replaceAll("[^A-Za-z0-9_-]", "-");
+        String normalized = scenarioId.trim().replaceAll("[^A-Za-z0-9_-]", "-");
+        if (normalized.isBlank()) {
+            throw new IllegalArgumentException("scenarioId must contain at least one letter, number, underscore or dash");
+        }
+        return normalized;
     }
 
-    public record Scenario(
-            String scenarioId,
-            Tenant tenant,
-            Map<String, AppRole> roles,
-            Map<String, AppUser> users,
-            Map<String, Staff> staff,
-            List<LeaveType> leaveTypes,
-            Map<String, LeaveEntitlement> entitlements,
-            List<LeaveApprover> approvers,
-            List<StaffDependant> dependants,
-            LocalDate referenceDate) {
-
+    public record Scenario(String scenarioId, Tenant tenant, Map<String, AppRole> roles,
+                           Map<String, AppUser> users, Map<String, Staff> staff,
+                           List<LeaveType> leaveTypes, Map<String, LeaveEntitlement> entitlements,
+                           List<LeaveApprover> approvers, List<StaffDependant> dependants,
+                           LocalDate referenceDate) {
         public Staff staff(String alias) {
             Staff value = staff.get(alias);
-            if (value == null) {
-                throw new IllegalArgumentException("Unknown staff alias: " + alias);
-            }
+            if (value == null) throw new IllegalArgumentException("Unknown staff alias: " + alias);
             return value;
         }
 
         public AppUser user(String alias) {
             AppUser value = users.get(alias);
-            if (value == null) {
-                throw new IllegalArgumentException("Unknown user alias: " + alias);
-            }
+            if (value == null) throw new IllegalArgumentException("Unknown user alias: " + alias);
             return value;
         }
     }
