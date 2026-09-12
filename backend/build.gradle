@@ -60,19 +60,25 @@ tasks.named('test') {
 }
 
 tasks.register('smokeTest', Test) {
-	description = 'Runs the backend business scenarios tagged smoke.'
+	description = 'Runs the compact backend business smoke scenarios used by PR CI.'
 	group = 'verification'
-	useJUnitPlatform {
-		includeTags 'smoke'
+	useJUnitPlatform()
+	filter {
+		includeTestsMatching 'com.practical.leavemaster.leaveapplication.CoreBusinessScenarioRegressionTest.standardScenarioContainsTenantStaffAndAnnualEntitlements'
+		includeTestsMatching 'com.practical.leavemaster.leaveapplication.CoreBusinessScenarioRegressionTest.midYearJoinerStartsEntitlementOnJoinDateAndReceivesProratedAmount'
+		includeTestsMatching 'com.practical.leavemaster.leaveapplication.CoreBusinessScenarioRegressionTest.cannotApplyBeforeEmploymentStartDate'
+		includeTestsMatching 'com.practical.leavemaster.leaveapplication.CoreBusinessScenarioRegressionTest.assignedManagerCanApproveAndUnrelatedManagerCannotAct'
+		includeTestsMatching 'com.practical.leavemaster.leaveapplication.CoreBusinessScenarioRegressionTest.tenantBoundaryRejectsLeaveTypeFromAnotherTenant'
 	}
 	shouldRunAfter test
 }
 
 tasks.register('regressionTest', Test) {
-	description = 'Runs the backend business scenarios tagged regression.'
+	description = 'Runs the complete backend core business regression catalogue.'
 	group = 'verification'
-	useJUnitPlatform {
-		includeTags 'regression'
+	useJUnitPlatform()
+	filter {
+		includeTestsMatching 'com.practical.leavemaster.leaveapplication.CoreBusinessScenarioRegressionTest.*'
 	}
 	shouldRunAfter test
 }
