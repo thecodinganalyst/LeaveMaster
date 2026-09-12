@@ -9,7 +9,8 @@
       "jurisdictions": ["SG"],
       "suites": ["smoke", "regression"],
       "required": { "smoke": true, "regression": true },
-      "automationStatus": "automated"
+      "automationStatus": "automated",
+      "tests": { "backend": ["standardScenarioContainsTenantStaffAndAnnualEntitlements"], "playwright": ["scenario bootstrap endpoint creates deterministic reusable company data"] }
     },
     {
       "id": "SCN-002",
@@ -19,7 +20,8 @@
       "jurisdictions": ["SG"],
       "suites": ["smoke", "regression"],
       "required": { "smoke": true, "regression": true },
-      "automationStatus": "automated"
+      "automationStatus": "automated",
+      "tests": { "backend": ["midYearJoinerStartsEntitlementOnJoinDateAndReceivesProratedAmount"], "playwright": [] }
     },
     {
       "id": "SCN-003",
@@ -29,7 +31,8 @@
       "jurisdictions": ["Any"],
       "suites": ["smoke", "regression"],
       "required": { "smoke": true, "regression": true },
-      "automationStatus": "automated"
+      "automationStatus": "automated",
+      "tests": { "backend": ["cannotApplyBeforeEmploymentStartDate"], "playwright": ["Apply Leave constrains selectable dates to the staff employment period"] }
     },
     {
       "id": "SCN-004",
@@ -39,7 +42,8 @@
       "jurisdictions": ["Any"],
       "suites": ["regression"],
       "required": { "smoke": false, "regression": true },
-      "automationStatus": "automated"
+      "automationStatus": "automated",
+      "tests": { "backend": ["cannotApplyAfterTerminationDate"], "playwright": ["Apply Leave constrains selectable dates to the staff employment period"] }
     },
     {
       "id": "SCN-005",
@@ -49,7 +53,8 @@
       "jurisdictions": ["SG"],
       "suites": ["smoke", "regression"],
       "required": { "smoke": true, "regression": true },
-      "automationStatus": "automated"
+      "automationStatus": "automated",
+      "tests": { "backend": ["assignedManagerCanApproveAndUnrelatedManagerCannotAct"], "playwright": ["staff apply -> assigned manager approve -> staff sees approved request and reduced balance"] }
     },
     {
       "id": "SCN-006",
@@ -59,7 +64,8 @@
       "jurisdictions": ["SG"],
       "suites": ["regression"],
       "required": { "smoke": false, "regression": true },
-      "automationStatus": "automated"
+      "automationStatus": "automated",
+      "tests": { "backend": ["assignedManagerCanRejectPendingRequest"], "playwright": ["staff apply -> assigned manager reject -> staff sees rejected request without consuming balance"] }
     },
     {
       "id": "SCN-007",
@@ -69,7 +75,8 @@
       "jurisdictions": ["SG"],
       "suites": ["regression"],
       "required": { "smoke": false, "regression": true },
-      "automationStatus": "automated"
+      "automationStatus": "automated",
+      "tests": { "backend": ["weekendAndPublicHolidayAreNotCharged"], "playwright": [] }
     },
     {
       "id": "SCN-008",
@@ -79,7 +86,8 @@
       "jurisdictions": ["Any"],
       "suites": ["smoke", "regression"],
       "required": { "smoke": true, "regression": true },
-      "automationStatus": "automated"
+      "automationStatus": "automated",
+      "tests": { "backend": [], "playwright": ["role matrix exposes staff self-service, manager approvals, HR staff management and tenant admin management", "unrelated manager cannot see or act on another manager's pending request"] }
     },
     {
       "id": "SCN-009",
@@ -89,7 +97,8 @@
       "jurisdictions": ["Any"],
       "suites": ["smoke", "regression"],
       "required": { "smoke": true, "regression": true },
-      "automationStatus": "automated"
+      "automationStatus": "automated",
+      "tests": { "backend": ["tenantBoundaryRejectsLeaveTypeFromAnotherTenant"], "playwright": ["browser staff list remains isolated between persisted tenants"] }
     },
     {
       "id": "SCN-010",
@@ -99,7 +108,8 @@
       "jurisdictions": ["SG", "AU-NSW"],
       "suites": ["regression"],
       "required": { "smoke": false, "regression": true },
-      "automationStatus": "automated"
+      "automationStatus": "automated",
+      "tests": { "backend": ["applicableStaffJurisdictionSelectsCalendarInMultiJurisdictionContext"], "playwright": [] }
     }
   ]
 }
