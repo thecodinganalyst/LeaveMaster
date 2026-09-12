@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "test": "playwright test",
+    "test:smoke": "playwright test --grep @smoke",
+    "test:regression": "playwright test",
     "test:ui": "playwright test --ui"
   },
   "devDependencies": {

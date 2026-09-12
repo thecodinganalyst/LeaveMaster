@@ -14,7 +14,7 @@ for (const role of ['staff', 'manager', 'hr', 'admin'] as E2ERole[]) {
   });
 }
 
-test('staff and manager do not get leave-calendar write controls', async ({ page }) => {
+test('staff and manager do not get leave-calendar write controls @smoke', async ({ page }) => {
   for (const role of ['staff', 'manager'] as E2ERole[]) {
     await mockAuthenticatedBackend(page, role);
     await page.goto('/leave-calendars');
@@ -30,7 +30,7 @@ test('HR and tenant admin get leave-calendar write controls', async ({ page }) =
   }
 });
 
-test('tenant admin staff page renders only staff returned for the authenticated tenant', async ({ page }) => {
+test('tenant admin staff page renders only staff returned for the authenticated tenant @smoke', async ({ page }) => {
   await mockAuthenticatedBackend(page, 'admin');
   const assertHealthy = installFailureGuards(page);
 

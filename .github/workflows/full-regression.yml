@@ -1,18 +1,26 @@
-name: End-to-end PR smoke tests
+name: Full business regression
 
 on:
+  schedule:
+    # 02:00 Singapore time every day (18:00 UTC on the previous day).
+    - cron: '0 18 * * *'
+  workflow_dispatch:
   pull_request:
     branches: [main]
     paths:
-      - 'frontend/**'
-      - 'backend/**'
-      - '.github/workflows/e2e.yml'
       - '.github/workflows/full-regression.yml'
-  workflow_dispatch:
+      - 'frontend/e2e/package.json'
+      - 'frontend/e2e/tests/**'
+      - 'backend/build.gradle'
+      - 'backend/src/test/java/com/practical/leavemaster/leaveapplication/CoreBusinessScenarioRegressionTest.java'
+
+concurrency:
+  group: full-business-regression-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  e2e:
-    name: Playwright PR smoke
+  regression:
+    name: Full business regression
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -32,24 +40,24 @@ jobs:
         working-directory: backend
         run: ./gradlew test jacocoTestReport jacocoTestCoverageVerification
 
-      - name: Run backend business smoke scenarios
+      - name: Run backend business regression catalogue
         working-directory: backend
-        run: ./gradlew smokeTest
+        run: ./gradlew regressionTest
 
       - name: Start isolated E2E backend
         working-directory: backend
         env:
           SPRING_PROFILES_ACTIVE: e2e
         run: |
-          nohup ./gradlew bootRun --args='--spring.profiles.active=e2e' > ../e2e-backend.log 2>&1 &
-          echo $! > ../e2e-backend.pid
+          nohup ./gradlew bootRun --args='--spring.profiles.active=e2e' > ../full-regression-backend.log 2>&1 &
+          echo $! > ../full-regression-backend.pid
           for attempt in {1..60}; do
             if curl --fail --silent http://127.0.0.1:8080/api-docs > /dev/null; then
               exit 0
             fi
             sleep 2
           done
-          cat ../e2e-backend.log
+          cat ../full-regression-backend.log
           exit 1
 
       - name: Set up Node.js
@@ -77,17 +85,17 @@ jobs:
         working-directory: frontend/e2e
         run: npx playwright install --with-deps chromium
 
-      - name: Run Playwright PR smoke tests
+      - name: Run full Playwright regression suite
         working-directory: frontend/e2e
         env:
           E2E_BACKEND_URL: http://127.0.0.1:8080
-        run: npm run test:smoke
+        run: npm run test:regression
 
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-smoke-report
+          name: playwright-full-regression-report
           path: frontend/e2e/playwright-report/
           if-no-files-found: warn
           retention-days: 14
@@ -96,7 +104,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: backend-smoke-test-reports
+          name: backend-full-regression-reports
           path: backend/build/reports/tests/
           if-no-files-found: warn
           retention-days: 14
@@ -105,7 +113,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-smoke-test-results
+          name: playwright-full-regression-results
           path: frontend/e2e/test-results/
           if-no-files-found: warn
           retention-days: 14
@@ -114,7 +122,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-smoke-backend-log
-          path: e2e-backend.log
+          name: full-regression-backend-log
+          path: full-regression-backend.log
           if-no-files-found: warn
           retention-days: 14
