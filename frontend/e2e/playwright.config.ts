@@ -1,5 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const backendUrl = process.env.E2E_BACKEND_URL ?? 'http://127.0.0.1:8080';
+
 export default defineConfig({
   testDir: './tests',
   testMatch: '**/*.e2e.ts',
@@ -19,7 +21,7 @@ export default defineConfig({
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
   ],
   webServer: {
-    command: 'npm --prefix .. run build && npm --prefix .. run preview -- --host 127.0.0.1 --port 4173',
+    command: `VITE_API_URL=${backendUrl} npm --prefix .. run build && npm --prefix .. run preview -- --host 127.0.0.1 --port 4173`,
     url: 'http://127.0.0.1:4173',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
