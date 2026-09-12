@@ -1,0 +1,105 @@
+{
+  "version": 1,
+  "scenarios": [
+    {
+      "id": "SCN-001",
+      "name": "Create tenant and generate staff entitlement",
+      "area": "Provisioning",
+      "roles": ["Admin"],
+      "jurisdictions": ["SG"],
+      "suites": ["smoke", "regression"],
+      "required": { "smoke": true, "regression": true },
+      "automationStatus": "automated"
+    },
+    {
+      "id": "SCN-002",
+      "name": "Mid-year joiner Annual Leave proration",
+      "area": "Leave calculation",
+      "roles": ["Staff"],
+      "jurisdictions": ["SG"],
+      "suites": ["smoke", "regression"],
+      "required": { "smoke": true, "regression": true },
+      "automationStatus": "automated"
+    },
+    {
+      "id": "SCN-003",
+      "name": "Prevent leave before employment start date",
+      "area": "Employment lifecycle",
+      "roles": ["Staff"],
+      "jurisdictions": ["Any"],
+      "suites": ["smoke", "regression"],
+      "required": { "smoke": true, "regression": true },
+      "automationStatus": "automated"
+    },
+    {
+      "id": "SCN-004",
+      "name": "Prevent leave after employment end date",
+      "area": "Employment lifecycle",
+      "roles": ["Staff"],
+      "jurisdictions": ["Any"],
+      "suites": ["regression"],
+      "required": { "smoke": false, "regression": true },
+      "automationStatus": "automated"
+    },
+    {
+      "id": "SCN-005",
+      "name": "Staff applies leave and manager approves",
+      "area": "Leave workflow",
+      "roles": ["Staff", "Manager"],
+      "jurisdictions": ["SG"],
+      "suites": ["smoke", "regression"],
+      "required": { "smoke": true, "regression": true },
+      "automationStatus": "automated"
+    },
+    {
+      "id": "SCN-006",
+      "name": "Staff applies leave and manager rejects",
+      "area": "Leave workflow",
+      "roles": ["Staff", "Manager"],
+      "jurisdictions": ["SG"],
+      "suites": ["regression"],
+      "required": { "smoke": false, "regression": true },
+      "automationStatus": "automated"
+    },
+    {
+      "id": "SCN-007",
+      "name": "Weekend and public-holiday leave calculation",
+      "area": "Leave calculation",
+      "roles": ["Staff"],
+      "jurisdictions": ["SG"],
+      "suites": ["regression"],
+      "required": { "smoke": false, "regression": true },
+      "automationStatus": "automated"
+    },
+    {
+      "id": "SCN-008",
+      "name": "Role-based access",
+      "area": "Permissions",
+      "roles": ["Staff", "Manager", "HR", "Admin"],
+      "jurisdictions": ["Any"],
+      "suites": ["smoke", "regression"],
+      "required": { "smoke": true, "regression": true },
+      "automationStatus": "automated"
+    },
+    {
+      "id": "SCN-009",
+      "name": "Tenant isolation",
+      "area": "Tenant isolation",
+      "roles": ["HR", "Admin"],
+      "jurisdictions": ["Any"],
+      "suites": ["smoke", "regression"],
+      "required": { "smoke": true, "regression": true },
+      "automationStatus": "automated"
+    },
+    {
+      "id": "SCN-010",
+      "name": "Multi-jurisdiction employee calculation",
+      "area": "Multi-jurisdiction",
+      "roles": ["Staff"],
+      "jurisdictions": ["SG", "AU-NSW"],
+      "suites": ["regression"],
+      "required": { "smoke": false, "regression": true },
+      "automationStatus": "automated"
+    }
+  ]
+}
