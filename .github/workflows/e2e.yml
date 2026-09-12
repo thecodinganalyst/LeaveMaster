@@ -6,6 +6,8 @@ on:
     paths:
       - 'frontend/**'
       - 'backend/**'
+      - 'scripts/testing/**'
+      - 'docs/testing/scenario-catalogue.json'
       - '.github/workflows/e2e.yml'
       - '.github/workflows/full-regression.yml'
   workflow_dispatch:
@@ -82,6 +84,25 @@ jobs:
         env:
           E2E_BACKEND_URL: http://127.0.0.1:8080
         run: npm run test:smoke
+
+      - name: Generate business scenario coverage report
+        if: always()
+        run: |
+          node scripts/testing/generate-scenario-report.mjs \
+            --suite smoke \
+            --backend-results backend/build/test-results/smokeTest \
+            --playwright-results frontend/e2e/test-results/playwright-results.json \
+            --output build/scenario-report-smoke
+          cat build/scenario-report-smoke/scenario-report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload business scenario coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scenario-coverage-smoke
+          path: build/scenario-report-smoke/
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Upload Playwright report
         if: always()
