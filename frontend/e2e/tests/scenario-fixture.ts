@@ -2,7 +2,7 @@ import { test as base } from '@playwright/test';
 import { createPersistedScenario, deletePersistedScenario, type BootstrapScenario } from './scenario-api';
 
 export const test = base.extend<{ scenario: BootstrapScenario }>({
-  scenario: async ({ request }, use, testInfo) => {
+  scenario: async ({ request }, provideScenario, testInfo) => {
     const runId = process.env.GITHUB_RUN_ID ?? 'local';
     const scenarioId = `pw-${runId}-${testInfo.workerIndex}-${testInfo.testId}`
       .replace(/[^A-Za-z0-9_-]/g, '-')
@@ -10,7 +10,7 @@ export const test = base.extend<{ scenario: BootstrapScenario }>({
 
     const scenario = await createPersistedScenario(request, scenarioId);
     try {
-      await use(scenario);
+      await provideScenario(scenario);
     } finally {
       await deletePersistedScenario(request, scenario.scenarioId);
     }
