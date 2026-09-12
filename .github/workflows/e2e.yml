@@ -88,12 +88,18 @@ jobs:
       - name: Generate business scenario coverage report
         if: always()
         run: |
+          set +e
           node scripts/testing/generate-scenario-report.mjs \
             --suite smoke \
             --backend-results backend/build/test-results/smokeTest \
             --playwright-results frontend/e2e/test-results/playwright-results.json \
             --output build/scenario-report-smoke
-          cat build/scenario-report-smoke/scenario-report.md >> "$GITHUB_STEP_SUMMARY"
+          report_status=$?
+          set -e
+          if [ -f build/scenario-report-smoke/scenario-report.md ]; then
+            cat build/scenario-report-smoke/scenario-report.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit "$report_status"
 
       - name: Upload business scenario coverage report
         if: always()
