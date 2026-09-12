@@ -33,7 +33,6 @@ export const createStandardSingaporeScenario = (
   if (!normalized) throw new Error('scenarioId must not be blank');
 
   const tenantId = `E2E-${normalized}`;
-  const yearStart = atStartOfYear(referenceDate);
   const priorYearStart = atStartOfYear(referenceDate, -1);
   const twoYearsAgo = atStartOfYear(referenceDate, -2);
   const midYear = new Date(Date.UTC(referenceDate.getUTCFullYear(), 6, 1));
