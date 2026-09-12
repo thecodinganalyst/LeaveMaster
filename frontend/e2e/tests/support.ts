@@ -18,6 +18,7 @@ export const installFailureGuards = (page: Page, allowedStatuses: number[] = [])
   const consoleErrors: string[] = [];
   const badResponses: string[] = [];
   const failedRequests: string[] = [];
+  let expectedAuthProbe401s = 0;
 
   page.on('pageerror', (error) => pageErrors.push(error.message));
   page.on('console', (message) => {
@@ -30,6 +31,14 @@ export const installFailureGuards = (page: Page, allowedStatuses: number[] = [])
     failedRequests.push(`${request.method()} ${request.url()} ${failure}`);
   });
   page.on('response', (response) => {
+    const path = new URL(response.url()).pathname;
+    // The login page intentionally probes /auth/me before credentials are supplied. A 401 is
+    // the expected unauthenticated state, not an application failure. Track it so the matching
+    // generic Chromium console message can be discounted without allowing 401s from any other URL.
+    if (response.status() === 401 && path === '/auth/me') {
+      expectedAuthProbe401s += 1;
+      return;
+    }
     if (response.status() >= 400 && !allowedStatuses.includes(response.status())) {
       badResponses.push(`${response.status()} ${response.request().method()} ${response.url()}`);
     }
@@ -37,8 +46,20 @@ export const installFailureGuards = (page: Page, allowedStatuses: number[] = [])
 
   return async () => {
     await expect(page.locator('body')).not.toBeEmpty();
+    let remainingExpectedAuthConsoleErrors = expectedAuthProbe401s;
+    const unexpectedConsoleErrors = consoleErrors.filter((message) => {
+      if (
+        remainingExpectedAuthConsoleErrors > 0
+        && message === 'Failed to load resource: the server responded with a status of 401 ()'
+      ) {
+        remainingExpectedAuthConsoleErrors -= 1;
+        return false;
+      }
+      return true;
+    });
+
     expect(pageErrors, `Uncaught page errors:\n${pageErrors.join('\n')}`).toEqual([]);
-    expect(consoleErrors, `Console errors:\n${consoleErrors.join('\n')}`).toEqual([]);
+    expect(unexpectedConsoleErrors, `Console errors:\n${unexpectedConsoleErrors.join('\n')}`).toEqual([]);
     expect(failedRequests, `Failed requests:\n${failedRequests.join('\n')}`).toEqual([]);
     expect(badResponses, `Unexpected HTTP failures:\n${badResponses.join('\n')}`).toEqual([]);
   };
