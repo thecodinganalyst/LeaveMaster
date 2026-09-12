@@ -101,7 +101,7 @@ jobs:
           set +e
           node scripts/testing/generate-scenario-report.mjs \
             --suite regression \
-            --backend-results backend/build/test-results/regressionTest \
+            --backend-results backend/build/test-results/test \
             --playwright-results frontend/e2e/test-results/playwright-results.json \
             --output build/scenario-report-regression
           report_status=$?
