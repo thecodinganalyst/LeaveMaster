@@ -17,7 +17,7 @@ const login = async (
   await page.getByLabel('Tenant ID').fill(tenantId);
   await page.getByLabel('Login name').fill(loginName);
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
-  await page.getByLabel('Password').fill(password);
+  await page.getByRole('textbox', { name: 'Password', exact: true }).fill(password);
   await page.getByRole('button', { name: 'Sign in' }).click();
   await expect(page).toHaveURL(/\/$/);
 };
