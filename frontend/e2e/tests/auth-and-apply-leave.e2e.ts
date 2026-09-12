@@ -49,7 +49,7 @@ test('Apply Leave exposes contextual Help without loading the external docs site
   await assertHealthy();
 });
 
-test('Apply Leave constrains selectable dates to the staff employment period @smoke', async ({ page }) => {
+test('SCN-003 SCN-004 Apply Leave constrains selectable dates to the staff employment period @smoke', async ({ page }) => {
   await mockAuthenticatedBackend(page, 'staff');
   const assertHealthy = installFailureGuards(page);
 
