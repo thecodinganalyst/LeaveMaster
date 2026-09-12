@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 import { installFailureGuards, mockAuthenticatedBackend } from './support.ts';
 
-test('password login reaches the authenticated application shell without runtime or HTTP failures', async ({ page }) => {
+test('password login reaches the authenticated application shell without runtime or HTTP failures @smoke', async ({ page }) => {
   await mockAuthenticatedBackend(page, 'staff', false);
 
   await page.goto('/login');
@@ -20,7 +20,7 @@ test('password login reaches the authenticated application shell without runtime
   await assertHealthy();
 });
 
-test('staff can open Apply Leave and submit a deterministic request', async ({ page }) => {
+test('staff can open Apply Leave and submit a deterministic request @smoke', async ({ page }) => {
   await mockAuthenticatedBackend(page, 'staff');
   const assertHealthy = installFailureGuards(page);
 
@@ -49,7 +49,7 @@ test('Apply Leave exposes contextual Help without loading the external docs site
   await assertHealthy();
 });
 
-test('Apply Leave constrains selectable dates to the staff employment period', async ({ page }) => {
+test('Apply Leave constrains selectable dates to the staff employment period @smoke', async ({ page }) => {
   await mockAuthenticatedBackend(page, 'staff');
   const assertHealthy = installFailureGuards(page);
 
@@ -73,7 +73,7 @@ test('Apply Leave constrains selectable dates to the staff employment period', a
   await assertHealthy();
 });
 
-test('Apply Leave cannot regress to an empty React page', async ({ page }) => {
+test('Apply Leave cannot regress to an empty React page @smoke', async ({ page }) => {
   await mockAuthenticatedBackend(page, 'staff');
   const assertHealthy = installFailureGuards(page);
 
