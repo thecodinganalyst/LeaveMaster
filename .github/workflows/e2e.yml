@@ -91,7 +91,7 @@ jobs:
           set +e
           node scripts/testing/generate-scenario-report.mjs \
             --suite smoke \
-            --backend-results backend/build/test-results/smokeTest \
+            --backend-results backend/build/test-results/test \
             --playwright-results frontend/e2e/test-results/playwright-results.json \
             --output build/scenario-report-smoke
           report_status=$?
