@@ -16,6 +16,16 @@ export function submissionState(state, event) {
   return state;
 }
 
+export function resolveContactApiUrl(apiUrl, appUrl, nodeEnv = 'development') {
+  const explicitApiUrl = apiUrl?.trim();
+  if (explicitApiUrl) return explicitApiUrl.replace(/\/$/, '');
+
+  const explicitAppUrl = appUrl?.trim();
+  if (explicitAppUrl) return explicitAppUrl.replace(/\/$/, '');
+
+  return nodeEnv === 'production' ? 'https://app.leavemaestro.com' : 'http://localhost:8080';
+}
+
 export async function submitContactEnquiry(payload, apiBaseUrl, fetchImpl = fetch) {
   const validationError = validateContactPayload(payload);
   if (validationError) throw new Error(validationError);
