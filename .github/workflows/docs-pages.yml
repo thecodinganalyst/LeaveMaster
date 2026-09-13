@@ -18,9 +18,15 @@ on:
       - 'README.md'
       - '.github/workflows/docs-pages.yml'
   workflow_dispatch:
+  workflow_run:
+    workflows:
+      - Full business regression
+    types:
+      - completed
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: pages
@@ -28,10 +34,17 @@ concurrency:
 
 jobs:
   build:
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main' &&
+       github.event.workflow_run.event != 'pull_request')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && 'main' || github.ref }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -46,6 +59,108 @@ jobs:
       - name: Build documentation
         run: mkdocs build --strict
 
+      - name: Resolve latest successful full regression
+        if: github.event_name != 'pull_request'
+        id: regression
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+            run_id="${{ github.event.workflow_run.id }}"
+            source_sha="${{ github.event.workflow_run.head_sha }}"
+            run_url="${{ github.event.workflow_run.html_url }}"
+          else
+            run_json="$(gh api \
+              -H 'Accept: application/vnd.github+json' \
+              "/repos/${GITHUB_REPOSITORY}/actions/workflows/full-regression.yml/runs?branch=main&status=success&per_page=1")"
+            run_id="$(jq -r '.workflow_runs[0].id // empty' <<<"$run_json")"
+            source_sha="$(jq -r '.workflow_runs[0].head_sha // empty' <<<"$run_json")"
+            run_url="$(jq -r '.workflow_runs[0].html_url // empty' <<<"$run_json")"
+          fi
+
+          if [[ -z "$run_id" || -z "$source_sha" || -z "$run_url" ]]; then
+            echo 'No successful full regression run is available. Refusing to replace the currently published Pages site without a valid report.' >&2
+            exit 1
+          fi
+
+          echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+          echo "source_sha=$source_sha" >> "$GITHUB_OUTPUT"
+          echo "run_url=$run_url" >> "$GITHUB_OUTPUT"
+
+      - name: Download latest successful regression report
+        if: github.event_name != 'pull_request'
+        uses: actions/download-artifact@v4
+        with:
+          name: scenario-coverage-full-regression
+          path: latest-regression-report
+          run-id: ${{ steps.regression.outputs.run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Publish regression report into Pages output
+        if: github.event_name != 'pull_request'
+        env:
+          REGRESSION_RUN_ID: ${{ steps.regression.outputs.run_id }}
+          REGRESSION_SOURCE_SHA: ${{ steps.regression.outputs.source_sha }}
+          REGRESSION_RUN_URL: ${{ steps.regression.outputs.run_url }}
+        run: |
+          set -euo pipefail
+          test -f latest-regression-report/scenario-report.html
+          test -f latest-regression-report/scenario-report.json
+          test -f latest-regression-report/scenario-report.md
+
+          mkdir -p site/testing/regression-report
+          cp latest-regression-report/scenario-report.json site/testing/regression-report/scenario-report.json
+          cp latest-regression-report/scenario-report.md site/testing/regression-report/scenario-report.md
+
+          python - <<'PY'
+          from datetime import datetime, timezone
+          from html import escape
+          from pathlib import Path
+          import json
+          import os
+
+          report = Path('latest-regression-report/scenario-report.html').read_text(encoding='utf-8')
+          run_id = os.environ['REGRESSION_RUN_ID']
+          source_sha = os.environ['REGRESSION_SOURCE_SHA']
+          run_url = os.environ['REGRESSION_RUN_URL']
+          published_at = datetime.now(timezone.utc).isoformat()
+
+          banner = f'''<div style="margin:16px;padding:12px 16px;border:1px solid #d0d7de;border-radius:8px;font-family:system-ui,sans-serif;font-size:14px;">
+          <strong>Latest successful full regression</strong><br>
+          Source commit: <code>{escape(source_sha[:12])}</code> ·
+          <a href="{escape(run_url)}">GitHub Actions run {escape(run_id)}</a> ·
+          Published: {escape(published_at)}
+          </div>'''
+
+          if '<body>' in report:
+              report = report.replace('<body>', '<body>' + banner, 1)
+          else:
+              report = banner + report
+
+          output = Path('site/testing/regression-report/index.html')
+          output.write_text(report, encoding='utf-8')
+
+          metadata = {
+              'suite': 'Full business regression',
+              'runId': run_id,
+              'runUrl': run_url,
+              'sourceSha': source_sha,
+              'publishedAt': published_at,
+          }
+          Path('site/testing/regression-report/metadata.json').write_text(
+              json.dumps(metadata, indent=2) + '\n', encoding='utf-8'
+          )
+          PY
+
+          test -s site/testing/regression-report/index.html
+
+      - name: Verify regression report route
+        run: |
+          test -f site/testing/regression-report/index.html
+          test -f site/testing/automated-regression/index.html
+
       - name: Configure GitHub Pages
         if: github.event_name != 'pull_request'
         uses: actions/configure-pages@v5
@@ -57,7 +172,12 @@ jobs:
           path: site
 
   deploy:
-    if: github.event_name != 'pull_request'
+    if: >-
+      github.event_name != 'pull_request' &&
+      (github.event_name != 'workflow_run' ||
+       (github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_branch == 'main' &&
+        github.event.workflow_run.event != 'pull_request'))
     needs: build
     runs-on: ubuntu-latest
     permissions:

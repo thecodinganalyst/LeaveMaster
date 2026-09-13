@@ -88,6 +88,22 @@ Both E2E workflows append the generated Markdown report to the GitHub Actions jo
 
 The workflows upload the generated Markdown, JSON, and HTML together as a scenario-coverage artifact. Existing Playwright HTML reports, traces/screenshots/videos on failure, backend test reports, and backend logs remain separate and are not duplicated by the scenario reporter.
 
+## Latest successful report on GitHub Pages
+
+The latest successful full-regression HTML report is published at:
+
+```text
+https://thecodinganalyst.github.io/LeaveMaster/testing/regression-report/
+```
+
+The [Automated regression](automated-regression.md) documentation page provides the user-facing entry point.
+
+`.github/workflows/docs-pages.yml` is the repository's only GitHub Pages deployer. On a successful `Full business regression` workflow completion, it rebuilds the documentation, downloads that run's `scenario-coverage-full-regression` artifact, and overlays `scenario-report.html` at the stable Pages route. Documentation pushes and manual Pages deployments resolve the most recent successful full-regression run on `main` and use its artifact.
+
+Only successful full-regression runs are eligible for Pages publication. A failed or incomplete regression does not trigger publication. If a later documentation deployment cannot resolve or download a valid successful report, the Pages build fails before deployment, preserving the previously published successful site/report.
+
+The published HTML is accompanied by source metadata including the regression workflow run, source commit SHA, and Pages publication timestamp. Historical report outputs remain in the per-run GitHub Actions artifacts according to their configured retention period.
+
 ## Security and maintainability
 
 The catalogue and reports contain business metadata, test names, statuses, and durations only. Do not add passwords, tokens, OAuth secrets, raw authentication responses, or sensitive user data to scenario metadata or report output.
