@@ -33,6 +33,7 @@ locals {
   cors_allowed_origins = distinct(concat(
     [local.public_app_url],
     local.firebase_hosting_origins,
+    var.marketing_site_origins,
     var.allowed_frontend_origins
   ))
 
