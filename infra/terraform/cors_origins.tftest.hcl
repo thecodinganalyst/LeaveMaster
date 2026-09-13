@@ -12,18 +12,24 @@ variables {
   enable_firebase_hosting        = true
   frontend_environment           = "production"
   public_app_url                 = "https://app.leavemaestro.com"
+  marketing_site_origins = [
+    "https://leavemaestro.com",
+    "https://www.leavemaestro.com"
+  ]
 }
 
-run "includes_canonical_and_firebase_aliases" {
+run "includes_canonical_firebase_and_marketing_origins" {
   command = plan
 
   assert {
     condition = tolist(output.cors_allowed_origins) == tolist([
       "https://app.leavemaestro.com",
       "https://leavemaster-production.web.app",
-      "https://leavemaster-production.firebaseapp.com"
+      "https://leavemaster-production.firebaseapp.com",
+      "https://leavemaestro.com",
+      "https://www.leavemaestro.com"
     ])
-    error_message = "CORS origins must include the canonical app URL and both Firebase Hosting aliases."
+    error_message = "CORS origins must include the canonical app URL, Firebase Hosting aliases, and marketing site origins."
   }
 }
 
@@ -42,9 +48,11 @@ run "merges_explicit_additional_origins" {
       "https://app.leavemaestro.com",
       "https://leavemaster-production.web.app",
       "https://leavemaster-production.firebaseapp.com",
+      "https://leavemaestro.com",
+      "https://www.leavemaestro.com",
       "https://preview.example.com"
     ])
-    error_message = "Explicit origins must be merged with, rather than replace, canonical and Firebase origins."
+    error_message = "Explicit origins must be merged with, rather than replace, canonical, Firebase, and marketing origins."
   }
 }
 
@@ -59,9 +67,11 @@ run "uses_explicit_hosting_site_id" {
     condition = tolist(output.cors_allowed_origins) == tolist([
       "https://app.leavemaestro.com",
       "https://leave-demo.web.app",
-      "https://leave-demo.firebaseapp.com"
+      "https://leave-demo.firebaseapp.com",
+      "https://leavemaestro.com",
+      "https://www.leavemaestro.com"
     ])
-    error_message = "Firebase aliases must be derived from the configured Hosting site ID."
+    error_message = "Firebase aliases must be derived from the configured Hosting site ID while retaining marketing origins."
   }
 }
 
@@ -73,4 +83,14 @@ run "rejects_wildcard_origin" {
   }
 
   expect_failures = [var.allowed_frontend_origins]
+}
+
+run "rejects_wildcard_marketing_origin" {
+  command = plan
+
+  variables {
+    marketing_site_origins = ["https://*.leavemaestro.com"]
+  }
+
+  expect_failures = [var.marketing_site_origins]
 }

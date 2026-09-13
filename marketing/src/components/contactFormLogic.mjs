@@ -20,11 +20,16 @@ export async function submitContactEnquiry(payload, apiBaseUrl, fetchImpl = fetc
   const validationError = validateContactPayload(payload);
   if (validationError) throw new Error(validationError);
 
-  const response = await fetchImpl(`${apiBaseUrl.replace(/\/$/, '')}/api/public/contact`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
+  let response;
+  try {
+    response = await fetchImpl(`${apiBaseUrl.replace(/\/$/, '')}/api/public/contact`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    throw new Error('Unable to reach LeaveMaestro. Please try again in a moment.');
+  }
 
   let body = {};
   try {
