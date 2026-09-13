@@ -13,6 +13,11 @@ export type SubmissionStatus = 'idle' | 'submitting' | 'success' | 'error';
 
 export function validateContactPayload(payload: ContactPayload): string | null;
 export function submissionState(state: SubmissionStatus, event: 'submit' | 'success' | 'error' | string): SubmissionStatus;
+export function resolveContactApiUrl(
+  apiUrl?: string,
+  appUrl?: string,
+  nodeEnv?: string,
+): string;
 export function submitContactEnquiry(
   payload: ContactPayload,
   apiBaseUrl: string,

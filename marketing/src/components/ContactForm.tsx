@@ -4,12 +4,17 @@ import { FormEvent, useState } from 'react';
 import {
   ContactPayload,
   SubmissionStatus,
+  resolveContactApiUrl,
   submissionState,
   submitContactEnquiry,
   validateContactPayload,
 } from './contactFormLogic.mjs';
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080';
+const apiUrl = resolveContactApiUrl(
+  process.env.NEXT_PUBLIC_API_URL,
+  process.env.NEXT_PUBLIC_APP_URL,
+  process.env.NODE_ENV,
+);
 const fieldClass = 'w-full rounded-2xl border border-slate-300 px-4 py-3 text-slate-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100';
 
 export function ContactForm() {
