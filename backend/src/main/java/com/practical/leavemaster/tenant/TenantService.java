@@ -45,6 +45,7 @@ public class TenantService {
     private final TenantLeaveConfigurationProvisionService tenantLeaveConfigurationProvisionService;
     private final JurisdictionRepository jurisdictionRepository;
     private final TenantJurisdictionRepository tenantJurisdictionRepository;
+    private final DemoTenantPolicy demoTenantPolicy;
 
     public List<Tenant> findAll() {
         return tenantRepository.findAll();
@@ -58,6 +59,9 @@ public class TenantService {
     public Tenant save(Tenant tenant) {
         String tenantAdminEmail = validateTenantAdminEmail(tenant.getTenantAdminEmail());
         tenant.setTenantAdminEmail(tenantAdminEmail);
+        if (tenant.getType() == null) {
+            tenant.setType(TenantType.STANDARD);
+        }
         if (tenant.getId() != null && !tenant.getId().isBlank() && tenantRepository.existsById(tenant.getId())) {
             throw new IllegalArgumentException("Tenant already exists: " + tenant.getId());
         }
@@ -99,6 +103,9 @@ public class TenantService {
         existing.setStartDate(updated.getStartDate());
         existing.setEndDate(updated.getEndDate());
         existing.setStatus(updated.getStatus());
+        if (updated.getType() != null) {
+            existing.setType(updated.getType());
+        }
         existing.setLastModified(LocalDateTime.now());
         return tenantRepository.save(existing);
     }
@@ -111,6 +118,7 @@ public class TenantService {
     @Transactional
     public TenantJurisdiction addJurisdictionForUser(String loginName, TenantJurisdictionProvisionRequest request) {
         String tenantId = currentUserTenantId(loginName);
+        demoTenantPolicy.requireStandardTenant(tenantId, "change tenant jurisdictions");
         Tenant tenant = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new TenantNotFoundException(tenantId));
         validateJurisdiction(request.jurisdictionId());
