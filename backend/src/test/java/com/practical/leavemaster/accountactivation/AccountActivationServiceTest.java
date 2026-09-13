@@ -3,6 +3,7 @@ package com.practical.leavemaster.accountactivation;
 import com.practical.leavemaster.email.EmailService;
 import com.practical.leavemaster.staff.Staff;
 import com.practical.leavemaster.staff.StaffRepository;
+import com.practical.leavemaster.tenant.DemoTenantPolicy;
 import com.practical.leavemaster.user.AppUser;
 import com.practical.leavemaster.user.AppUserRepository;
 import com.practical.leavemaster.user.AppUserService;
@@ -29,6 +30,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -43,6 +45,7 @@ class AccountActivationServiceTest {
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private AppUserService appUserService;
     @Mock private EmailService emailService;
+    @Mock private DemoTenantPolicy demoTenantPolicy;
 
     @InjectMocks private AccountActivationService service;
 
@@ -73,6 +76,15 @@ class AccountActivationServiceTest {
         activated.setPassword("encoded-password");
         when(appUserRepository.findByTenantIdAndLoginName(TENANT_A, "alice")).thenReturn(Optional.of(activated));
         assertThat(service.lookup(TENANT_A, "alice")).isEqualTo(AccountActivationService.NextStep.PASSWORD);
+    }
+
+    @Test
+    void shouldSuppressActivationEmailForDemoTenant() {
+        when(demoTenantPolicy.suppressOutboundSideEffects("demo", "account activation email")).thenReturn(true);
+
+        assertThat(service.requestPin(" demo ", "alice")).isFalse();
+
+        verifyNoInteractions(appUserRepository, accountActivationRepository, emailService);
     }
 
     @Test
