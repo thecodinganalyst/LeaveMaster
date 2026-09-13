@@ -3,6 +3,7 @@ package com.practical.leavemaster.accountactivation;
 import com.practical.leavemaster.email.EmailService;
 import com.practical.leavemaster.rbac.AppRole;
 import com.practical.leavemaster.staff.StaffRepository;
+import com.practical.leavemaster.tenant.DemoTenantPolicy;
 import com.practical.leavemaster.user.AppUser;
 import com.practical.leavemaster.user.AppUserRepository;
 import com.practical.leavemaster.user.AppUserService;
@@ -36,6 +37,7 @@ class TenantAdminAccountActivationServiceTest {
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private AppUserService appUserService;
     @Mock private EmailService emailService;
+    @Mock private DemoTenantPolicy demoTenantPolicy;
 
     @InjectMocks private AccountActivationService service;
 
