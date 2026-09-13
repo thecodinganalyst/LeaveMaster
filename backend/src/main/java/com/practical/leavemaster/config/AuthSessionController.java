@@ -3,6 +3,8 @@ package com.practical.leavemaster.config;
 import com.practical.leavemaster.jurisdiction.JurisdictionRepository;
 import com.practical.leavemaster.staff.Staff;
 import com.practical.leavemaster.staff.StaffRepository;
+import com.practical.leavemaster.tenant.DemoTenantPolicy;
+import com.practical.leavemaster.tenant.TenantType;
 import com.practical.leavemaster.user.AppUser;
 import com.practical.leavemaster.user.AppUserNotFoundException;
 import com.practical.leavemaster.user.AppUserRepository;
@@ -40,6 +42,7 @@ public class AuthSessionController {
     private final AppUserService appUserService;
     private final StaffRepository staffRepository;
     private final JurisdictionRepository jurisdictionRepository;
+    private final DemoTenantPolicy demoTenantPolicy;
 
     @GetMapping("/csrf")
     public CsrfResponse csrf(CsrfToken csrfToken) {
@@ -77,6 +80,10 @@ public class AuthSessionController {
         AppUser user = appUserRepository.findById(authentication.getName()).orElse(null);
         if (!isOAuthLinkEligible(user)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "account_not_eligible"));
+        }
+        if (demoTenantPolicy.suppressOutboundSideEffects(user.getTenantId(), "OAuth account linking")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(Map.of("error", "demo_tenant_external_integration_disabled"));
         }
         if (user.getOidcProvider() != null || user.getOidcSubject() != null) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "already_linked"));
@@ -117,6 +124,10 @@ public class AuthSessionController {
             .toList();
 
         boolean platformAdmin = hasActivePlatformAdminRole(user);
+        TenantType tenantType = demoTenantPolicy.tenantType(user.getTenantId());
+        if (tenantType == null) {
+            tenantType = TenantType.STANDARD;
+        }
 
         String country = Optional.ofNullable(user.getStaffId())
             .flatMap(staffRepository::findById)
@@ -133,7 +144,9 @@ public class AuthSessionController {
             country,
             user.isActive(),
             platformAdmin,
-            authorities
+            authorities,
+            tenantType,
+            tenantType == TenantType.DEMO
         );
     }
 
@@ -172,7 +185,9 @@ public class AuthSessionController {
         String country,
         boolean active,
         boolean platformAdmin,
-        List<String> authorities
+        List<String> authorities,
+        TenantType tenantType,
+        boolean demo
     ) {
     }
 }
