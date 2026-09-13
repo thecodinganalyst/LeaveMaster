@@ -4,6 +4,7 @@ import com.practical.leavemaster.email.EmailDeliveryException;
 import com.practical.leavemaster.email.EmailService;
 import com.practical.leavemaster.staff.Staff;
 import com.practical.leavemaster.staff.StaffRepository;
+import com.practical.leavemaster.tenant.DemoTenantPolicy;
 import com.practical.leavemaster.user.AppUser;
 import com.practical.leavemaster.user.AppUserRepository;
 import com.practical.leavemaster.user.AppUserService;
@@ -42,6 +43,7 @@ public class AccountActivationService {
     private final PasswordEncoder passwordEncoder;
     private final AppUserService appUserService;
     private final EmailService emailService;
+    private final DemoTenantPolicy demoTenantPolicy;
 
     @Value("${app.account-activation.pin-expiry-minutes:15}")
     private int pinExpiryMinutes;
@@ -63,8 +65,13 @@ public class AccountActivationService {
 
     @Transactional
     public boolean requestPin(String tenantId, String loginName) {
+        String normalizedTenantId = normalizeTenantId(tenantId);
+        if (demoTenantPolicy.suppressOutboundSideEffects(normalizedTenantId, "account activation email")) {
+            return false;
+        }
+
         Optional<ActivationContext> context = eligibleContext(
-                normalizeTenantId(tenantId), normalizeLoginName(loginName));
+                normalizedTenantId, normalizeLoginName(loginName));
         if (context.isEmpty()) {
             log.info("Account activation PIN request ignored for an ineligible or unknown account");
             return false;

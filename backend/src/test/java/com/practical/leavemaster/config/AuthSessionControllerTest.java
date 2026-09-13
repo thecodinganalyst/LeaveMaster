@@ -5,6 +5,8 @@ import com.practical.leavemaster.jurisdiction.JurisdictionRepository;
 import com.practical.leavemaster.rbac.AppRole;
 import com.practical.leavemaster.staff.Staff;
 import com.practical.leavemaster.staff.StaffRepository;
+import com.practical.leavemaster.tenant.DemoTenantPolicy;
+import com.practical.leavemaster.tenant.TenantType;
 import com.practical.leavemaster.user.AppUser;
 import com.practical.leavemaster.user.AppUserRepository;
 import com.practical.leavemaster.user.AppUserService;
@@ -29,6 +31,7 @@ class AuthSessionControllerTest {
     private AppUserService appUserService;
     private StaffRepository staffRepository;
     private JurisdictionRepository jurisdictionRepository;
+    private DemoTenantPolicy demoTenantPolicy;
     private AuthSessionController controller;
 
     @BeforeEach
@@ -37,7 +40,8 @@ class AuthSessionControllerTest {
         appUserService = mock(AppUserService.class);
         staffRepository = mock(StaffRepository.class);
         jurisdictionRepository = mock(JurisdictionRepository.class);
-        controller = new AuthSessionController(appUserRepository, appUserService, staffRepository, jurisdictionRepository);
+        demoTenantPolicy = mock(DemoTenantPolicy.class);
+        controller = new AuthSessionController(appUserRepository, appUserService, staffRepository, jurisdictionRepository, demoTenantPolicy);
     }
 
     @Test
@@ -68,6 +72,7 @@ class AuthSessionControllerTest {
         when(staffRepository.findById("S001")).thenReturn(Optional.of(staff));
         when(jurisdictionRepository.findById("SG")).thenReturn(Optional.of(
             Jurisdiction.builder().id("SG").code("SG").name("Singapore").countryCode("SG").active(true).build()));
+        when(demoTenantPolicy.tenantType("tenant-1")).thenReturn(TenantType.STANDARD);
 
         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
             "admin@example.com",
@@ -89,6 +94,29 @@ class AuthSessionControllerTest {
         assertThat(response.getBody().active()).isTrue();
         assertThat(response.getBody().platformAdmin()).isFalse();
         assertThat(response.getBody().authorities()).containsExactly("STAFF_READ", "STAFF_WRITE");
+        assertThat(response.getBody().tenantType()).isEqualTo(TenantType.STANDARD);
+        assertThat(response.getBody().demo()).isFalse();
+    }
+
+    @Test
+    void shouldExposeDemoTenantMetadata() {
+        AppUser user = AppUser.builder()
+            .loginName("demo@example.com")
+            .tenantId("demo-tenant")
+            .active(true)
+            .build();
+        when(appUserRepository.findById("demo@example.com")).thenReturn(Optional.of(user));
+        when(demoTenantPolicy.tenantType("demo-tenant")).thenReturn(TenantType.DEMO);
+
+        UsernamePasswordAuthenticationToken authentication =
+            new UsernamePasswordAuthenticationToken("demo@example.com", "n/a", List.of());
+
+        var response = controller.currentUser(authentication);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().tenantType()).isEqualTo(TenantType.DEMO);
+        assertThat(response.getBody().demo()).isTrue();
     }
 
     @Test
@@ -114,6 +142,7 @@ class AuthSessionControllerTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().country()).isNull();
+        assertThat(response.getBody().tenantType()).isEqualTo(TenantType.STANDARD);
     }
 
     @Test
@@ -138,6 +167,7 @@ class AuthSessionControllerTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().platformAdmin()).isTrue();
+        assertThat(response.getBody().demo()).isFalse();
     }
 
     @Test

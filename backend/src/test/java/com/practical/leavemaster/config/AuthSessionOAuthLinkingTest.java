@@ -3,6 +3,7 @@ package com.practical.leavemaster.config;
 import com.practical.leavemaster.jurisdiction.JurisdictionRepository;
 import com.practical.leavemaster.rbac.AppRole;
 import com.practical.leavemaster.staff.StaffRepository;
+import com.practical.leavemaster.tenant.DemoTenantPolicy;
 import com.practical.leavemaster.user.AppUser;
 import com.practical.leavemaster.user.AppUserRepository;
 import com.practical.leavemaster.user.AppUserService;
@@ -23,17 +24,20 @@ import static org.mockito.Mockito.when;
 class AuthSessionOAuthLinkingTest {
 
     private AppUserRepository appUserRepository;
+    private DemoTenantPolicy demoTenantPolicy;
     private AuthSessionController controller;
     private UsernamePasswordAuthenticationToken authentication;
 
     @BeforeEach
     void setUp() {
         appUserRepository = mock(AppUserRepository.class);
+        demoTenantPolicy = mock(DemoTenantPolicy.class);
         controller = new AuthSessionController(
                 appUserRepository,
                 mock(AppUserService.class),
                 mock(StaffRepository.class),
-                mock(JurisdictionRepository.class));
+                mock(JurisdictionRepository.class),
+                demoTenantPolicy);
         authentication = new UsernamePasswordAuthenticationToken("user-1", "n/a", List.of());
     }
 
@@ -106,6 +110,21 @@ class AuthSessionOAuthLinkingTest {
         assertThat(OAuthLinkingContext.hasContext(session)).isTrue();
         assertThat(OAuthLinkingContext.consume(session, "github"))
                 .get().extracting(OAuthLinkingContext.LinkRequest::userId).isEqualTo("user-1");
+    }
+
+    @Test
+    void shouldRejectOAuthLinkForDemoTenant() {
+        AppUser user = tenantUser();
+        user.setTenantId("demo-tenant");
+        when(appUserRepository.findById("user-1")).thenReturn(Optional.of(user));
+        when(demoTenantPolicy.suppressOutboundSideEffects("demo-tenant", "OAuth account linking")).thenReturn(true);
+        MockHttpSession session = new MockHttpSession();
+
+        var response = controller.startOAuthLink("github", authentication, session);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(response.getBody()).isEqualTo(java.util.Map.of("error", "demo_tenant_external_integration_disabled"));
+        assertThat(OAuthLinkingContext.hasContext(session)).isFalse();
     }
 
     @Test

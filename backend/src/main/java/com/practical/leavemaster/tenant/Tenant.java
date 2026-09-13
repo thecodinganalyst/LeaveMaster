@@ -52,6 +52,10 @@ public class Tenant {
     @Column(nullable = false)
     private TenantStatus status;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tenant_type", nullable = false, length = 32)
+    private TenantType type;
+
     @Column(name = "last_modified", nullable = false)
     private LocalDateTime lastModified;
 
@@ -73,6 +77,9 @@ public class Tenant {
     void refreshLastModified() {
         if (AuthenticationRealm.isPlatformRealm(id)) {
             throw new IllegalArgumentException(AuthenticationRealm.PLATFORM_REALM_ID + " is reserved for platform authentication");
+        }
+        if (type == null) {
+            type = TenantType.STANDARD;
         }
         lastModified = LocalDateTime.now();
     }

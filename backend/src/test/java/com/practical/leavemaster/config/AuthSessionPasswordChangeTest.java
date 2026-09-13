@@ -2,6 +2,7 @@ package com.practical.leavemaster.config;
 
 import com.practical.leavemaster.jurisdiction.JurisdictionRepository;
 import com.practical.leavemaster.staff.StaffRepository;
+import com.practical.leavemaster.tenant.DemoTenantPolicy;
 import com.practical.leavemaster.user.AppUserRepository;
 import com.practical.leavemaster.user.AppUserService;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,7 +28,8 @@ class AuthSessionPasswordChangeTest {
             mock(AppUserRepository.class),
             appUserService,
             mock(StaffRepository.class),
-            mock(JurisdictionRepository.class)
+            mock(JurisdictionRepository.class),
+            mock(DemoTenantPolicy.class)
         );
         authentication = new UsernamePasswordAuthenticationToken("alice", "n/a", List.of());
     }
