@@ -4,6 +4,7 @@ import com.practical.leavemaster.email.EmailDeliveryException;
 import com.practical.leavemaster.email.EmailService;
 import com.practical.leavemaster.staff.Staff;
 import com.practical.leavemaster.staff.StaffRepository;
+import com.practical.leavemaster.tenant.DemoTenantPolicy;
 import com.practical.leavemaster.user.AppUser;
 import com.practical.leavemaster.user.AppUserRepository;
 import com.practical.leavemaster.user.AuthenticationRealm;
@@ -35,6 +36,7 @@ public class PasswordResetService {
     private final PasswordResetRepository passwordResetRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final DemoTenantPolicy demoTenantPolicy;
 
     @Value("${app.password-reset.pin-expiry-minutes:${app.account-activation.pin-expiry-minutes:15}}")
     private int pinExpiryMinutes;
@@ -50,7 +52,12 @@ public class PasswordResetService {
 
     @Transactional
     public boolean requestPin(String tenantId, String loginName) {
-        Optional<ResetContext> context = eligibleContext(normalizeTenantId(tenantId), normalizeLoginName(loginName));
+        String normalizedTenantId = normalizeTenantId(tenantId);
+        if (demoTenantPolicy.suppressOutboundSideEffects(normalizedTenantId, "password reset email")) {
+            return false;
+        }
+
+        Optional<ResetContext> context = eligibleContext(normalizedTenantId, normalizeLoginName(loginName));
         if (context.isEmpty()) {
             log.info("Password reset PIN request ignored for an ineligible or unknown account");
             return false;
