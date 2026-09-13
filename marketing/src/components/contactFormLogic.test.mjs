@@ -1,6 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { submissionState, submitContactEnquiry, validateContactPayload } from './contactFormLogic.mjs';
+import {
+  resolveContactApiUrl,
+  submissionState,
+  submitContactEnquiry,
+  validateContactPayload,
+} from './contactFormLogic.mjs';
 
 const validPayload = {
   name: 'Jane Doe',
@@ -27,6 +32,13 @@ test('tracks submission states', () => {
   assert.equal(submissionState('submitting', 'error'), 'error');
 });
 
+test('resolves production contact API without falling back to localhost', () => {
+  assert.equal(resolveContactApiUrl('https://api.example.com/', 'https://app.leavemaestro.com', 'production'), 'https://api.example.com');
+  assert.equal(resolveContactApiUrl(undefined, 'https://app.leavemaestro.com/', 'production'), 'https://app.leavemaestro.com');
+  assert.equal(resolveContactApiUrl(undefined, undefined, 'production'), 'https://app.leavemaestro.com');
+  assert.equal(resolveContactApiUrl(undefined, undefined, 'development'), 'http://localhost:8080');
+});
+
 test('submits JSON to the public contact endpoint without company size', async () => {
   let request;
   const fakeFetch = async (url, options) => {
@@ -34,8 +46,8 @@ test('submits JSON to the public contact endpoint without company size', async (
     return { ok: true, json: async () => ({ message: 'received' }) };
   };
 
-  const result = await submitContactEnquiry(validPayload, 'https://api.leavemaestro.com/', fakeFetch);
-  assert.equal(request.url, 'https://api.leavemaestro.com/api/public/contact');
+  const result = await submitContactEnquiry(validPayload, 'https://app.leavemaestro.com/', fakeFetch);
+  assert.equal(request.url, 'https://app.leavemaestro.com/api/public/contact');
   assert.equal(request.options.method, 'POST');
   assert.deepEqual(JSON.parse(request.options.body), validPayload);
   assert.equal(Object.hasOwn(JSON.parse(request.options.body), 'companySize'), false);
@@ -49,7 +61,7 @@ test('surfaces safe server errors', async () => {
   });
 
   await assert.rejects(
-    () => submitContactEnquiry(validPayload, 'https://api.leavemaestro.com', fakeFetch),
+    () => submitContactEnquiry(validPayload, 'https://app.leavemaestro.com', fakeFetch),
     /Too many submissions/,
   );
 });
@@ -61,7 +73,7 @@ test('maps browser network failures to a friendly message', async () => {
     };
 
     await assert.rejects(
-      () => submitContactEnquiry(validPayload, 'https://api.leavemaestro.com', fakeFetch),
+      () => submitContactEnquiry(validPayload, 'https://app.leavemaestro.com', fakeFetch),
       (error) => {
         assert.equal(error.message, 'Unable to reach LeaveMaestro. Please try again in a moment.');
         assert.equal(error.message.includes(browserMessage), false);
