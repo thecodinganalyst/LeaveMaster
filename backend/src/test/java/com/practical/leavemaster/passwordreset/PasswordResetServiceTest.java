@@ -4,6 +4,7 @@ import com.practical.leavemaster.email.EmailDeliveryException;
 import com.practical.leavemaster.email.EmailService;
 import com.practical.leavemaster.staff.Staff;
 import com.practical.leavemaster.staff.StaffRepository;
+import com.practical.leavemaster.tenant.DemoTenantPolicy;
 import com.practical.leavemaster.user.AppUser;
 import com.practical.leavemaster.user.AppUserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,6 +31,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -43,6 +45,7 @@ class PasswordResetServiceTest {
     @Mock private PasswordResetRepository passwordResetRepository;
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private EmailService emailService;
+    @Mock private DemoTenantPolicy demoTenantPolicy;
 
     @InjectMocks private PasswordResetService service;
 
@@ -52,6 +55,15 @@ class PasswordResetServiceTest {
         ReflectionTestUtils.setField(service, "resendCooldownSeconds", 60L);
         ReflectionTestUtils.setField(service, "maxAttempts", 5);
         ReflectionTestUtils.setField(service, "maxRequestsPerHour", 5);
+    }
+
+    @Test
+    void demoTenantSuppressesPasswordResetEmailBeforeGeneratingPin() {
+        when(demoTenantPolicy.suppressOutboundSideEffects("Demo", "password reset email")).thenReturn(true);
+
+        assertThat(service.requestPin(" Demo ", "alice")).isFalse();
+
+        verifyNoInteractions(appUserRepository, passwordResetRepository, emailService);
     }
 
     @Test
