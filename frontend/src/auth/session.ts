@@ -1,5 +1,7 @@
 import { apiFetch } from '../api/http.ts';
 
+export type TenantType = 'STANDARD' | 'DEMO';
+
 export interface CurrentUser {
   loginName: string;
   staffId: string | null;
@@ -8,6 +10,8 @@ export interface CurrentUser {
   active: boolean;
   platformAdmin?: boolean;
   authorities: string[];
+  tenantType?: TenantType;
+  demo?: boolean;
 }
 
 let cachedUser: CurrentUser | undefined;
