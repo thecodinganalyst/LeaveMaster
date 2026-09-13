@@ -60,7 +60,7 @@ variable "public_app_url" {
 }
 
 variable "allowed_frontend_origins" {
-  description = "Exact browser origins allowed by backend CORS. Empty defaults to the public app URL only."
+  description = "Additional exact browser origins allowed by backend CORS. Canonical app, Firebase Hosting aliases, and configured marketing origins are merged automatically."
   type        = list(string)
   default     = []
 
@@ -70,6 +70,20 @@ variable "allowed_frontend_origins" {
       can(regex("^https://[^/]+$", origin)) && !strcontains(origin, "*")
     ])
     error_message = "allowed_frontend_origins must contain exact HTTPS origins only; wildcards are not allowed."
+  }
+}
+
+variable "marketing_site_origins" {
+  description = "Exact production marketing-site browser origins that may submit public API requests such as the contact form."
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for origin in var.marketing_site_origins :
+      can(regex("^https://[^/]+$", origin)) && !strcontains(origin, "*")
+    ])
+    error_message = "marketing_site_origins must contain exact HTTPS origins only; wildcards are not allowed."
   }
 }
 
