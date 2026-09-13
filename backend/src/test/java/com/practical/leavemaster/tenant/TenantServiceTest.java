@@ -51,6 +51,7 @@ class TenantServiceTest {
     @Mock private TenantLeaveConfigurationProvisionService tenantLeaveConfigurationProvisionService;
     @Mock private JurisdictionRepository jurisdictionRepository;
     @Mock private TenantJurisdictionRepository tenantJurisdictionRepository;
+    @Mock private DemoTenantPolicy demoTenantPolicy;
 
     @InjectMocks private TenantService tenantService;
 
@@ -85,9 +86,24 @@ class TenantServiceTest {
         assertThat(result.getId()).isEqualTo("t1");
         assertThat(result.getLastModified()).isNotNull();
         assertThat(result.getTenantAdminEmail()).isEqualTo(ADMIN_EMAIL);
+        assertThat(result.getType()).isEqualTo(TenantType.STANDARD);
         verify(tenantJurisdictionRepository).save(any(TenantJurisdiction.class));
         verify(tenantLeaveConfigurationProvisionService).provision(result);
         verify(tenantAdminProvisionService).provision("t1", "Tenant 1", ADMIN_EMAIL);
+    }
+
+    @Test
+    void shouldPreserveExplicitDemoTenantType() {
+        Tenant tenant = Tenant.builder().id("demo").name("Demo").tenantAdminEmail(ADMIN_EMAIL)
+                .jurisdictionId("SG").startDate(LocalDate.now()).status(TenantStatus.ACTIVE).type(TenantType.DEMO).build();
+        when(jurisdictionRepository.existsById("SG")).thenReturn(true);
+        when(tenantRepository.save(any(Tenant.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(tenantJurisdictionRepository.findById("demo:SG")).thenReturn(Optional.empty());
+        when(tenantJurisdictionRepository.save(any(TenantJurisdiction.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Tenant result = tenantService.save(tenant);
+
+        assertThat(result.getType()).isEqualTo(TenantType.DEMO);
     }
 
     @Test
@@ -170,9 +186,23 @@ class TenantServiceTest {
         TenantJurisdiction result = tenantService.addJurisdictionForUser("ACME_Admin", request);
         assertThat(result.getTenantId()).isEqualTo("ACME");
         assertThat(result.getJurisdictionId()).isEqualTo("MY");
+        verify(demoTenantPolicy).requireStandardTenant("ACME", "change tenant jurisdictions");
         verify(tenantLeaveConfigurationProvisionService).provision(eq(tenant), argThat(normalized ->
                 normalized.jurisdictionId().equals("MY") && normalized.shouldIncludePublicHolidays()
                         && !normalized.shouldIncludeLeaveConfiguration() && normalized.calendarStart() != null && normalized.calendarEnd() != null));
+    }
+
+    @Test
+    void shouldBlockDemoTenantFromAddingJurisdiction() {
+        AppUser user = AppUser.builder().loginName("Demo_Admin").tenantId("Demo").build();
+        TenantJurisdictionProvisionRequest request = new TenantJurisdictionProvisionRequest("MY", true, false, null, null);
+        when(appUserRepository.findById("Demo_Admin")).thenReturn(Optional.of(user));
+        doThrow(new DemoTenantOperationException("change tenant jurisdictions"))
+                .when(demoTenantPolicy).requireStandardTenant("Demo", "change tenant jurisdictions");
+
+        assertThatThrownBy(() -> tenantService.addJurisdictionForUser("Demo_Admin", request))
+                .isInstanceOf(DemoTenantOperationException.class);
+        verifyNoInteractions(tenantLeaveConfigurationProvisionService);
     }
 
     @Test
@@ -186,7 +216,7 @@ class TenantServiceTest {
     @Test
     void shouldUpdateTenant() {
         Tenant existing = Tenant.builder().id("t1").name("Old Name").jurisdictionId("SG").startDate(LocalDate.of(2024, 1, 1)).status(TenantStatus.ACTIVE).build();
-        Tenant updated = Tenant.builder().id("t1").name("New Name").jurisdictionId("AU").startDate(LocalDate.of(2024, 1, 1)).endDate(LocalDate.of(2025, 12, 31)).status(TenantStatus.DORMANT).build();
+        Tenant updated = Tenant.builder().id("t1").name("New Name").jurisdictionId("AU").startDate(LocalDate.of(2024, 1, 1)).endDate(LocalDate.of(2025, 12, 31)).status(TenantStatus.DORMANT).type(TenantType.DEMO).build();
         when(tenantRepository.findById("t1")).thenReturn(Optional.of(existing));
         when(tenantRepository.save(existing)).thenReturn(existing);
         Tenant result = tenantService.update("t1", updated);
@@ -194,6 +224,7 @@ class TenantServiceTest {
         assertThat(result.getStatus()).isEqualTo(TenantStatus.DORMANT);
         assertThat(result.getEndDate()).isEqualTo(LocalDate.of(2025, 12, 31));
         assertThat(result.getJurisdictionId()).isEqualTo("SG");
+        assertThat(result.getType()).isEqualTo(TenantType.DEMO);
     }
 
     @Test
