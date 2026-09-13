@@ -9,6 +9,11 @@ const tenantStatus = [
   { label: 'Terminated', value: 'TERMINATED' },
 ];
 
+const tenantTypes = [
+  { label: 'Standard', value: 'STANDARD' },
+  { label: 'Demo / sandbox', value: 'DEMO' },
+];
+
 export const TenantOnboardingFormFields = () => (
   <>
     <Form.Item name="id" label="ID" rules={[{ required: true, message: 'ID is required' }]}>
@@ -17,6 +22,12 @@ export const TenantOnboardingFormFields = () => (
     <Form.Item name="name" label="Name" rules={[{ required: true, message: 'Name is required' }]}>
       <Input />
     </Form.Item>
+    <Form.Item name="type" label="Tenant type" initialValue="STANDARD" rules={[{ required: true, message: 'Tenant type is required' }]}>
+      <Select options={tenantTypes} />
+    </Form.Item>
+    <Typography.Paragraph type="secondary">
+      Demo tenants are isolated sandboxes. Outbound emails and external account linking are suppressed and selected tenant-structure changes are restricted.
+    </Typography.Paragraph>
     <Form.Item
       name="tenantAdminEmail"
       label="Tenant Admin Email"
@@ -28,7 +39,7 @@ export const TenantOnboardingFormFields = () => (
       <Input type="email" autoComplete="email" />
     </Form.Item>
     <Typography.Paragraph type="secondary">
-      The tenant administrator will use this email to receive a first-time login PIN and set a permanent password.
+      The tenant administrator will use this email to receive a first-time login PIN and set a permanent password. Demo tenants suppress this outbound email.
     </Typography.Paragraph>
     <Form.Item name="startDate" label="Tenant start date" rules={[{ required: true, message: 'Start date is required' }]}>
       <Input type="date" allowClear />
