@@ -54,8 +54,7 @@ public class Tenant {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "tenant_type", nullable = false, length = 32)
-    @Builder.Default
-    private TenantType type = TenantType.STANDARD;
+    private TenantType type;
 
     @Column(name = "last_modified", nullable = false)
     private LocalDateTime lastModified;
