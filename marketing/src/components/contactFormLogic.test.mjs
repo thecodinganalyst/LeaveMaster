@@ -53,3 +53,20 @@ test('surfaces safe server errors', async () => {
     /Too many submissions/,
   );
 });
+
+test('maps browser network failures to a friendly message', async () => {
+  for (const browserMessage of ['Load failed', 'Failed to fetch']) {
+    const fakeFetch = async () => {
+      throw new TypeError(browserMessage);
+    };
+
+    await assert.rejects(
+      () => submitContactEnquiry(validPayload, 'https://api.leavemaestro.com', fakeFetch),
+      (error) => {
+        assert.equal(error.message, 'Unable to reach LeaveMaestro. Please try again in a moment.');
+        assert.equal(error.message.includes(browserMessage), false);
+        return true;
+      },
+    );
+  }
+});
