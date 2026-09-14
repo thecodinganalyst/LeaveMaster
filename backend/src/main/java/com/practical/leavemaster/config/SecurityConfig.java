@@ -69,6 +69,7 @@ public class SecurityConfig {
                     "/api/password-reset/**",
                     "/auth/csrf",
                     "/auth/login",
+                    "/auth/demo-login",
                     "/oauth2/**",
                     "/login/oauth2/**",
                     "/swagger-ui/**",
