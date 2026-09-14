@@ -40,3 +40,10 @@ app:
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:}
   storage:
     gcs-bucket: ${GCS_ATTACHMENT_BUCKET}
+
+demo:
+  tenant:
+    id: ${DEMO_TENANT_ID:DEMO}
+    bootstrap-enabled: ${DEMO_TENANT_BOOTSTRAP_ENABLED:true}
+    reset-enabled: ${DEMO_TENANT_RESET_ENABLED:true}
+    reset-cron: "${DEMO_TENANT_RESET_CRON:0 0 3 * * *}"
