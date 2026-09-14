@@ -99,15 +99,20 @@ describe('authProvider', () => {
       active: true,
       platformAdmin: false,
       authorities: ['LEAVE_APPLICATION_APPROVE'],
+      tenantType: 'DEMO',
+      demo: true,
     });
     await expect(authProvider.getIdentity?.()).resolves.toEqual({
       id: 'manager',
       name: 'manager',
+      loginName: 'manager',
       staffId: 'S2',
       tenantId: 'T2',
       country: 'Singapore',
       platformAdmin: false,
       authorities: ['LEAVE_APPLICATION_APPROVE'],
+      tenantType: 'DEMO',
+      demo: true,
     });
   });
 

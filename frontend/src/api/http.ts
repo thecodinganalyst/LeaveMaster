@@ -17,6 +17,8 @@ interface CsrfResponse {
   parameterName: string;
 }
 
+export type DemoPersona = 'employee' | 'manager' | 'hr';
+
 let csrfToken: CsrfResponse | undefined;
 
 const buildUrl = (path: string) => `${env.apiUrl}${path.startsWith('/') ? path : `/${path}`}`;
@@ -134,6 +136,15 @@ export const loginWithSession = async (tenantId: string, loginName: string, pass
     throw new ApiError('Invalid tenant ID, login name, or password.', response.status);
   }
 
+  clearCsrfToken();
+  await getCsrfToken(true);
+};
+
+export const loginWithDemoPersona = async (persona: DemoPersona) => {
+  await apiFetch('/auth/demo-login', {
+    method: 'POST',
+    body: JSON.stringify({ persona }),
+  });
   clearCsrfToken();
   await getCsrfToken(true);
 };

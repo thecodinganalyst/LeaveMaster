@@ -8,6 +8,7 @@ import { RouteErrorBoundary } from '../components/common/RouteErrorBoundary.tsx'
 import { AppLayout } from '../components/layout/AppLayout.tsx';
 import { AccountSecurityPage } from '../pages/auth/AccountSecurityPage.tsx';
 import { ChangePasswordPage } from '../pages/auth/ChangePasswordPage.tsx';
+import { DemoEntryPage } from '../pages/auth/DemoEntryPage.tsx';
 import { LoginPage } from '../pages/auth/LoginPage.tsx';
 import { ContactEnquiriesPage } from '../pages/contact/ContactEnquiriesPage.tsx';
 import { DashboardPage } from '../pages/dashboard/DashboardPage.tsx';
@@ -84,6 +85,7 @@ export const AppRoutes = () => {
         }
       >
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/demo" element={<DemoEntryPage />} />
       </Route>
     </Routes>
   );

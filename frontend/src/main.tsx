@@ -9,6 +9,7 @@ import routerBindings, { DocumentTitleHandler, UnsavedChangesNotifier } from '@r
 
 import { AppRoutes } from './app/AppRoutes.tsx';
 import { ColdStartGate } from './components/ColdStartGate.tsx';
+import { DemoStatusBar } from './components/DemoStatusBar.tsx';
 import { accessControlProvider } from './providers/accessControlProvider.ts';
 import { authProvider } from './providers/authProvider.ts';
 import { leaveMaestroDataProvider } from './providers/dataProvider.ts';
@@ -39,6 +40,7 @@ createRoot(document.getElementById('root')!).render(
                   projectId: 'LeaveMaestro',
                 }}
               >
+                <DemoStatusBar />
                 <AppRoutes />
                 <DocumentTitleHandler handler={() => 'LeaveMaestro'} />
                 <UnsavedChangesNotifier />

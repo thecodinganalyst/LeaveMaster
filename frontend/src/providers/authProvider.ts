@@ -74,11 +74,14 @@ export const authProvider: AuthBindings = {
     return {
       id: user.loginName,
       name: user.loginName,
+      loginName: user.loginName,
       staffId: user.staffId,
       tenantId: user.tenantId,
       country: user.country,
       platformAdmin: user.platformAdmin,
       authorities: user.authorities,
+      tenantType: user.tenantType,
+      demo: user.demo,
     };
   },
 
