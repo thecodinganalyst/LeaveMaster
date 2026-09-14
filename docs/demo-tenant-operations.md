@@ -17,6 +17,17 @@ The baseline includes annual leave entitlements, reporting/approval relationship
 
 The demo password defaults to `Demo123!`. Override it in deployed environments with `demo.tenant.password` / `DEMO_TENANT_PASSWORD` configuration as appropriate for the deployment process.
 
+## Production startup bootstrap
+
+Cloud Run enables `demo.tenant.bootstrap-enabled` by default. When the application becomes ready, the bootstrap checks the configured demo tenant before public persona login is available:
+
+- if the configured tenant does not exist, the baseline is created;
+- if it exists as `DEMO` and all public persona accounts are present, no data is changed;
+- if it exists as `DEMO` but a required public persona account is missing, the demo baseline is rebuilt;
+- if the configured tenant ID exists as `STANDARD`, bootstrap refuses to modify it and application startup fails rather than deleting customer data.
+
+Bootstrap is disabled by default outside the Cloud Run profile. It can be controlled with `demo.tenant.bootstrap-enabled` / `DEMO_TENANT_BOOTSTRAP_ENABLED`.
+
 ## Manual reset
 
 A platform operator with `TENANT_WRITE` permission can reset the configured public demo tenant through:
@@ -33,16 +44,15 @@ If the configured tenant ID already exists as `STANDARD`, reset fails with `403 
 
 ## Scheduled reset
 
-Scheduled reset is disabled by default. Enable it in the backend deployment with:
+Scheduled reset is disabled by default for non-Cloud Run profiles. The Cloud Run profile enables it so the public demo returns to a predictable baseline automatically.
 
 ```properties
 demo.tenant.reset-enabled=true
 demo.tenant.id=DEMO
 demo.tenant.reset-cron=0 0 3 * * *
-demo.tenant.password=Demo123!
 ```
 
-The default cron runs daily at 03:00 in the application JVM timezone. Cloud Run deployments should explicitly set the desired cron and timezone assumptions in deployment configuration if a different operational window is required.
+The default cron runs daily at 03:00 in the application JVM timezone. Override `DEMO_TENANT_RESET_CRON` when a different operational window is required.
 
 ## Local execution
 
@@ -55,13 +65,14 @@ For automated local testing, run:
 
 ```bash
 cd backend
-./gradlew test --tests com.practical.leavemaster.tenant.DemoTenantSeedServiceTest
+./gradlew test --tests com.practical.leavemaster.tenant.DemoTenantSeedServiceTest --tests com.practical.leavemaster.tenant.DemoTenantBootstrapServiceTest
 ```
 
 ## Safety properties
 
-- Reset checks the current tenant classification before deleting any existing tenant.
+- Bootstrap and reset check the current tenant classification before deleting any existing tenant.
 - Existing `STANDARD` tenants are rejected before destructive work starts.
 - Only the configured demo tenant may be created when absent; the existing-tenant reset path cannot create arbitrary tenant IDs.
+- Startup bootstrap leaves a complete existing DEMO tenant untouched, so a deploy does not unnecessarily erase an active demo session.
 - Re-provisioning goes through the normal tenant provisioning path, so Singapore leave types, policies and calendars stay aligned with production defaults.
 - DEMO tenant outbound-side-effect suppression introduced for the demo sandbox remains active during normal use.
