@@ -1,8 +1,10 @@
 package com.practical.leavemaster.tenant;
 
+import com.practical.leavemaster.user.AppUser;
 import com.practical.leavemaster.user.AppUserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -20,9 +22,13 @@ public class DemoTenantBootstrapService {
     private final TenantRepository tenantRepository;
     private final AppUserRepository appUserRepository;
     private final DemoTenantSeedService demoTenantSeedService;
+    private final PasswordEncoder passwordEncoder;
 
     @Value("${demo.tenant.id:DEMO}")
     private String configuredTenantId;
+
+    @Value("${demo.tenant.password:Demo123!}")
+    private String demoPassword;
 
     public DemoBootstrapResult ensureConfiguredDemoTenantReady() {
         String tenantId = normalizeTenantId(configuredTenantId);
@@ -37,14 +43,22 @@ public class DemoTenantBootstrapService {
             throw new DemoTenantOperationException("bootstrap non-DEMO tenant " + tenantId);
         }
 
-        boolean missingRequiredPersona = REQUIRED_PERSONA_LOGINS.stream()
-                .anyMatch(loginName -> !appUserRepository.existsByTenantIdAndLoginName(tenantId, loginName));
-        if (missingRequiredPersona) {
+        boolean unusableRequiredPersona = REQUIRED_PERSONA_LOGINS.stream()
+                .anyMatch(loginName -> !isPersonaLoginUsable(tenantId, loginName));
+        if (unusableRequiredPersona) {
             DemoTenantSeedService.DemoSeedResult seedResult = demoTenantSeedService.resetExistingDemoTenant(tenantId);
             return new DemoBootstrapResult(seedResult.tenantId(), DemoBootstrapAction.REPAIRED);
         }
 
         return new DemoBootstrapResult(tenantId, DemoBootstrapAction.ALREADY_READY);
+    }
+
+    private boolean isPersonaLoginUsable(String tenantId, String loginName) {
+        AppUser user = appUserRepository.findByTenantIdAndLoginName(tenantId, loginName).orElse(null);
+        return user != null
+                && user.isActive()
+                && user.getPassword() != null
+                && passwordEncoder.matches(demoPassword, user.getPassword());
     }
 
     private String normalizeTenantId(String tenantId) {
