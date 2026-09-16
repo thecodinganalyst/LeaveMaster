@@ -1,11 +1,14 @@
 package com.practical.leavemaster.tenant;
 
+import com.practical.leavemaster.leaveapplication.LeaveApplication;
 import com.practical.leavemaster.leaveapplication.LeaveApplicationRepository;
+import com.practical.leavemaster.leaveapprover.LeaveApprover;
 import com.practical.leavemaster.leaveapprover.LeaveApproverRepository;
 import com.practical.leavemaster.leavetype.LeaveType;
 import com.practical.leavemaster.leavetype.LeaveTypeRepository;
 import com.practical.leavemaster.rbac.AppRole;
 import com.practical.leavemaster.rbac.AppRoleRepository;
+import com.practical.leavemaster.staff.Staff;
 import com.practical.leavemaster.staff.StaffRepository;
 import com.practical.leavemaster.user.AppUserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,11 +21,16 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -41,6 +49,7 @@ class DemoTenantSeedServiceTest {
     @Mock private PasswordEncoder passwordEncoder;
 
     private DemoTenantSeedService service;
+    private List<Staff> managedStaffCopies;
 
     @BeforeEach
     void setUp() {
@@ -56,6 +65,7 @@ class DemoTenantSeedServiceTest {
                 passwordEncoder);
         ReflectionTestUtils.setField(service, "configuredTenantId", "DEMO");
         ReflectionTestUtils.setField(service, "demoPassword", "Demo123!");
+        managedStaffCopies = List.of();
     }
 
     @Test
@@ -76,6 +86,7 @@ class DemoTenantSeedServiceTest {
                         .statutory(true)
                         .build()));
         when(passwordEncoder.encode("Demo123!")).thenReturn("encoded-demo-password");
+        stubStaffRepositoryMergeSemantics();
 
         DemoTenantSeedService.DemoSeedResult result = service.resetConfiguredDemoTenant();
 
@@ -88,9 +99,9 @@ class DemoTenantSeedServiceTest {
         assertThat(result.userCount()).isEqualTo(4);
         assertThat(result.leaveApplicationCount()).isEqualTo(4);
         verify(staffRepository).saveAll(any());
-        verify(leaveApproverRepository).saveAll(any());
+        verify(leaveApproverRepository).saveAll(argThat(this::referencesManagedStaff));
         verify(appUserRepository).saveAll(any());
-        verify(leaveApplicationRepository).saveAll(any());
+        verify(leaveApplicationRepository).saveAll(argThat(this::applicationsReferenceManagedStaff));
     }
 
     @Test
@@ -103,6 +114,7 @@ class DemoTenantSeedServiceTest {
         when(leaveTypeRepository.findAllByTenantId("DEMO")).thenReturn(List.of(
                 LeaveType.builder().id("annual").sourceJurisdictionLeaveTypeId("SG:ANNUAL_LEAVE").build()));
         when(passwordEncoder.encode(any())).thenReturn("encoded");
+        stubStaffRepositoryMergeSemantics();
 
         DemoTenantSeedService.DemoSeedResult result = service.resetExistingDemoTenant("DEMO");
 
@@ -133,6 +145,38 @@ class DemoTenantSeedServiceTest {
                 .isInstanceOf(TenantNotFoundException.class);
 
         verify(tenantService, never()).save(any());
+    }
+
+    private void stubStaffRepositoryMergeSemantics() {
+        when(staffRepository.saveAll(any())).thenAnswer(invocation -> {
+            List<Staff> submittedStaff = invocation.getArgument(0);
+            managedStaffCopies = submittedStaff.stream()
+                    .map(Staff::toBuilder)
+                    .map(Staff.StaffBuilder::build)
+                    .toList();
+            return managedStaffCopies;
+        });
+    }
+
+    private boolean referencesManagedStaff(Iterable<LeaveApprover> approvers) {
+        Map<String, Staff> managedById = managedStaffCopies.stream()
+                .collect(Collectors.toMap(Staff::getId, Function.identity()));
+        StreamSupport.stream(approvers.spliterator(), false).forEach(approver -> {
+            assertThat(approver.getStaff()).isSameAs(managedById.get(approver.getStaff().getId()));
+            assertThat(approver.getApprover()).isSameAs(managedById.get(approver.getApprover().getId()));
+            assertThat(approver.getAdmin()).isSameAs(managedById.get(approver.getAdmin().getId()));
+        });
+        return true;
+    }
+
+    private boolean applicationsReferenceManagedStaff(Iterable<LeaveApplication> applications) {
+        Map<String, Staff> managedById = managedStaffCopies.stream()
+                .collect(Collectors.toMap(Staff::getId, Function.identity()));
+        StreamSupport.stream(applications.spliterator(), false).forEach(application -> {
+            assertThat(application.getStaff()).isSameAs(managedById.get(application.getStaff().getId()));
+            assertThat(application.getApprover()).isSameAs(managedById.get(application.getApprover().getId()));
+        });
+        return true;
     }
 
     private AppRole role(String id) {
