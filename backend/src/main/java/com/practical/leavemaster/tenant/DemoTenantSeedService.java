@@ -31,7 +31,10 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -115,7 +118,13 @@ public class DemoTenantSeedService {
         addAnnualEntitlement(manager, annualLeave, normalizedTenantId, yearStart, yearEnd, new BigDecimal("18.00"), today);
         addAnnualEntitlement(alice, annualLeave, normalizedTenantId, yearStart, yearEnd, new BigDecimal("14.00"), today);
         addAnnualEntitlement(ben, annualLeave, normalizedTenantId, yearStart, yearEnd, new BigDecimal("14.00"), today);
-        staffRepository.saveAll(List.of(hr, manager, alice, ben));
+
+        Map<String, Staff> managedStaff = staffRepository.saveAll(List.of(hr, manager, alice, ben)).stream()
+                .collect(Collectors.toMap(Staff::getId, Function.identity()));
+        hr = managedStaff(managedStaff, hr.getId());
+        manager = managedStaff(managedStaff, manager.getId());
+        alice = managedStaff(managedStaff, alice.getId());
+        ben = managedStaff(managedStaff, ben.getId());
 
         leaveApproverRepository.saveAll(List.of(
                 approver(normalizedTenantId, alice, manager, hr, yearStart),
@@ -139,6 +148,14 @@ public class DemoTenantSeedService {
         return new DemoSeedResult(normalizedTenantId, TenantType.DEMO, 4, 4, 4, today);
     }
 
+    private Staff managedStaff(Map<String, Staff> managedStaff, String staffId) {
+        Staff staff = managedStaff.get(staffId);
+        if (staff == null) {
+            throw new IllegalStateException("Saved demo staff is missing: " + staffId);
+        }
+        return staff;
+    }
+
     private AppRole role(String tenantId, String suffix) {
         return appRoleRepository.findById(tenantId + "_" + suffix)
                 .orElseThrow(() -> new IllegalStateException("Expected seeded role is missing: " + suffix));
@@ -152,7 +169,7 @@ public class DemoTenantSeedService {
     }
 
     private Staff staff(String tenantId, String id, String name, String email, LocalDate joinDate, Set<String> roleIds) {
-        Staff staff = Staff.builder()
+        return Staff.builder()
                 .id(tenantId + "-" + id)
                 .name(name)
                 .email(email)
@@ -164,7 +181,6 @@ public class DemoTenantSeedService {
                 .loginName(id.toLowerCase())
                 .roleIds(new LinkedHashSet<>(roleIds))
                 .build();
-        return staff;
     }
 
     private void addAnnualEntitlement(Staff staff, LeaveType leaveType, String tenantId,
