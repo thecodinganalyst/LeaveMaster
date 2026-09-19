@@ -11,6 +11,8 @@ const features = [
 ] as const;
 
 export const metadata: Metadata = {
+  alternates: { canonical: '/features' },
+  openGraph: { url: '/features' },
   title: 'Leave policy automation and entitlement management features',
   description: 'Explore LeaveMaestro capabilities for leave entitlement management, eligibility, proration, jurisdiction-aware calendars, employee self-service, approvals, and HR administration.',
 };
