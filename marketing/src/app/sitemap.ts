@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next';
-import { siteUrl } from './layout';
+import { siteUrl } from '@/lib/site';
 
 const publicRoutes = ['/', '/features', '/demo', '/contact', '/privacy', '/terms'];
 
