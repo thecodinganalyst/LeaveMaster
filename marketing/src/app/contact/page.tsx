@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import { ContactForm } from '@/components/ContactForm';
 
 export const metadata: Metadata = {
+  alternates: { canonical: '/contact' },
+  openGraph: { url: '/contact' },
   title: 'Contact',
   description: 'Contact LeaveMaestro with a general enquiry, partnership enquiry, or request for temporary evaluation access.',
 };

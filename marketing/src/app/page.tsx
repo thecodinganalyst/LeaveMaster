@@ -13,6 +13,8 @@ const capabilities = [
 ] as const;
 
 export const metadata: Metadata = {
+  alternates: { canonical: '/' },
+  openGraph: { url: '/' },
   title: 'Policy-aware leave management for growing companies',
   description: 'LeaveMaestro is open-source leave-management software with a request-only hosted evaluation environment for testing using non-production data.',
 };

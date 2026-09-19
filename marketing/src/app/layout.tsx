@@ -3,7 +3,7 @@ import './globals.css';
 import { Footer } from '@/components/Footer';
 import { Navigation } from '@/components/Navigation';
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
+import { siteUrl } from '@/lib/site';
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -14,6 +14,20 @@ export const metadata: Metadata = {
   description:
     'LeaveMaestro helps HR teams automate requests, approvals, calendars, and reporting for employee leave management.',
   keywords: ['leave management', 'HR software', 'employee scheduling', 'absence tracking'],
+  openGraph: {
+    type: 'website',
+    url: '/',
+    siteName: 'LeaveMaestro',
+    title: 'LeaveMaestro | Smarter employee leave management',
+    description:
+      'LeaveMaestro helps HR teams automate requests, approvals, calendars, and reporting for employee leave management.',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'LeaveMaestro | Smarter employee leave management',
+    description:
+      'LeaveMaestro helps HR teams automate requests, approvals, calendars, and reporting for employee leave management.',
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

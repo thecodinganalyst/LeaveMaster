@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
+  alternates: { canonical: '/privacy' },
+  openGraph: { url: '/privacy' },
   title: 'Privacy Policy',
   description: 'Privacy information for the LeaveMaestro website and project-hosted evaluation environment.',
 };
