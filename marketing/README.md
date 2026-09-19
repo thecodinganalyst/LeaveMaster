@@ -28,6 +28,9 @@ A Next.js 14 App Router marketing website for LeaveMaestro.
 - `NEXT_PUBLIC_APP_URL` - app URL for product CTAs
 - `NEXT_PUBLIC_API_URL` - API base URL reference
 - `NEXT_PUBLIC_DEMO_URL` - demo destination used on CTA links and embed links
+- `NEXT_PUBLIC_SITE_URL` - canonical public marketing origin (defaults to `https://leavemaestro.com`)
+- `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` - optional Google Search Console HTML-tag verification value
+- `NEXT_PUBLIC_BING_SITE_VERIFICATION` - optional Bing Webmaster Tools HTML-tag verification value
 
 ## Build for static export
 
@@ -50,3 +53,5 @@ The static site is generated in the `out/` directory.
    ```
 
 Wrangler configuration is stored in `wrangler.toml`.
+
+Search-engine verification and organic-search operations are documented in [`../docs/seo-search-measurement.md`](../docs/seo-search-measurement.md).
