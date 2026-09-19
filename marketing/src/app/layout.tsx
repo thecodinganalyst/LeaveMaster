@@ -5,7 +5,14 @@ import { Navigation } from '@/components/Navigation';
 
 import { siteUrl } from '@/lib/site';
 
+const googleSiteVerification = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION?.trim();
+const bingSiteVerification = process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION?.trim();
+
 export const metadata: Metadata = {
+  verification: {
+    ...(googleSiteVerification ? { google: googleSiteVerification } : {}),
+    ...(bingSiteVerification ? { other: { 'msvalidate.01': bingSiteVerification } } : {}),
+  },
   metadataBase: new URL(siteUrl),
   title: {
     default: 'LeaveMaestro | Smarter employee leave management',
