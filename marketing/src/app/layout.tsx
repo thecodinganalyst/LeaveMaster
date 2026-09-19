@@ -3,7 +3,7 @@ import './globals.css';
 import { Footer } from '@/components/Footer';
 import { Navigation } from '@/components/Navigation';
 
-export const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://leavemaestro.com').replace(/\/$/, '');
+import { siteUrl } from '@/lib/site';
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
