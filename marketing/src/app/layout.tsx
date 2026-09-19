@@ -4,6 +4,7 @@ import { Footer } from '@/components/Footer';
 import { Navigation } from '@/components/Navigation';
 
 import { siteUrl } from '@/lib/site';
+import { createSiteStructuredData } from '@/lib/structuredData.mjs';
 
 const googleSiteVerification = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION?.trim();
 const bingSiteVerification = process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION?.trim();
@@ -38,9 +39,12 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const structuredData = createSiteStructuredData(siteUrl);
+
   return (
     <html lang="en">
       <body>
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
         <Navigation />
         <main className="page-shell">{children}</main>
         <Footer />
