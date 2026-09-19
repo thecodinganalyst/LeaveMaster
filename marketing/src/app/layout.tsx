@@ -14,9 +14,6 @@ export const metadata: Metadata = {
   description:
     'LeaveMaestro helps HR teams automate requests, approvals, calendars, and reporting for employee leave management.',
   keywords: ['leave management', 'HR software', 'employee scheduling', 'absence tracking'],
-  alternates: {
-    canonical: '/',
-  },
   openGraph: {
     type: 'website',
     url: '/',
