@@ -3,6 +3,8 @@ import { CTAButton } from '@/components/CTAButton';
 import { ApprovalSnapshot, EmployeeDashboardSnapshot, PolicyBuilderSnapshot } from '@/components/ProductSnapshots';
 
 export const metadata: Metadata = {
+  alternates: { canonical: '/demo' },
+  openGraph: { url: '/demo' },
   title: 'Public Demo',
   description: 'Explore LeaveMaestro instantly as an Employee, Manager, or HR user using a fictional public demo tenant.',
 };
