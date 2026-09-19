@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
+  alternates: { canonical: '/terms' },
+  openGraph: { url: '/terms' },
   title: 'Terms of Service',
   description: 'Terms for the LeaveMaestro website and request-only hosted evaluation environment.',
 };
