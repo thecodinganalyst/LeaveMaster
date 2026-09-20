@@ -15,6 +15,7 @@ export function Footer() {
           <Link href="/features" className="hover:text-brand-600">Features</Link>
           <Link href="/leave-management" className="hover:text-brand-600">Leave Management</Link>
           <Link href="/singapore-leave-management" className="hover:text-brand-600">Singapore</Link>
+          <Link href="/singapore-leave-guides" className="hover:text-brand-600">Singapore Guides</Link>
           <Link href="/open-source-leave-management" className="hover:text-brand-600">Open Source</Link>
           <Link href="/demo" className="hover:text-brand-600">Demo</Link>
           <Link href="/contact" className="hover:text-brand-600">Contact</Link>
