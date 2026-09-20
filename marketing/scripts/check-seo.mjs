@@ -3,7 +3,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
 const outputDir = new URL('../out/', import.meta.url).pathname;
-const expectedRoutes = ['/', '/features', '/demo', '/contact', '/privacy', '/terms'];
+const expectedRoutes = ['/', '/features', '/demo', '/contact', '/privacy', '/terms', '/leave-management', '/singapore-leave-management', '/open-source-leave-management', '/ai-leave-assistant', '/multi-jurisdiction-leave-management', '/leave-entitlements', '/approval-workflows', '/employee-leave-calendar'];
 
 function htmlPath(route) {
   if (route === '/') return join(outputDir, 'index.html');
