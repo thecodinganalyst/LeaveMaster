@@ -43,7 +43,7 @@ assert.match(robots, /Sitemap:\s*https:\/\/leavemaestro\.com\/sitemap\.xml/i, 'r
 
 const sitemap = readFileSync(join(outputDir, 'sitemap.xml'), 'utf8');
 for (const route of expectedRoutes) {
-  const url = `https://leavemaestro.com${route === '/' ? '' : route}`;
+  const url = `https://leavemaestro.com${route}`;
   assert.ok(sitemap.includes(`<loc>${url}</loc>`), `sitemap.xml missing ${url}`);
 }
 
