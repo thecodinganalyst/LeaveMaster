@@ -67,6 +67,7 @@ function walk(dir) {
 walk(outputDir);
 
 const generatedRoutes = new Set(expectedRoutes);
+const incomingLinks = new Map(expectedRoutes.map((route) => [route, new Set()]));
 for (const file of htmlFiles) {
   const html = readFileSync(file, 'utf8');
   for (const href of html.matchAll(/<a[^>]+href=["']([^"'#?]+)[^"']*["']/gi)) {
@@ -75,7 +76,14 @@ for (const file of htmlFiles) {
     if (target.startsWith('/_next/')) continue;
     const normalized = target.length > 1 ? target.replace(/\/$/, '') : '/';
     assert.ok(generatedRoutes.has(normalized), `${relative(outputDir, file)}: internal link ${target} does not resolve to a known public route`);
+    const source = '/' + relative(outputDir, file).replace(/\\/g, '/').replace(/(?:\/index)?\.html$/, '').replace(/index$/, '');
+    if (incomingLinks.has(normalized) && source !== normalized) incomingLinks.get(normalized).add(source);
   }
+}
+
+const primaryRoutes = expectedRoutes.filter((route) => route !== '/' && !['/privacy', '/terms', '/contact', '/demo'].includes(route));
+for (const route of primaryRoutes) {
+  assert.ok(incomingLinks.get(route)?.size > 0, `${route}: primary public route is orphaned (no crawlable internal links)`);
 }
 
 console.log(`SEO checks passed for ${expectedRoutes.length} public routes and ${htmlFiles.length} generated HTML files.`);
