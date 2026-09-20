@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "seo:check": "npm run build && node scripts/check-seo.mjs",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test": "node --test src/components/*.test.mjs src/lib/*.test.mjs",

@@ -55,3 +55,13 @@ The static site is generated in the `out/` directory.
 Wrangler configuration is stored in `wrangler.toml`.
 
 Search-engine verification and organic-search operations are documented in [`../docs/seo-search-measurement.md`](../docs/seo-search-measurement.md).
+
+## SEO regression checks
+
+Run the stable SEO quality gate locally with:
+
+```bash
+npm run seo:check
+```
+
+The command creates the production static export and checks the current public routes for unique titles/descriptions, canonical URLs, exactly one H1, robots/sitemap output, required JSON-LD schema types, and broken internal links between known public routes. The checks intentionally avoid Lighthouse/performance thresholds because those are more environment-sensitive and would make pull-request CI noisy.
