@@ -2,12 +2,13 @@ import Link from 'next/link';
 
 export type LandingSection = { heading: string; body: string; bullets?: string[] };
 
-export function SearchLandingPage({ eyebrow, title, intro, sections, related }: {
+export function SearchLandingPage({ eyebrow, title, intro, sections, related, resources = [] }: {
   eyebrow: string;
   title: string;
   intro: string;
   sections: LandingSection[];
   related: { href: string; label: string; description: string }[];
+  resources?: { href: string; label: string; external?: boolean }[];
 }) {
   return (
     <section className="section">
@@ -30,6 +31,8 @@ export function SearchLandingPage({ eyebrow, title, intro, sections, related }: 
           </article>
         ))}
       </div>
+
+      {resources.length > 0 && <aside className="mx-auto mt-16 max-w-4xl border-y border-slate-200 py-8" aria-labelledby="resources-heading"><h2 id="resources-heading" className="text-xl font-semibold text-slate-950">Documentation and project resources</h2><div className="mt-4 flex flex-wrap gap-3">{resources.map((item) => item.external ? <a key={item.href} href={item.href} className="font-semibold text-brand-700 underline decoration-brand-200 underline-offset-4 hover:text-brand-800">{item.label}</a> : <Link key={item.href} href={item.href} className="font-semibold text-brand-700 hover:text-brand-800">{item.label}</Link>)}</div></aside>}
 
       <aside className="mx-auto mt-16 max-w-4xl rounded-[2rem] bg-slate-50 p-8" aria-labelledby="related-heading">
         <h2 id="related-heading" className="text-2xl font-semibold text-slate-950">Explore related LeaveMaestro capabilities</h2>
