@@ -1,0 +1,42 @@
+name: Marketing SEO CI
+
+on:
+  pull_request:
+    paths:
+      - 'marketing/**'
+      - '.github/workflows/marketing-seo-ci.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'marketing/**'
+      - '.github/workflows/marketing-seo-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  seo:
+    name: SEO regression checks
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: marketing
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: marketing/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run SEO quality gate
+        env:
+          NEXT_PUBLIC_SITE_URL: https://leavemaestro.com
+        run: npm run seo:check
