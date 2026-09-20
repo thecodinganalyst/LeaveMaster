@@ -3,6 +3,8 @@ import { CTAButton } from '@/components/CTAButton';
 import { ManualCostCalculator } from '@/components/ManualCostCalculator';
 import { FeatureIcon, HeroProductVisual, LeaveWorkflowVisual } from '@/components/ProductVisuals';
 import { ApprovalSnapshot, AskMaestroSnapshot, LeaveApplicationSnapshot, PolicyBuilderSnapshot } from '@/components/ProductSnapshots';
+import { siteUrl } from '@/lib/site';
+import { createSoftwareStructuredData } from '@/lib/structuredData.mjs';
 
 const capabilities = [
   ['policy', 'Policy automation', 'Model eligibility, entitlement, proration, accrual, and carry-forward rules.'],
@@ -20,8 +22,11 @@ export const metadata: Metadata = {
 };
 
 export default function HomePage() {
+  const structuredData = createSoftwareStructuredData(siteUrl);
+
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
       <section className="bg-white">
         <div className="section pt-16 sm:pt-20">
           <div className="grid gap-12 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
