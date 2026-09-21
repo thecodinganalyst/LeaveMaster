@@ -48,7 +48,7 @@ for (const route of expectedRoutes) {
 }
 
 const calculator = readFileSync(htmlPath('/tools/singapore-annual-leave-calculator'), 'utf8');
-const calculatorJsonLd = [...calculator.matchAll(/<script[^>]+type=["']application\\/ld\\+json["'][^>]*>(.*?)<\\/script>/gis)].map((match) => JSON.parse(match[1]));
+const calculatorJsonLd = [...calculator.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>(.*?)<\/script>/gis)].map((match) => JSON.parse(match[1]));
 assert.ok(calculatorJsonLd.some((entry) => entry['@type'] === 'WebApplication'), 'calculator structured data missing WebApplication');
 
 const home = readFileSync(htmlPath('/'), 'utf8');
