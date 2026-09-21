@@ -14,6 +14,8 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
+import tools.jackson.databind.ObjectMapper;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
@@ -34,9 +36,9 @@ class LeaveApplicationMcpToolsTest {
         List<LeaveApplication> applications = List.of(LeaveApplication.builder().id("la1").build());
         when(leaveApplicationService.findAll()).thenReturn(applications);
 
-        List<LeaveApplication> result = leaveApplicationMcpTools.getAllLeaveApplications();
+        List<LeaveApplicationMcpTools.LeaveApplicationReadResult> result = leaveApplicationMcpTools.getAllLeaveApplications();
 
-        assertThat(result).hasSize(1);
+        assertThat(result).singleElement().satisfies(item -> assertThat(item.id()).isEqualTo("la1"));
         verify(leaveApplicationService).findAll();
     }
 
@@ -45,9 +47,9 @@ class LeaveApplicationMcpToolsTest {
         LeaveApplication application = LeaveApplication.builder().id("la1").build();
         when(leaveApplicationService.findById("la1")).thenReturn(Optional.of(application));
 
-        Optional<LeaveApplication> result = leaveApplicationMcpTools.getLeaveApplicationById("la1");
+        Optional<LeaveApplicationMcpTools.LeaveApplicationReadResult> result = leaveApplicationMcpTools.getLeaveApplicationById("la1");
 
-        assertThat(result).isPresent();
+        assertThat(result).get().extracting(LeaveApplicationMcpTools.LeaveApplicationReadResult::id).isEqualTo("la1");
         verify(leaveApplicationService).findById("la1");
     }
 
@@ -56,9 +58,9 @@ class LeaveApplicationMcpToolsTest {
         List<LeaveApplication> applications = List.of(LeaveApplication.builder().id("la1").build());
         when(leaveApplicationService.findByStaffId("s1")).thenReturn(applications);
 
-        List<LeaveApplication> result = leaveApplicationMcpTools.getLeaveApplicationsByStaffId("s1");
+        List<LeaveApplicationMcpTools.LeaveApplicationReadResult> result = leaveApplicationMcpTools.getLeaveApplicationsByStaffId("s1");
 
-        assertThat(result).hasSize(1);
+        assertThat(result).singleElement().satisfies(item -> assertThat(item.id()).isEqualTo("la1"));
         verify(leaveApplicationService).findByStaffId("s1");
     }
 
@@ -67,9 +69,9 @@ class LeaveApplicationMcpToolsTest {
         List<LeaveApplication> applications = List.of(LeaveApplication.builder().id("la1").build());
         when(leaveApplicationService.findVisibleForStaff("s1")).thenReturn(applications);
 
-        List<LeaveApplication> result = leaveApplicationMcpTools.getVisibleLeaveApplicationsForStaff("s1");
+        List<LeaveApplicationMcpTools.LeaveApplicationReadResult> result = leaveApplicationMcpTools.getVisibleLeaveApplicationsForStaff("s1");
 
-        assertThat(result).hasSize(1);
+        assertThat(result).singleElement().satisfies(item -> assertThat(item.id()).isEqualTo("la1"));
         verify(leaveApplicationService).findVisibleForStaff("s1");
     }
 
@@ -78,10 +80,42 @@ class LeaveApplicationMcpToolsTest {
         List<LeaveApplication> applications = List.of(LeaveApplication.builder().id("la1").build());
         when(leaveApplicationService.findPendingByApproverId("a1")).thenReturn(applications);
 
-        List<LeaveApplication> result = leaveApplicationMcpTools.getPendingLeaveApplicationsByApproverId("a1");
+        List<LeaveApplicationMcpTools.LeaveApplicationReadResult> result = leaveApplicationMcpTools.getPendingLeaveApplicationsByApproverId("a1");
 
-        assertThat(result).hasSize(1);
+        assertThat(result).singleElement().satisfies(item -> assertThat(item.id()).isEqualTo("la1"));
         verify(leaveApplicationService).findPendingByApproverId("a1");
+    }
+
+
+    @Test
+    void shouldSerializeAssistantReadResultWithoutTraversingLazyStaffCollections() throws Exception {
+        com.practical.leavemaster.staff.Staff staff = new com.practical.leavemaster.staff.Staff() {
+            @Override
+            public java.util.List<com.practical.leavemaster.staff.WorkScheduleDay> getWorkSchedule() {
+                throw new org.hibernate.LazyInitializationException("no session");
+            }
+        };
+        staff.setId("DEMO-EMP001");
+
+        com.practical.leavemaster.leavetype.LeaveType leaveType =
+                com.practical.leavemaster.leavetype.LeaveType.builder().id("annual").name("Annual Leave").build();
+        LeaveApplication application = LeaveApplication.builder()
+                .id("la-demo")
+                .staff(staff)
+                .leaveType(leaveType)
+                .leaveDate(LocalDate.of(2026, 9, 21))
+                .build();
+        when(leaveApplicationService.findByStaffId("DEMO-EMP001")).thenReturn(List.of(application));
+
+        List<LeaveApplicationMcpTools.LeaveApplicationReadResult> result =
+                leaveApplicationMcpTools.getLeaveApplicationsByStaffId("DEMO-EMP001");
+
+        String json = new ObjectMapper().writeValueAsString(result);
+
+        assertThat(json).contains("\"staffId\":\"DEMO-EMP001\"").contains("\"leaveTypeName\":\"Annual Leave\"");
+        assertThat(result).singleElement()
+                .extracting(LeaveApplicationMcpTools.LeaveApplicationReadResult::staffId)
+                .isEqualTo("DEMO-EMP001");
     }
 
     @Test
