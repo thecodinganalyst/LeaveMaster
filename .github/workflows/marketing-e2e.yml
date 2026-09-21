@@ -6,14 +6,14 @@ on:
     paths:
       - 'marketing/**'
       - 'frontend/e2e/marketing.playwright.config.ts'
-      - 'frontend/e2e/tests/marketing-calculator.e2e.ts'
+      - 'frontend/e2e/marketing-tests/marketing-calculator.e2e.ts'
       - '.github/workflows/marketing-e2e.yml'
   push:
     branches: [main]
     paths:
       - 'marketing/**'
       - 'frontend/e2e/marketing.playwright.config.ts'
-      - 'frontend/e2e/tests/marketing-calculator.e2e.ts'
+      - 'frontend/e2e/marketing-tests/marketing-calculator.e2e.ts'
       - '.github/workflows/marketing-e2e.yml'
 
 permissions:
