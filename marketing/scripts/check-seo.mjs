@@ -40,6 +40,9 @@ for (const route of expectedRoutes) {
 
 const robots = readFileSync(join(outputDir, 'robots.txt'), 'utf8');
 assert.match(robots, /Sitemap:\s*https:\/\/leavemaestro\.com\/sitemap\.xml/i, 'robots.txt must advertise the canonical sitemap');
+assert.match(robots, /User-agent:\s*Googlebot[\s\S]*?Allow:\s*\//i, 'robots.txt must explicitly allow Googlebot');
+assert.match(robots, /User-agent:\s*Google-Extended[\s\S]*?Allow:\s*\//i, 'robots.txt must explicitly allow Google-Extended for Gemini grounding');
+assert.doesNotMatch(robots, /User-agent:\s*Google-Extended[\s\S]*?Disallow:\s*\//i, 'robots.txt must not opt out Google-Extended');
 
 const sitemap = readFileSync(join(outputDir, 'sitemap.xml'), 'utf8');
 for (const route of expectedRoutes) {

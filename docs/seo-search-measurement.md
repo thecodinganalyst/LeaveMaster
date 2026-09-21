@@ -76,3 +76,18 @@ Monthly, and after major SEO releases:
 - Do not add user-level tracking solely to measure SEO.
 - Prefer aggregated search-engine performance reports for organic discovery.
 - If product analytics is added later, review consent, retention and privacy requirements separately.
+
+
+## Google and Gemini crawlability
+
+LeaveMaestro intentionally allows both `Googlebot` and `Google-Extended` on the public marketing site. `Googlebot` supports normal Google Search discovery. `Google-Extended` is the robots.txt control Google provides for Gemini-related model use and grounding; it is separate from ordinary Search indexing.
+
+After deploying a crawler-policy change:
+
+1. Confirm `https://leavemaestro.com/robots.txt` returns HTTP 200 and contains explicit `Allow: /` rules for `Googlebot` and `Google-Extended`.
+2. Confirm `https://leavemaestro.com/sitemap.xml` returns HTTP 200 and contains the intended public URLs.
+3. In Google Search Console, inspect the homepage and key Singapore leave guide URLs, run a live test, and request indexing where appropriate.
+4. Check Cloudflare bot/AI crawler controls and custom WAF rules. Do not enable a rule that blocks Google-Extended or verified Google crawlers for the public marketing hostname. Cloudflare settings are infrastructure/account configuration and are not controlled by this repository.
+5. After Google has had time to recrawl/index the pages, retry Gemini grounding/cross-checking.
+
+If Gemini reports `URL_FETCH_STATUS_GOOGLE_EXTENDED_OPT_OUT`, first inspect the deployed robots.txt and Cloudflare crawler controls. A successful ordinary browser request does not prove that the Google-Extended crawler is permitted.
