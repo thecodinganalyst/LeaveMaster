@@ -1,0 +1,50 @@
+name: Marketing calculator E2E
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'marketing/**'
+      - 'frontend/e2e/marketing.playwright.config.ts'
+      - 'frontend/e2e/marketing-tests/marketing-calculator.e2e.ts'
+      - '.github/workflows/marketing-e2e.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'marketing/**'
+      - 'frontend/e2e/marketing.playwright.config.ts'
+      - 'frontend/e2e/marketing-tests/marketing-calculator.e2e.ts'
+      - '.github/workflows/marketing-e2e.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  calculator-e2e:
+    name: Public calculator Playwright flow
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            marketing/package-lock.json
+            frontend/e2e/package-lock.json
+      - name: Install marketing dependencies
+        working-directory: marketing
+        run: npm ci
+      - name: Install E2E dependencies
+        working-directory: frontend/e2e
+        run: npm install --no-audit --no-fund
+      - name: Install Playwright Chromium
+        working-directory: frontend/e2e
+        run: npx playwright install --with-deps chromium
+      - name: Run public calculator E2E
+        working-directory: frontend/e2e
+        env:
+          NEXT_PUBLIC_SITE_URL: https://leavemaestro.com
+        run: npx playwright test --config marketing.playwright.config.ts
