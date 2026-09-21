@@ -10,7 +10,7 @@ export default defineConfig({
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
     command: 'npm --prefix ../../marketing run build && python3 -m http.server 3000 --bind 127.0.0.1 --directory ../../marketing/out',
-    url: 'http://127.0.0.1:3000/tools/singapore-annual-leave-calculator',
+    url: 'http://127.0.0.1:3000/tools/singapore-annual-leave-calculator.html',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },
