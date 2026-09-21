@@ -89,9 +89,13 @@ class LeaveApplicationMcpToolsTest {
 
     @Test
     void shouldSerializeAssistantReadResultWithoutTraversingLazyStaffCollections() throws Exception {
-        com.practical.leavemaster.staff.Staff staff = mock(com.practical.leavemaster.staff.Staff.class);
-        when(staff.getId()).thenReturn("DEMO-EMP001");
-        when(staff.getWorkSchedule()).thenThrow(new org.hibernate.LazyInitializationException("no session"));
+        com.practical.leavemaster.staff.Staff staff = new com.practical.leavemaster.staff.Staff() {
+            @Override
+            public java.util.List<com.practical.leavemaster.staff.WorkScheduleDay> getWorkSchedule() {
+                throw new org.hibernate.LazyInitializationException("no session");
+            }
+        };
+        staff.setId("DEMO-EMP001");
 
         com.practical.leavemaster.leavetype.LeaveType leaveType =
                 com.practical.leavemaster.leavetype.LeaveType.builder().id("annual").name("Annual Leave").build();
@@ -109,7 +113,9 @@ class LeaveApplicationMcpToolsTest {
         String json = new ObjectMapper().writeValueAsString(result);
 
         assertThat(json).contains("\"staffId\":\"DEMO-EMP001\"").contains("\"leaveTypeName\":\"Annual Leave\"");
-        verify(staff, never()).getWorkSchedule();
+        assertThat(result).singleElement()
+                .extracting(LeaveApplicationMcpTools.LeaveApplicationReadResult::staffId)
+                .isEqualTo("DEMO-EMP001");
     }
 
     @Test
