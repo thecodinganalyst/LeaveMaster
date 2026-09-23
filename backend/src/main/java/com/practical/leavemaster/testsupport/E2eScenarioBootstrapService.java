@@ -130,6 +130,7 @@ public class E2eScenarioBootstrapService {
         scenario.staff().values().forEach(entityManager::persist);
         scenario.dependants().forEach(entityManager::persist);
         scenario.approvers().forEach(entityManager::persist);
+        scenario.leaveApplications().forEach(entityManager::persist);
 
         scenario.users().values().forEach(user -> {
             user.setPassword(passwordEncoder.encode(DEFAULT_PASSWORD));
@@ -147,6 +148,16 @@ public class E2eScenarioBootstrapService {
                 scenario.referenceDate(),
                 DEFAULT_PASSWORD,
                 users);
+    }
+
+    /**
+     * Deletes any previous copy and recreates the scenario from the deterministic factory.
+     * This is the preferred reset operation for tests that need a known baseline.
+     */
+    @Transactional
+    public ScenarioBootstrapResult resetStandardSingaporeScenario(String requestedScenarioId, LocalDate referenceDate) {
+        deleteScenario(requestedScenarioId);
+        return createStandardSingaporeScenario(requestedScenarioId, referenceDate);
     }
 
     private void applyPermissions(AppRole role, Set<String> permissionCodes) {
