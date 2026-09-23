@@ -127,6 +127,9 @@ public class E2eScenarioBootstrapService {
                 .build());
         scenario.roles().values().forEach(entityManager::persist);
         scenario.leaveTypes().forEach(entityManager::persist);
+        scenario.policies().forEach(entityManager::persist);
+        scenario.eligibilityRules().forEach(entityManager::persist);
+        scenario.calendars().forEach(entityManager::persist);
         scenario.staff().values().forEach(entityManager::persist);
         scenario.dependants().forEach(entityManager::persist);
         scenario.approvers().forEach(entityManager::persist);
