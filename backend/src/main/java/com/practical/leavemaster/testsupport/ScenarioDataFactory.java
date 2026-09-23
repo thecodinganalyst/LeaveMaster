@@ -88,7 +88,7 @@ public final class ScenarioDataFactory {
         staff.put("staff005", staff(tenantId, "staff005", "E2E Missing Approver", yearStart.minusYears(1), SG, Set.of(roles.get("staff").getId())));
         staff.put("staff006", staff(tenantId, "staff006", "E2E Low Balance", yearStart.minusYears(1), SG, Set.of(roles.get("staff").getId())));
         staff.put("staff007", staff(tenantId, "staff007", "E2E Terminating Staff", yearStart.minusYears(1), SG, Set.of(roles.get("staff").getId())));
-        staff.get("staff007").setTerminationDate(referenceDate.plusDays(30));
+        staff.get("staff007").setTermDate(referenceDate.plusDays(30));
         staff.put("staff008", staff(tenantId, "staff008", "E2E Half Day Staff", yearStart.minusYears(1), SG, Set.of(roles.get("staff").getId())));
         staff.get("staff008").setWorkSchedule(halfDayFridaySchedule());
         staff.put("staff009", staff(tenantId, "staff009", "E2E NSW Staff", yearStart.minusYears(1), "AU-NSW", Set.of(roles.get("staff").getId())));
@@ -167,9 +167,9 @@ public final class ScenarioDataFactory {
         approvers.add(approver(tenantId, staff.get("staff009"), staff.get("manager02"), staff.get("admin"), yearStart));
 
         List<LeaveApplication> leaveApplications = List.of(
-                leaveApplication(tenantId, staff.get("staff001"), annualLeave, staff.get("manager01"), referenceDate.minusDays(10), LeaveDuration.FULL_DAY, LeaveStatus.PENDING),
-                leaveApplication(tenantId, staff.get("staff001"), annualLeave, staff.get("manager01"), referenceDate.minusDays(20), LeaveDuration.FULL_DAY, LeaveStatus.APPROVED),
-                leaveApplication(tenantId, staff.get("staff001"), annualLeave, staff.get("manager01"), referenceDate.minusDays(30), LeaveDuration.FULL_DAY, LeaveStatus.CANCELLED),
+                leaveApplication(tenantId, staff.get("staff001"), annualLeave, staff.get("manager01"), referenceDate.minusDays(10), LeaveDuration.FULL, LeaveStatus.PENDING),
+                leaveApplication(tenantId, staff.get("staff001"), annualLeave, staff.get("manager01"), referenceDate.minusDays(20), LeaveDuration.FULL, LeaveStatus.APPROVED),
+                leaveApplication(tenantId, staff.get("staff001"), annualLeave, staff.get("manager01"), referenceDate.minusDays(30), LeaveDuration.FULL, LeaveStatus.CANCELLED),
                 leaveApplication(tenantId, staff.get("staff008"), annualLeave, staff.get("manager02"), referenceDate.plusDays(2), LeaveDuration.AM, LeaveStatus.APPROVED)
         );
 
