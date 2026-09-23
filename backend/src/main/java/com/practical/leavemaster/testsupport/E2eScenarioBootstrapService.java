@@ -108,9 +108,13 @@ public class E2eScenarioBootstrapService {
         applyPermissions(scenario.roles().get("hr"), HR_PERMISSIONS);
         applyPermissions(scenario.roles().get("admin"), ADMIN_PERMISSIONS);
 
-        // Persistence uses generated UUIDs for entitlement and approver row identities while
-        // retaining the deterministic policy reference created by the shared fixture factory.
-        scenario.entitlements().values().forEach(entitlement -> entitlement.setId(null));
+        // Persistence uses generated UUIDs for entitlement and approver row identities. Policy
+        // objects are tested from the shared in-memory fixture, so browser entitlements deliberately
+        // avoid a foreign-key dependency on mutable jurisdiction templates.
+        scenario.entitlements().values().forEach(entitlement -> {
+            entitlement.setId(null);
+            entitlement.setPolicyId(null);
+        });
         scenario.approvers().forEach(approver -> approver.setId(null));
 
         // Assigned-ID scenario entities are known to be new. Persist them explicitly rather than
@@ -123,8 +127,9 @@ public class E2eScenarioBootstrapService {
                 .build());
         scenario.roles().values().forEach(entityManager::persist);
         scenario.leaveTypes().forEach(entityManager::persist);
-        scenario.policies().forEach(entityManager::persist);
-        scenario.eligibilityRules().forEach(entityManager::persist);
+        // Policy/rule objects remain persistence-agnostic fixture inputs for backend assistant
+        // tests. The E2E database already seeds jurisdiction policy templates; persisting duplicate
+        // policy graphs here would couple isolated browser fixtures to template foreign keys.
         scenario.calendars().forEach(entityManager::persist);
         scenario.staff().values().forEach(entityManager::persist);
         scenario.dependants().forEach(entityManager::persist);
