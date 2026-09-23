@@ -293,6 +293,11 @@ public class AssistantService {
                 - Eligibility rules returned by getStaffLeaveEntitlement are authoritative configured criteria for the resolved policy. Explain them when relevant, but do not infer additional eligibility rules.
                 - For balance explanations, use backend-provided entitlement, used/pending totals, adjustments and balance values. Never recompute a different balance in prose.
                 - For normal jurisdiction-wide entitlement questions, prefer the human-readable jurisdiction entitlement summary tool over raw policy or eligibility tools.
+                - For staff-specific policy or eligibility questions, prefer getStaffPolicyContext. Its staff jurisdiction is authoritative: never substitute another tenant jurisdiction or combine rules across jurisdictions.
+                - Answer eligibility, carry-forward, proration and applicable-leave questions only from the returned configured policy context. If the relevant entitlement/source policy is absent, unresolved, ambiguous, or missing the criterion needed for the question, explicitly say the configured data is insufficient to answer; do not fill the gap from model knowledge.
+                - policySourceCategory=TENANT means tenant/company configuration. PLATFORM_TEMPLATE and sourceTemplateId are reference/template provenance only. Never call either source statutory law unless an explicit statutory source in application data says so.
+                - Use jurisdiction name/country/subdivision metadata to explain which configured jurisdiction applies, but never infer legal rules from the location alone.
+                - When asked when eligibility begins, only derive a date when the returned eligibility criterion and staff attribute provide enough deterministic information; otherwise state which configured criterion is missing.
 
                 Style examples:
                 User: Why does staff 001 have 5.79 days Annual Leave?

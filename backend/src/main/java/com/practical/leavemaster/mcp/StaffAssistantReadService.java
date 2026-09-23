@@ -1,5 +1,6 @@
 package com.practical.leavemaster.mcp;
 
+import com.practical.leavemaster.jurisdiction.JurisdictionRepository;
 import com.practical.leavemaster.leaveentitlement.LeaveEntitlement;
 import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicy;
 import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicyRepository;
@@ -29,14 +30,17 @@ public class StaffAssistantReadService {
     private final StaffRepository staffRepository;
     private final LeaveEntitlementPolicyRepository policyRepository;
     private final LeaveEntitlementPolicyEligibilityRepository eligibilityRepository;
+    private final JurisdictionRepository jurisdictionRepository;
 
     public StaffAssistantReadService(
             StaffRepository staffRepository,
             LeaveEntitlementPolicyRepository policyRepository,
-            LeaveEntitlementPolicyEligibilityRepository eligibilityRepository) {
+            LeaveEntitlementPolicyEligibilityRepository eligibilityRepository,
+            JurisdictionRepository jurisdictionRepository) {
         this.staffRepository = staffRepository;
         this.policyRepository = policyRepository;
         this.eligibilityRepository = eligibilityRepository;
+        this.jurisdictionRepository = jurisdictionRepository;
     }
 
     @Transactional(readOnly = true)
@@ -74,6 +78,33 @@ public class StaffAssistantReadService {
                     .filter(entitlement -> matchesLeaveType(entitlement, requestedLeaveType))
                     .findFirst()
                     .map(entitlement -> toStaffLeaveEntitlementResult(staff, entitlement));
+        });
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<StaffPolicyContextResult> findPolicyContext(String staffId) {
+        if (staffId == null || staffId.isBlank()) {
+            throw new IllegalArgumentException("staffId is required");
+        }
+        return staffRepository.findById(staffId.trim()).map(staff -> {
+            JurisdictionResult jurisdiction = Optional.ofNullable(staff.getJurisdictionId())
+                    .flatMap(jurisdictionRepository::findById)
+                    .map(value -> new JurisdictionResult(value.getId(), value.getCode(), value.getName(),
+                            value.getCountryCode(), value.getSubdivisionCode()))
+                    .orElse(null);
+            List<StaffPolicyEntitlementResult> entitlements = staff.getLeaveEntitlements() == null ? List.of()
+                    : staff.getLeaveEntitlements().stream()
+                    .map(entitlement -> {
+                        StaffLeaveEntitlementResult detail = toStaffLeaveEntitlementResult(staff, entitlement);
+                        return new StaffPolicyEntitlementResult(detail.leaveTypeName(), detail.sourcePolicyName(),
+                                detail.policySourceCategory(), detail.sourceTemplateId(), detail.policyJurisdictionId(),
+                                detail.eligibilityRules(), detail.configuredEntitlementAmount(), detail.entitlementUnit(),
+                                detail.prorationMethod(), detail.carryForwardAllowed(), detail.carryForwardLimit(),
+                                detail.carryForwardExpiryMonths(), detail.sourcePolicyResolved());
+                    }).toList();
+            return new StaffPolicyContextResult(staff.getId(), staff.getJoinDate(), staff.getTermDate(),
+                    staff.getEmploymentType() == null ? null : staff.getEmploymentType().name(),
+                    staff.getJurisdictionId(), jurisdiction, entitlements);
         });
     }
 
@@ -279,6 +310,19 @@ public class StaffAssistantReadService {
             boolean sourcePolicyResolved
     ) {
     }
+
+    public record JurisdictionResult(String id, String code, String name, String countryCode, String subdivisionCode) {}
+
+    public record StaffPolicyEntitlementResult(
+            String leaveTypeName, String sourcePolicyName, String policySourceCategory, String sourceTemplateId,
+            String policyJurisdictionId, List<EligibilityRuleResult> eligibilityRules,
+            BigDecimal configuredEntitlementAmount, String entitlementUnit, String prorationMethod,
+            boolean carryForwardAllowed, BigDecimal carryForwardLimit, Integer carryForwardExpiryMonths,
+            boolean sourcePolicyResolved) {}
+
+    public record StaffPolicyContextResult(
+            String staffId, LocalDate joinDate, LocalDate termDate, String employmentType, String jurisdictionId,
+            JurisdictionResult jurisdiction, List<StaffPolicyEntitlementResult> entitlements) {}
 
     public record EligibilityRuleResult(String criterionType, String operator, String value) {}
 

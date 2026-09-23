@@ -1,5 +1,6 @@
 package com.practical.leavemaster.mcp;
 
+import com.practical.leavemaster.jurisdiction.JurisdictionRepository;
 import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicyEligibilityRepository;
 import com.practical.leavemaster.staff.DaySchedule;
 import com.practical.leavemaster.staff.Staff;
@@ -33,6 +34,9 @@ class StaffAssistantReadServiceTest {
 
     @Autowired
     private LeaveEntitlementPolicyEligibilityRepository eligibilityRepository;
+
+    @Autowired
+    private JurisdictionRepository jurisdictionRepository;
 
     @AfterEach
     void cleanUp() {
