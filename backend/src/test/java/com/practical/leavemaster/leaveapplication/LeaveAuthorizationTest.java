@@ -2,6 +2,7 @@ package com.practical.leavemaster.leaveapplication;
 
 import com.practical.leavemaster.leaveapprover.LeaveApprover;
 import com.practical.leavemaster.leaveapprover.LeaveApproverRepository;
+import com.practical.leavemaster.rbac.AppRole;
 import com.practical.leavemaster.staff.Staff;
 import com.practical.leavemaster.staff.StaffRepository;
 import com.practical.leavemaster.user.AppUser;
@@ -70,6 +71,62 @@ class LeaveAuthorizationTest {
 
         assertThat(authorization.canAccessStaff(authentication, "S002")).isFalse();
         assertThat(authorization.canApplyForStaff(authentication, "S002")).isFalse();
+    }
+
+    @Test
+    void assistantStaffDataAllowsSelfButRejectsUnrelatedStaff() {
+        mockUser("alice-login", "S001", "tenant-a");
+        when(staffRepository.findById("S001")).thenReturn(Optional.of(alice));
+        when(staffRepository.findById("S002")).thenReturn(Optional.of(bob));
+        when(leaveApproverRepository.findActiveApproversForStaff(bob, LocalDate.now())).thenReturn(List.of());
+
+        assertThat(authorization.canReadStaffData(authentication, "S001")).isTrue();
+        assertThat(authorization.canReadStaffData(authentication, "S002")).isFalse();
+    }
+
+    @Test
+    void assistantStaffDataAllowsAssignedManagerButRejectsUnrelatedAndCrossTenantStaff() {
+        authentication = new UsernamePasswordAuthenticationToken("manager-login", "n/a", List.of());
+        mockUser("manager-login", "S003", "tenant-a");
+        Staff unrelated = Staff.builder().id("S004").tenantId("tenant-a").name("Unrelated").build();
+        Staff otherTenant = Staff.builder().id("S900").tenantId("tenant-b").name("Other").build();
+        when(staffRepository.findById("S002")).thenReturn(Optional.of(bob));
+        when(staffRepository.findById("S004")).thenReturn(Optional.of(unrelated));
+        when(staffRepository.findById("S900")).thenReturn(Optional.of(otherTenant));
+        when(leaveApproverRepository.findActiveApproversForStaff(bob, LocalDate.now()))
+                .thenReturn(List.of(LeaveApprover.builder().staff(bob).approver(manager).build()));
+        when(leaveApproverRepository.findActiveApproversForStaff(unrelated, LocalDate.now())).thenReturn(List.of());
+
+        assertThat(authorization.canReadStaffData(authentication, "S002")).isTrue();
+        assertThat(authorization.canReadStaffData(authentication, "S004")).isFalse();
+        assertThat(authorization.canReadStaffData(authentication, "S900")).isFalse();
+    }
+
+    @Test
+    void assistantStaffDataAllowsTenantAndPlatformAdministrativeContextsWithinBoundary() {
+        mockUser("alice-login", null, "tenant-a");
+        when(staffRepository.findById("S002")).thenReturn(Optional.of(bob));
+        assertThat(authorization.canReadStaffData(authentication, "S002")).isTrue();
+
+        authentication = new UsernamePasswordAuthenticationToken("platform-login", "n/a", List.of());
+        mockUser("platform-login", null, null);
+        when(staffRepository.findById("S002")).thenReturn(Optional.of(bob));
+        assertThat(authorization.canReadStaffData(authentication, "S002")).isTrue();
+    }
+
+    @Test
+    void assistantStaffDataAllowsHrWithStaffLinkWithinTenantButNotAcrossTenants() {
+        AppUser hr = AppUser.builder().loginName("hr-login").staffId("HR001").tenantId("tenant-a")
+                .roles(new java.util.HashSet<>(List.of(AppRole.builder().id("tenant-a_HR").active(true).build())))
+                .build();
+        authentication = new UsernamePasswordAuthenticationToken("hr-login", "n/a", List.of());
+        when(appUserRepository.findById("hr-login")).thenReturn(Optional.of(hr));
+        when(staffRepository.findById("S002")).thenReturn(Optional.of(bob));
+        Staff otherTenant = Staff.builder().id("S900").tenantId("tenant-b").build();
+        when(staffRepository.findById("S900")).thenReturn(Optional.of(otherTenant));
+
+        assertThat(authorization.canReadStaffData(authentication, "S002")).isTrue();
+        assertThat(authorization.canReadStaffData(authentication, "S900")).isFalse();
     }
 
     @Test

@@ -28,6 +28,26 @@ public class LeaveAuthorization {
      * Administrative users without a staff link retain their existing RBAC-based access, but remain
      * tenant-scoped when a tenant is assigned to the account.
      */
+    /**
+     * Staff-scoped assistant/read access: own record, tenant administrative accounts, or an
+     * actively assigned approver/manager. Tenant equality is always checked before relationship.
+     */
+    public boolean canReadStaffData(Authentication authentication, String staffId) {
+        Optional<AppUser> user = currentUser(authentication);
+        if (user.isEmpty() || staffId == null || staffId.isBlank()) return false;
+
+        Optional<Staff> staff = staffRepository.findById(staffId);
+        if (staff.isEmpty()) return true;
+        if (!sameTenant(user.get(), staff.get().getTenantId())) return false;
+        if (isAdministrativeAccount(user.get()) || isTenantHrOrAdmin(user.get()) || staffId.equals(user.get().getStaffId())) return true;
+        if (user.get().getStaffId() == null || user.get().getStaffId().isBlank()) return false;
+
+        return leaveApproverRepository.findActiveApproversForStaff(staff.get(), java.time.LocalDate.now()).stream()
+                .map(LeaveApprover::getApprover)
+                .filter(java.util.Objects::nonNull)
+                .anyMatch(approver -> user.get().getStaffId().equals(approver.getId()));
+    }
+
     public boolean canAccessStaff(Authentication authentication, String staffId) {
         Optional<AppUser> user = currentUser(authentication);
         if (user.isEmpty()) {
@@ -166,6 +186,13 @@ public class LeaveAuthorization {
         }
 
         return appUserRepository.findById(authentication.getName());
+    }
+
+    private boolean isTenantHrOrAdmin(AppUser user) {
+        return user.getRoles() != null && user.getRoles().stream()
+                .filter(java.util.Objects::nonNull)
+                .map(role -> role.getId() == null ? "" : role.getId().toUpperCase(java.util.Locale.ROOT))
+                .anyMatch(roleId -> roleId.endsWith("_HR") || roleId.endsWith("_ADMIN") || roleId.equals("ADMIN"));
     }
 
     private boolean isAdministrativeAccount(AppUser user) {

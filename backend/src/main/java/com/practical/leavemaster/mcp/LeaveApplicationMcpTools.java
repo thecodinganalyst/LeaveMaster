@@ -51,7 +51,7 @@ public class LeaveApplicationMcpTools {
     }
 
     @Tool(description = "Get leave balances for a staff member by staff ID")
-    @PreAuthorize("hasAuthority('" + RbacPermissions.LEAVE_APPLICATION_READ + "')")
+    @PreAuthorize("hasAuthority('" + RbacPermissions.LEAVE_APPLICATION_READ + "') and @leaveAuthorization.canReadStaffData(authentication, #staffId)")
     public List<LeaveBalanceAssistantReadService.LeaveBalanceResult> getLeaveBalances(String staffId) {
         return leaveBalanceAssistantReadService.findByStaffId(staffId);
     }

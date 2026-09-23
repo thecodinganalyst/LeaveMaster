@@ -3,6 +3,7 @@ package com.practical.leavemaster.assistant;
 import com.practical.leavemaster.rbac.RbacPermissions;
 import com.practical.leavemaster.user.AppUser;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.tool.definition.ToolDefinition;
 import org.springframework.ai.tool.metadata.ToolMetadata;
@@ -56,6 +57,35 @@ class AssistantToolAdapterTest {
         assertThat(trace.elapsedMillis()).isGreaterThanOrEqualTo(0L);
         verify(read).call("{}");
         verify(audit).record(anyString(), anyString(), anyString(), anyString(), anyString(), any(), anyString(), any());
+    }
+
+    @Test
+    void shouldPreserveAuthoritativeToolArgumentsAndResultWithoutRecalculating() {
+        ToolCallback read = callback("getStaffLeaveEntitlement");
+        String authoritative = "{\"staffName\":\"Alice\",\"joinDate\":\"2026-07-01\",\"configuredEntitlementAmount\":14,\"entitlement\":7,\"sourcePolicyResolved\":true}";
+        when(read.call(anyString())).thenReturn(authoritative);
+        List<AssistantDtos.StructuredResult> results = new ArrayList<>();
+
+        ToolCallback[] adapted = AssistantToolAdapter.forUser(
+                new ToolCallback[]{read}, authentication(RbacPermissions.STAFF_READ), user(), new ObjectMapper(),
+                new ArrayList<>(), results, "contract", mock(AssistantConfirmationService.class),
+                mock(AssistantAuditService.class));
+
+        String input = "{\"staffId\":\"S1\",\"leaveType\":\"Annual Leave\",\"year\":2026}";
+        assertThat(adapted[0].call(input)).isEqualTo(authoritative);
+
+        ArgumentCaptor<String> inputCaptor = ArgumentCaptor.forClass(String.class);
+        verify(read).call(inputCaptor.capture());
+        assertThat(inputCaptor.getValue()).isEqualTo(input);
+        assertThat(results).singleElement().satisfies(result -> {
+            assertThat(result.toolName()).isEqualTo("getStaffLeaveEntitlement");
+            @SuppressWarnings("unchecked")
+            Map<String, Object> data = (Map<String, Object>) result.data();
+            assertThat(data)
+                    .containsEntry("entitlement", 7)
+                    .containsEntry("configuredEntitlementAmount", 14)
+                    .containsEntry("sourcePolicyResolved", true);
+        });
     }
 
     @Test

@@ -139,7 +139,10 @@ class McpAuthorizationTest {
             for (String method : methods) {
                 assertThat(actualPermissions)
                     .as("%s.%s permission", toolClass.getSimpleName(), method)
-                    .containsEntry(method, expression);
+                    .containsKey(method);
+                assertThat(actualPermissions.get(method))
+                    .as("%s.%s permission expression", toolClass.getSimpleName(), method)
+                    .contains(expression);
             }
         });
     }
