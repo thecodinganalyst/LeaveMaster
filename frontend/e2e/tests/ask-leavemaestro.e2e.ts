@@ -86,6 +86,36 @@ test.describe('Ask LeaveMaestro critical journeys', () => {
     await expect(page.getByRole('textbox', { name: 'Message Ask LeaveMaestro' })).toBeEnabled();
   });
 
+  test('@smoke leave application requires explicit confirmation and replay is safe', async ({ page }) => {
+    const assertNoFailures = installFailureGuards(page);
+    await mockAuthenticatedBackend(page, 'staff');
+    let confirmationCalls = 0;
+    await page.route('**/api/assistant/chat', (route) => json(route, {
+      conversationId: 'action-585',
+      message: 'I resolved 5 October as one full day of Annual Leave. It has not been submitted yet.',
+      pendingActions: [{
+        toolName: 'applyForLeave',
+        arguments: { request: { staffId: 'E2E-STAFF', leaveTypeId: 'annual', fromDate: '2026-10-05', toDate: '2026-10-05', leaveDuration: 'FULL' } },
+        requiredAuthority: 'leave_application:write',
+        actorLoginName: 'staff', actorStaffId: 'E2E-STAFF', tenantId: 'E2E', confirmationToken: 'confirm-585',
+      }],
+      structuredResults: [],
+    } satisfies Reply));
+    await page.route('**/api/assistant/actions/confirm', (route) => {
+      confirmationCalls += 1;
+      return json(route, { toolName: 'applyForLeave', status: 'EXECUTED', result: '[{"id":"LA-585","status":"PENDING"}]', replayed: confirmationCalls > 1 });
+    });
+
+    await open(page);
+    await ask(page, 'Apply Annual Leave for 5 October');
+    await expect(page.getByText(/has not been submitted yet/i)).toBeVisible();
+    expect(confirmationCalls).toBe(0);
+    await page.getByRole('button', { name: /Confirm Apply for leave/i }).click();
+    await expect(page.getByText(/completed successfully/i)).toBeVisible();
+    expect(confirmationCalls).toBe(1);
+    await assertNoFailures();
+  });
+
   test('@smoke mobile assistant remains usable', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     const assertNoFailures = installFailureGuards(page);

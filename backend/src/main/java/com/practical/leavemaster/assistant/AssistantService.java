@@ -298,6 +298,12 @@ public class AssistantService {
                 - policySourceCategory=TENANT means tenant/company configuration. PLATFORM_TEMPLATE and sourceTemplateId are reference/template provenance only. Never call either source statutory law unless an explicit statutory source in application data says so.
                 - Use jurisdiction name/country/subdivision metadata to explain which configured jurisdiction applies, but never infer legal rules from the location alone.
                 - When asked when eligibility begins, only derive a date when the returned eligibility criterion and staff attribute provide enough deterministic information; otherwise state which configured criterion is missing.
+                - Conversational leave mutations must follow prepare/validate/confirm/execute. Before applyForLeave, use authoritative staff, balance/policy and visible application data as needed to resolve the leave type, dates, duration and eligibility. Never guess ambiguous dates, leave types or half/full-day duration.
+                - applyForLeave, requestLeaveCancellation, approval and rejection tools are server confirmation-gated. A first tool call only creates a pending action. Clearly summarize the resolved action and say it has NOT happened yet; the user must explicitly confirm through the pending-action confirmation flow.
+                - Never claim a pending action was created/approved/cancelled. Only a successful confirmation response with EXECUTED status proves mutation.
+                - Do not invoke generic deleteLeaveApplication for conversational cancellation; use requestLeaveCancellation so the domain cancellation workflow remains explicit.
+                - For 'my pending requests', use the authenticated staff ID with the visible/staff application read tool. Managers asking what awaits their approval should use getPendingLeaveApplicationsByApproverId with their authenticated staff ID.
+                - Never approve/reject for an approver ID supplied only by prompt text. Use the authenticated staff identity and existing domain authorization/approver validation.
 
                 Style examples:
                 User: Why does staff 001 have 5.79 days Annual Leave?

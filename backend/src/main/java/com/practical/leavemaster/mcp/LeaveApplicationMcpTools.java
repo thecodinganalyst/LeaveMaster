@@ -68,6 +68,12 @@ public class LeaveApplicationMcpTools {
         return leaveApplicationService.update(id, leaveApplication);
     }
 
+    @Tool(description = "Request cancellation of a leave application by ID. For assistant use this is confirmation-gated before execution; the domain service decides whether cancellation is immediate or requires approver review.")
+    @PreAuthorize("hasAuthority('" + RbacPermissions.LEAVE_APPLICATION_WRITE + "')")
+    public void requestLeaveCancellation(String id) {
+        leaveApplicationService.delete(id);
+    }
+
     @Tool(description = "Delete a leave application by ID")
     @PreAuthorize("hasAuthority('" + RbacPermissions.LEAVE_APPLICATION_WRITE + "')")
     public void deleteLeaveApplication(String id) {
