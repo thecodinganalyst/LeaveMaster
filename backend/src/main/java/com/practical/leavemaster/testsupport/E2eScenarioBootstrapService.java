@@ -108,13 +108,9 @@ public class E2eScenarioBootstrapService {
         applyPermissions(scenario.roles().get("hr"), HR_PERMISSIONS);
         applyPermissions(scenario.roles().get("admin"), ADMIN_PERMISSIONS);
 
-        // The in-memory factory can use descriptive IDs/source metadata, but persistence must
-        // respect the production entity mappings and foreign keys. Entitlements and approvers use
-        // generated UUIDs, and this baseline scenario does not create entitlement-policy rows.
-        scenario.entitlements().values().forEach(entitlement -> {
-            entitlement.setId(null);
-            entitlement.setPolicyId(null);
-        });
+        // Persistence uses generated UUIDs for entitlement and approver row identities while
+        // retaining the deterministic policy reference created by the shared fixture factory.
+        scenario.entitlements().values().forEach(entitlement -> entitlement.setId(null));
         scenario.approvers().forEach(approver -> approver.setId(null));
 
         // Assigned-ID scenario entities are known to be new. Persist them explicitly rather than
