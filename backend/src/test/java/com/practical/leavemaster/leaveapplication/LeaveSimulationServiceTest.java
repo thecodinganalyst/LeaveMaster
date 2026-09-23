@@ -76,6 +76,52 @@ class LeaveSimulationServiceTest {
         verify(repo,never()).save(any());
     }
 
+    @Test
+    void validatesSimulationInputsAndEmploymentBoundaries() {
+        StaffRepository repo=mock(StaffRepository.class);
+        LeaveType type=LeaveType.builder().id("AL").name("Annual Leave").build();
+        Staff staff=staff(type);
+        when(repo.findById("EMP1")).thenReturn(Optional.of(staff));
+        LeaveSimulationService service=new LeaveSimulationService(repo,mock(LeaveApplicationRepository.class),mock(LeaveCalendarService.class));
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.simulateLeaveUsage("EMP1","AL",null,LocalDate.now(),LeaveDuration.FULL))
+                .isInstanceOf(IllegalArgumentException.class);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.simulateLeaveUsage("EMP1","AL",LocalDate.of(2026,2,2),LocalDate.of(2026,2,1),LeaveDuration.FULL))
+                .isInstanceOf(IllegalArgumentException.class);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.simulateLeaveUsage("EMP1","AL",LocalDate.of(2025,12,31),LocalDate.of(2026,1,2),LeaveDuration.FULL))
+                .isInstanceOf(IllegalArgumentException.class);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.simulateTerminationEntitlement("EMP1","AL",LocalDate.of(2025,12,31)))
+                .isInstanceOf(IllegalArgumentException.class);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.simulatePolicyValue("EMP1","AL",new BigDecimal("-1")))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void excludesPublicHolidayAndSupportsHalfDayAndTerminationBoundary() {
+        StaffRepository repo=mock(StaffRepository.class);
+        LeaveApplicationRepository apps=mock(LeaveApplicationRepository.class);
+        LeaveCalendarService calendars=mock(LeaveCalendarService.class);
+        LeaveType type=LeaveType.builder().id("AL").name("Annual Leave").build();
+        Staff staff=staff(type);
+        staff.setTermDate(LocalDate.of(2026,12,31));
+        when(repo.findById("EMP1")).thenReturn(Optional.of(staff));
+        com.practical.leavemaster.leavecalendar.PublicHoliday holiday=new com.practical.leavemaster.leavecalendar.PublicHoliday();
+        holiday.setHolidayDate(LocalDate.of(2026,12,8));
+        when(calendars.getCalendarFor(eq("SG"),any(LocalDate.class))).thenReturn(Optional.of(LeaveCalendar.builder()
+                .start(LocalDate.of(2026,1,1)).end(LocalDate.of(2026,12,31))
+                .publicHolidays(new ArrayList<>(List.of(holiday))).build()));
+        when(apps.findByStaffAndLeaveTypeAndLeaveDateBetweenAndStatusIn(any(),any(),any(),any(),any())).thenReturn(List.of());
+
+        var result=new LeaveSimulationService(repo,apps,calendars)
+                .simulateLeaveUsage("EMP1","AL",LocalDate.of(2026,12,7),LocalDate.of(2026,12,9),LeaveDuration.HALF);
+
+        assertThat(result.chargeableDates()).containsExactly(LocalDate.of(2026,12,7),LocalDate.of(2026,12,9));
+        assertThat(result.simulatedCharge()).isEqualByComparingTo("1.0");
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> new LeaveSimulationService(repo,apps,calendars)
+                .simulateLeaveUsage("EMP1","AL",LocalDate.of(2026,12,31),LocalDate.of(2027,1,1),LeaveDuration.FULL))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
     private Staff staff(LeaveType type) {
         LeaveEntitlement entitlement=LeaveEntitlement.builder().leaveType(type).from(LocalDate.of(2026,1,1))
                 .to(LocalDate.of(2026,12,31)).entitlement(new BigDecimal("14")).build();
