@@ -99,6 +99,12 @@ class ScenarioDataFactoryTest {
         assertEquals("AU-NSW", scenario.staff("staff009").getJurisdictionId());
         assertEquals("7.00", scenario.expected("staff002.proratedEntitlement").value());
         assertEquals("14.00", scenario.expected("policy.annualLeave").value());
+        assertEquals(1, scenario.policies().size());
+        assertEquals(new BigDecimal("14.00"), scenario.policies().getFirst().getEntitlementAmount());
+        assertEquals("FULL_TIME", scenario.eligibilityRules().getFirst().getValue());
+        assertEquals(1, scenario.calendars().size());
+        assertEquals(REFERENCE_DATE.plusDays(10),
+                scenario.calendars().getFirst().getPublicHolidays().getFirst().getHolidayDate());
         assertEquals(4, scenario.leaveApplications().size());
         assertTrue(scenario.leaveApplications().stream().anyMatch(a ->
                 a.getStatus() == com.practical.leavemaster.leaveapplication.LeaveStatus.PENDING));
