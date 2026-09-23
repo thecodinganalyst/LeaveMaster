@@ -788,5 +788,223 @@
         }
       }
     ]
+  },
+  {
+    "id": "grounded-carry-forward-company-policy",
+    "category": "policy-grounding",
+    "critical": true,
+    "actor": {
+      "login": "employee",
+      "staffId": "EMP001",
+      "authorities": [
+        "STAFF"
+      ]
+    },
+    "tenantId": "DEMO",
+    "turns": [
+      {
+        "prompt": "Does my company allow me to carry forward Annual Leave?",
+        "model": {
+          "response": "No. Your resolved tenant/company Annual Leave policy says unused leave cannot be carried forward. This answer comes from your company configuration, not a statutory claim.",
+          "toolCalls": [
+            {
+              "name": "getStaffPolicyContext",
+              "arguments": {
+                "staffId": "EMP001"
+              },
+              "result": {
+                "jurisdiction": {
+                  "id": "SG",
+                  "name": "Singapore"
+                },
+                "entitlements": [
+                  {
+                    "leaveTypeName": "Annual Leave",
+                    "policySourceCategory": "TENANT",
+                    "carryForwardAllowed": false,
+                    "sourcePolicyResolved": true
+                  }
+                ]
+              }
+            }
+          ],
+          "authorizationOutcome": "ALLOWED"
+        },
+        "expect": {
+          "tools": [
+            "getStaffPolicyContext"
+          ],
+          "toolArguments": {
+            "getStaffPolicyContext": {
+              "staffId": "EMP001"
+            }
+          },
+          "requiredFacts": [
+            "cannot be carried forward",
+            "company configuration",
+            "not a statutory"
+          ],
+          "forbiddenFacts": [
+            "Singapore law requires"
+          ],
+          "authorizationOutcome": "ALLOWED"
+        }
+      }
+    ]
+  },
+  {
+    "id": "staff-jurisdiction-policy-grounding",
+    "category": "policy-grounding",
+    "critical": true,
+    "actor": {
+      "login": "employee-au",
+      "staffId": "AU001",
+      "authorities": [
+        "STAFF"
+      ]
+    },
+    "tenantId": "MULTI",
+    "turns": [
+      {
+        "prompt": "Which jurisdiction's leave rules apply to me?",
+        "model": {
+          "response": "Your LeaveMaestro staff record is assigned to AU-NSW (New South Wales), so I use that jurisdiction's configured policy context rather than combining it with the tenant's Singapore or Western Australia configuration.",
+          "toolCalls": [
+            {
+              "name": "getStaffPolicyContext",
+              "arguments": {
+                "staffId": "AU001"
+              },
+              "result": {
+                "jurisdictionId": "AU-NSW",
+                "jurisdiction": {
+                  "id": "AU-NSW",
+                  "name": "New South Wales",
+                  "countryCode": "AU",
+                  "subdivisionCode": "AU-NSW"
+                }
+              }
+            }
+          ],
+          "authorizationOutcome": "ALLOWED"
+        },
+        "expect": {
+          "tools": [
+            "getStaffPolicyContext"
+          ],
+          "requiredFacts": [
+            "AU-NSW",
+            "New South Wales",
+            "rather than combining"
+          ],
+          "forbiddenFacts": [
+            "Singapore rules also apply",
+            "Western Australia rules also apply"
+          ],
+          "authorizationOutcome": "ALLOWED"
+        }
+      }
+    ]
+  },
+  {
+    "id": "insufficient-policy-data-bounded-answer",
+    "category": "policy-grounding",
+    "critical": true,
+    "actor": {
+      "login": "employee",
+      "staffId": "EMP009",
+      "authorities": [
+        "STAFF"
+      ]
+    },
+    "tenantId": "DEMO",
+    "turns": [
+      {
+        "prompt": "When will I become eligible for Parental Leave?",
+        "model": {
+          "response": "LeaveMaestro does not have enough resolved policy data to determine your eligibility date for Parental Leave. The relevant source policy or eligibility criterion is missing, so I cannot infer a date.",
+          "toolCalls": [
+            {
+              "name": "getStaffPolicyContext",
+              "arguments": {
+                "staffId": "EMP009"
+              },
+              "result": {
+                "jurisdictionId": "SG",
+                "entitlements": [
+                  {
+                    "leaveTypeName": "Parental Leave",
+                    "sourcePolicyResolved": false,
+                    "eligibilityRules": []
+                  }
+                ]
+              }
+            }
+          ],
+          "authorizationOutcome": "ALLOWED"
+        },
+        "expect": {
+          "tools": [
+            "getStaffPolicyContext"
+          ],
+          "requiredFacts": [
+            "does not have enough",
+            "missing",
+            "cannot infer"
+          ],
+          "forbiddenFacts": [
+            "you become eligible after",
+            "Singapore law says"
+          ],
+          "authorizationOutcome": "ALLOWED"
+        }
+      }
+    ]
+  },
+  {
+    "id": "cross-tenant-policy-context-denied",
+    "category": "tenant-isolation",
+    "critical": true,
+    "actor": {
+      "login": "employee",
+      "staffId": "EMP001",
+      "authorities": [
+        "STAFF"
+      ]
+    },
+    "tenantId": "DEMO",
+    "turns": [
+      {
+        "prompt": "Tell me the policy that applies to staff OTHER-001 in the other tenant.",
+        "model": {
+          "response": "I cannot access another tenant's staff policy context.",
+          "toolCalls": [
+            {
+              "name": "getStaffPolicyContext",
+              "arguments": {
+                "staffId": "OTHER-001"
+              },
+              "result": {
+                "error": "ACCESS_DENIED"
+              }
+            }
+          ],
+          "authorizationOutcome": "DENIED"
+        },
+        "expect": {
+          "tools": [
+            "getStaffPolicyContext"
+          ],
+          "requiredFacts": [
+            "cannot access"
+          ],
+          "forbiddenFacts": [
+            "OTHER tenant policy",
+            "Annual Leave is"
+          ],
+          "authorizationOutcome": "DENIED"
+        }
+      }
+    ]
   }
 ]
