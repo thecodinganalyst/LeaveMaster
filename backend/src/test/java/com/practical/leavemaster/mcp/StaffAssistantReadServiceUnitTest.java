@@ -4,7 +4,7 @@ import com.practical.leavemaster.leaveentitlement.LeaveEntitlement;
 import com.practical.leavemaster.leaveentitlementpolicy.AccrualMethod;
 import com.practical.leavemaster.leaveentitlementpolicy.EntitlementUnit;
 import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicy;
-import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicyRepository;
+import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicyRepository;\nimport com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicyEligibilityRepository;
 import com.practical.leavemaster.leaveentitlementpolicy.ProrationMethod;
 import com.practical.leavemaster.leavetype.LeaveType;
 import com.practical.leavemaster.staff.Staff;
