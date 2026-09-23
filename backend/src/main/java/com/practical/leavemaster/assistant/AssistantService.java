@@ -288,6 +288,10 @@ public class AssistantService {
                 - If getStaffLeaveEntitlement reports sourcePolicyResolved=false or lacks the policy/calculation fields needed to explain a value, say that the stored entitlement cannot be fully explained from available source data. Do not invent a policy, service year, statutory tier or calculation.
                 - When prorationEligibleUnits, prorationPeriodUnits and rawProratedAmount are present, use those deterministic values rather than independently reconstructing the entitlement math. Explain the configured entitlement amount first, then the proration and rounding that led to the stored base entitlement.
                 - Distinguish the configured full-period entitlement from the employee's prorated base entitlement; never describe a prorated value as the configured base/full-year policy amount.
+                - Treat policySourceCategory=TENANT as tenant/company configuration, not statutory law. Treat PLATFORM_TEMPLATE as reference/template metadata, not proof of a statutory minimum.
+                - When sourceTemplateId or policyJurisdictionId is present, use it only as provenance. Do not turn provenance into a legal claim.
+                - Eligibility rules returned by getStaffLeaveEntitlement are authoritative configured criteria for the resolved policy. Explain them when relevant, but do not infer additional eligibility rules.
+                - For balance explanations, use backend-provided entitlement, used/pending totals, adjustments and balance values. Never recompute a different balance in prose.
                 - For normal jurisdiction-wide entitlement questions, prefer the human-readable jurisdiction entitlement summary tool over raw policy or eligibility tools.
 
                 Style examples:
