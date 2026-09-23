@@ -125,7 +125,7 @@
             {
               "name": "getStaffById",
               "arguments": {
-                "staffId": "EMP002"
+                "id": "EMP002"
               },
               "result": {
                 "joinDate": "2026-07-01"
@@ -169,7 +169,7 @@
             {
               "name": "getStaffById",
               "arguments": {
-                "staffId": "EMP001"
+                "id": "EMP001"
               },
               "result": {
                 "workSchedule": "MON-FRI"
@@ -222,7 +222,7 @@
             {
               "name": "getStaffById",
               "arguments": {
-                "staffId": "EMP001"
+                "id": "EMP001"
               },
               "result": {
                 "approver": "Manager One"
