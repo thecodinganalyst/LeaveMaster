@@ -6,6 +6,15 @@ import com.practical.leavemaster.leaveapplication.LeaveDuration;
 import com.practical.leavemaster.leaveapplication.LeaveStatus;
 import com.practical.leavemaster.leaveeligibility.StaffDependant;
 import com.practical.leavemaster.leaveentitlement.LeaveEntitlement;
+import com.practical.leavemaster.leaveentitlementpolicy.AccrualMethod;
+import com.practical.leavemaster.leaveentitlementpolicy.EligibilityCriterionType;
+import com.practical.leavemaster.leaveentitlementpolicy.EligibilityOperator;
+import com.practical.leavemaster.leaveentitlementpolicy.EntitlementUnit;
+import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicy;
+import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicyEligibilityRule;
+import com.practical.leavemaster.leaveentitlementpolicy.ProrationMethod;
+import com.practical.leavemaster.leavecalendar.LeaveCalendar;
+import com.practical.leavemaster.leavecalendar.PublicHoliday;
 import com.practical.leavemaster.leavetype.LeaveType;
 import com.practical.leavemaster.rbac.AppRole;
 import com.practical.leavemaster.staff.DaySchedule;
@@ -107,6 +116,23 @@ public final class ScenarioDataFactory {
                 .effectiveFrom(yearStart.minusYears(10))
                 .build();
 
+        LeaveEntitlementPolicy annualPolicy = LeaveEntitlementPolicy.builder()
+                .id(tenantId + "-annual-policy").tenantId(tenantId).jurisdictionId(SG)
+                .leaveTypeId(annualLeave.getId()).jurisdictionLeaveTypeId(SG + ":" + ANNUAL_LEAVE)
+                .name("E2E Annual Leave Policy").active(true).priority(1)
+                .entitlementUnit(EntitlementUnit.DAYS).entitlementAmount(new BigDecimal("14.00"))
+                .accrualMethod(AccrualMethod.ANNUAL).prorationMethod(ProrationMethod.MONTHS)
+                .carryForwardAllowed(false).effectiveFrom(yearStart.minusYears(3)).build();
+        LeaveEntitlementPolicyEligibilityRule annualRule = LeaveEntitlementPolicyEligibilityRule.builder()
+                .policyId(annualPolicy.getId()).criterionType(EligibilityCriterionType.EMPLOYMENT_TYPE)
+                .operator(EligibilityOperator.EQUALS).value("FULL_TIME").active(true).sortOrder(1).build();
+        LeaveCalendar calendar = LeaveCalendar.builder()
+                .id(tenantId + ":" + SG + ":" + referenceDate.getYear())
+                .start(yearStart).end(yearEnd).tenantId(tenantId).jurisdictionId(SG)
+                .publicHolidays(List.of(PublicHoliday.builder()
+                        .holidayDate(referenceDate.plusDays(10)).holidayName("E2E Public Holiday").build()))
+                .build();
+
         Map<String, LeaveEntitlement> entitlements = new LinkedHashMap<>();
         for (int i = 1; i <= 9; i++) {
             String alias = "staff%03d".formatted(i);
@@ -152,6 +178,7 @@ public final class ScenarioDataFactory {
 
         Map<String, ExpectedValue> expectedValues = expectedValues(referenceDate);
         return new Scenario(key, tenant, roles, users, staff, List.of(annualLeave), entitlements,
+                List.of(annualPolicy), List.of(annualRule), List.of(calendar),
                 approvers, List.of(dependant), leaveApplications, expectedValues, referenceDate);
     }
 
@@ -291,6 +318,9 @@ public final class ScenarioDataFactory {
     public record Scenario(String scenarioId, Tenant tenant, Map<String, AppRole> roles,
                            Map<String, AppUser> users, Map<String, Staff> staff,
                            List<LeaveType> leaveTypes, Map<String, LeaveEntitlement> entitlements,
+                           List<LeaveEntitlementPolicy> policies,
+                           List<LeaveEntitlementPolicyEligibilityRule> eligibilityRules,
+                           List<LeaveCalendar> calendars,
                            List<LeaveApprover> approvers, List<StaffDependant> dependants,
                            List<LeaveApplication> leaveApplications, Map<String, ExpectedValue> expectedValues,
                            LocalDate referenceDate) {
