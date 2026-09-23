@@ -32,6 +32,19 @@ jobs:
     - name: Build with Gradle Wrapper
       run: chmod +x ./backend/gradlew && ./backend/gradlew build
 
+    - name: Run deterministic AskLeaveMaestro evaluation
+      run: ./backend/gradlew assistantEvaluation
+
+    - name: Upload AskLeaveMaestro evaluation report
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: askleavemaestro-evaluation
+        path: |
+          backend/build/reports/assistant-evaluation/
+          backend/build/reports/tests/assistantEvaluation/
+          backend/build/test-results/assistantEvaluation/
+
     - name: Upload JaCoCo coverage report
       uses: actions/upload-artifact@v4
       if: always()
