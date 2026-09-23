@@ -79,7 +79,9 @@ class AssistantToolAdapterTest {
         assertThat(inputCaptor.getValue()).isEqualTo(input);
         assertThat(results).singleElement().satisfies(result -> {
             assertThat(result.toolName()).isEqualTo("getStaffLeaveEntitlement");
-            assertThat((Map<?, ?>) result.data())
+            @SuppressWarnings("unchecked")
+            Map<String, Object> data = (Map<String, Object>) result.data();
+            assertThat(data)
                     .containsEntry("entitlement", 7)
                     .containsEntry("configuredEntitlementAmount", 14)
                     .containsEntry("sourcePolicyResolved", true);
