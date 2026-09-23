@@ -1,6 +1,12 @@
 name: AskLeaveMaestro live Gemini evaluation
 
 on:
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - 'scripts/assistant-live-eval/**'
+      - '.github/workflows/assistant-live-evaluation.yml'
+      - 'docs/development/askleavemaestro-evaluation.md'
   workflow_dispatch:
     inputs:
       base_url:
@@ -23,7 +29,21 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  validate:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Validate evaluator syntax and scenario catalogue
+        run: |
+          node --check scripts/assistant-live-eval/run.mjs
+          node -e "const fs=require('fs'); const s=JSON.parse(fs.readFileSync('scripts/assistant-live-eval/scenarios.json')); if (!Array.isArray(s) || !s.length) throw new Error('scenario catalogue is empty'); if (!s.some(x=>x.critical)) throw new Error('critical scenarios required'); if (!s.some(x=>x.category==='tenant-isolation')) throw new Error('tenant-isolation scenario required');"
+
   live-evaluation:
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
