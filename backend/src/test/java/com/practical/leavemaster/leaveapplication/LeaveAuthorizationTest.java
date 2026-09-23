@@ -73,6 +73,47 @@ class LeaveAuthorizationTest {
     }
 
     @Test
+    void assistantStaffDataAllowsSelfButRejectsUnrelatedStaff() {
+        mockUser("alice-login", "S001", "tenant-a");
+        when(staffRepository.findById("S001")).thenReturn(Optional.of(alice));
+        when(staffRepository.findById("S002")).thenReturn(Optional.of(bob));
+        when(leaveApproverRepository.findActiveApproversForStaff(bob, LocalDate.now())).thenReturn(List.of());
+
+        assertThat(authorization.canReadStaffData(authentication, "S001")).isTrue();
+        assertThat(authorization.canReadStaffData(authentication, "S002")).isFalse();
+    }
+
+    @Test
+    void assistantStaffDataAllowsAssignedManagerButRejectsUnrelatedAndCrossTenantStaff() {
+        authentication = new UsernamePasswordAuthenticationToken("manager-login", "n/a", List.of());
+        mockUser("manager-login", "S003", "tenant-a");
+        Staff unrelated = Staff.builder().id("S004").tenantId("tenant-a").name("Unrelated").build();
+        Staff otherTenant = Staff.builder().id("S900").tenantId("tenant-b").name("Other").build();
+        when(staffRepository.findById("S002")).thenReturn(Optional.of(bob));
+        when(staffRepository.findById("S004")).thenReturn(Optional.of(unrelated));
+        when(staffRepository.findById("S900")).thenReturn(Optional.of(otherTenant));
+        when(leaveApproverRepository.findActiveApproversForStaff(bob, LocalDate.now()))
+                .thenReturn(List.of(LeaveApprover.builder().staff(bob).approver(manager).build()));
+        when(leaveApproverRepository.findActiveApproversForStaff(unrelated, LocalDate.now())).thenReturn(List.of());
+
+        assertThat(authorization.canReadStaffData(authentication, "S002")).isTrue();
+        assertThat(authorization.canReadStaffData(authentication, "S004")).isFalse();
+        assertThat(authorization.canReadStaffData(authentication, "S900")).isFalse();
+    }
+
+    @Test
+    void assistantStaffDataAllowsTenantAndPlatformAdministrativeContextsWithinBoundary() {
+        mockUser("alice-login", null, "tenant-a");
+        when(staffRepository.findById("S002")).thenReturn(Optional.of(bob));
+        assertThat(authorization.canReadStaffData(authentication, "S002")).isTrue();
+
+        authentication = new UsernamePasswordAuthenticationToken("platform-login", "n/a", List.of());
+        mockUser("platform-login", null, null);
+        when(staffRepository.findById("S002")).thenReturn(Optional.of(bob));
+        assertThat(authorization.canReadStaffData(authentication, "S002")).isTrue();
+    }
+
+    @Test
     void staffCanReadOwnLeaveApplication() {
         mockUser("alice-login", "S001", "tenant-a");
         when(leaveApplicationRepository.findById("leave-1"))
