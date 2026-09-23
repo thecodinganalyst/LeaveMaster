@@ -29,7 +29,7 @@ test.describe('Ask LeaveMaestro critical journeys', () => {
     await expect(page.getByText('Your Annual Leave balance is shown below.')).toBeVisible();
     await page.getByRole('button', { name: 'View source data' }).click();
     await expect(page.getByText('Authoritative LeaveMaestro data')).toBeVisible();
-    await expect(page.getByText('12', { exact: true })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Ask LeaveMaestro' }).getByText('12', { exact: true })).toBeVisible();
     await ask(page, 'Why is that my entitlement?');
     await expect(page.getByText(/configured policy and employment dates/)).toBeVisible();
     await page.getByRole('button', { name: 'View source data' }).last().click();
@@ -57,7 +57,7 @@ test.describe('Ask LeaveMaestro critical journeys', () => {
   test('@smoke unauthorized staff lookup is rejected without leaking facts', async ({ page }) => {
     const assertNoFailures = installFailureGuards(page, [403]);
     await mockAuthenticatedBackend(page, 'staff');
-    await page.route('**/api/assistant/chat', (route) => json(route, { message: "You are not authorized to access another employee's leave information.", conversationId: 'denied-581', error: 'FORBIDDEN' }, 403));
+    await page.route('**/api/assistant/chat', (route) => json(route, { message: "You are not authorized to access another employee's leave information.", conversationId: 'denied-581' }, 403));
     await open(page);
     await ask(page, 'How much leave does another employee have?');
     await expect(page.getByText(/not authorized/i)).toBeVisible();
@@ -79,7 +79,7 @@ test.describe('Ask LeaveMaestro critical journeys', () => {
   test('@smoke backend failure is safe and assistant remains usable', async ({ page }) => {
     const assertNoFailures = installFailureGuards(page, [502]);
     await mockAuthenticatedBackend(page, 'staff');
-    await page.route('**/api/assistant/chat', (route) => json(route, { message: 'LeaveMaestro could not complete the assistant data lookup. Please try again.', conversationId: 'failure-581', error: 'ASSISTANT_TOOL_FAILURE' }, 502));
+    await page.route('**/api/assistant/chat', (route) => json(route, { message: 'LeaveMaestro could not complete the assistant data lookup. Please try again.', conversationId: 'failure-581' }, 502));
     await open(page);
     await ask(page, 'Give me my leave balance');
     await expect(page.getByText(/could not complete the assistant data lookup/i)).toBeVisible();
@@ -94,7 +94,7 @@ test.describe('Ask LeaveMaestro critical journeys', () => {
     await mockAuthenticatedBackend(page, 'staff');
     await page.route('**/api/assistant/chat', (route) => json(route, { conversationId: 'mobile-581', message: 'You have 12 days of Annual Leave.', pendingActions: [], structuredResults: [] } satisfies Reply));
     await open(page);
-    const panel = page.getByLabel('Ask LeaveMaestro assistant');
+    const panel = page.getByLabel('Ask LeaveMaestro assistant', { exact: true });
     const box = await panel.boundingBox();
     expect(box?.width ?? 0).toBeGreaterThan(340);
     await ask(page, 'My annual leave balance?');
