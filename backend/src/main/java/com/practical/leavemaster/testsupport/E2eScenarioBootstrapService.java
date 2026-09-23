@@ -108,9 +108,9 @@ public class E2eScenarioBootstrapService {
         applyPermissions(scenario.roles().get("hr"), HR_PERMISSIONS);
         applyPermissions(scenario.roles().get("admin"), ADMIN_PERMISSIONS);
 
-        // The in-memory factory can use descriptive IDs/source metadata, but persistence must
-        // respect the production entity mappings and foreign keys. Entitlements and approvers use
-        // generated UUIDs, and this baseline scenario does not create entitlement-policy rows.
+        // Persistence uses generated UUIDs for entitlement and approver row identities. Policy
+        // objects are tested from the shared in-memory fixture, so browser entitlements deliberately
+        // avoid a foreign-key dependency on mutable jurisdiction templates.
         scenario.entitlements().values().forEach(entitlement -> {
             entitlement.setId(null);
             entitlement.setPolicyId(null);
@@ -127,9 +127,14 @@ public class E2eScenarioBootstrapService {
                 .build());
         scenario.roles().values().forEach(entityManager::persist);
         scenario.leaveTypes().forEach(entityManager::persist);
+        // Policy/rule objects remain persistence-agnostic fixture inputs for backend assistant
+        // tests. The E2E database already seeds jurisdiction policy templates; persisting duplicate
+        // policy graphs here would couple isolated browser fixtures to template foreign keys.
+        scenario.calendars().forEach(entityManager::persist);
         scenario.staff().values().forEach(entityManager::persist);
         scenario.dependants().forEach(entityManager::persist);
         scenario.approvers().forEach(entityManager::persist);
+        scenario.leaveApplications().forEach(entityManager::persist);
 
         scenario.users().values().forEach(user -> {
             user.setPassword(passwordEncoder.encode(DEFAULT_PASSWORD));
@@ -147,6 +152,16 @@ public class E2eScenarioBootstrapService {
                 scenario.referenceDate(),
                 DEFAULT_PASSWORD,
                 users);
+    }
+
+    /**
+     * Deletes any previous copy and recreates the scenario from the deterministic factory.
+     * This is the preferred reset operation for tests that need a known baseline.
+     */
+    @Transactional
+    public ScenarioBootstrapResult resetStandardSingaporeScenario(String requestedScenarioId, LocalDate referenceDate) {
+        deleteScenario(requestedScenarioId);
+        return createStandardSingaporeScenario(requestedScenarioId, referenceDate);
     }
 
     private void applyPermissions(AppRole role, Set<String> permissionCodes) {

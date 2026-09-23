@@ -58,10 +58,11 @@ class CoreBusinessScenarioRegressionTest {
 
     @Test
     void standardScenarioContainsTenantStaffAndAnnualEntitlements() {
-        assertThat(scenario.tenant().getJurisdictionIds()).containsExactly("SG");
+        assertThat(scenario.tenant().getJurisdictionIds()).containsExactly("SG", "AU-NSW");
         assertThat(scenario.staff()).containsKeys("admin", "hr", "manager01", "manager02",
-                "staff001", "staff002", "staff003", "staff004", "staff005");
-        assertThat(scenario.entitlements()).hasSize(5);
+                "staff001", "staff002", "staff003", "staff004", "staff005",
+                "staff006", "staff007", "staff008", "staff009");
+        assertThat(scenario.entitlements()).hasSize(9);
         assertThat(scenario.staff("staff001").getWorkSchedule()).hasSize(5);
     }
 
