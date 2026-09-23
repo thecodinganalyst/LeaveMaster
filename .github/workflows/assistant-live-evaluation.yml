@@ -1,0 +1,51 @@
+name: AskLeaveMaestro live Gemini evaluation
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Deployed LeaveMaestro API base URL (blank uses repository variable/default)'
+        required: false
+        type: string
+      full_suite:
+        description: 'Reserved for expanded live scenario catalogues'
+        required: false
+        default: true
+        type: boolean
+  schedule:
+    - cron: '30 18 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: askleavemaestro-live-evaluation
+  cancel-in-progress: false
+
+jobs:
+  live-evaluation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      LIVE_EVAL_BASE_URL: ${{ inputs.base_url || vars.ASSISTANT_LIVE_EVAL_BASE_URL || 'https://leavemaster-api-63vdkoko4a-as.a.run.app' }}
+      LIVE_EVAL_MAX_ATTEMPTS: '2'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Run live configured-model evaluation
+        run: node scripts/assistant-live-eval/run.mjs
+      - name: Add report to workflow summary
+        if: always()
+        run: |
+          if [ -f build/reports/assistant-live-evaluation/live-evaluation.md ]; then
+            cat build/reports/assistant-live-evaluation/live-evaluation.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Upload live evaluation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: askleavemaestro-live-evaluation-${{ github.run_id }}
+          retention-days: 30
+          path: build/reports/assistant-live-evaluation/
