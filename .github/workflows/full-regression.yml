@@ -15,7 +15,7 @@ on:
       - 'frontend/e2e/package.json'
       - 'frontend/e2e/playwright.config.ts'
       - 'frontend/e2e/tests/**'
-      - 'backend/build.gradle'
+      - 'backend/**'
       - 'backend/src/test/java/com/practical/leavemaster/leaveapplication/CoreBusinessScenarioRegressionTest.java'
 
 concurrency:
