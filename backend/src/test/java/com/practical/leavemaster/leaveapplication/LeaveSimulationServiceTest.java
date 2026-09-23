@@ -113,7 +113,7 @@ class LeaveSimulationServiceTest {
         when(apps.findByStaffAndLeaveTypeAndLeaveDateBetweenAndStatusIn(any(),any(),any(),any(),any())).thenReturn(List.of());
 
         var result=new LeaveSimulationService(repo,apps,calendars)
-                .simulateLeaveUsage("EMP1","AL",LocalDate.of(2026,12,7),LocalDate.of(2026,12,9),LeaveDuration.HALF);
+                .simulateLeaveUsage("EMP1","AL",LocalDate.of(2026,12,7),LocalDate.of(2026,12,9),LeaveDuration.AM);
 
         assertThat(result.chargeableDates()).containsExactly(LocalDate.of(2026,12,7),LocalDate.of(2026,12,9));
         assertThat(result.simulatedCharge()).isEqualByComparingTo("1.0");
