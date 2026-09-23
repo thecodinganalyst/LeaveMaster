@@ -2,7 +2,8 @@ package com.practical.leavemaster.mcp;
 
 import com.practical.leavemaster.leaveentitlement.LeaveEntitlement;
 import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicy;
-import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicyRepository;\nimport com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicyEligibilityRepository;
+import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicyRepository;
+import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicyEligibilityRepository;
 import com.practical.leavemaster.leaveentitlementpolicy.LeaveProrationRounding;
 import com.practical.leavemaster.leaveentitlementpolicy.ProrationMethod;
 import com.practical.leavemaster.staff.DaySchedule;
@@ -26,13 +27,16 @@ import java.util.Optional;
 public class StaffAssistantReadService {
 
     private final StaffRepository staffRepository;
-    private final LeaveEntitlementPolicyRepository policyRepository;\n    private final LeaveEntitlementPolicyEligibilityRepository eligibilityRepository;
+    private final LeaveEntitlementPolicyRepository policyRepository;
+    private final LeaveEntitlementPolicyEligibilityRepository eligibilityRepository;
 
     public StaffAssistantReadService(
             StaffRepository staffRepository,
-            LeaveEntitlementPolicyRepository policyRepository,\n            LeaveEntitlementPolicyEligibilityRepository eligibilityRepository) {
+            LeaveEntitlementPolicyRepository policyRepository,
+            LeaveEntitlementPolicyEligibilityRepository eligibilityRepository) {
         this.staffRepository = staffRepository;
-        this.policyRepository = policyRepository;\n        this.eligibilityRepository = eligibilityRepository;
+        this.policyRepository = policyRepository;
+        this.eligibilityRepository = eligibilityRepository;
     }
 
     @Transactional(readOnly = true)
@@ -92,7 +96,15 @@ public class StaffAssistantReadService {
         Optional<LeaveEntitlementPolicy> sourcePolicy = Optional.ofNullable(entitlement.getPolicyId())
                 .filter(policyId -> !policyId.isBlank())
                 .flatMap(policyRepository::findById);
-        List<EligibilityRuleResult> eligibilityRules = sourcePolicy\n                .map(policy -> eligibilityRepository.findAllByPolicyIdAndActiveTrueOrderBySortOrderAsc(policy.getId()).stream()\n                        .map(rule -> new EligibilityRuleResult(\n                                rule.getCriterionType() == null ? null : rule.getCriterionType().name(),\n                                rule.getOperator() == null ? null : rule.getOperator().name(),\n                                rule.getValue()))\n                        .toList())\n                .orElse(List.of());\n        ProrationEvidence proration = sourcePolicy
+        List<EligibilityRuleResult> eligibilityRules = sourcePolicy
+                .map(policy -> eligibilityRepository.findAllByPolicyIdAndActiveTrueOrderBySortOrderAsc(policy.getId()).stream()
+                        .map(rule -> new EligibilityRuleResult(
+                                rule.getCriterionType() == null ? null : rule.getCriterionType().name(),
+                                rule.getOperator() == null ? null : rule.getOperator().name(),
+                                rule.getValue()))
+                        .toList())
+                .orElse(List.of());
+        ProrationEvidence proration = sourcePolicy
                 .map(policy -> prorationEvidence(policy, staff.getJoinDate(), entitlement.getFrom(), entitlement.getTo()))
                 .orElse(ProrationEvidence.none());
 
@@ -108,7 +120,11 @@ public class StaffAssistantReadService {
                 entitlement.getCarriedForwardAmount(),
                 entitlement.getAdjustmentAmount(),
                 sourcePolicy.map(LeaveEntitlementPolicy::getId).orElse(entitlement.getPolicyId()),
-                sourcePolicy.map(LeaveEntitlementPolicy::getName).orElse(null),\n                sourcePolicy.map(policy -> policy.getScope() == null ? null : policy.getScope().name()).orElse(null),\n                sourcePolicy.map(LeaveEntitlementPolicy::getSourceTemplateId).orElse(null),\n                sourcePolicy.map(LeaveEntitlementPolicy::getJurisdictionId).orElse(staff.getJurisdictionId()),\n                eligibilityRules,
+                sourcePolicy.map(LeaveEntitlementPolicy::getName).orElse(null),
+                sourcePolicy.map(policy -> policy.getScope() == null ? null : policy.getScope().name()).orElse(null),
+                sourcePolicy.map(LeaveEntitlementPolicy::getSourceTemplateId).orElse(null),
+                sourcePolicy.map(LeaveEntitlementPolicy::getJurisdictionId).orElse(staff.getJurisdictionId()),
+                eligibilityRules,
                 sourcePolicy.map(LeaveEntitlementPolicy::getEntitlementAmount).orElse(null),
                 sourcePolicy.map(policy -> policy.getEntitlementUnit() == null ? null : policy.getEntitlementUnit().name()).orElse(null),
                 sourcePolicy.map(policy -> policy.getAccrualMethod() == null ? null : policy.getAccrualMethod().name()).orElse(null),
@@ -260,7 +276,9 @@ public class StaffAssistantReadService {
     ) {
     }
 
-    public record EligibilityRuleResult(String criterionType, String operator, String value) {}\n\n    private record ProrationEvidence(Long eligibleUnits, Long periodUnits, BigDecimal rawProratedAmount) {
+    public record EligibilityRuleResult(String criterionType, String operator, String value) {}
+
+    private record ProrationEvidence(Long eligibleUnits, Long periodUnits, BigDecimal rawProratedAmount) {
         private static ProrationEvidence none() {
             return new ProrationEvidence(null, null, null);
         }
