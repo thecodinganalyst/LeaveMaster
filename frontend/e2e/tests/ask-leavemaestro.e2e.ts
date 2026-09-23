@@ -60,7 +60,7 @@ test.describe('Ask LeaveMaestro critical journeys', () => {
     await page.route('**/api/assistant/chat', (route) => json(route, { message: "You are not authorized to access another employee's leave information.", conversationId: 'denied-581' }, 403));
     await open(page);
     await ask(page, 'How much leave does another employee have?');
-    await expect(page.getByText(/not authorized/i)).toBeVisible();
+    await expect(page.getByText(/not authorized/i).first()).toBeVisible();
     await expect(page.getByText(/another employee has \d+/i)).toHaveCount(0);
     await expect(page.getByRole('heading', { name: 'Ask LeaveMaestro' })).toBeVisible();
     await assertNoFailures();
@@ -82,7 +82,7 @@ test.describe('Ask LeaveMaestro critical journeys', () => {
     await page.route('**/api/assistant/chat', (route) => json(route, { message: 'LeaveMaestro could not complete the assistant data lookup. Please try again.', conversationId: 'failure-581' }, 502));
     await open(page);
     await ask(page, 'Give me my leave balance');
-    await expect(page.getByText(/could not complete the assistant data lookup/i)).toBeVisible();
+    await expect(page.getByText(/could not complete the assistant data lookup/i).first()).toBeVisible();
     await expect(page.getByText(/LazyInitializationException|stack trace/i)).toHaveCount(0);
     await expect(page.getByRole('textbox', { name: 'Message Ask LeaveMaestro' })).toBeEnabled();
     await assertNoFailures();
