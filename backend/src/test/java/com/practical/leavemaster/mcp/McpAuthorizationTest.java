@@ -105,7 +105,7 @@ class McpAuthorizationTest {
         ));
         assertPermissions(LeaveApplicationMcpTools.class, Map.of(
             RbacPermissions.LEAVE_APPLICATION_READ, new String[]{"getAllLeaveApplications", "getLeaveApplicationById", "getLeaveApplicationsByStaffId", "getVisibleLeaveApplicationsForStaff", "getPendingLeaveApplicationsByApproverId", "getLeaveBalances"},
-            RbacPermissions.LEAVE_APPLICATION_WRITE, new String[]{"applyForLeave", "updateLeaveApplication", "deleteLeaveApplication"},
+            RbacPermissions.LEAVE_APPLICATION_WRITE, new String[]{"applyForLeave", "requestLeaveCancellation", "updateLeaveApplication", "deleteLeaveApplication"},
             RbacPermissions.LEAVE_APPLICATION_APPROVE, new String[]{"approveLeaveApplication", "rejectLeaveApplication", "approveCancellation", "rejectCancellation"}
         ));
     }
