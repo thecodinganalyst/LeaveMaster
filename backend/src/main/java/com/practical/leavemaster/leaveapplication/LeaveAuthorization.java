@@ -39,7 +39,7 @@ public class LeaveAuthorization {
         Optional<Staff> staff = staffRepository.findById(staffId);
         if (staff.isEmpty()) return true;
         if (!sameTenant(user.get(), staff.get().getTenantId())) return false;
-        if (isAdministrativeAccount(user.get()) || staffId.equals(user.get().getStaffId())) return true;
+        if (isAdministrativeAccount(user.get()) || isTenantHrOrAdmin(user.get()) || staffId.equals(user.get().getStaffId())) return true;
         if (user.get().getStaffId() == null || user.get().getStaffId().isBlank()) return false;
 
         return leaveApproverRepository.findActiveApproversForStaff(staff.get(), java.time.LocalDate.now()).stream()
@@ -186,6 +186,13 @@ public class LeaveAuthorization {
         }
 
         return appUserRepository.findById(authentication.getName());
+    }
+
+    private boolean isTenantHrOrAdmin(AppUser user) {
+        return user.getRoles() != null && user.getRoles().stream()
+                .filter(java.util.Objects::nonNull)
+                .map(role -> role.getId() == null ? "" : role.getId().toUpperCase(java.util.Locale.ROOT))
+                .anyMatch(roleId -> roleId.endsWith("_HR") || roleId.endsWith("_ADMIN") || roleId.equals("ADMIN"));
     }
 
     private boolean isAdministrativeAccount(AppUser user) {
