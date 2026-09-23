@@ -2,6 +2,7 @@ package com.practical.leavemaster.leaveapplication;
 
 import com.practical.leavemaster.leaveapprover.LeaveApprover;
 import com.practical.leavemaster.leaveapprover.LeaveApproverRepository;
+import com.practical.leavemaster.rbac.AppRole;
 import com.practical.leavemaster.staff.Staff;
 import com.practical.leavemaster.staff.StaffRepository;
 import com.practical.leavemaster.user.AppUser;
@@ -111,6 +112,21 @@ class LeaveAuthorizationTest {
         mockUser("platform-login", null, null);
         when(staffRepository.findById("S002")).thenReturn(Optional.of(bob));
         assertThat(authorization.canReadStaffData(authentication, "S002")).isTrue();
+    }
+
+    @Test
+    void assistantStaffDataAllowsHrWithStaffLinkWithinTenantButNotAcrossTenants() {
+        AppUser hr = AppUser.builder().loginName("hr-login").staffId("HR001").tenantId("tenant-a")
+                .roles(new java.util.HashSet<>(List.of(AppRole.builder().id("tenant-a_HR").active(true).build())))
+                .build();
+        authentication = new UsernamePasswordAuthenticationToken("hr-login", "n/a", List.of());
+        when(appUserRepository.findById("hr-login")).thenReturn(Optional.of(hr));
+        when(staffRepository.findById("S002")).thenReturn(Optional.of(bob));
+        Staff otherTenant = Staff.builder().id("S900").tenantId("tenant-b").build();
+        when(staffRepository.findById("S900")).thenReturn(Optional.of(otherTenant));
+
+        assertThat(authorization.canReadStaffData(authentication, "S002")).isTrue();
+        assertThat(authorization.canReadStaffData(authentication, "S900")).isFalse();
     }
 
     @Test
