@@ -84,5 +84,5 @@ class LeaveSimulationServiceTest {
         return Staff.builder().id("EMP1").tenantId("DEMO").jurisdictionId("SG").joinDate(LocalDate.of(2026,1,1))
                 .workSchedule(schedule).leaveEntitlements(new ArrayList<>(List.of(entitlement))).build();
     }
-    private WorkScheduleDay day(DayOfWeek d){ return WorkScheduleDay.builder().dayOfWeek(d).schedule(DaySchedule.FULL_DAY).build(); }
+    private WorkScheduleDay day(DayOfWeek d){ return WorkScheduleDay.builder().dayOfWeek(d).schedule(DaySchedule.FULL).build(); }
 }
