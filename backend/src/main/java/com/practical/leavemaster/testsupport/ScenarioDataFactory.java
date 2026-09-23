@@ -167,9 +167,9 @@ public final class ScenarioDataFactory {
         approvers.add(approver(tenantId, staff.get("staff009"), staff.get("manager02"), staff.get("admin"), yearStart));
 
         List<LeaveApplication> leaveApplications = List.of(
-                leaveApplication(tenantId, staff.get("staff001"), annualLeave, staff.get("manager01"), referenceDate.minusDays(10), LeaveDuration.FULL, LeaveStatus.PENDING),
-                leaveApplication(tenantId, staff.get("staff001"), annualLeave, staff.get("manager01"), referenceDate.minusDays(20), LeaveDuration.FULL, LeaveStatus.APPROVED),
-                leaveApplication(tenantId, staff.get("staff001"), annualLeave, staff.get("manager01"), referenceDate.minusDays(30), LeaveDuration.FULL, LeaveStatus.CANCELLED),
+                leaveApplication(tenantId, staff.get("staff004"), annualLeave, staff.get("manager02"), referenceDate.minusDays(10), LeaveDuration.FULL, LeaveStatus.PENDING),
+                leaveApplication(tenantId, staff.get("staff004"), annualLeave, staff.get("manager02"), referenceDate.minusDays(20), LeaveDuration.FULL, LeaveStatus.APPROVED),
+                leaveApplication(tenantId, staff.get("staff004"), annualLeave, staff.get("manager02"), referenceDate.minusDays(30), LeaveDuration.FULL, LeaveStatus.CANCELLED),
                 leaveApplication(tenantId, staff.get("staff008"), annualLeave, staff.get("manager02"), referenceDate.plusDays(2), LeaveDuration.AM, LeaveStatus.APPROVED)
         );
 
