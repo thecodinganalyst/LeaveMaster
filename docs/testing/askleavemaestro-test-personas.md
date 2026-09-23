@@ -11,10 +11,10 @@ Tests should use a fixed reference date (the regression suite uses `2026-09-12`)
 | admin | Tenant Admin | tenant-scoped admin role |
 | hr | HR | tenant-scoped HR role |
 | manager01 / manager02 | Managers | deterministic approver/direct-report relationships |
-| staff001 | normal full-year employee + leave history | Annual Leave entitlement = 14.00 days; PENDING, APPROVED and CANCELLED examples |
+| staff001 | clean normal full-year employee | Annual Leave entitlement = 14.00 days; no pre-used balance so core apply/approve journeys start clean |
 | staff002 | mid-year joiner | joins 2026-07-01; Annual Leave = 7.00 days |
 | staff003 | recent joiner | joins 14 days before reference date |
-| staff004 | jurisdiction override baseline | SG baseline, reusable for jurisdiction tests |
+| staff004 | leave-history / jurisdiction baseline | SG; deterministic PENDING, APPROVED and CANCELLED examples; reusable for jurisdiction tests |
 | staff005 | missing approver edge case | deliberately has no approver |
 | staff006 | low/near-balance employee | Annual Leave = 1.00 day |
 | staff007 | terminating employee | termination = reference date + 30 days |
