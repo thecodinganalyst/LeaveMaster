@@ -144,7 +144,7 @@ public final class ScenarioDataFactory {
                 leaveApplication(tenantId, staff.get("staff001"), annualLeave, staff.get("manager01"), referenceDate.minusDays(10), LeaveDuration.FULL_DAY, LeaveStatus.PENDING),
                 leaveApplication(tenantId, staff.get("staff001"), annualLeave, staff.get("manager01"), referenceDate.minusDays(20), LeaveDuration.FULL_DAY, LeaveStatus.APPROVED),
                 leaveApplication(tenantId, staff.get("staff001"), annualLeave, staff.get("manager01"), referenceDate.minusDays(30), LeaveDuration.FULL_DAY, LeaveStatus.CANCELLED),
-                leaveApplication(tenantId, staff.get("staff008"), annualLeave, staff.get("manager02"), referenceDate.plusDays(2), LeaveDuration.HALF_DAY_AM, LeaveStatus.APPROVED)
+                leaveApplication(tenantId, staff.get("staff008"), annualLeave, staff.get("manager02"), referenceDate.plusDays(2), LeaveDuration.AM, LeaveStatus.APPROVED)
         );
 
         StaffDependant dependant = dependant(tenantId, staff.get("staff001"), "child01", referenceDate.minusYears(2));
@@ -197,7 +197,7 @@ public final class ScenarioDataFactory {
                 workDay(DayOfWeek.TUESDAY),
                 workDay(DayOfWeek.WEDNESDAY),
                 workDay(DayOfWeek.THURSDAY),
-                WorkScheduleDay.builder().dayOfWeek(DayOfWeek.FRIDAY).daySchedule(DaySchedule.HALF_AM).build()
+                WorkScheduleDay.builder().dayOfWeek(DayOfWeek.FRIDAY).daySchedule(DaySchedule.AM).build()
         );
     }
 
@@ -217,7 +217,7 @@ public final class ScenarioDataFactory {
         values.put("staff002.proratedEntitlement", new ExpectedValue("7.00", "days"));
         values.put("staff006.lowBalanceEntitlement", new ExpectedValue("1.00", "days"));
         values.put("staff007.terminationDate", new ExpectedValue(referenceDate.plusDays(30).toString(), "date"));
-        values.put("staff008.fridaySchedule", new ExpectedValue("HALF_AM", "schedule"));
+        values.put("staff008.fridaySchedule", new ExpectedValue("AM", "schedule"));
         values.put("staff009.jurisdiction", new ExpectedValue("AU-NSW", "jurisdiction"));
         values.put("calendar.publicHoliday", new ExpectedValue(referenceDate.plusDays(10).toString(), "date"));
         values.put("policy.annualLeave", new ExpectedValue("14.00", "days"));
