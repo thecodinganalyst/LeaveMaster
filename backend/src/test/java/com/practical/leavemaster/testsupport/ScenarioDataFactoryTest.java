@@ -92,7 +92,7 @@ class ScenarioDataFactoryTest {
         var scenario = ScenarioDataFactory.standardSingaporeScenario("assistant", REFERENCE_DATE);
 
         assertEquals(new BigDecimal("1.00"), scenario.entitlements().get("staff006").getEntitlement());
-        assertEquals(REFERENCE_DATE.plusDays(30), scenario.staff("staff007").getTerminationDate());
+        assertEquals(REFERENCE_DATE.plusDays(30), scenario.staff("staff007").getTermDate());
         assertEquals("AM", scenario.staff("staff008").getWorkSchedule().stream()
                 .filter(day -> day.getDayOfWeek() == java.time.DayOfWeek.FRIDAY)
                 .findFirst().orElseThrow().getDaySchedule().name());
