@@ -39,6 +39,12 @@ public class StaffMcpTools {
         return staffAssistantReadService.findLeaveEntitlement(staffId, leaveType, year);
     }
 
+    @Tool(description = "Get the authenticated-accessible staff policy context for normal policy and eligibility questions. Prefer this for questions such as eligibility, carry-forward, proration, applicable leave types, joining/leaving effects, or whether a rule comes from tenant configuration or reference metadata. Returns the staff's actual jurisdiction metadata, employment attributes and resolved entitlement-policy provenance. If a source policy is unresolved, do not invent the missing rule.")
+    @PreAuthorize("hasAuthority('" + RbacPermissions.STAFF_READ + "') and @leaveAuthorization.canReadStaffData(authentication, #staffId)")
+    public Optional<StaffAssistantReadService.StaffPolicyContextResult> getStaffPolicyContext(String staffId) {
+        return staffAssistantReadService.findPolicyContext(staffId);
+    }
+
     @Tool(description = "Create a new staff member")
     @PreAuthorize("hasAuthority('" + RbacPermissions.STAFF_WRITE + "')")
     public Staff createStaff(Staff staff) {
