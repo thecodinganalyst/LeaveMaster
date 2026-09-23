@@ -32,8 +32,9 @@ final class AssistantEvaluationRunner {
             assertAuthorization(turn.expect(), actual.authorizationOutcome(), assertions, failures);
 
             if (!failures.isEmpty()) {
+                int currentTurn = turnNumber;
                 scenarioFailures.addAll(failures.stream()
-                        .map(failure -> "turn " + turnNumber + ": " + failure)
+                        .map(failure -> "turn " + currentTurn + ": " + failure)
                         .toList());
             }
             turnResults.add(new AssistantEvaluationResult.TurnResult(
