@@ -39,10 +39,22 @@ class E2eScenarioBootstrapServiceTest {
         assertThat(result.users()).containsKeys("admin", "hr", "manager01", "manager02", "staff001");
         assertThat(result.users().get("staff001").staffId()).isEqualTo("E2E-bootstrap-test-staff001");
         assertThat(tenantRepository.existsById(result.tenantId())).isTrue();
-        assertThat(staffRepository.findAllByTenantId(result.tenantId())).hasSize(9);
+        assertThat(staffRepository.findAllByTenantId(result.tenantId())).hasSize(13);
         assertThat(appUserRepository.findAll().stream()
                 .filter(user -> result.tenantId().equals(user.getTenantId())))
-                .hasSize(9);
+                .hasSize(13);
+    }
+
+    @Test
+    void resetIsIdempotentAndRestoresKnownFixture() {
+        var first = bootstrapService.resetStandardSingaporeScenario(
+                "bootstrap-test", LocalDate.of(2026, 9, 12));
+        var second = bootstrapService.resetStandardSingaporeScenario(
+                "bootstrap-test", LocalDate.of(2026, 9, 12));
+
+        assertThat(second.tenantId()).isEqualTo(first.tenantId());
+        assertThat(staffRepository.findAllByTenantId(second.tenantId())).hasSize(13);
+        assertThat(second.users()).containsKeys("staff006", "staff007", "staff008", "staff009");
     }
 
     @Test
