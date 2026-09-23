@@ -62,6 +62,7 @@ class StaffMcpToolsTest {
                 LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31),
                 new BigDecimal("6.00"), new BigDecimal("6.00"), BigDecimal.ZERO, BigDecimal.ZERO,
                 "annual-policy", "Singapore Annual Leave - less than 2 years service",
+                "TENANT", "SG-ANNUAL-TEMPLATE", "SG", List.of(),
                 new BigDecimal("14.00"), "DAYS", "NONE", "CALENDAR_DAYS",
                 false, null, null, 151L, 365L, new BigDecimal("5.79178082"),
                 new BigDecimal("0.50"), "NEAREST_HALF_DAY", true);

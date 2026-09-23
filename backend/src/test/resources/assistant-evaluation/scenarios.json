@@ -661,5 +661,132 @@
         }
       }
     ]
+  },
+  {
+    "id": "tenant-policy-source-explanation",
+    "category": "explainability-source",
+    "critical": true,
+    "actor": {
+      "login": "employee",
+      "staffId": "EMP002",
+      "authorities": [
+        "STAFF"
+      ]
+    },
+    "tenantId": "DEMO",
+    "turns": [
+      {
+        "prompt": "Why do I have 7 days of Annual Leave, and is that a statutory amount?",
+        "model": {
+          "response": "Your tenant/company Annual Leave policy configures 14 days for the full period. LeaveMaestro calculated your 7-day entitlement from that configured policy and your employment period. The source is tenant/company configuration; this result does not label the 14-day value as a statutory minimum.",
+          "toolCalls": [
+            {
+              "name": "getStaffLeaveEntitlement",
+              "arguments": {
+                "staffId": "EMP002",
+                "leaveType": "ANNUAL_LEAVE",
+                "year": 2026
+              },
+              "result": {
+                "configuredEntitlementAmount": 14,
+                "entitlement": 7,
+                "policySourceCategory": "TENANT",
+                "policyJurisdictionId": "SG",
+                "eligibilityRules": [
+                  {
+                    "criterionType": "EMPLOYMENT_TYPE",
+                    "operator": "EQUALS",
+                    "value": "FULL_TIME"
+                  }
+                ],
+                "sourcePolicyResolved": true
+              }
+            }
+          ],
+          "authorizationOutcome": "ALLOWED"
+        },
+        "expect": {
+          "tools": [
+            "getStaffLeaveEntitlement"
+          ],
+          "toolArguments": {
+            "getStaffLeaveEntitlement": {
+              "staffId": "EMP002",
+              "year": 2026
+            }
+          },
+          "requiredFacts": [
+            "tenant/company",
+            "14 days",
+            "7-day",
+            "does not label",
+            "statutory"
+          ],
+          "forbiddenFacts": [
+            "statutory entitlement is 14",
+            "legal minimum is 14"
+          ],
+          "authorizationOutcome": "ALLOWED"
+        }
+      }
+    ]
+  },
+  {
+    "id": "authoritative-proration-breakdown",
+    "category": "explainability-calculation",
+    "critical": true,
+    "actor": {
+      "login": "employee",
+      "staffId": "EMP003",
+      "authorities": [
+        "STAFF"
+      ]
+    },
+    "tenantId": "DEMO",
+    "turns": [
+      {
+        "prompt": "How was my 13 days of Annual Leave calculated?",
+        "model": {
+          "response": "Your configured full-year Annual Leave entitlement is 14 days. LeaveMaestro used the backend proration evidence: 333 eligible calendar days out of 365, giving 12.77260274 before the configured nearest-half-day rounding rule, resulting in 13 days.",
+          "toolCalls": [
+            {
+              "name": "getStaffLeaveEntitlement",
+              "arguments": {
+                "staffId": "EMP003",
+                "leaveType": "ANNUAL_LEAVE",
+                "year": 2026
+              },
+              "result": {
+                "configuredEntitlementAmount": 14,
+                "prorationEligibleUnits": 333,
+                "prorationPeriodUnits": 365,
+                "rawProratedAmount": 12.77260274,
+                "prorationRoundingRule": "NEAREST_HALF_DAY",
+                "entitlement": 13,
+                "policySourceCategory": "TENANT"
+              }
+            }
+          ],
+          "authorizationOutcome": "ALLOWED"
+        },
+        "expect": {
+          "tools": [
+            "getStaffLeaveEntitlement"
+          ],
+          "requiredFacts": [
+            "14 days",
+            "333",
+            "365",
+            "12.77260274",
+            "nearest-half-day",
+            "13 days"
+          ],
+          "forbiddenFacts": [
+            "7th-year statutory tier"
+          ],
+          "authorizationOutcome": "ALLOWED"
+        }
+      }
+    ]
   }
 ]

@@ -5,6 +5,11 @@ import com.practical.leavemaster.leaveentitlementpolicy.AccrualMethod;
 import com.practical.leavemaster.leaveentitlementpolicy.EntitlementUnit;
 import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicy;
 import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicyRepository;
+import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicyEligibilityRepository;
+import com.practical.leavemaster.leaveentitlementpolicy.LeaveEntitlementPolicyEligibilityRule;
+import com.practical.leavemaster.leaveentitlementpolicy.EligibilityCriterionType;
+import com.practical.leavemaster.leaveentitlementpolicy.EligibilityOperator;
+import com.practical.leavemaster.config.ConfigurationScope;
 import com.practical.leavemaster.leaveentitlementpolicy.ProrationMethod;
 import com.practical.leavemaster.leavetype.LeaveType;
 import com.practical.leavemaster.staff.Staff;
@@ -30,7 +35,7 @@ class StaffAssistantReadServiceUnitTest {
         Staff staff = staffWithAnnualEntitlement(LocalDate.of(2026, 8, 15), new BigDecimal("5.21"));
         when(repository.findById("001")).thenReturn(Optional.of(staff));
 
-        StaffAssistantReadService.StaffResult result = new StaffAssistantReadService(repository, policyRepository)
+        StaffAssistantReadService.StaffResult result = new StaffAssistantReadService(repository, policyRepository, mock(LeaveEntitlementPolicyEligibilityRepository.class))
                 .findById("001")
                 .orElseThrow();
 
@@ -52,7 +57,7 @@ class StaffAssistantReadServiceUnitTest {
         when(policyRepository.findById("annual-policy")).thenReturn(Optional.of(annualPolicy()));
 
         StaffAssistantReadService.StaffLeaveEntitlementResult result =
-                new StaffAssistantReadService(repository, policyRepository)
+                new StaffAssistantReadService(repository, policyRepository, mock(LeaveEntitlementPolicyEligibilityRepository.class))
                         .findLeaveEntitlement("001", "Annual Leave", 2026)
                         .orElseThrow();
 
@@ -79,7 +84,7 @@ class StaffAssistantReadServiceUnitTest {
         when(policyRepository.findById("annual-policy")).thenReturn(Optional.of(annualPolicy()));
 
         StaffAssistantReadService.StaffLeaveEntitlementResult result =
-                new StaffAssistantReadService(repository, policyRepository)
+                new StaffAssistantReadService(repository, policyRepository, mock(LeaveEntitlementPolicyEligibilityRepository.class))
                         .findLeaveEntitlement("001", "Annual Leave", 2026)
                         .orElseThrow();
 
@@ -101,7 +106,7 @@ class StaffAssistantReadServiceUnitTest {
         when(policyRepository.findById("annual-policy")).thenReturn(Optional.empty());
 
         StaffAssistantReadService.StaffLeaveEntitlementResult result =
-                new StaffAssistantReadService(repository, policyRepository)
+                new StaffAssistantReadService(repository, policyRepository, mock(LeaveEntitlementPolicyEligibilityRepository.class))
                         .findLeaveEntitlement("001", "Annual Leave", 2026)
                         .orElseThrow();
 
@@ -118,7 +123,7 @@ class StaffAssistantReadServiceUnitTest {
         Staff staff = staffWithAnnualEntitlement(LocalDate.of(2026, 8, 15), new BigDecimal("5.50"));
         when(repository.findById("001")).thenReturn(Optional.of(staff));
         when(policyRepository.findById("annual-policy")).thenReturn(Optional.of(annualPolicy()));
-        StaffAssistantReadService service = new StaffAssistantReadService(repository, policyRepository);
+        StaffAssistantReadService service = new StaffAssistantReadService(repository, policyRepository, mock(LeaveEntitlementPolicyEligibilityRepository.class));
 
         assertThat(service.findLeaveEntitlement("001", "ANNUAL", 2026)).isPresent();
         assertThat(service.findLeaveEntitlement("001", "annual", 2025)).isEmpty();
@@ -127,7 +132,8 @@ class StaffAssistantReadServiceUnitTest {
     @Test
     void shouldRejectMissingFocusedEntitlementArguments() {
         StaffAssistantReadService service = new StaffAssistantReadService(
-                mock(StaffRepository.class), mock(LeaveEntitlementPolicyRepository.class));
+                mock(StaffRepository.class), mock(LeaveEntitlementPolicyRepository.class),
+                mock(LeaveEntitlementPolicyEligibilityRepository.class));
 
         assertThatThrownBy(() -> service.findLeaveEntitlement(" ", "Annual Leave", 2026))
                 .isInstanceOf(IllegalArgumentException.class)
