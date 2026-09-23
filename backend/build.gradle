@@ -59,6 +59,7 @@ tasks.named('test') {
 	finalizedBy jacocoTestReport
 }
 
+// Live-provider evaluation stays outside normal Gradle/PR verification; see scripts/assistant-live-eval.
 tasks.register('assistantEvaluation', Test) {
 	description = 'Runs deterministic AskLeaveMaestro evaluation scenarios without a live LLM.'
 	group = 'verification'
