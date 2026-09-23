@@ -132,7 +132,7 @@ class StaffAssistantReadServiceUnitTest {
     @Test
     void shouldRejectMissingFocusedEntitlementArguments() {
         StaffAssistantReadService service = new StaffAssistantReadService(
-                mock(StaffRepository.class), mock(LeaveEntitlementPolicyRepository.class));
+                mock(StaffRepository.class), mock(LeaveEntitlementPolicyRepository.class),\n                mock(LeaveEntitlementPolicyEligibilityRepository.class));
 
         assertThatThrownBy(() -> service.findLeaveEntitlement(" ", "Annual Leave", 2026))
                 .isInstanceOf(IllegalArgumentException.class)
