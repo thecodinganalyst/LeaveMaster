@@ -8,6 +8,8 @@ locals {
   required_apis = toset([
     "artifactregistry.googleapis.com",
     "cloudbuild.googleapis.com",
+    "logging.googleapis.com",
+    "monitoring.googleapis.com",
     "run.googleapis.com",
     "secretmanager.googleapis.com",
     "storage.googleapis.com"
