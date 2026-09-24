@@ -36,6 +36,12 @@ const ApplyLeaveRoute = () => (
   </RouteErrorBoundary>
 );
 
+const AssistantQualityRoute = () => (
+  <RouteErrorBoundary>
+    <AssistantQualityPage />
+  </RouteErrorBoundary>
+);
+
 export const AppRoutes = () => {
   return (
     <Routes>
@@ -63,7 +69,7 @@ export const AppRoutes = () => {
         <Route path="/leave-requests/edit/:id" element={<LeaveDetailsPage />} />
         <Route path="/approvals" element={<ApprovalInboxPage />} />
         <Route path="/contact-enquiries" element={<ContactEnquiriesPage />} />
-        <Route path="/platform/askleavemaestro-quality" element={<AssistantQualityPage />} />
+        <Route path="/platform/askleavemaestro-quality" element={<AssistantQualityRoute />} />
         <Route path="/leave-types/:leaveTypeId/entitlements/create" element={<EntitlementWorkflowPage />} />
         <Route path="/leave-types/:leaveTypeId/entitlements/:policyId/edit" element={<EntitlementWorkflowPage />} />
         <Route path="/:resource">
