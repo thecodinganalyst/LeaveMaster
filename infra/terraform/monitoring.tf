@@ -23,7 +23,7 @@ resource "google_logging_metric" "application_errors" {
 
   project = var.project_id
   name    = "leavemaestro_application_errors"
-  filter = <<-EOT
+  filter  = <<-EOT
     resource.type="cloud_run_revision"
     resource.labels.service_name="${var.service_name}"
     severity>=ERROR
@@ -50,7 +50,7 @@ resource "google_monitoring_alert_policy" "cloud_run_5xx" {
     display_name = "Cloud Run returned a 5xx response"
 
     condition_threshold {
-      filter = <<-EOT
+      filter          = <<-EOT
         resource.type = "cloud_run_revision"
         AND resource.label."service_name" = "${var.service_name}"
         AND metric.type = "run.googleapis.com/request_count"
