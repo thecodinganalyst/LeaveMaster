@@ -51,7 +51,7 @@ class AssistantServiceTest {
         userRepository = mock(AppUserRepository.class);
         service = new AssistantService(chatModelProvider, toolProvider, userRepository, new ObjectMapper(),
                 mock(AssistantConfirmationService.class), mock(AssistantAuditService.class),
-                mock(AssistantRateLimitService.class), mock(AssistantProviderGuard.class));
+                mock(AssistantRateLimitService.class), mock(AssistantProviderGuard.class), mock(AssistantQualityService.class));
         ReflectionTestUtils.setField(service, "enabled", true);
         ReflectionTestUtils.setField(service, "provider", "gemini");
         ReflectionTestUtils.setField(service, "model", "gemini-3.6-flash");
