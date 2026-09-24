@@ -43,4 +43,23 @@ class AssistantQualityServiceTest {
    org.assertj.core.api.Assertions.assertThatThrownBy(()->service.recordFeedback("c","DEMO",null,0,"x"))
      .isInstanceOf(IllegalArgumentException.class);
  }
+ @Test void coversUnknownRolesEmptyCategoriesAndFailureAggregation() {
+   var repo=mock(AssistantQualityEventRepository.class);
+   when(repo.findAllByTenantId("T")).thenReturn(List.of(
+     AssistantQualityEvent.builder().eventType("REQUEST").success(false).failureCategory(null).build(),
+     AssistantQualityEvent.builder().eventType("FEEDBACK").success(true).build()));
+   var service=new AssistantQualityService(repo);
+   var auth=new UsernamePasswordAuthenticationToken("user","n/a",List.of());
+   service.recordRequest("c","T",auth,"p","m",null,0,0,true,null);
+   service.recordFeedback("c","T",auth,-1,null);
+   var summary=service.summary("T");
+   assertThat(summary.total()).isEqualTo(1);
+   assertThat(summary.failed()).isEqualTo(1);
+   assertThat(summary.averageLatencyMs()).isZero();
+   assertThat(summary.failuresByCategory()).containsEntry("UNKNOWN",1L);
+   var captor=org.mockito.ArgumentCaptor.forClass(AssistantQualityEvent.class);
+   verify(repo,atLeastOnce()).save(captor.capture());
+   assertThat(captor.getAllValues()).anySatisfy(e -> assertThat(e.getActorRole()).isEqualTo("UNKNOWN"));
+ }
+
 }
