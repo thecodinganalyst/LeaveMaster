@@ -76,6 +76,7 @@ nav:
       - API: api.md
       - Development and Testing:
           - Development and CI: development-and-ci.md
+          - GitHub Actions workflows: github-actions.md
           - Frontend testing: frontend-testing.md
           - Automated regression: testing/automated-regression.md
           - Troubleshooting: troubleshooting.md
