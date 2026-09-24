@@ -210,8 +210,7 @@ class AssistantServiceTest {
     private String formattedLogs() {
         return logAppender.list.stream()
                 .map(ILoggingEvent::getFormattedMessage)
-                .reduce("", (left, right) -> left + "
-" + right);
+                .reduce("", (left, right) -> left + "\\n" + right);
     }
 
     private UsernamePasswordAuthenticationToken authentication(String authority) {
