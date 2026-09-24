@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, Card, Col, Descriptions, Empty, Input, Row, Select, Space, Spin, Statistic, Table, Typography } from 'antd';
+import { Alert, Card, Col, Descriptions, Empty, Row, Select, Space, Spin, Statistic, Table, Typography } from 'antd';
 import { getAssistantQualityDashboard, type AssistantQualityDashboard } from '../../api/assistantQuality.ts';
 
 export const AssistantQualityPage = () => {
