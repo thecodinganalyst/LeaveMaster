@@ -64,7 +64,7 @@ class LeaveCalendarServiceTest {
         authenticateTenantUser("hr", "tenant-1");
         LeaveCalendar other = tenantCalendar("other", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31));
         other.setTenantId("tenant-2");
-        when(leaveCalendarRepository.findById("other")).thenReturn(Optional.of(other));
+        when(leaveCalendarRepository.findByIdWithPublicHolidays("other")).thenReturn(Optional.of(other));
 
         assertThat(leaveCalendarService.findById("other")).isEmpty();
     }
@@ -73,7 +73,7 @@ class LeaveCalendarServiceTest {
     void platformAdminCannotReadTenantCalendar() {
         authenticatePlatformAdmin("platform");
         LeaveCalendar tenantCalendar = tenantCalendar("fy2026", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31));
-        when(leaveCalendarRepository.findById("fy2026")).thenReturn(Optional.of(tenantCalendar));
+        when(leaveCalendarRepository.findByIdWithPublicHolidays("fy2026")).thenReturn(Optional.of(tenantCalendar));
 
         assertThat(leaveCalendarService.findById("fy2026")).isEmpty();
     }
@@ -204,7 +204,7 @@ class LeaveCalendarServiceTest {
     @Test
     void shouldFindLeaveCalendarById() {
         LeaveCalendar calendar = tenantCalendar("fy2026", LocalDate.of(2026, 4, 1), LocalDate.of(2027, 3, 31));
-        when(leaveCalendarRepository.findById("fy2026")).thenReturn(Optional.of(calendar));
+        when(leaveCalendarRepository.findByIdWithPublicHolidays("fy2026")).thenReturn(Optional.of(calendar));
         assertThat(leaveCalendarService.findById("fy2026")).contains(calendar);
     }
 
