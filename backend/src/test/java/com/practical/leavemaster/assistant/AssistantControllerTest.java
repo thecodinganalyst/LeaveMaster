@@ -11,6 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 
 class AssistantControllerTest {
 
@@ -45,6 +46,34 @@ class AssistantControllerTest {
         var expected = new AssistantDtos.ConfirmationResponse("applyForLeave", "EXECUTED", "ok", false);
         when(confirmationService.confirm("token-1", authentication)).thenReturn(expected);
         assertThat(controller.confirm(request, authentication)).isSameAs(expected);
+    }
+
+
+    @Test
+    void shouldRecordFeedbackForAuthenticatedUsers() {
+        var user = com.practical.leavemaster.user.AppUser.builder().loginName("dennis").tenantId("DEMO").build();
+        when(appUserRepository.findById("dennis")).thenReturn(java.util.Optional.of(user));
+        var result = controller.feedback(new AssistantController.FeedbackRequest("corr-1", 1, "helpful"), authentication);
+        assertThat(result).containsEntry("status", "RECORDED");
+        verify(qualityService).recordFeedback("corr-1", "DEMO", authentication, 1, "helpful");
+    }
+
+    @Test
+    void shouldRejectInvalidFeedbackAndMissingAuthenticatedUser() {
+        assertThatThrownBy(() -> controller.feedback(new AssistantController.FeedbackRequest(" ", 1, null), authentication))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("correlationId");
+        when(appUserRepository.findById("dennis")).thenReturn(java.util.Optional.empty());
+        assertThatThrownBy(() -> controller.feedback(new AssistantController.FeedbackRequest("corr", 1, null), authentication))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Authenticated user");
+    }
+
+    @Test
+    void shouldReturnTenantScopedQualitySummary() {
+        var user = com.practical.leavemaster.user.AppUser.builder().loginName("dennis").tenantId("DEMO").build();
+        var expected = new AssistantQualityService.QualitySummary(3, 2, 1, 120.0, java.util.Map.of("TOOL_FAILURE", 1L));
+        when(appUserRepository.findById("dennis")).thenReturn(java.util.Optional.of(user));
+        when(qualityService.summary("DEMO")).thenReturn(expected);
+        assertThat(controller.quality(authentication)).isEqualTo(expected);
     }
 
     @Test
