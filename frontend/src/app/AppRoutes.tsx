@@ -10,6 +10,7 @@ import { AccountSecurityPage } from '../pages/auth/AccountSecurityPage.tsx';
 import { ChangePasswordPage } from '../pages/auth/ChangePasswordPage.tsx';
 import { DemoEntryPage } from '../pages/auth/DemoEntryPage.tsx';
 import { LoginPage } from '../pages/auth/LoginPage.tsx';
+import { AssistantQualityPage } from '../pages/platform/AssistantQualityPage.tsx';
 import { ContactEnquiriesPage } from '../pages/contact/ContactEnquiriesPage.tsx';
 import { DashboardPage } from '../pages/dashboard/DashboardPage.tsx';
 import { ApplyLeavePage } from '../pages/leave/ApplyLeavePage.tsx';
@@ -62,6 +63,7 @@ export const AppRoutes = () => {
         <Route path="/leave-requests/edit/:id" element={<LeaveDetailsPage />} />
         <Route path="/approvals" element={<ApprovalInboxPage />} />
         <Route path="/contact-enquiries" element={<ContactEnquiriesPage />} />
+        <Route path="/platform/askleavemaestro-quality" element={<AssistantQualityPage />} />
         <Route path="/leave-types/:leaveTypeId/entitlements/create" element={<EntitlementWorkflowPage />} />
         <Route path="/leave-types/:leaveTypeId/entitlements/:policyId/edit" element={<EntitlementWorkflowPage />} />
         <Route path="/:resource">
