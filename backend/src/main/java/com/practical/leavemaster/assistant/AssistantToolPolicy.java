@@ -24,6 +24,7 @@ final class AssistantToolPolicy {
             Map.entry("getLeaveEntitlementConfigurationByJurisdiction", RbacPermissions.LEAVE_ENTITLEMENT_POLICY_READ),
             Map.entry("getAllLeaveCalendars", RbacPermissions.LEAVE_CALENDAR_READ), Map.entry("getLeaveCalendarById", RbacPermissions.LEAVE_CALENDAR_READ), Map.entry("createLeaveCalendar", RbacPermissions.LEAVE_CALENDAR_WRITE),
             Map.entry("getAllLeaveApprovers", RbacPermissions.LEAVE_APPROVER_READ), Map.entry("getLeaveApproversByStaffId", RbacPermissions.LEAVE_APPROVER_READ), Map.entry("getLeaveApproverById", RbacPermissions.LEAVE_APPROVER_READ), Map.entry("createLeaveApprover", RbacPermissions.LEAVE_APPROVER_WRITE), Map.entry("updateLeaveApprover", RbacPermissions.LEAVE_APPROVER_WRITE), Map.entry("deleteLeaveApprover", RbacPermissions.LEAVE_APPROVER_WRITE),
+            Map.entry("simulateLeaveUsage", RbacPermissions.LEAVE_APPLICATION_READ), Map.entry("simulateTerminationEntitlement", RbacPermissions.STAFF_READ), Map.entry("simulatePolicyEntitlement", RbacPermissions.STAFF_READ),
             Map.entry("getAllLeaveApplications", RbacPermissions.LEAVE_APPLICATION_READ), Map.entry("getLeaveApplicationById", RbacPermissions.LEAVE_APPLICATION_READ), Map.entry("getLeaveApplicationsByStaffId", RbacPermissions.LEAVE_APPLICATION_READ), Map.entry("getVisibleLeaveApplicationsForStaff", RbacPermissions.LEAVE_APPLICATION_READ), Map.entry("getPendingLeaveApplicationsByApproverId", RbacPermissions.LEAVE_APPLICATION_READ), Map.entry("getLeaveBalances", RbacPermissions.LEAVE_APPLICATION_READ),
             Map.entry("applyForLeave", RbacPermissions.LEAVE_APPLICATION_WRITE), Map.entry("requestLeaveCancellation", RbacPermissions.LEAVE_APPLICATION_WRITE), Map.entry("updateLeaveApplication", RbacPermissions.LEAVE_APPLICATION_WRITE), Map.entry("deleteLeaveApplication", RbacPermissions.LEAVE_APPLICATION_WRITE),
             Map.entry("approveLeaveApplication", RbacPermissions.LEAVE_APPLICATION_APPROVE), Map.entry("rejectLeaveApplication", RbacPermissions.LEAVE_APPLICATION_APPROVE), Map.entry("approveCancellation", RbacPermissions.LEAVE_APPLICATION_APPROVE), Map.entry("rejectCancellation", RbacPermissions.LEAVE_APPLICATION_APPROVE)
@@ -44,6 +45,7 @@ final class AssistantToolPolicy {
             "getEntitlementPoliciesByJurisdiction", "getEligibilityRulesByEntitlementPolicyId",
             "getLeaveEntitlementConfigurationByJurisdiction",
             "getAllLeaveApprovers", "getLeaveApproversByStaffId", "getLeaveApproverById",
+            "simulateLeaveUsage", "simulateTerminationEntitlement", "simulatePolicyEntitlement",
             "getAllLeaveApplications", "getLeaveApplicationById", "getLeaveApplicationsByStaffId",
             "getVisibleLeaveApplicationsForStaff", "getPendingLeaveApplicationsByApproverId", "getLeaveBalances"
     );
