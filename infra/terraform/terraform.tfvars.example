@@ -35,3 +35,7 @@ github_oauth_client_id        = "your-github-oauth-client-id"
 github_oauth_client_secret_id = "leavemaster-github-oauth-client-secret"
 google_oauth_client_id        = "your-google-oauth-client-id"
 google_oauth_client_secret_id = "leavemaster-google-oauth-client-secret"
+
+# Production Cloud Monitoring. Leave the email null to create alert policies without notifications.
+enable_production_monitoring   = true
+monitoring_notification_email = null
