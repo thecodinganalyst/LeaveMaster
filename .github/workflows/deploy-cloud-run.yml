@@ -52,6 +52,8 @@ env:
   TF_VAR_reset_platform_admin_password: ${{ vars.RESET_PLATFORM_ADMIN_PASSWORD || 'false' }}
   TF_VAR_enable_firebase_hosting: ${{ vars.ENABLE_FIREBASE_HOSTING || 'false' }}
   TF_VAR_frontend_environment: ${{ vars.FRONTEND_ENVIRONMENT || 'production' }}
+  TF_VAR_enable_production_monitoring: ${{ vars.ENABLE_PRODUCTION_MONITORING || 'true' }}
+  TF_VAR_monitoring_notification_email: ${{ vars.MONITORING_NOTIFICATION_EMAIL || 'null' }}
 
 jobs:
   deploy:
