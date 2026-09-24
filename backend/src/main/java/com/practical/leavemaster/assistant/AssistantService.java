@@ -49,6 +49,7 @@ public class AssistantService {
     private final AssistantAuditService auditService;
     private final AssistantRateLimitService rateLimitService;
     private final AssistantProviderGuard providerGuard;
+    private final AssistantQualityService qualityService;
     private final ExecutorService providerExecutor = Executors.newVirtualThreadPerTaskExecutor();
 
     @Value("${app.assistant.enabled:false}")
@@ -165,7 +166,11 @@ public class AssistantService {
             throw new AssistantProviderException("The AI provider request was interrupted", conversationId, e);
         } catch (ExecutionException e) {
             Throwable cause = e.getCause();
-            if (cause instanceof AccessDeniedException accessDenied) throw accessDenied;
+            if (cause instanceof AccessDeniedException accessDenied) {
+                qualityService.recordRequest(conversationId, user.getTenantId(), authentication, provider, model,
+                        trace.toolNames(), trace.elapsedMillis(), Math.max(0, providerRetryMaxAttempts - 1), false, "AUTHORIZATION_DENIED");
+                throw accessDenied;
+            }
             if (cause instanceof AssistantToolExecutionException toolFailure) {
                 Throwable rootCause = rootCause(toolFailure);
                 log.error(
