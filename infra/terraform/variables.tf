@@ -231,3 +231,24 @@ variable "firebase_hosting_site_id" {
     error_message = "firebase_hosting_site_id must be a valid lowercase domain label when provided."
   }
 }
+
+variable "enable_production_monitoring" {
+  description = "Whether to provision Cloud Monitoring alert policies for the production Cloud Run API"
+  type        = bool
+  default     = true
+}
+
+variable "monitoring_notification_email" {
+  description = "Optional email address for Cloud Monitoring incident notifications. Leave null to provision alerts without an email channel."
+  type        = string
+  default     = null
+  nullable    = true
+
+  validation {
+    condition = (
+      var.monitoring_notification_email == null ||
+      can(regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$", var.monitoring_notification_email))
+    )
+    error_message = "monitoring_notification_email must be a valid email address when provided."
+  }
+}
