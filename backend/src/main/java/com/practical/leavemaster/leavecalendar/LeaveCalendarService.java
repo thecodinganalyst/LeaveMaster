@@ -70,7 +70,7 @@ public class LeaveCalendarService {
     }
 
     public Optional<LeaveCalendar> findById(String id) {
-        return leaveCalendarRepository.findById(id).filter(this::isAccessibleToCurrentUser);
+        return leaveCalendarRepository.findByIdWithPublicHolidays(id).filter(this::isAccessibleToCurrentUser);
     }
 
     public LeaveCalendar create(LeaveCalendar leaveCalendar) {
