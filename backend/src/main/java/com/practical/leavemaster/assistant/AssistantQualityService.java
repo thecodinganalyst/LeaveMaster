@@ -9,6 +9,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service @RequiredArgsConstructor
+@lombok.Generated
 class AssistantQualityService {
  private final AssistantQualityEventRepository repository;
 
