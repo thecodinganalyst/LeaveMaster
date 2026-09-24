@@ -80,6 +80,16 @@ public class AssistantController {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }
 
+    @ExceptionHandler(AssistantProviderCapacityException.class)
+    ResponseEntity<Map<String, String>> providerCapacityFailure(AssistantProviderCapacityException exception) {
+        Map<String, String> body = new LinkedHashMap<>();
+        body.put("error", exception.getMessage());
+        if (exception.getConversationId() != null && !exception.getConversationId().isBlank()) {
+            body.put("conversationId", exception.getConversationId());
+        }
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(body);
+    }
+
     @ExceptionHandler(AssistantProviderException.class)
     ResponseEntity<Map<String, String>> providerFailure(AssistantProviderException exception) {
         Map<String, String> body = new LinkedHashMap<>();
