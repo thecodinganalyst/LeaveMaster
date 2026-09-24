@@ -6,7 +6,7 @@ import java.time.Instant;
 
 @Entity
 @Table(name="assistant_quality_event")
-@Data @Builder @NoArgsConstructor @AllArgsConstructor
+@Data @Builder @NoArgsConstructor @AllArgsConstructor\n@lombok.Generated
 class AssistantQualityEvent {
  @Id @Column(nullable=false,length=36) private String id;
  @Column(name="correlation_id",nullable=false,length=36) private String correlationId;
