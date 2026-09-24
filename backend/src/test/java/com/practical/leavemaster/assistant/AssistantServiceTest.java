@@ -52,7 +52,7 @@ class AssistantServiceTest {
         userRepository = mock(AppUserRepository.class);
         service = new AssistantService(chatModelProvider, toolProvider, userRepository, new ObjectMapper(),
                 mock(AssistantConfirmationService.class), mock(AssistantAuditService.class),
-                mock(AssistantRateLimitService.class), mock(AssistantProviderGuard.class), mock(AssistantQualityService.class));
+                mock(AssistantRateLimitService.class), mock(AssistantProviderGuard.class), qualityService);
         ReflectionTestUtils.setField(service, "enabled", true);
         ReflectionTestUtils.setField(service, "provider", "gemini");
         ReflectionTestUtils.setField(service, "model", "gemini-3.6-flash");
@@ -210,7 +210,8 @@ class AssistantServiceTest {
     private String formattedLogs() {
         return logAppender.list.stream()
                 .map(ILoggingEvent::getFormattedMessage)
-                .reduce("", (left, right) -> left + "\\n" + right);
+                .reduce("", (left, right) -> left + "\
+" + right);
     }
 
     private UsernamePasswordAuthenticationToken authentication(String authority) {
