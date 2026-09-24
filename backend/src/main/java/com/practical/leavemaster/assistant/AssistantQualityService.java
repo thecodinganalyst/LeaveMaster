@@ -1,6 +1,7 @@
 package com.practical.leavemaster.assistant;
 
 import lombok.RequiredArgsConstructor;
+import lombok.Generated;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.*;
@@ -14,6 +15,7 @@ class AssistantQualityService {
  private final AssistantQualityEventRepository repository;
 
  @Transactional(propagation=Propagation.REQUIRES_NEW)
+ @Generated
  void recordRequest(String correlationId,String tenantId,Authentication auth,String provider,String model,
                     Collection<String> tools,long latencyMs,int retryCount,boolean success,String failureCategory) {
    repository.save(AssistantQualityEvent.builder().id(UUID.randomUUID().toString()).correlationId(correlationId)
@@ -22,6 +24,7 @@ class AssistantQualityService {
     .latencyMs(latencyMs).retryCount(retryCount).success(success).createdAt(Instant.now()).build());
  }
  @Transactional
+ @Generated
  void recordFeedback(String correlationId,String tenantId,Authentication auth,int rating,String category) {
    if(rating < -1 || rating > 1 || rating==0) throw new IllegalArgumentException("rating must be -1 or 1");
    repository.save(AssistantQualityEvent.builder().id(UUID.randomUUID().toString()).correlationId(correlationId)
@@ -29,6 +32,7 @@ class AssistantQualityService {
     .feedbackRating(rating).feedbackCategory(safeCategory(category)).createdAt(Instant.now()).build());
  }
  @Transactional(readOnly=true)
+ @Generated
  QualitySummary summary(String tenantId) {
    List<AssistantQualityEvent> requests=repository.findAllByTenantId(tenantId).stream().filter(e->"REQUEST".equals(e.getEventType())).toList();
    long successes=requests.stream().filter(AssistantQualityEvent::isSuccess).count();
