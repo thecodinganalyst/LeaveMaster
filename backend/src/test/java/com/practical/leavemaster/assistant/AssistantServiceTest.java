@@ -39,7 +39,8 @@ class AssistantServiceTest {
     private ChatModel chatModel;
     private ToolCallbackProvider toolProvider;
     private AppUserRepository userRepository;
-    private AssistantService service;\n    private AssistantQualityService qualityService;
+    private AssistantService service;
+    private AssistantQualityService qualityService;
     private Logger serviceLogger;
     private ListAppender<ILoggingEvent> logAppender;
 
@@ -85,7 +86,8 @@ class AssistantServiceTest {
         var result = service.chat(new AssistantDtos.ChatRequest("What can I see?", null), authentication(RbacPermissions.TENANT_READ));
         assertThat(result.message()).isEqualTo("You have access.");
         assertThat(result.conversationId()).isNotBlank();
-        assertThat(result.pendingActions()).isEmpty();\n        org.mockito.Mockito.verify(qualityService).recordRequest(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.eq("T1"), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq("gemini"), org.mockito.ArgumentMatchers.eq("gemini-3.6-flash"), org.mockito.ArgumentMatchers.anyCollection(), org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.eq(true), org.mockito.ArgumentMatchers.isNull());
+        assertThat(result.pendingActions()).isEmpty();
+        org.mockito.Mockito.verify(qualityService).recordRequest(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.eq("T1"), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq("gemini"), org.mockito.ArgumentMatchers.eq("gemini-3.6-flash"), org.mockito.ArgumentMatchers.anyCollection(), org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.eq(true), org.mockito.ArgumentMatchers.isNull());
         assertThat(formattedLogs())
                 .contains("Ask LeaveMaestro request started")
                 .contains("Ask LeaveMaestro provider workflow completed")
@@ -208,7 +210,8 @@ class AssistantServiceTest {
     private String formattedLogs() {
         return logAppender.list.stream()
                 .map(ILoggingEvent::getFormattedMessage)
-                .reduce("", (left, right) -> left + "\n" + right);
+                .reduce("", (left, right) -> left + "
+" + right);
     }
 
     private UsernamePasswordAuthenticationToken authentication(String authority) {
