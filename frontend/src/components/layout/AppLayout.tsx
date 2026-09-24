@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useCan, useGetIdentity, useLogout } from '@refinedev/core';
 import {
   AppstoreOutlined,
+  AreaChartOutlined,
   AuditOutlined,
   BankOutlined,
   CalendarOutlined,
@@ -68,6 +69,7 @@ export const AppLayout = ({ children }: PropsWithChildren) => {
       ...(approvalAccess?.can ? [{ key: '/approvals', icon: <CheckSquareOutlined />, label: <Link to="/approvals">Approval Inbox</Link> }] : []),
       ...(employeeAccess?.can ? [{ key: '/employees', icon: <TeamOutlined />, label: <Link to="/employees">Staff</Link> }] : []),
       ...(tenantAccess?.can ? [{ key: '/tenants', icon: <BankOutlined />, label: <Link to="/tenants">Tenants</Link> }] : []),
+      ...(platformAdmin ? [{ key: '/platform/askleavemaestro-quality', icon: <AreaChartOutlined />, label: <Link to="/platform/askleavemaestro-quality">AskLeaveMaestro Quality</Link> }] : []),
       ...(platformAdmin ? [{ key: '/contact-enquiries', icon: <MailOutlined />, label: <Link to="/contact-enquiries">Contact Enquiries</Link> }] : []),
       ...(jurisdictionAccess?.can ? [{ key: '/jurisdictions', icon: <GlobalOutlined />, label: <Link to="/jurisdictions">Jurisdictions</Link> }] : []),
       ...(jurisdictionLeaveTypeAccess?.can ? [{ key: '/jurisdiction-leave-types', icon: <TagsOutlined />, label: <Link to="/jurisdiction-leave-types">Jurisdiction Leave Types</Link> }] : []),
