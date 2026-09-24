@@ -22,7 +22,7 @@ class AssistantControllerTest {
     void setUp() {
         service = mock(AssistantService.class);
         confirmationService = mock(AssistantConfirmationService.class);
-        controller = new AssistantController(service, confirmationService);
+        controller = new AssistantController(service, confirmationService, mock(AssistantQualityService.class), mock(com.practical.leavemaster.user.AppUserRepository.class));
         authentication = new UsernamePasswordAuthenticationToken("dennis", "n/a", List.of());
     }
 
