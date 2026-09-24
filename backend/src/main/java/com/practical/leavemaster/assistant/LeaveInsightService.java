@@ -31,7 +31,7 @@ public class LeaveInsightService {
             findings.add(finding("MISSING_JURISDICTION", staff, "Staff has no jurisdiction mapping", "jurisdictionId is blank"));
         }
         if (staff.getWorkSchedule() == null || staff.getWorkSchedule().isEmpty()
-                || staff.getWorkSchedule().stream().noneMatch(d -> d.getSchedule() != DaySchedule.NOT_WORKING)) {
+                || staff.getWorkSchedule().stream().noneMatch(d -> d.getDaySchedule() != null)) {
             findings.add(finding("INVALID_WORK_SCHEDULE", staff, "Staff has no working day configured", "no work-schedule day is working"));
         }
         if (approverRepository.findActiveApproversForStaff(staff, date).isEmpty()) {
