@@ -8,6 +8,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -16,13 +17,17 @@ class AssistantControllerTest {
     private AssistantService service;
     private AssistantConfirmationService confirmationService;
     private AssistantController controller;
+    private AssistantQualityService qualityService;
+    private com.practical.leavemaster.user.AppUserRepository appUserRepository;
     private UsernamePasswordAuthenticationToken authentication;
 
     @BeforeEach
     void setUp() {
         service = mock(AssistantService.class);
         confirmationService = mock(AssistantConfirmationService.class);
-        controller = new AssistantController(service, confirmationService, mock(AssistantQualityService.class), mock(com.practical.leavemaster.user.AppUserRepository.class));
+        qualityService = mock(AssistantQualityService.class);
+        appUserRepository = mock(com.practical.leavemaster.user.AppUserRepository.class);
+        controller = new AssistantController(service, confirmationService, qualityService, appUserRepository);
         authentication = new UsernamePasswordAuthenticationToken("dennis", "n/a", List.of());
     }
 
