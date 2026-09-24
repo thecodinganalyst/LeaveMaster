@@ -5,11 +5,11 @@ import { getAssistantQualityDashboard, type AssistantQualityDashboard } from '..
 export const AssistantQualityPage = () => {
   const [days,setDays]=useState(7); const [outcome,setOutcome]=useState<string>();
   const [data,setData]=useState<AssistantQualityDashboard>(); const [error,setError]=useState<string>(); const [loading,setLoading]=useState(true);
-  useEffect(()=>{setLoading(true);setError(undefined);getAssistantQualityDashboard({days,outcome}).then(setData).catch(e=>setError(e instanceof Error?e.message:'Unable to load quality data')).finally(()=>setLoading(false));},[days,outcome]);
+  useEffect(()=>{setLoading(true);setError(undefined);getAssistantQualityDashboard(outcome ? {days,outcome} : {days}).then(setData).catch(e=>setError(e instanceof Error?e.message:'Unable to load quality data')).finally(()=>setLoading(false));},[days,outcome]);
   if(loading) return <Spin tip="Loading AskLeaveMaestro quality…" />;
   if(error) return <Alert type="error" showIcon message="Unable to load AskLeaveMaestro quality" description={error} />;
   if(!data) return <Empty description="No quality data available" />;
-  const cards=[['Requests',data.requests],['Success rate',`${data.successRatePercent.toFixed(1)}%`],['Avg latency',`${Math.round(data.averageLatencyMs)} ms`],['P95 latency',`${data.p95LatencyMs} ms`],['Retries',data.retryCount],['Feedback',`${data.positiveFeedback} 👍 / ${data.negativeFeedback} 👎`]];
+  const cards: Array<[string, string | number]>=[['Requests',data.requests],['Success rate',`${data.successRatePercent.toFixed(1)}%`],['Avg latency',`${Math.round(data.averageLatencyMs)} ms`],['P95 latency',`${data.p95LatencyMs} ms`],['Retries',data.retryCount],['Feedback',`${data.positiveFeedback} 👍 / ${data.negativeFeedback} 👎`]];
   return <Space direction="vertical" size="large" style={{width:'100%'}}>
     <div><Typography.Title level={2}>AskLeaveMaestro Quality</Typography.Title><Typography.Text type="secondary">Privacy-safe operational metrics. Prompts and employee payloads are not displayed.</Typography.Text></div>
     <Space wrap><Select aria-label="Date range" value={days} onChange={setDays} options={[{value:1,label:'Last 24 hours'},{value:7,label:'Last 7 days'},{value:30,label:'Last 30 days'},{value:90,label:'Last 90 days'}]} /><Select aria-label="Outcome" allowClear placeholder="All outcomes" value={outcome} onChange={setOutcome} options={[{value:'success',label:'Success'},{value:'failure',label:'Failure'}]} /></Space>
