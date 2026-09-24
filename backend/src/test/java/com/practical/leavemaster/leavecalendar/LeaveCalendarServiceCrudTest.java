@@ -46,7 +46,7 @@ class LeaveCalendarServiceCrudTest {
         LeaveCalendar requested = template(null, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31));
         requested.setSourceTemplateId("client-overwrite");
 
-        when(leaveCalendarRepository.findById(existing.getId())).thenReturn(Optional.of(existing));
+        when(leaveCalendarRepository.findByIdWithPublicHolidays(existing.getId())).thenReturn(Optional.of(existing));
         when(leaveCalendarRepository.findAllByScopeAndJurisdictionId(ConfigurationScope.PLATFORM_TEMPLATE, "SG"))
                 .thenReturn(List.of(existing));
         when(leaveCalendarRepository.save(any(LeaveCalendar.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -123,7 +123,7 @@ class LeaveCalendarServiceCrudTest {
                 .end(LocalDate.of(2026, 12, 31))
                 .publicHolidays(List.of())
                 .build();
-        when(leaveCalendarRepository.findById(existing.getId())).thenReturn(Optional.of(existing));
+        when(leaveCalendarRepository.findByIdWithPublicHolidays(existing.getId())).thenReturn(Optional.of(existing));
 
         service.delete(existing.getId());
 
