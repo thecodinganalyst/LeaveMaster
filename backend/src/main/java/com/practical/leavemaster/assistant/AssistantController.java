@@ -20,6 +20,8 @@ public class AssistantController {
 
     private final AssistantService assistantService;
     private final AssistantConfirmationService confirmationService;
+    private final AssistantQualityService qualityService;
+    private final com.practical.leavemaster.user.AppUserRepository appUserRepository;
 
     @PostMapping("/chat")
     public AssistantDtos.ChatResponse chat(@RequestBody AssistantDtos.ChatRequest request, Authentication authentication) {
@@ -31,6 +33,27 @@ public class AssistantController {
                                                        Authentication authentication) {
         return confirmationService.confirm(request == null ? null : request.confirmationToken(), authentication);
     }
+
+    @PostMapping("/feedback")
+    public Map<String, String> feedback(@RequestBody FeedbackRequest request, Authentication authentication) {
+        if (request == null || request.correlationId() == null || request.correlationId().isBlank()) {
+            throw new IllegalArgumentException("correlationId is required");
+        }
+        var user = appUserRepository.findById(authentication.getName())
+                .orElseThrow(() -> new IllegalArgumentException("Authenticated user was not found"));
+        qualityService.recordFeedback(request.correlationId(), user.getTenantId(), authentication, request.rating(), request.category());
+        return Map.of("status", "RECORDED");
+    }
+
+    @org.springframework.security.access.prepost.PreAuthorize("hasAuthority('PLATFORM_ADMIN')")
+    @org.springframework.web.bind.annotation.GetMapping("/quality")
+    public AssistantQualityService.QualitySummary quality(Authentication authentication) {
+        var user = appUserRepository.findById(authentication.getName())
+                .orElseThrow(() -> new IllegalArgumentException("Authenticated user was not found"));
+        return qualityService.summary(user.getTenantId());
+    }
+
+    public record FeedbackRequest(String correlationId, int rating, String category) {}
 
     @ExceptionHandler(IllegalArgumentException.class)
     ResponseEntity<Map<String, String>> badRequest(IllegalArgumentException exception) {

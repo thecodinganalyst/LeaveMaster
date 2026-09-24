@@ -49,6 +49,7 @@ public class AssistantService {
     private final AssistantAuditService auditService;
     private final AssistantRateLimitService rateLimitService;
     private final AssistantProviderGuard providerGuard;
+    private final AssistantQualityService qualityService;
     private final ExecutorService providerExecutor = Executors.newVirtualThreadPerTaskExecutor();
 
     @Value("${app.assistant.enabled:false}")
@@ -149,9 +150,13 @@ public class AssistantService {
             log.info("Ask LeaveMaestro request completed: provider={}, model={}, conversationId={}, durationMs={}, toolCallCount={}, lastStartedTool={}, lastCompletedTool={}, status=SUCCESS",
                     provider, model, conversationId, trace.elapsedMillis(), trace.toolCallCount(),
                     trace.lastStartedTool(), trace.lastCompletedTool());
+            qualityService.recordRequest(conversationId, user.getTenantId(), authentication, provider, model,
+                    trace.toolNames(), trace.elapsedMillis(), Math.max(0, providerRetryMaxAttempts - 1), true, null);
         } catch (TimeoutException e) {
             providerCall.cancel(true);
             providerGuard.failure();
+            qualityService.recordRequest(conversationId, user.getTenantId(), authentication, provider, model,
+                    trace.toolNames(), trace.elapsedMillis(), Math.max(0, providerRetryMaxAttempts - 1), false, "PROVIDER_TIMEOUT");
             log.error("Ask LeaveMaestro provider request timed out: provider={}, model={}, conversationId={}, timeoutSeconds={}, providerRetryMaxAttempts={}, elapsedMs={}, toolCallCount={}, lastStartedTool={}, lastCompletedTool={}, status=TIMED_OUT",
                     provider, model, conversationId, timeoutSeconds, providerRetryMaxAttempts, trace.elapsedMillis(),
                     trace.toolCallCount(), trace.lastStartedTool(), trace.lastCompletedTool());
@@ -165,8 +170,14 @@ public class AssistantService {
             throw new AssistantProviderException("The AI provider request was interrupted", conversationId, e);
         } catch (ExecutionException e) {
             Throwable cause = e.getCause();
-            if (cause instanceof AccessDeniedException accessDenied) throw accessDenied;
+            if (cause instanceof AccessDeniedException accessDenied) {
+                qualityService.recordRequest(conversationId, user.getTenantId(), authentication, provider, model,
+                        trace.toolNames(), trace.elapsedMillis(), Math.max(0, providerRetryMaxAttempts - 1), false, "AUTHORIZATION_DENIED");
+                throw accessDenied;
+            }
             if (cause instanceof AssistantToolExecutionException toolFailure) {
+                qualityService.recordRequest(conversationId, user.getTenantId(), authentication, provider, model,
+                        trace.toolNames(), trace.elapsedMillis(), Math.max(0, providerRetryMaxAttempts - 1), false, "TOOL_FAILURE");
                 Throwable rootCause = rootCause(toolFailure);
                 log.error(
                         "Ask LeaveMaestro tool request failed: provider={}, model={}, conversationId={}, elapsedMs={}, toolCallCount={}, lastStartedTool={}, lastCompletedTool={}, failedTool={}, exceptionType={}, rootCauseType={}, message={}",
@@ -186,6 +197,8 @@ public class AssistantService {
             }
 
             providerGuard.failure();
+            qualityService.recordRequest(conversationId, user.getTenantId(), authentication, provider, model,
+                    trace.toolNames(), trace.elapsedMillis(), Math.max(0, providerRetryMaxAttempts - 1), false, "PROVIDER_FAILURE");
             Throwable failure = cause == null ? e : cause;
             Throwable rootCause = rootCause(failure);
             log.error(

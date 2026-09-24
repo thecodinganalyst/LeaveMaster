@@ -23,6 +23,7 @@ class AssistantRequestTraceTest {
         trace.toolCompleted("getStaffById");
 
         assertThat(trace.lastStartedTool()).isEqualTo("getStaffById");
+        assertThat(trace.toolNames()).containsExactly("getStaffById");
         assertThat(trace.lastCompletedTool()).isEqualTo("getStaffById");
         assertThat(trace.hasToolFailure()).isFalse();
 
@@ -31,6 +32,7 @@ class AssistantRequestTraceTest {
         trace.toolFailed("getLeaveBalances", failure);
 
         assertThat(trace.toolCallCount()).isEqualTo(2);
+        assertThat(trace.toolNames()).containsExactlyInAnyOrder("getStaffById", "getLeaveBalances");
         assertThat(trace.toolFailureCount()).isEqualTo(1);
         assertThat(trace.lastCompletedTool()).isEqualTo("getLeaveBalances");
         assertThat(trace.hasToolFailure()).isTrue();

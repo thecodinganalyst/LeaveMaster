@@ -44,7 +44,7 @@ class AssistantProviderExceptionClassificationTest {
         providerGuard = mock(AssistantProviderGuard.class);
         service = new AssistantService(chatModelProvider, toolProvider, userRepository, new ObjectMapper(),
                 mock(AssistantConfirmationService.class), mock(AssistantAuditService.class),
-                mock(AssistantRateLimitService.class), providerGuard);
+                mock(AssistantRateLimitService.class), providerGuard, mock(AssistantQualityService.class));
 
         ReflectionTestUtils.setField(service, "enabled", true);
         ReflectionTestUtils.setField(service, "provider", "gemini");

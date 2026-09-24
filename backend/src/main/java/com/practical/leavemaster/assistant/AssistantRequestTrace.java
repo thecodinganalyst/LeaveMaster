@@ -1,11 +1,14 @@
 package com.practical.leavemaster.assistant;
 
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 final class AssistantRequestTrace {
     private final long startedAtNanos = System.nanoTime();
     private final AtomicInteger toolCallCount = new AtomicInteger();
     private final AtomicInteger toolFailureCount = new AtomicInteger();
+    private final Set<String> toolNames = ConcurrentHashMap.newKeySet();
     private volatile String lastStartedTool;
     private volatile String lastCompletedTool;
     private volatile String lastFailedTool;
@@ -17,6 +20,7 @@ final class AssistantRequestTrace {
 
     int toolStarted(String toolName) {
         lastStartedTool = toolName;
+        if (toolName != null) toolNames.add(toolName);
         return toolCallCount.incrementAndGet();
     }
 
@@ -42,6 +46,8 @@ final class AssistantRequestTrace {
     int toolFailureCount() {
         return toolFailureCount.get();
     }
+
+    Set<String> toolNames() { return Set.copyOf(toolNames); }
 
     String lastStartedTool() {
         return lastStartedTool == null ? "<none>" : lastStartedTool;
