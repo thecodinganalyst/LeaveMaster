@@ -20,6 +20,9 @@ class AssistantQualityServiceTest {
    assertThat(e.getCorrelationId()).isEqualTo("corr");
    assertThat(e.getToolNames()).isEqualTo("getLeaveBalance,badtoolsecret");
    assertThat(e.getActorRole()).isEqualTo("DEMO_Staff");
+   assertThat(e.getIntentCategory()).isEqualTo("LEAVE");
+   service.recordRequest("c2","DEMO",null,"p","m",List.of(),1,0,false,"MODEL_FAILURE");
+   service.recordRequest("c3","DEMO",null,"p","m",List.of("getStaff"),1,0,true,null);
    assertThat(e.getClass().getDeclaredFields()).extracting(java.lang.reflect.Field::getName)
       .doesNotContain("prompt","message","response","arguments");
  }
