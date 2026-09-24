@@ -35,7 +35,7 @@ class AssistantQualityServiceTest {
    assertThat(summary.failuresByCategory()).containsEntry("TOOL_FAILURE",1L);
    service.recordFeedback("c","DEMO",null,1,"useful<script>");
    var feedback=org.mockito.ArgumentCaptor.forClass(AssistantQualityEvent.class);
-   verify(repo, atLeast(2)).save(feedback.capture());
+   verify(repo).save(feedback.capture());
    assertThat(feedback.getAllValues().getLast().getFeedbackCategory()).isEqualTo("usefulscript");
    org.assertj.core.api.Assertions.assertThatThrownBy(()->service.recordFeedback("c","DEMO",null,0,"x"))
      .isInstanceOf(IllegalArgumentException.class);
