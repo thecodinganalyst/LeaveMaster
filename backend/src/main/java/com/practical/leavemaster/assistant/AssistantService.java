@@ -197,9 +197,11 @@ public class AssistantService {
             }
 
             providerGuard.failure();
-            qualityService.recordRequest(conversationId, user.getTenantId(), authentication, provider, model,
-                    trace.toolNames(), trace.elapsedMillis(), Math.max(0, providerRetryMaxAttempts - 1), false, "PROVIDER_FAILURE");
             Throwable failure = cause == null ? e : cause;
+            boolean providerCapacityExhausted = isProviderCapacityExhausted(failure);
+            qualityService.recordRequest(conversationId, user.getTenantId(), authentication, provider, model,
+                    trace.toolNames(), trace.elapsedMillis(), Math.max(0, providerRetryMaxAttempts - 1), false,
+                    providerCapacityExhausted ? "PROVIDER_CAPACITY_EXHAUSTED" : "PROVIDER_FAILURE");
             Throwable rootCause = rootCause(failure);
             log.error(
                     "Ask LeaveMaestro provider request failed: provider={}, model={}, conversationId={}, providerRetryMaxAttempts={}, elapsedMs={}, toolCallCount={}, lastStartedTool={}, lastCompletedTool={}, exceptionType={}, rootCauseType={}, message={}",
@@ -216,6 +218,12 @@ public class AssistantService {
                     safeProviderMessage(rootCause),
                     failure);
 
+            if (providerCapacityExhausted) {
+                throw new AssistantProviderCapacityException(
+                        "Ask LeaveMaestro is temporarily unavailable because the AI service usage limit has been reached. Please try again later.",
+                        conversationId,
+                        failure);
+            }
             if (cause instanceof RuntimeException runtime) {
                 throw new AssistantProviderException("The AI provider could not complete the request", conversationId, runtime);
             }
@@ -263,6 +271,28 @@ public class AssistantService {
     private String redactConfiguredSecret(String value, String secret) {
         if (secret == null || secret.isBlank()) return value;
         return value.replace(secret, "[REDACTED]");
+    }
+
+    private boolean isProviderCapacityExhausted(Throwable throwable) {
+        Throwable current = throwable;
+        for (int depth = 0; depth < 16 && current != null; depth++) {
+            String message = current.getMessage();
+            if (message != null) {
+                String normalized = message.toLowerCase(java.util.Locale.ROOT);
+                boolean rateLimited = normalized.contains("429")
+                        || normalized.contains("resource_exhausted")
+                        || normalized.contains("resource exhausted");
+                boolean capacityMessage = normalized.contains("quota")
+                        || normalized.contains("rate limit")
+                        || normalized.contains("too many requests");
+                if (rateLimited && capacityMessage) {
+                    return true;
+                }
+            }
+            if (current.getCause() == current) break;
+            current = current.getCause();
+        }
+        return false;
     }
 
     private Throwable rootCause(Throwable throwable) {
