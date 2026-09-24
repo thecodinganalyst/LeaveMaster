@@ -9,6 +9,6 @@ test('renders privacy-safe AskLeaveMaestro quality metrics', async () => {
  expect(await screen.findByText('AskLeaveMaestro Quality')).toBeInTheDocument();
  expect(screen.getByText('50.0%')).toBeInTheDocument();
  expect(screen.getByText('c1')).toBeInTheDocument();
- expect(screen.queryByText(/prompt text|employee payload/i)).not.toBeInTheDocument();
+ expect(screen.queryByText('SECRET_EMPLOYEE_PAYLOAD')).not.toBeInTheDocument();
 });
 test('renders an error state', async()=>{vi.mocked(api.getAssistantQualityDashboard).mockRejectedValue(new Error('failed'));render(<AssistantQualityPage/>);expect(await screen.findByText('Unable to load AskLeaveMaestro quality')).toBeInTheDocument();});
