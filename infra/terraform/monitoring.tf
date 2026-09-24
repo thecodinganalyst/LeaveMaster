@@ -23,7 +23,7 @@ resource "google_logging_metric" "application_errors" {
 
   project = var.project_id
   name    = "leavemaestro_application_errors"
-  filter  = <<-EOT
+  filter = <<-EOT
     resource.type="cloud_run_revision"
     resource.labels.service_name="${var.service_name}"
     severity>=ERROR
