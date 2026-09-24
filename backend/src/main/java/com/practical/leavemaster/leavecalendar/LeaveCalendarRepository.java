@@ -3,6 +3,7 @@ package com.practical.leavemaster.leavecalendar;
 import com.practical.leavemaster.config.ConfigurationScope;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
@@ -20,7 +21,12 @@ public interface LeaveCalendarRepository extends JpaRepository<LeaveCalendar, St
 
     List<LeaveCalendar> findAllByTenantIdAndJurisdictionIdOrderByStartAsc(String tenantId, String jurisdictionId);
 
+    @EntityGraph(attributePaths = "publicHolidays")
     List<LeaveCalendar> findAllByScopeAndJurisdictionId(ConfigurationScope scope, String jurisdictionId);
+
+    @EntityGraph(attributePaths = "publicHolidays")
+    @Query("select c from LeaveCalendar c where c.id = :id")
+    Optional<LeaveCalendar> findByIdWithPublicHolidays(String id);
 
     @EntityGraph(attributePaths = "publicHolidays")
     Optional<LeaveCalendar> findByStartLessThanEqualAndEndGreaterThanEqual(LocalDate start, LocalDate end);
