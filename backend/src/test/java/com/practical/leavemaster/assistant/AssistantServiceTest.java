@@ -50,6 +50,7 @@ class AssistantServiceTest {
         chatModel = mock(ChatModel.class);
         toolProvider = mock(ToolCallbackProvider.class);
         userRepository = mock(AppUserRepository.class);
+        qualityService = mock(AssistantQualityService.class);
         service = new AssistantService(chatModelProvider, toolProvider, userRepository, new ObjectMapper(),
                 mock(AssistantConfirmationService.class), mock(AssistantAuditService.class),
                 mock(AssistantRateLimitService.class), mock(AssistantProviderGuard.class), qualityService);
