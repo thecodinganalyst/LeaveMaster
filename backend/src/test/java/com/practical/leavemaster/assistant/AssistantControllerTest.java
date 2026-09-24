@@ -93,6 +93,21 @@ class AssistantControllerTest {
         assertThat(provider.getBody()).containsOnlyKeys("error");
     }
 
+
+    @Test
+    void shouldReturnServiceUnavailableForProviderCapacityExhaustion() {
+        var provider = controller.providerCapacityFailure(new AssistantProviderCapacityException(
+                "Ask LeaveMaestro is temporarily unavailable because the AI service usage limit has been reached. Please try again later.",
+                "conversation-quota",
+                new RuntimeException("provider detail")));
+
+        assertThat(provider.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+        assertThat(provider.getBody())
+                .containsEntry("error", "Ask LeaveMaestro is temporarily unavailable because the AI service usage limit has been reached. Please try again later.")
+                .containsEntry("conversationId", "conversation-quota")
+                .doesNotContainValue("provider detail");
+    }
+
     @Test
     void shouldExposeConversationIdForProviderFailureTroubleshooting() {
         var provider = controller.providerFailure(new AssistantProviderException(

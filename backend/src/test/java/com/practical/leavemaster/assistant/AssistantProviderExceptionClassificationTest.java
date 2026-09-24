@@ -81,6 +81,25 @@ class AssistantProviderExceptionClassificationTest {
         verify(providerGuard).failure();
     }
 
+
+    @Test
+    void shouldClassifyProviderQuotaExhaustionAsCapacityFailure() {
+        when(chatModel.call(any(Prompt.class)))
+                .thenThrow(new RuntimeException(
+                        "Failed to generate content",
+                        new RuntimeException("429 . You exceeded your current quota, please check your plan and billing details.")));
+
+        assertThatThrownBy(() -> service.chat(
+                new AssistantDtos.ChatRequest("How many annual leave do I have left?", "conversation-quota"),
+                authentication()))
+                .isInstanceOfSatisfying(AssistantProviderCapacityException.class, exception -> {
+                    assertThat(exception.getConversationId()).isEqualTo("conversation-quota");
+                    assertThat(exception.getMessage()).contains("usage limit has been reached");
+                });
+
+        verify(providerGuard).failure();
+    }
+
     @Test
     void shouldKeepRequestValidationIllegalArgumentExceptionAsClientInputFailure() {
         assertThatThrownBy(() -> service.chat(new AssistantDtos.ChatRequest(" ", null), authentication()))

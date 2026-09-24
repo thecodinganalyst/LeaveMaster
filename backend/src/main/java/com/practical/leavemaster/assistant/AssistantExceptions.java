@@ -23,6 +23,12 @@ class AssistantProviderException extends RuntimeException {
     }
 }
 
+class AssistantProviderCapacityException extends AssistantProviderException {
+    AssistantProviderCapacityException(String message, String conversationId, Throwable cause) {
+        super(message, conversationId, cause);
+    }
+}
+
 class AssistantToolExecutionException extends RuntimeException {
     private final String conversationId;
     private final String toolName;

@@ -83,6 +83,25 @@ describe('AssistantPanel', () => {
     expect(screen.getByText('Conversation ID: conversation-timeout')).toBeInTheDocument();
   });
 
+
+  it('shows a clear recoverable message when the AI provider quota is exhausted', async () => {
+    vi.mocked(sendAssistantMessage).mockRejectedValue(new ApiError(
+      'Ask LeaveMaestro is temporarily unavailable because the AI service usage limit has been reached. Please try again later.',
+      503,
+      { conversationId: 'conversation-quota' },
+    ));
+
+    render(<AssistantPanel />);
+    fireEvent.change(screen.getByLabelText('Message Ask LeaveMaestro'), { target: { value: 'How many annual leave do I have left?' } });
+    fireEvent.click(screen.getByLabelText('Send message'));
+
+    expect(await screen.findByText(
+      'Ask LeaveMaestro is temporarily unavailable because the AI service usage limit has been reached. Please try again later.',
+    )).toBeInTheDocument();
+    expect(screen.getByText('Conversation ID: conversation-quota')).toBeInTheDocument();
+    expect(screen.getByLabelText('Message Ask LeaveMaestro')).toBeEnabled();
+  });
+
   it('confirms the exact server token once and displays the authoritative execution result', async () => {
     vi.mocked(sendAssistantMessage).mockResolvedValue({
       conversationId: 'c2',
