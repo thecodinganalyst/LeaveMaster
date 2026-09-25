@@ -36,8 +36,18 @@ export const sendAssistantMessage = (message: string, conversationId?: string) =
     body: JSON.stringify({ message, conversationId: conversationId || null }),
   });
 
-export const confirmAssistantAction = (confirmationToken: string) =>
-  apiFetch<AssistantConfirmationResponse>('/api/assistant/actions/confirm', {
+export const confirmAssistantAction = (confirmationToken: string, attachment?: File) => {
+  if (!attachment) {
+    return apiFetch<AssistantConfirmationResponse>('/api/assistant/actions/confirm', {
+      method: 'POST',
+      body: JSON.stringify({ confirmationToken }),
+    });
+  }
+  const formData = new FormData();
+  formData.append('confirmationToken', confirmationToken);
+  formData.append('file', attachment);
+  return apiFetch<AssistantConfirmationResponse>('/api/assistant/actions/confirm-with-attachment', {
     method: 'POST',
-    body: JSON.stringify({ confirmationToken }),
+    body: formData,
   });
+};
