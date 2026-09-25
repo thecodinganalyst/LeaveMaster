@@ -1,4 +1,4 @@
-import { RobotOutlined, SendOutlined } from '@ant-design/icons';
+import { DeleteOutlined, PaperClipOutlined, RobotOutlined, SendOutlined } from '@ant-design/icons';
 import { Alert, Button, Card, Divider, Empty, Input, Space, Spin, Tag, Typography } from 'antd';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -105,6 +105,8 @@ export const AssistantPanel = ({ onClose }: AssistantPanelProps) => {
   const [conversationId, setConversationId] = useState<string>();
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [attachment, setAttachment] = useState<File>();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [requestError, setRequestError] = useState<string>();
   const [requestErrorConversationId, setRequestErrorConversationId] = useState<string>();
   const endRef = useRef<HTMLDivElement | null>(null);
@@ -130,6 +132,7 @@ export const AssistantPanel = ({ onClose }: AssistantPanelProps) => {
     try {
       const response = await sendAssistantMessage(text, conversationId);
       setConversationId(response.conversationId);
+      if (action.toolName === 'applyForLeave') setAttachment(undefined);
       setMessages((current) => [
         ...current,
         {
@@ -168,7 +171,7 @@ export const AssistantPanel = ({ onClose }: AssistantPanelProps) => {
     if (!canConfirmAction(action) || !action.confirmationToken) return;
     updateAction(action.id, { state: 'confirming', error: '' });
     try {
-      const response = await confirmAssistantAction(action.confirmationToken);
+      const response = await confirmAssistantAction(action.confirmationToken, action.toolName === 'applyForLeave' ? attachment : undefined);
       updateAction(action.id, {
         state: 'confirmed',
         executionResult: response.result,
@@ -298,7 +301,27 @@ export const AssistantPanel = ({ onClose }: AssistantPanelProps) => {
         />
       ) : null}
       <Divider style={{ margin: '12px 0' }} />
+      {attachment ? (
+        <Space size="small" style={{ marginBottom: 8 }}>
+          <PaperClipOutlined />
+          <Typography.Text ellipsis style={{ maxWidth: 260 }}>{attachment.name} ({Math.max(1, Math.ceil(attachment.size / 1024))} KB)</Typography.Text>
+          <Button type="text" size="small" icon={<DeleteOutlined />} onClick={() => setAttachment(undefined)} aria-label="Remove attachment" />
+        </Space>
+      ) : null}
+      <input
+        ref={fileInputRef}
+        type="file"
+        hidden
+        accept="application/pdf,image/jpeg,image/png,image/gif,image/webp"
+        aria-label="Leave supporting document"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) setAttachment(file);
+          event.currentTarget.value = '';
+        }}
+      />
       <Space.Compact style={{ width: '100%' }}>
+        <Button icon={<PaperClipOutlined />} onClick={() => fileInputRef.current?.click()} disabled={sending} aria-label="Attach supporting document" />
         <TextArea
           value={input}
           onChange={(event) => setInput(event.target.value)}
