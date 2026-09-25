@@ -9,6 +9,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.http.MediaType;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -21,6 +24,7 @@ public class AssistantController {
     private final AssistantService assistantService;
     private final AssistantConfirmationService confirmationService;
     private final AssistantQualityService qualityService;
+    private final com.practical.leavemaster.leaveapplication.LeaveApplicationService leaveApplicationService;
     private final com.practical.leavemaster.user.AppUserRepository appUserRepository;
 
     @PostMapping("/chat")
@@ -32,6 +36,33 @@ public class AssistantController {
     public AssistantDtos.ConfirmationResponse confirm(@RequestBody AssistantDtos.ConfirmationRequest request,
                                                        Authentication authentication) {
         return confirmationService.confirm(request == null ? null : request.confirmationToken(), authentication);
+    }
+
+    @PostMapping(value = "/actions/confirm-with-attachment", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public AssistantDtos.ConfirmationResponse confirmWithAttachment(
+            @RequestPart("confirmationToken") String confirmationToken,
+            @RequestPart("file") MultipartFile file,
+            Authentication authentication) {
+        AssistantDtos.ConfirmationResponse response = confirmationService.confirm(confirmationToken, authentication);
+        if (!"applyForLeave".equals(response.toolName())) {
+            throw new IllegalArgumentException("Attachments are supported only when confirming a leave application");
+        }
+        String applicationId = firstCreatedLeaveApplicationId(response.result());
+        leaveApplicationService.uploadAttachment(applicationId, file);
+        return response;
+    }
+
+    private String firstCreatedLeaveApplicationId(String result) {
+        if (result == null || result.isBlank()) throw new IllegalArgumentException("Confirmed leave application did not return an application id");
+        try {
+            var node = new tools.jackson.databind.ObjectMapper().readTree(result);
+            var first = node.isArray() && !node.isEmpty() ? node.get(0) : node;
+            var id = first.get("id");
+            if (id == null || id.asText().isBlank()) throw new IllegalArgumentException("Confirmed leave application did not return an application id");
+            return id.asText();
+        } catch (tools.jackson.core.JacksonException exception) {
+            throw new IllegalArgumentException("Confirmed leave application result could not be read", exception);
+        }
     }
 
     @PostMapping("/feedback")
