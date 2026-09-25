@@ -19,6 +19,7 @@ class AssistantControllerTest {
     private AssistantConfirmationService confirmationService;
     private AssistantController controller;
     private AssistantQualityService qualityService;
+    private com.practical.leavemaster.leaveapplication.LeaveApplicationService leaveApplicationService;
     private com.practical.leavemaster.user.AppUserRepository appUserRepository;
     private UsernamePasswordAuthenticationToken authentication;
 
@@ -28,7 +29,8 @@ class AssistantControllerTest {
         confirmationService = mock(AssistantConfirmationService.class);
         qualityService = mock(AssistantQualityService.class);
         appUserRepository = mock(com.practical.leavemaster.user.AppUserRepository.class);
-        controller = new AssistantController(service, confirmationService, qualityService, appUserRepository);
+        leaveApplicationService = mock(com.practical.leavemaster.leaveapplication.LeaveApplicationService.class);
+        controller = new AssistantController(service, confirmationService, qualityService, leaveApplicationService, appUserRepository);
         authentication = new UsernamePasswordAuthenticationToken("dennis", "n/a", List.of());
     }
 
