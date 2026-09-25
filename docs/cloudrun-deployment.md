@@ -77,7 +77,7 @@ Create a deployment service account and configure GitHub OIDC/WIF so Actions can
 
 The WIF provider should map repository identity and restrict the provider to the intended repository. Grant the repository principal `roles/iam.workloadIdentityUser` on the deployment service account.
 
-The deployment account needs the project/IAM/storage/Secret Manager/Firebase permissions required by the Terraform/workflow resources. Firebase administration belongs on the deployment identity, not the Cloud Run runtime identity.
+The deployment account needs the project/IAM/storage/Secret Manager/Firebase permissions required by the Terraform/workflow resources. Firebase administration belongs on the deployment identity, not the Cloud Run runtime identity. Terraform also maintains `roles/monitoring.editor` and `roles/logging.configWriter` on this deployment service account so the workflow can manage alert policies, notification channels, and logs-based metrics. The bootstrap identity must already be allowed to update project IAM policy (for example during the one-time WIF/service-account setup), because Terraform cannot grant these roles to itself without that permission.
 
 The GitHub workflow requires:
 
