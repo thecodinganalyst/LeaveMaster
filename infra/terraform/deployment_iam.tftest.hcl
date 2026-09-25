@@ -25,7 +25,7 @@ run "grants_monitoring_resource_permissions_to_deployment_identity" {
   }
 
   assert {
-    condition     = alltrue([
+    condition = alltrue([
       for binding in google_project_iam_member.github_actions_monitoring :
       binding.member == "serviceAccount:github-actions@example.iam.gserviceaccount.com"
     ])
