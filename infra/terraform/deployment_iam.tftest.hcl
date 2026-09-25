@@ -15,17 +15,17 @@ run "grants_monitoring_resource_permissions_to_deployment_identity" {
   command = plan
 
   assert {
-    condition = google_project_iam_member.github_actions_monitoring["roles/monitoring.editor"].role == "roles/monitoring.editor"
+    condition     = google_project_iam_member.github_actions_monitoring["roles/monitoring.editor"].role == "roles/monitoring.editor"
     error_message = "The deployment identity must be able to manage Cloud Monitoring resources."
   }
 
   assert {
-    condition = google_project_iam_member.github_actions_monitoring["roles/logging.configWriter"].role == "roles/logging.configWriter"
+    condition     = google_project_iam_member.github_actions_monitoring["roles/logging.configWriter"].role == "roles/logging.configWriter"
     error_message = "The deployment identity must be able to manage logs-based metrics."
   }
 
   assert {
-    condition = alltrue([
+    condition     = alltrue([
       for binding in google_project_iam_member.github_actions_monitoring :
       binding.member == "serviceAccount:github-actions@example.iam.gserviceaccount.com"
     ])
