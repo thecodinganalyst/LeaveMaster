@@ -12,6 +12,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 
 class AssistantControllerTest {
 
@@ -19,6 +22,7 @@ class AssistantControllerTest {
     private AssistantConfirmationService confirmationService;
     private AssistantController controller;
     private AssistantQualityService qualityService;
+    private com.practical.leavemaster.leaveapplication.LeaveApplicationService leaveApplicationService;
     private com.practical.leavemaster.user.AppUserRepository appUserRepository;
     private UsernamePasswordAuthenticationToken authentication;
 
@@ -28,7 +32,8 @@ class AssistantControllerTest {
         confirmationService = mock(AssistantConfirmationService.class);
         qualityService = mock(AssistantQualityService.class);
         appUserRepository = mock(com.practical.leavemaster.user.AppUserRepository.class);
-        controller = new AssistantController(service, confirmationService, qualityService, appUserRepository);
+        leaveApplicationService = mock(com.practical.leavemaster.leaveapplication.LeaveApplicationService.class);
+        controller = new AssistantController(service, confirmationService, qualityService, leaveApplicationService, appUserRepository);
         authentication = new UsernamePasswordAuthenticationToken("dennis", "n/a", List.of());
     }
 
@@ -134,4 +139,39 @@ class AssistantControllerTest {
                 .doesNotContainValue("Cannot lazily initialize secret internal detail")
                 .doesNotContainKey("tool");
     }
+    @Test
+    void confirmWithAttachmentUploadsFileForConfirmedLeave() {
+        var file = new org.springframework.mock.web.MockMultipartFile("file", "mc.pdf", "application/pdf", "mc".getBytes());
+        when(confirmationService.confirm("token", authentication))
+                .thenReturn(new AssistantDtos.ConfirmationResponse("applyForLeave", "EXECUTED", "[{\"id\":\"L1\"}]", false));
+
+        var response = controller.confirmWithAttachment("token", file, authentication);
+
+        assertThat(response.status()).isEqualTo("EXECUTED");
+        verify(leaveApplicationService).uploadAttachment("L1", file);
+    }
+
+    @Test
+    void confirmWithAttachmentRejectsNonLeaveActions() {
+        var file = new org.springframework.mock.web.MockMultipartFile("file", "mc.pdf", "application/pdf", "mc".getBytes());
+        when(confirmationService.confirm("token", authentication))
+                .thenReturn(new AssistantDtos.ConfirmationResponse("approveLeaveApplication", "EXECUTED", "{\"id\":\"L1\"}", false));
+
+        assertThatThrownBy(() -> controller.confirmWithAttachment("token", file, authentication))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("only when confirming a leave application");
+        verify(leaveApplicationService, never()).uploadAttachment(anyString(), any());
+    }
+
+    @Test
+    void confirmWithAttachmentRejectsMissingApplicationId() {
+        var file = new org.springframework.mock.web.MockMultipartFile("file", "mc.pdf", "application/pdf", "mc".getBytes());
+        when(confirmationService.confirm("token", authentication))
+                .thenReturn(new AssistantDtos.ConfirmationResponse("applyForLeave", "EXECUTED", "[]", false));
+
+        assertThatThrownBy(() -> controller.confirmWithAttachment("token", file, authentication))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("application id");
+    }
+
 }
