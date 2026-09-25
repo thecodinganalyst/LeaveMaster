@@ -141,6 +141,27 @@ describe('AssistantPanel', () => {
     expect(screen.queryByLabelText('Confirm Apply For Leave')).not.toBeInTheDocument();
   });
 
+  it('selects, removes, and sends a supporting document only with confirmed leave', async () => {
+    vi.mocked(sendAssistantMessage).mockResolvedValue({
+      conversationId: 'attachment-1', message: 'Confirm this leave.', structuredResults: [],
+      pendingActions: [{ toolName: 'applyForLeave', arguments: { leaveTypeId: 'SICK' }, requiredAuthority: 'LEAVE_APPLICATION_WRITE', actorLoginName: 'test-user', actorStaffId: 'S1', tenantId: 'T1', confirmationToken: 'attachment-token' }],
+    });
+    vi.mocked(confirmAssistantAction).mockResolvedValue({ toolName: 'applyForLeave', status: 'EXECUTED', result: '[{"id":"L1"}]', replayed: false });
+    render(<AssistantPanel />);
+    const input = screen.getByLabelText('Leave supporting document');
+    const file = new File(['medical certificate'], 'mc.pdf', { type: 'application/pdf' });
+    fireEvent.change(input, { target: { files: [file] } });
+    expect(screen.getByText(/mc\.pdf/)).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Remove attachment'));
+    expect(screen.queryByText(/mc\.pdf/)).not.toBeInTheDocument();
+    fireEvent.change(input, { target: { files: [file] } });
+    fireEvent.change(screen.getByLabelText('Message Ask LeaveMaestro'), { target: { value: 'Apply sick leave' } });
+    fireEvent.click(screen.getByLabelText('Send message'));
+    fireEvent.click(await screen.findByLabelText('Confirm Apply For Leave'));
+    await waitFor(() => expect(confirmAssistantAction).toHaveBeenCalledWith('attachment-token', file));
+    expect(screen.queryByText(/mc\.pdf/)).not.toBeInTheDocument();
+  });
+
   it('cancels a proposal locally without invoking the write endpoint', async () => {
     vi.mocked(sendAssistantMessage).mockResolvedValue({
       conversationId: 'c3',
