@@ -208,6 +208,25 @@ class AssistantServiceTest {
                 .contains("What are my current leave entitlements?");
     }
 
+    @Test
+    void shouldPreserveConversationContextAcrossTurnsWithoutReaskingKnownLeaveSlots() {
+        String first = ReflectionTestUtils.invokeMethod(service, "appendAndBuildConversationContext",
+                "T1:dennis:conversation-leave", "User", "Apply sick leave for today");
+        assertThat(first).isEqualTo("Apply sick leave for today");
+
+        ReflectionTestUtils.invokeMethod(service, "appendConversationMessage",
+                "T1:dennis:conversation-leave", "Assistant", "What duration would you like?");
+        String second = ReflectionTestUtils.invokeMethod(service, "appendAndBuildConversationContext",
+                "T1:dennis:conversation-leave", "User", "Full day");
+
+        assertThat(second)
+                .contains("Apply sick leave for today")
+                .contains("What duration would you like?")
+                .contains("User: Full day")
+                .contains("never ask again for a leave type, date, duration")
+                .contains("Interpret short replies as answers to the immediately preceding assistant question");
+    }
+
     private String formattedLogs() {
         return logAppender.list.stream()
                 .map(ILoggingEvent::getFormattedMessage)
