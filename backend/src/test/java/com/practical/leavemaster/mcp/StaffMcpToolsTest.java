@@ -66,11 +66,11 @@ class StaffMcpToolsTest {
                 new BigDecimal("14.00"), "DAYS", "NONE", "CALENDAR_DAYS",
                 false, null, null, 151L, 365L, new BigDecimal("5.79178082"),
                 new BigDecimal("0.50"), "NEAREST_HALF_DAY", true);
-        when(staffAssistantReadService.findLeaveEntitlement("001", "Annual Leave", 2026))
+        when(staffAssistantReadService.findLeaveEntitlement("001", "Annual Leave", 2026, LocalDate.of(2026, 9, 25)))
                 .thenReturn(Optional.of(entitlement));
 
         Optional<StaffAssistantReadService.StaffLeaveEntitlementResult> result =
-                staffMcpTools.getStaffLeaveEntitlement("001", "Annual Leave", 2026);
+                staffMcpTools.getStaffLeaveEntitlement("001", "Annual Leave", 2026, LocalDate.of(2026, 9, 25));
 
         assertThat(result).isPresent().get().satisfies(value -> {
             assertThat(value.entitlement()).isEqualByComparingTo("6.00");
@@ -80,7 +80,7 @@ class StaffMcpToolsTest {
             assertThat(value.prorationRoundingRule()).isEqualTo("NEAREST_HALF_DAY");
             assertThat(value.sourcePolicyResolved()).isTrue();
         });
-        verify(staffAssistantReadService).findLeaveEntitlement("001", "Annual Leave", 2026);
+        verify(staffAssistantReadService).findLeaveEntitlement("001", "Annual Leave", 2026, LocalDate.of(2026, 9, 25));
     }
 
     @Test
