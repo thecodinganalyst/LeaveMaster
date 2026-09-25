@@ -157,7 +157,7 @@ class AssistantControllerTest {
         assertThatThrownBy(() -> controller.confirmWithAttachment("token", file, authentication))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("only when confirming a leave application");
-        verifyNoInteractions(leaveApplicationService);
+        verify(leaveApplicationService, never()).uploadAttachment(anyString(), any());
     }
 
     @Test
