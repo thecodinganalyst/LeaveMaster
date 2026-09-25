@@ -136,4 +136,39 @@ class AssistantControllerTest {
                 .doesNotContainValue("Cannot lazily initialize secret internal detail")
                 .doesNotContainKey("tool");
     }
+    @Test
+    void confirmWithAttachmentUploadsFileForConfirmedLeave() {
+        var file = new org.springframework.mock.web.MockMultipartFile("file", "mc.pdf", "application/pdf", "mc".getBytes());
+        when(confirmationService.confirm("token", authentication))
+                .thenReturn(new AssistantDtos.ConfirmationResponse("applyForLeave", "EXECUTED", "[{\"id\":\"L1\"}]", false));
+
+        var response = controller.confirmWithAttachment("token", file, authentication);
+
+        assertThat(response.status()).isEqualTo("EXECUTED");
+        verify(leaveApplicationService).uploadAttachment("L1", file);
+    }
+
+    @Test
+    void confirmWithAttachmentRejectsNonLeaveActions() {
+        var file = new org.springframework.mock.web.MockMultipartFile("file", "mc.pdf", "application/pdf", "mc".getBytes());
+        when(confirmationService.confirm("token", authentication))
+                .thenReturn(new AssistantDtos.ConfirmationResponse("approveLeaveApplication", "EXECUTED", "{\"id\":\"L1\"}", false));
+
+        assertThatThrownBy(() -> controller.confirmWithAttachment("token", file, authentication))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("only when confirming a leave application");
+        verifyNoInteractions(leaveApplicationService);
+    }
+
+    @Test
+    void confirmWithAttachmentRejectsMissingApplicationId() {
+        var file = new org.springframework.mock.web.MockMultipartFile("file", "mc.pdf", "application/pdf", "mc".getBytes());
+        when(confirmationService.confirm("token", authentication))
+                .thenReturn(new AssistantDtos.ConfirmationResponse("applyForLeave", "EXECUTED", "[]", false));
+
+        assertThatThrownBy(() -> controller.confirmWithAttachment("token", file, authentication))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("application id");
+    }
+
 }
