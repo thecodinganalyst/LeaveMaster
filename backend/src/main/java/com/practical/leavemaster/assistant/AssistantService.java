@@ -22,6 +22,8 @@ import tools.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -51,6 +53,8 @@ public class AssistantService {
     private final AssistantProviderGuard providerGuard;
     private final AssistantQualityService qualityService;
     private final ExecutorService providerExecutor = Executors.newVirtualThreadPerTaskExecutor();
+    private final ConcurrentMap<String, List<String>> conversationHistory = new ConcurrentHashMap<>();
+    private static final int MAX_CONVERSATION_MESSAGES = 16;
 
     @Value("${app.assistant.enabled:false}")
     private boolean enabled;
@@ -87,6 +91,8 @@ public class AssistantService {
         String conversationId = request.conversationId() == null || request.conversationId().isBlank()
                 ? UUID.randomUUID().toString() : request.conversationId();
         AssistantRequestTrace trace = new AssistantRequestTrace();
+        String conversationKey = conversationKey(user, conversationId);
+        String contextualMessage = appendAndBuildConversationContext(conversationKey, "User", request.message());
 
         rateLimitService.checkAndRecord(user.getLoginName(), user.getTenantId(), conversationId, request.message());
         providerGuard.beforeCall();
@@ -117,7 +123,7 @@ public class AssistantService {
                 String result = ChatClient.create(chatModel)
                         .prompt()
                         .system(systemPrompt(user))
-                        .user(request.message())
+                        .user(contextualMessage)
                         .toolCallbacks(tools)
                         .call()
                         .content();
@@ -146,6 +152,7 @@ public class AssistantService {
         String content;
         try {
             content = providerCall.get(timeoutSeconds, TimeUnit.SECONDS);
+            appendConversationMessage(conversationKey, "Assistant", content == null ? "" : content);
             providerGuard.success();
             log.info("Ask LeaveMaestro request completed: provider={}, model={}, conversationId={}, durationMs={}, toolCallCount={}, lastStartedTool={}, lastCompletedTool={}, status=SUCCESS",
                     provider, model, conversationId, trace.elapsedMillis(), trace.toolCallCount(),
@@ -235,6 +242,31 @@ public class AssistantService {
                 content == null ? "" : content,
                 List.copyOf(pendingActions),
                 List.copyOf(structuredResults));
+    }
+
+    private String conversationKey(AppUser user, String conversationId) {
+        return user.getTenantId() + ":" + user.getLoginName() + ":" + conversationId;
+    }
+
+    private String appendAndBuildConversationContext(String key, String role, String message) {
+        appendConversationMessage(key, role, message);
+        List<String> history = conversationHistory.getOrDefault(key, List.of());
+        if (history.size() == 1) return message;
+        return "Continue this existing conversation. Preserve facts and choices already supplied by the user; " +
+                "never ask again for a leave type, date, duration, or other value that is already present unless it is ambiguous or invalid. " +
+                "Interpret short replies as answers to the immediately preceding assistant question.\n\nConversation so far:\n" +
+                String.join("\n", history);
+    }
+
+    private void appendConversationMessage(String key, String role, String message) {
+        conversationHistory.compute(key, (ignored, existing) -> {
+            List<String> updated = existing == null ? new ArrayList<>() : new ArrayList<>(existing);
+            updated.add(role + ": " + message);
+            if (updated.size() > MAX_CONVERSATION_MESSAGES) {
+                updated = new ArrayList<>(updated.subList(updated.size() - MAX_CONVERSATION_MESSAGES, updated.size()));
+            }
+            return List.copyOf(updated);
+        });
     }
 
     private AssistantToolExecutionException toolExecutionFailure(String conversationId, AssistantRequestTrace trace) {
