@@ -132,7 +132,6 @@ export const AssistantPanel = ({ onClose }: AssistantPanelProps) => {
     try {
       const response = await sendAssistantMessage(text, conversationId);
       setConversationId(response.conversationId);
-      if (action.toolName === 'applyForLeave') setAttachment(undefined);
       setMessages((current) => [
         ...current,
         {
@@ -177,6 +176,7 @@ export const AssistantPanel = ({ onClose }: AssistantPanelProps) => {
         executionResult: response.result,
         replayed: response.replayed,
       });
+      if (action.toolName === 'applyForLeave') setAttachment(undefined);
       setMessages((current) => [
         ...current,
         {
