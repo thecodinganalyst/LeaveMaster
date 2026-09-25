@@ -135,7 +135,7 @@ describe('AssistantPanel', () => {
     fireEvent.click(confirm);
 
     await waitFor(() => expect(confirmAssistantAction).toHaveBeenCalledTimes(1));
-    expect(confirmAssistantAction).toHaveBeenCalledWith('test-confirmation-token');
+    expect(confirmAssistantAction).toHaveBeenCalledWith('test-confirmation-token', undefined);
     expect(await screen.findByText('Authoritative server result')).toBeInTheDocument();
     expect(screen.getByText('{"id":"L1","status":"PENDING"}')).toBeInTheDocument();
     expect(screen.queryByLabelText('Confirm Apply For Leave')).not.toBeInTheDocument();
