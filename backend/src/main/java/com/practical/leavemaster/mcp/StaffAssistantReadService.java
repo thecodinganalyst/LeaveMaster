@@ -57,6 +57,11 @@ public class StaffAssistantReadService {
 
     @Transactional(readOnly = true)
     public Optional<StaffLeaveEntitlementResult> findLeaveEntitlement(String staffId, String leaveType, Integer year) {
+        return findLeaveEntitlement(staffId, leaveType, year, null);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<StaffLeaveEntitlementResult> findLeaveEntitlement(String staffId, String leaveType, Integer year, LocalDate requestedDate) {
         if (staffId == null || staffId.isBlank()) {
             throw new IllegalArgumentException("staffId is required");
         }
@@ -75,6 +80,7 @@ public class StaffAssistantReadService {
                     : staff.getLeaveEntitlements();
             return entitlements.stream()
                     .filter(entitlement -> overlaps(entitlement, yearStart, yearEnd))
+                    .filter(entitlement -> requestedDate == null || covers(entitlement, requestedDate))
                     .filter(entitlement -> matchesLeaveType(entitlement, requestedLeaveType))
                     .findFirst()
                     .map(entitlement -> toStaffLeaveEntitlementResult(staff, entitlement));
@@ -113,6 +119,13 @@ public class StaffAssistantReadService {
                 && entitlement.getTo() != null
                 && !entitlement.getFrom().isAfter(yearEnd)
                 && !entitlement.getTo().isBefore(yearStart);
+    }
+
+    private boolean covers(LeaveEntitlement entitlement, LocalDate requestedDate) {
+        return entitlement.getFrom() != null
+                && entitlement.getTo() != null
+                && !requestedDate.isBefore(entitlement.getFrom())
+                && !requestedDate.isAfter(entitlement.getTo());
     }
 
     private boolean matchesLeaveType(LeaveEntitlement entitlement, String requestedLeaveType) {

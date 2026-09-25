@@ -132,6 +132,23 @@ class StaffAssistantReadServiceUnitTest {
     }
 
     @Test
+    void shouldNotReturnFutureEntitlementForEarlierRequestedDate() {
+        StaffRepository repository = mock(StaffRepository.class);
+        LeaveEntitlementPolicyRepository policyRepository = mock(LeaveEntitlementPolicyRepository.class);
+        Staff staff = staffWithAnnualEntitlement(LocalDate.of(2026, 8, 15), new BigDecimal("5.00"));
+        LeaveEntitlement future = staff.getLeaveEntitlements().getFirst();
+        future.setFrom(LocalDate.of(2026, 10, 1));
+        future.setTo(LocalDate.of(2026, 12, 31));
+        when(repository.findById("001")).thenReturn(Optional.of(staff));
+
+        StaffAssistantReadService service = new StaffAssistantReadService(repository, policyRepository,
+                mock(LeaveEntitlementPolicyEligibilityRepository.class), mock(JurisdictionRepository.class));
+
+        assertThat(service.findLeaveEntitlement("001", "Annual Leave", 2026, LocalDate.of(2026, 9, 25))).isEmpty();
+        assertThat(service.findLeaveEntitlement("001", "Annual Leave", 2026, LocalDate.of(2026, 10, 1))).isPresent();
+    }
+
+    @Test
     void shouldRejectMissingFocusedEntitlementArguments() {
         StaffAssistantReadService service = new StaffAssistantReadService(
                 mock(StaffRepository.class), mock(LeaveEntitlementPolicyRepository.class),
