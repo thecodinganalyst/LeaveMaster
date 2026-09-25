@@ -32,11 +32,11 @@ public class StaffMcpTools {
         return staffAssistantReadService.findById(id);
     }
 
-    @Tool(description = "Get focused evidence for one staff leave entitlement. Prefer this when the user asks why a specific entitlement has a particular value. leaveType may be the leave type ID or human-readable name; year may be omitted for the current year. Returns only the staff and entitlement fields needed for explanation, not the full staff profile.")
+    @Tool(description = "Get focused evidence for one staff leave entitlement. Prefer this when the user asks why a specific entitlement has a particular value or whether leave is available for a requested date. leaveType may be the leave type ID or human-readable name; year may be omitted for the current year. When the question concerns a leave date, always pass requestedDate (YYYY-MM-DD); an empty result means no entitlement covers that date and must not be described as available. Returns only the staff and entitlement fields needed for explanation, not the full staff profile.")
     @PreAuthorize("hasAuthority('" + RbacPermissions.STAFF_READ + "') and @leaveAuthorization.canReadStaffData(authentication, #staffId)")
     public Optional<StaffAssistantReadService.StaffLeaveEntitlementResult> getStaffLeaveEntitlement(
-            String staffId, String leaveType, Integer year) {
-        return staffAssistantReadService.findLeaveEntitlement(staffId, leaveType, year);
+            String staffId, String leaveType, Integer year, LocalDate requestedDate) {
+        return staffAssistantReadService.findLeaveEntitlement(staffId, leaveType, year, requestedDate);
     }
 
     @Tool(description = "Get the authenticated-accessible staff policy context for normal policy and eligibility questions. Prefer this for questions such as eligibility, carry-forward, proration, applicable leave types, joining/leaving effects, or whether a rule comes from tenant configuration or reference metadata. Returns the staff's actual jurisdiction metadata, employment attributes and resolved entitlement-policy provenance. If a source policy is unresolved, do not invent the missing rule.")
