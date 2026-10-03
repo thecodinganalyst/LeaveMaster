@@ -17,6 +17,8 @@ import java.util.Map;
 
 @Slf4j
 final class AssistantToolAdapter {
+    private static final String ACCESS_DENIED_CODE = "ACCESS_DENIED";
+    private static final String ACCESS_DENIED_MESSAGE = "You are not authorized to access this information.";
     private static final String TOOL_FAILURE_CODE = "TOOL_EXECUTION_FAILED";
     private static final String TOOL_FAILURE_MESSAGE = "The LeaveMaster tool could not complete the request.";
 
@@ -121,12 +123,39 @@ final class AssistantToolAdapter {
                 return result;
             } catch (RuntimeException e) {
                 String name = toolName(delegate);
+                if (hasAccessDeniedCause(e)) {
+                    auditService.record(AssistantAuditService.TOOL_EXECUTION, user.getLoginName(), user.getTenantId(),
+                            conversationId, name, arguments, "DENIED", AccessDeniedException.class.getSimpleName());
+                    return accessDeniedResult(objectMapper, name);
+                }
                 auditService.record(AssistantAuditService.TOOL_EXECUTION, user.getLoginName(), user.getTenantId(),
                         conversationId, name, arguments, "FAILED", e.getClass().getSimpleName());
                 trace.toolFailed(name, e);
                 return failureResult(objectMapper, name);
             }
         }));
+    }
+
+    private static boolean hasAccessDeniedCause(Throwable failure) {
+        for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
+            if (cause instanceof AccessDeniedException) return true;
+            if (cause.getCause() == cause) break;
+        }
+        return false;
+    }
+
+    private static String accessDeniedResult(ObjectMapper objectMapper, String toolName) {
+        try {
+            return objectMapper.writeValueAsString(Map.of(
+                    "status", "DENIED",
+                    "error", ACCESS_DENIED_CODE,
+                    "tool", toolName,
+                    "message", ACCESS_DENIED_MESSAGE));
+        } catch (Exception serializationFailure) {
+            log.error("Failed to serialize assistant access-denied payload: tool={}, exceptionType={}",
+                    toolName, serializationFailure.getClass().getName());
+            return "{\"status\":\"DENIED\",\"error\":\"ACCESS_DENIED\",\"message\":\"You are not authorized to access this information.\"}";
+        }
     }
 
     private static String failureResult(ObjectMapper objectMapper, String toolName) {

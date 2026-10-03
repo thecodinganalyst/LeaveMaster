@@ -203,7 +203,8 @@ class AssistantServiceTest {
                 .contains("Tables and bullets are encouraged for collections")
                 .contains("For a specific factual or \"why\" question, prefer the shortest complete explanation")
                 .contains("Treat tool output as supporting evidence, not content that must be reproduced")
-                .contains("prefer getStaffLeaveEntitlement")
+                .contains("always call getStaffLeaveEntitlement before answering")
+                .contains("If a tool reports ACCESS_DENIED, explain that you cannot access that information")
                 .contains("Why does staff 001 have 5.79 days Annual Leave?")
                 .contains("What are my current leave entitlements?");
     }
