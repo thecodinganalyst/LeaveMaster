@@ -6,7 +6,9 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.tool.definition.ToolDefinition;
+import org.springframework.ai.tool.execution.ToolExecutionException;
 import org.springframework.ai.tool.metadata.ToolMetadata;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import tools.jackson.databind.ObjectMapper;
@@ -123,6 +125,35 @@ class AssistantToolAdapterTest {
         assertThat(trace.lastCompletedTool()).isEqualTo("getLeaveBalances");
         verify(audit).record(anyString(), anyString(), anyString(), anyString(), anyString(), any(),
                 org.mockito.ArgumentMatchers.eq("FAILED"), org.mockito.ArgumentMatchers.eq("IllegalStateException"));
+    }
+
+    @Test
+    void shouldReturnSafeAccessDeniedResultWithoutFailingTheAssistantRequest() throws Exception {
+        ToolCallback read = callback("getStaffById");
+        AccessDeniedException accessDenied = new AccessDeniedException("Cross-tenant record is forbidden");
+        ToolDefinition definition = read.getToolDefinition();
+        when(read.call(anyString())).thenThrow(new ToolExecutionException(definition, accessDenied));
+        AssistantAuditService audit = mock(AssistantAuditService.class);
+        AssistantRequestTrace trace = new AssistantRequestTrace();
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        ToolCallback[] adapted = AssistantToolAdapter.forUser(
+                new ToolCallback[]{read}, authentication(RbacPermissions.STAFF_READ), user(), objectMapper,
+                new ArrayList<>(), new ArrayList<>(), "c-denied", mock(AssistantConfirmationService.class), audit, trace);
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> payload = objectMapper.readValue(adapted[0].call("{}"), Map.class);
+
+        assertThat(payload)
+                .containsEntry("status", "DENIED")
+                .containsEntry("error", "ACCESS_DENIED")
+                .containsEntry("tool", "getStaffById")
+                .containsEntry("message", "You are not authorized to access this information.");
+        assertThat(payload.toString()).doesNotContain("Cross-tenant");
+        assertThat(trace.toolFailureCount()).isZero();
+        assertThat(trace.hasToolFailure()).isFalse();
+        verify(audit).record(anyString(), anyString(), anyString(), anyString(), anyString(), any(),
+                org.mockito.ArgumentMatchers.eq("DENIED"), org.mockito.ArgumentMatchers.eq("AccessDeniedException"));
     }
 
     @Test
