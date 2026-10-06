@@ -5,12 +5,16 @@ on:
     paths:
       - "infra/terraform/**"
       - ".github/workflows/terraform-validate.yml"
+      - ".github/workflows/deploy-cloud-run.yml"
+      - ".github/workflows/bootstrap-project-iam.yml"
   push:
     branches:
       - main
     paths:
       - "infra/terraform/**"
       - ".github/workflows/terraform-validate.yml"
+      - ".github/workflows/deploy-cloud-run.yml"
+      - ".github/workflows/bootstrap-project-iam.yml"
 
 permissions:
   contents: read
@@ -43,3 +47,7 @@ jobs:
       - name: Terraform tests
         working-directory: infra/terraform
         run: terraform test
+
+      - name: Verify deployment IAM boundary
+        working-directory: infra/terraform
+        run: bash ./check-deployment-iam-boundary.sh
