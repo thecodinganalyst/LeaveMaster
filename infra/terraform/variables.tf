@@ -44,6 +44,12 @@ variable "github_actions_service_account" {
   type        = string
 }
 
+variable "manage_deployment_project_iam" {
+  description = "Whether this Terraform invocation may manage project-level IAM roles for the GitHub Actions deployment identity. Keep false for routine deployments; enable only from the dedicated bootstrap workflow."
+  type        = bool
+  default     = false
+}
+
 variable "public_app_url" {
   description = "Optional public frontend URL. Defaults to the environment-specific Firebase Hosting URL."
   type        = string
