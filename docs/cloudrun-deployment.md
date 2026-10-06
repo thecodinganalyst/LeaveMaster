@@ -313,7 +313,7 @@ High-level flow:
 11. Apply the plan.
 12. Print the Cloud Run URL for operator diagnostics.
 
-The routine workflow explicitly sets `TF_VAR_manage_deployment_project_iam=false`. The Terraform resource `google_project_iam_member.github_actions_monitoring` therefore does not appear in either its targeted prerequisite apply or its later full plan/apply.
+The routine workflow explicitly sets `TF_VAR_manage_deployment_project_iam=false` and `TF_VAR_manage_production_monitoring=false`. Project-level monitoring IAM and the monitoring resources that require those permissions therefore do not appear in routine application plans/applies.
 
 ### Project IAM bootstrap
 
@@ -324,7 +324,7 @@ Use the manual `Bootstrap deployment project IAM` workflow when the deployment i
 3. set `BOOTSTRAP_WIF_SERVICE_ACCOUNT` in the GitHub `production` environment;
 4. keep `WIF_SERVICE_ACCOUNT` pointing at the normal least-privileged deployment account.
 
-The bootstrap workflow refuses to run when both service-account variables resolve to the same identity. It uses the normal production Terraform state and applies only the deployment IAM resource.
+The bootstrap workflow refuses to run when both service-account variables resolve to the same identity. It uses the normal production Terraform state. First it applies the deployment IAM roles, then—using the same privileged bootstrap identity—it reconciles the production log metric, alert policies, and optional notification channel. Routine Cloud Run deployment is therefore independent of this bootstrap step.
 
 ### Current image tag rule
 
