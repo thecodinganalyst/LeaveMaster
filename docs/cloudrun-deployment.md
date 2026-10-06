@@ -77,7 +77,11 @@ Create a deployment service account and configure GitHub OIDC/WIF so Actions can
 
 The WIF provider should map repository identity and restrict the provider to the intended repository. Grant the repository principal `roles/iam.workloadIdentityUser` on the deployment service account.
 
-The deployment account needs the project/IAM/storage/Secret Manager/Firebase permissions required by the Terraform/workflow resources. Firebase administration belongs on the deployment identity, not the Cloud Run runtime identity. Terraform also maintains `roles/monitoring.editor` and `roles/logging.configWriter` on this deployment service account so the workflow can manage alert policies, notification channels, and logs-based metrics. The bootstrap identity must already be allowed to update project IAM policy (for example during the one-time WIF/service-account setup), because Terraform cannot grant these roles to itself without that permission.
+The deployment account needs the storage, Secret Manager, Firebase, Cloud Build, Cloud Run and other permissions required by routine Terraform/workflow resources. Firebase administration belongs on the deployment identity, not the Cloud Run runtime identity.
+
+Terraform also defines `roles/monitoring.editor` and `roles/logging.configWriter` for the deployment service account so the workflow can manage alert policies, notification channels, and logs-based metrics. These **project-level IAM bindings are bootstrap-only**: routine Cloud Run deployments set `manage_deployment_project_iam=false`, so they never try to grant privileges to their own identity.
+
+Create a separate bootstrap service account that is allowed to update project IAM policy and grant the repository WIF principal `roles/iam.workloadIdentityUser` on that bootstrap account. Configure its email as the GitHub production environment variable `BOOTSTRAP_WIF_SERVICE_ACCOUNT`. The manual **Bootstrap deployment project IAM** workflow impersonates that distinct identity, sets `manage_deployment_project_iam=true`, and reconciles only the deployment IAM bindings.
 
 The GitHub workflow requires:
 
@@ -265,6 +269,7 @@ SUPABASE_DB_USERNAME
 TF_STATE_BUCKET
 WIF_PROVIDER
 WIF_SERVICE_ACCOUNT
+BOOTSTRAP_WIF_SERVICE_ACCOUNT
 ENABLE_FIREBASE_HOSTING
 FRONTEND_ENVIRONMENT
 ENABLE_PLATFORM_ADMIN_PASSWORD_SECRET
@@ -299,7 +304,7 @@ High-level flow:
 2. Authenticate to Google Cloud through WIF.
 3. Initialize Terraform against the production GCS backend.
 4. Run Terraform format/validation checks.
-5. Perform targeted prerequisite provisioning for APIs, buckets, registry, service accounts, managed secrets/IAM, Firebase resources and optional provider bindings.
+5. Perform targeted prerequisite provisioning for APIs, buckets, registry, service accounts, managed secrets/runtime IAM, Firebase resources and optional provider bindings. Project-level IAM for the deployment identity is intentionally excluded.
 6. Build `backend` with Gradle `bootJar`.
 7. Build/push the production container using Cloud Build.
 8. Tag the container with the current Git commit SHA.
@@ -307,6 +312,19 @@ High-level flow:
 10. Run the protected-resource plan check.
 11. Apply the plan.
 12. Print the Cloud Run URL for operator diagnostics.
+
+The routine workflow explicitly sets `TF_VAR_manage_deployment_project_iam=false`. The Terraform resource `google_project_iam_member.github_actions_monitoring` therefore does not appear in either its targeted prerequisite apply or its later full plan/apply.
+
+### Project IAM bootstrap
+
+Use the manual `Bootstrap deployment project IAM` workflow when the deployment identity needs its Terraform-managed monitoring/logging project roles reconciled. Before running it:
+
+1. create or choose a **different** service account with permission to update the project's IAM policy;
+2. allow the repository's WIF principal to impersonate that bootstrap account;
+3. set `BOOTSTRAP_WIF_SERVICE_ACCOUNT` in the GitHub `production` environment;
+4. keep `WIF_SERVICE_ACCOUNT` pointing at the normal least-privileged deployment account.
+
+The bootstrap workflow refuses to run when both service-account variables resolve to the same identity. It uses the normal production Terraform state and applies only the deployment IAM resource.
 
 ### Current image tag rule
 
