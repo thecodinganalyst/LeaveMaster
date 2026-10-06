@@ -6,7 +6,7 @@ locals {
 }
 
 resource "google_project_iam_member" "github_actions_monitoring" {
-  for_each = local.github_actions_monitoring_roles
+  for_each = var.manage_deployment_project_iam ? local.github_actions_monitoring_roles : toset([])
 
   project = var.project_id
   role    = each.value
