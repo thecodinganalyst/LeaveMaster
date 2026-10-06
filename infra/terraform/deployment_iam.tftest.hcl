@@ -11,8 +11,21 @@ variables {
   google_oauth_client_id         = "google-client-id"
 }
 
-run "grants_monitoring_resource_permissions_to_deployment_identity" {
+run "routine_deploy_does_not_manage_project_iam" {
   command = plan
+
+  assert {
+    condition     = length(google_project_iam_member.github_actions_monitoring) == 0
+    error_message = "Project-level deployment IAM must be excluded from routine Terraform plans by default."
+  }
+}
+
+run "grants_monitoring_resource_permissions_to_deployment_identity_when_bootstrapping" {
+  command = plan
+
+  variables {
+    manage_deployment_project_iam = true
+  }
 
   assert {
     condition     = google_project_iam_member.github_actions_monitoring["roles/monitoring.editor"].role == "roles/monitoring.editor"
