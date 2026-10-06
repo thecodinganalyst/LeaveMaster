@@ -56,7 +56,8 @@ env:
   TF_VAR_enable_firebase_hosting: ${{ vars.ENABLE_FIREBASE_HOSTING || 'false' }}
   TF_VAR_frontend_environment: ${{ vars.FRONTEND_ENVIRONMENT || 'production' }}
   TF_VAR_enable_production_monitoring: ${{ vars.ENABLE_PRODUCTION_MONITORING || 'true' }}
-  TF_VAR_monitoring_notification_email: ${{ vars.MONITORING_NOTIFICATION_EMAIL || 'null' }}
+  # Leave this environment variable unset when no notification email is configured.
+  # The deployment job exports TF_VAR_monitoring_notification_email only for a real value.
 
 jobs:
   deploy:
@@ -82,6 +83,13 @@ jobs:
         uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: "1.14.4"
+
+      - name: Configure optional monitoring notification email
+        if: ${{ vars.MONITORING_NOTIFICATION_EMAIL != '' }}
+        shell: bash
+        env:
+          MONITORING_NOTIFICATION_EMAIL: ${{ vars.MONITORING_NOTIFICATION_EMAIL }}
+        run: echo "TF_VAR_monitoring_notification_email=${MONITORING_NOTIFICATION_EMAIL}" >> "$GITHUB_ENV"
 
       - name: Terraform init
         working-directory: infra/terraform
