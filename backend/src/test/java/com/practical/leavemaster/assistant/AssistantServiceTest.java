@@ -98,6 +98,51 @@ class AssistantServiceTest {
     }
 
     @Test
+    void shouldLogEntitlementRoutingDecisionWithToolNamesOnly() {
+        ToolCallback entitlement = callback("getStaffLeaveEntitlement");
+        ToolCallback balance = callback("getLeaveBalances");
+        when(toolProvider.getToolCallbacks()).thenReturn(new ToolCallback[]{balance, entitlement});
+        when(chatModel.call(any(Prompt.class))).thenReturn(
+                new ChatResponse(List.of(new Generation(new AssistantMessage("Your entitlement is explained.")))));
+
+        service.chat(
+                new AssistantDtos.ChatRequest("Explain why I have my current annual leave entitlement.", "routing-diagnostic"),
+                authentication(RbacPermissions.STAFF_READ));
+
+        assertThat(formattedLogs())
+                .contains("Ask LeaveMaestro tool routing")
+                .contains("conversationId=routing-diagnostic")
+                .contains("classification=ENTITLEMENT_EXPLANATION")
+                .contains("routingApplied=true")
+                .contains("authorizedToolCount=2")
+                .contains("authorizedTools=[getLeaveBalances, getStaffLeaveEntitlement]")
+                .contains("routedToolCount=1")
+                .contains("routedTools=[getStaffLeaveEntitlement]")
+                .contains("normalizedToolCount=1")
+                .contains("normalizedTools=[getStaffLeaveEntitlement]")
+                .doesNotContain("Explain why I have my current annual leave entitlement.");
+    }
+
+    @Test
+    void shouldLogDefaultRoutingWithoutNarrowingTools() {
+        ToolCallback entitlement = callback("getStaffLeaveEntitlement");
+        ToolCallback balance = callback("getLeaveBalances");
+        when(toolProvider.getToolCallbacks()).thenReturn(new ToolCallback[]{balance, entitlement});
+        when(chatModel.call(any(Prompt.class))).thenReturn(
+                new ChatResponse(List.of(new Generation(new AssistantMessage("You have annual leave available.")))));
+
+        service.chat(
+                new AssistantDtos.ChatRequest("How much annual leave do I have?", "default-routing-diagnostic"),
+                authentication(RbacPermissions.STAFF_READ));
+
+        assertThat(formattedLogs())
+                .contains("classification=DEFAULT")
+                .contains("routingApplied=false")
+                .contains("routedToolCount=2")
+                .contains("normalizedToolCount=2");
+    }
+
+    @Test
     void shouldPreserveSuppliedConversationId() {
         when(chatModel.call(any(Prompt.class))).thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage("Hello")))));
         var result = service.chat(new AssistantDtos.ChatRequest("Hello", "conversation-1"), authentication(RbacPermissions.TENANT_READ));
