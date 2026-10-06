@@ -104,6 +104,15 @@ public class AssistantService {
                 conversationId, confirmationService, auditService, trace);
         ToolCallback[] routedTools = AssistantToolRoutingPolicy.route(authorizedTools, request.message());
         ToolCallback[] tools = AssistantToolSchemaNormalizer.normalize(routedTools, objectMapper);
+        boolean entitlementExplanation = AssistantToolRoutingPolicy.isEntitlementExplanation(request.message());
+        boolean routingApplied = routedTools != authorizedTools;
+        log.info("Ask LeaveMaestro tool routing: conversationId={}, classification={}, routingApplied={}, authorizedToolCount={}, authorizedTools={}, routedToolCount={}, routedTools={}, normalizedToolCount={}, normalizedTools={}",
+                conversationId,
+                entitlementExplanation ? "ENTITLEMENT_EXPLANATION" : "DEFAULT",
+                routingApplied,
+                authorizedTools.length, toolNames(authorizedTools),
+                routedTools.length, toolNames(routedTools),
+                tools.length, toolNames(tools));
 
         log.info("Ask LeaveMaestro request started: provider={}, model={}, conversationId={}, actorLogin={}, tenantId={}, timeoutSeconds={}, providerRetryMaxAttempts={}",
                 provider, model, conversationId, user.getLoginName(), user.getTenantId(), timeoutSeconds,
@@ -333,6 +342,16 @@ public class AssistantService {
             current = current.getCause();
         }
         return current;
+    }
+
+    static List<String> toolNames(ToolCallback[] callbacks) {
+        if (callbacks == null || callbacks.length == 0) {
+            return List.of();
+        }
+        return java.util.Arrays.stream(callbacks)
+                .map(ToolCallback::getToolDefinition)
+                .map(definition -> definition.name())
+                .toList();
     }
 
     private String systemPrompt(AppUser user) {
