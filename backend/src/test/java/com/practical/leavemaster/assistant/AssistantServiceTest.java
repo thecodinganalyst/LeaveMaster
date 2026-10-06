@@ -107,7 +107,7 @@ class AssistantServiceTest {
 
         service.chat(
                 new AssistantDtos.ChatRequest("Explain why I have my current annual leave entitlement.", "routing-diagnostic"),
-                authentication(RbacPermissions.STAFF_READ));
+                authentication(RbacPermissions.STAFF_READ, RbacPermissions.LEAVE_APPLICATION_READ));
 
         assertThat(formattedLogs())
                 .contains("Ask LeaveMaestro tool routing")
@@ -133,7 +133,7 @@ class AssistantServiceTest {
 
         service.chat(
                 new AssistantDtos.ChatRequest("How much annual leave do I have?", "default-routing-diagnostic"),
-                authentication(RbacPermissions.STAFF_READ));
+                authentication(RbacPermissions.STAFF_READ, RbacPermissions.LEAVE_APPLICATION_READ));
 
         assertThat(formattedLogs())
                 .contains("classification=DEFAULT")
@@ -279,8 +279,9 @@ class AssistantServiceTest {
                 .reduce("", (left, right) -> left + System.lineSeparator() + right);
     }
 
-    private UsernamePasswordAuthenticationToken authentication(String authority) {
-        return new UsernamePasswordAuthenticationToken("dennis", "n/a", List.of(new SimpleGrantedAuthority(authority)));
+    private UsernamePasswordAuthenticationToken authentication(String... authorities) {
+        return new UsernamePasswordAuthenticationToken("dennis", "n/a",
+                java.util.Arrays.stream(authorities).map(SimpleGrantedAuthority::new).toList());
     }
 
     private ToolCallback callback(String name) {
