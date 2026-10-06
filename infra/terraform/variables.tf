@@ -239,9 +239,15 @@ variable "firebase_hosting_site_id" {
 }
 
 variable "enable_production_monitoring" {
-  description = "Whether to provision Cloud Monitoring alert policies for the production Cloud Run API"
+  description = "Whether production monitoring is desired for this environment"
   type        = bool
   default     = true
+}
+
+variable "manage_production_monitoring" {
+  description = "Whether this Terraform invocation may create or update production monitoring resources. Keep false for routine application deployments; enable only from the privileged monitoring bootstrap workflow."
+  type        = bool
+  default     = false
 }
 
 variable "monitoring_notification_email" {
