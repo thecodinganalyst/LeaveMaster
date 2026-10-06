@@ -32,6 +32,9 @@ env:
   TF_VAR_database_name: postgres
   TF_VAR_image_tag: ${{ github.sha }}
   TF_VAR_github_actions_service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
+  # Project-level IAM is bootstrap-only. Routine deploys must never grant
+  # privileges to their own deployment identity.
+  TF_VAR_manage_deployment_project_iam: "false"
   TF_VAR_public_app_url: ${{ vars.PUBLIC_APP_URL || 'https://app.leavemaestro.com' }}
   TF_VAR_marketing_site_origins: ${{ vars.MARKETING_SITE_ORIGINS || '["https://leavemaestro.com","https://www.leavemaestro.com"]' }}
   TF_VAR_allowed_frontend_origins: ${{ vars.ALLOWED_FRONTEND_ORIGINS || '[]' }}
@@ -100,7 +103,6 @@ jobs:
         run: |
           terraform apply -auto-approve \
             -target=google_project_service.required \
-            -target=google_project_iam_member.github_actions_monitoring \
             -target=google_storage_bucket.cloudbuild_source \
             -target=google_storage_bucket.attachments \
             -target=google_artifact_registry_repository.docker \

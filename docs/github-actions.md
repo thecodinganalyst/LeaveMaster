@@ -11,6 +11,7 @@ This page is the operator and contributor reference for every workflow in `.gith
 | --- | --- | --- | --- | --- |
 | AskLeaveMaestro live Gemini evaluation | `assistant-live-evaluation.yml` | PR validation; daily schedule | Yes | No; calls deployed API during live evaluation |
 | Deploy to Cloud Run | `deploy-cloud-run.yml` | Push to `main` for backend/infra/container changes | Yes | **Yes — backend/infrastructure** |
+| Bootstrap deployment project IAM | `bootstrap-project-iam.yml` | No | **Yes only** | **Yes — project IAM for deployment identity** |
 | Documentation Pages | `docs-pages.yml` | Docs PR/push; successful full regression | Yes | **Yes — GitHub Pages** |
 | End-to-end PR smoke tests | `e2e.yml` | Relevant PRs | Yes | No |
 | Frontend CI and Firebase Hosting | `frontend-quality.yml` | Relevant PRs and `main` pushes | Yes | **Yes on main/manual — Firebase Hosting** |
@@ -90,7 +91,7 @@ The single production **deploy** job:
 1. authenticates to Google Cloud with Workload Identity Federation;
 2. initializes the production Terraform GCS backend;
 3. checks Terraform formatting and validation;
-4. applies targeted prerequisite resources needed to build/host;
+4. applies targeted prerequisite resources needed to build/host, excluding project-level deployment IAM;
 5. builds the Spring Boot JAR;
 6. builds and pushes a container tagged with the current Git SHA using Cloud Build;
 7. creates a full Terraform plan with `deploy_service=true`;
@@ -101,6 +102,20 @@ The single production **deploy** job:
 It uses the GitHub `production` environment and repository/environment variables including GCP/WIF, Terraform state, Supabase, frontend origins, assistant/provider, email, OAuth and Firebase configuration. Secret **values** remain in Google Secret Manager; Terraform receives secret IDs/bindings rather than plaintext application secrets.
 
 **Manual use.** Use manual dispatch when production must be reconciled/redeployed without an eligible `main` path change. This workflow changes production infrastructure and application revisions; inspect configuration before running it.
+
+Project-level IAM for the GitHub Actions deployment identity is deliberately excluded from both the prerequisite apply and the full routine plan by `manage_deployment_project_iam=false`. This prevents the deployment account from attempting to grant privileges to itself.
+
+## Bootstrap deployment project IAM
+
+**File:** `.github/workflows/bootstrap-project-iam.yml`
+
+**Purpose.** Perform the rare project-IAM bootstrap needed by the routine deployment identity, separately from application deployment.
+
+**Triggers.** Manual dispatch only.
+
+The workflow authenticates as `BOOTSTRAP_WIF_SERVICE_ACCOUNT`, verifies that it is distinct from the normal `WIF_SERVICE_ACCOUNT`, initializes the same production Terraform state, enables `manage_deployment_project_iam=true`, and applies only `google_project_iam_member.github_actions_monitoring`.
+
+**Manual use.** Configure a bootstrap service account that is allowed to update project IAM policy and can be impersonated through the repository WIF provider. Run this workflow only when the deployment identity's managed project-level roles need to be created or reconciled. Do not use the normal deployment service account as the bootstrap identity.
 
 ## Documentation Pages
 
@@ -247,6 +262,7 @@ It checks `terraform fmt -check -recursive`, initializes with `-backend=false`, 
 | Broad/nightly business regression | Full business regression |
 | Terraform syntax/tests | Terraform Validate |
 | Production backend/infra release | Deploy to Cloud Run |
+| Grant/reconcile project IAM used by the deployment identity | Bootstrap deployment project IAM |
 | Production frontend release | Frontend CI and Firebase Hosting |
 | Documentation validation/publishing | Documentation Pages |
 | Marketing code quality | Marketing CI |
