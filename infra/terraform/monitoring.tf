@@ -5,7 +5,7 @@ locals {
 }
 
 resource "google_monitoring_notification_channel" "email" {
-  count = var.enable_production_monitoring && var.monitoring_notification_email != null ? 1 : 0
+  count = var.enable_production_monitoring && var.manage_production_monitoring && var.monitoring_notification_email != null ? 1 : 0
 
   project      = var.project_id
   display_name = "LeaveMaestro production incidents"
@@ -19,7 +19,7 @@ resource "google_monitoring_notification_channel" "email" {
 }
 
 resource "google_logging_metric" "application_errors" {
-  count = var.enable_production_monitoring ? 1 : 0
+  count = var.enable_production_monitoring && var.manage_production_monitoring ? 1 : 0
 
   project = var.project_id
   name    = "leavemaestro_application_errors"
@@ -40,7 +40,7 @@ resource "google_logging_metric" "application_errors" {
 }
 
 resource "google_monitoring_alert_policy" "cloud_run_5xx" {
-  count = var.enable_production_monitoring ? 1 : 0
+  count = var.enable_production_monitoring && var.manage_production_monitoring ? 1 : 0
 
   project      = var.project_id
   display_name = "LeaveMaestro Cloud Run 5xx errors"
@@ -82,7 +82,7 @@ resource "google_monitoring_alert_policy" "cloud_run_5xx" {
 }
 
 resource "google_monitoring_alert_policy" "application_errors" {
-  count = var.enable_production_monitoring ? 1 : 0
+  count = var.enable_production_monitoring && var.manage_production_monitoring ? 1 : 0
 
   project      = var.project_id
   display_name = "LeaveMaestro application ERROR logs"

@@ -22,3 +22,8 @@ if ! grep -q 'vars.MONITORING_NOTIFICATION_EMAIL !=' "$workflow"; then
   echo "Optional monitoring email must be exported conditionally only when configured." >&2
   exit 1
 fi
+
+if ! grep -q 'TF_VAR_manage_production_monitoring: "false"' "$workflow"; then
+  echo "Routine Cloud Run deployment must explicitly disable bootstrap-dependent monitoring management." >&2
+  exit 1
+fi

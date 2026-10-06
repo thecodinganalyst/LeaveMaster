@@ -23,10 +23,12 @@ env:
   TF_VAR_github_oauth_client_id: ${{ vars.GH_CLIENT_ID }}
   TF_VAR_google_oauth_client_id: ${{ vars.GOOGLE_CLIENT_ID }}
   TF_VAR_manage_deployment_project_iam: "true"
+  TF_VAR_enable_production_monitoring: ${{ vars.ENABLE_PRODUCTION_MONITORING || 'true' }}
+  TF_VAR_manage_production_monitoring: "true"
 
 jobs:
   bootstrap:
-    name: Grant deployment monitoring IAM
+    name: Bootstrap deployment monitoring
     runs-on: ubuntu-latest
     environment: production
 
@@ -86,3 +88,24 @@ jobs:
       - name: Apply deployment project IAM bootstrap
         working-directory: infra/terraform
         run: terraform apply -auto-approve iam-bootstrap.tfplan
+
+      - name: Configure optional monitoring notification email
+        if: ${{ vars.MONITORING_NOTIFICATION_EMAIL != '' }}
+        shell: bash
+        env:
+          MONITORING_NOTIFICATION_EMAIL: ${{ vars.MONITORING_NOTIFICATION_EMAIL }}
+        run: echo "TF_VAR_monitoring_notification_email=${MONITORING_NOTIFICATION_EMAIL}" >> "$GITHUB_ENV"
+
+      - name: Plan production monitoring
+        working-directory: infra/terraform
+        run: |
+          terraform plan \
+            -target=google_logging_metric.application_errors \
+            -target=google_monitoring_notification_channel.email \
+            -target=google_monitoring_alert_policy.cloud_run_5xx \
+            -target=google_monitoring_alert_policy.application_errors \
+            -out=monitoring-bootstrap.tfplan
+
+      - name: Apply production monitoring
+        working-directory: infra/terraform
+        run: terraform apply -auto-approve monitoring-bootstrap.tfplan
