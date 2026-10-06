@@ -99,11 +99,11 @@ public class AssistantService {
 
         List<AssistantDtos.PendingAction> pendingActions = new ArrayList<>();
         List<AssistantDtos.StructuredResult> structuredResults = new ArrayList<>();
-        ToolCallback[] tools = AssistantToolSchemaNormalizer.normalize(
-                AssistantToolAdapter.forUser(
-                        leaveMasterTools.getToolCallbacks(), authentication, user, objectMapper, pendingActions, structuredResults,
-                        conversationId, confirmationService, auditService, trace),
-                objectMapper);
+        ToolCallback[] authorizedTools = AssistantToolAdapter.forUser(
+                leaveMasterTools.getToolCallbacks(), authentication, user, objectMapper, pendingActions, structuredResults,
+                conversationId, confirmationService, auditService, trace);
+        ToolCallback[] routedTools = AssistantToolRoutingPolicy.route(authorizedTools, request.message());
+        ToolCallback[] tools = AssistantToolSchemaNormalizer.normalize(routedTools, objectMapper);
 
         log.info("Ask LeaveMaestro request started: provider={}, model={}, conversationId={}, actorLogin={}, tenantId={}, timeoutSeconds={}, providerRetryMaxAttempts={}",
                 provider, model, conversationId, user.getLoginName(), user.getTenantId(), timeoutSeconds,
