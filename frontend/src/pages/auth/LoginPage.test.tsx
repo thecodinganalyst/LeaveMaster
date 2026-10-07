@@ -72,7 +72,7 @@ describe('LoginPage account activation, password reset and OAuth sign-in', () =>
     const view = renderPage();
     await enterIdentifier();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Send activation PIN' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Send verification PIN' }));
     await waitFor(() => expect(requestAccountActivationPin).toHaveBeenCalled());
 
     view.unmount();
