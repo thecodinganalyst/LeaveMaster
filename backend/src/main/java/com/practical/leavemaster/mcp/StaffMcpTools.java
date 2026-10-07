@@ -33,7 +33,7 @@ public class StaffMcpTools {
     }
 
     @Tool(description = "Get focused evidence for one staff leave entitlement. Prefer this when the user asks why a specific entitlement has a particular value or whether leave is available for a requested date. leaveType may be the leave type ID or human-readable name; year may be omitted for the current year. When the question concerns a leave date, always pass requestedDate (YYYY-MM-DD); an empty result means no entitlement covers that date and must not be described as available. Returns only the staff and entitlement fields needed for explanation, not the full staff profile.")
-    @PreAuthorize("hasAuthority('" + RbacPermissions.STAFF_READ + "') and @leaveAuthorization.canReadStaffData(authentication, #staffId)")
+    @PreAuthorize("hasAuthority('" + RbacPermissions.LEAVE_APPLICATION_READ + "') and @leaveAuthorization.canReadStaffData(authentication, #staffId)")
     public Optional<StaffAssistantReadService.StaffLeaveEntitlementResult> getStaffLeaveEntitlement(
             String staffId, String leaveType, Integer year, LocalDate requestedDate) {
         return staffAssistantReadService.findLeaveEntitlement(staffId, leaveType, year, requestedDate);
