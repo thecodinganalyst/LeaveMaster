@@ -1,7 +1,7 @@
 import { GithubOutlined, GoogleOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import { useLogin } from '@refinedev/core';
 import { Alert, Button, Card, Divider, Form, Input, Space, Typography, message } from 'antd';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 import {
@@ -76,6 +76,16 @@ export const LoginPage = () => {
   const [error, setError] = useState<string | undefined>(() => oauthErrorMessage(oauthError, rememberedProvider));
   const [cooldownUntil, setCooldownUntil] = useState<number>(0);
   const [, forceRender] = useState(0);
+  const cooldownTimerRef = useRef<number | null>(null);
+
+  const clearCooldownTimer = () => {
+    if (cooldownTimerRef.current !== null) {
+      window.clearInterval(cooldownTimerRef.current);
+      cooldownTimerRef.current = null;
+    }
+  };
+
+  useEffect(() => () => clearCooldownTimer(), []);
 
   const cooldownRemaining = Math.max(0, Math.ceil((cooldownUntil - Date.now()) / 1000));
   const accountIdentity = { tenantId, loginName };
@@ -96,11 +106,12 @@ export const LoginPage = () => {
   };
 
   const startCooldown = () => {
+    clearCooldownTimer();
     const until = Date.now() + RESEND_COOLDOWN_SECONDS * 1000;
     setCooldownUntil(until);
-    const timer = window.setInterval(() => {
+    cooldownTimerRef.current = window.setInterval(() => {
       forceRender((value) => value + 1);
-      if (Date.now() >= until) window.clearInterval(timer);
+      if (Date.now() >= until) clearCooldownTimer();
     }, 1000);
   };
 
@@ -111,6 +122,7 @@ export const LoginPage = () => {
     setIdentifierFormKey((value) => value + 1);
     setError(undefined);
     setCooldownUntil(0);
+    clearCooldownTimer();
   };
 
   const accountContext = step === 'IDENTIFIER' ? null : (
