@@ -69,7 +69,7 @@ class AssistantToolAdapterTest {
         List<AssistantDtos.StructuredResult> results = new ArrayList<>();
 
         ToolCallback[] adapted = AssistantToolAdapter.forUser(
-                new ToolCallback[]{read}, authentication(RbacPermissions.STAFF_READ), user(), new ObjectMapper(),
+                new ToolCallback[]{read}, authentication(RbacPermissions.LEAVE_APPLICATION_READ), user(), new ObjectMapper(),
                 new ArrayList<>(), results, "contract", mock(AssistantConfirmationService.class),
                 mock(AssistantAuditService.class));
 
@@ -88,6 +88,21 @@ class AssistantToolAdapterTest {
                     .containsEntry("configuredEntitlementAmount", 14)
                     .containsEntry("sourcePolicyResolved", true);
         });
+    }
+
+    @Test
+    void shouldExposeFocusedEntitlementToolToStaffWithoutBroadStaffRead() {
+        ToolCallback entitlement = callback("getStaffLeaveEntitlement");
+        ToolCallback broadStaff = callback("getStaffById");
+
+        ToolCallback[] adapted = AssistantToolAdapter.forUser(
+                new ToolCallback[]{entitlement, broadStaff},
+                authentication(RbacPermissions.LEAVE_APPLICATION_READ),
+                user(), new ObjectMapper(), new ArrayList<>(), new ArrayList<>(),
+                "staff-entitlement", mock(AssistantConfirmationService.class), mock(AssistantAuditService.class));
+
+        assertThat(adapted).extracting(callback -> callback.getToolDefinition().name())
+                .containsExactly("getStaffLeaveEntitlement");
     }
 
     @Test
