@@ -66,6 +66,21 @@ describe('LoginPage account activation, password reset and OAuth sign-in', () =>
     setResetPassword.mockResolvedValue(undefined);
   });
 
+  it('cleans up the resend cooldown timer when the page unmounts', async () => {
+    const clearIntervalSpy = vi.spyOn(window, 'clearInterval');
+    lookupAccountActivation.mockResolvedValue({ nextStep: 'ACTIVATION' });
+    const view = renderPage();
+    await enterIdentifier();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Send verification PIN' }));
+    await waitFor(() => expect(requestAccountActivationPin).toHaveBeenCalled());
+
+    view.unmount();
+
+    expect(clearIntervalSpy).toHaveBeenCalled();
+    clearIntervalSpy.mockRestore();
+  });
+
   it('shows Google and GitHub as sign-in choices', () => {
     renderPage();
 
