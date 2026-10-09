@@ -20,7 +20,7 @@ final class AssistantPrivateBalanceGuard {
 
     static String refusal(String message, Authentication authentication) {
         String lower = message.toLowerCase(Locale.ROOT);
-        if (!(lower.contains("balance") || lower.contains("entitlement"))) return null;
+        if (!(lower.contains("leave") || lower.contains("balance") || lower.contains("entitlement"))) return null;
         if (FOREIGN_TENANT.matcher(message).find()) {
             return "I cannot access private leave balances from another tenant.";
         }
