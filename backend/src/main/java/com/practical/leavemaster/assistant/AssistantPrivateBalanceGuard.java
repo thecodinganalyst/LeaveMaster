@@ -12,7 +12,7 @@ import java.util.regex.Pattern;
  */
 final class AssistantPrivateBalanceGuard {
     private static final Pattern FOREIGN_TENANT = Pattern.compile(
-            "(?i)\\b(?:in|from|of|for)\\s+(?:another|other|different|foreign|tenant[-\\s]?[a-z0-9-]+)\\s+tenant\\b|\\btenant[-\\s]?[a-z0-9-]+\\b");
+            "(?i)\\b(?:in|from|of|for)\\s+(?:(?:another|other|different|foreign)\\s+)?tenant\\s+[a-z0-9-]+\\b|\\btenant-[a-z0-9-]+\\b");
     private static final Pattern OTHER_EMPLOYEE = Pattern.compile(
             "(?i)\\b(?:another|other|someone else's|different)\\s+(?:employee|staff|person)\\b");
 
