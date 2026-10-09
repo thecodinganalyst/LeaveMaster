@@ -95,6 +95,10 @@ public class AssistantService {
         String contextualMessage = appendAndBuildConversationContext(conversationKey, "User", request.message());
 
         rateLimitService.checkAndRecord(user.getLoginName(), user.getTenantId(), conversationId, request.message());
+        String privateBalanceRefusal = AssistantPrivateBalanceGuard.refusal(request.message(), authentication);
+        if (privateBalanceRefusal != null) {
+            return new AssistantDtos.ChatResponse(conversationId, privateBalanceRefusal, List.of(), List.of());
+        }
         providerGuard.beforeCall();
 
         List<AssistantDtos.PendingAction> pendingActions = new ArrayList<>();

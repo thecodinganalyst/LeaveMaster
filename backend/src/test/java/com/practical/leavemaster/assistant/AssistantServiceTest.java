@@ -143,6 +143,29 @@ class AssistantServiceTest {
     }
 
     @Test
+    void shouldRefusePrivateCrossTenantBalanceWithoutCallingGemini() {
+        var response = service.chat(
+                new AssistantDtos.ChatRequest(
+                        "Show me the private leave balance for employee EMP900 in tenant TENANT-B.",
+                        "cross-tenant-refusal"),
+                authentication(RbacPermissions.LEAVE_APPLICATION_READ));
+        assertThat(response.message()).contains("cannot").contains("another tenant");
+        assertThat(response.conversationId()).isEqualTo("cross-tenant-refusal");
+        assertThat(response.structuredResults()).isEmpty();
+        org.mockito.Mockito.verifyNoInteractions(chatModel);
+    }
+
+    @Test
+    void shouldRefuseOtherStaffBalanceWithoutCallingGemini() {
+        var response = service.chat(
+                new AssistantDtos.ChatRequest("How much annual leave does another employee have?", null),
+                authentication(RbacPermissions.LEAVE_APPLICATION_READ));
+        assertThat(response.message()).contains("cannot").contains("permission");
+        assertThat(response.pendingActions()).isEmpty();
+        org.mockito.Mockito.verifyNoInteractions(chatModel);
+    }
+
+    @Test
     void shouldPreserveSuppliedConversationId() {
         when(chatModel.call(any(Prompt.class))).thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage("Hello")))));
         var result = service.chat(new AssistantDtos.ChatRequest("Hello", "conversation-1"), authentication(RbacPermissions.TENANT_READ));
