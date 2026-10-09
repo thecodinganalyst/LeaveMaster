@@ -83,6 +83,13 @@ public class AssistantService {
             throw new IllegalArgumentException("message is required");
         }
 
+        String privateBalanceRefusal = AssistantPrivateBalanceGuard.refusal(request.message(), authentication);
+        if (privateBalanceRefusal != null) {
+            String refusalConversationId = request.conversationId() == null || request.conversationId().isBlank()
+                    ? UUID.randomUUID().toString() : request.conversationId();
+            return new AssistantDtos.ChatResponse(refusalConversationId, privateBalanceRefusal, List.of(), List.of());
+        }
+
         ChatModel chatModel = chatModelProvider.getIfAvailable();
         if (chatModel == null) throw new AssistantUnavailableException("AI provider is not configured");
 
