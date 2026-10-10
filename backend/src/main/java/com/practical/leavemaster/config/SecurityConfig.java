@@ -55,7 +55,7 @@ public class SecurityConfig {
         http
             .cors(Customizer.withDefaults())
             .csrf(csrf -> csrf
-                .ignoringRequestMatchers("/mcp/**", "/api/public/contact"))
+                .ignoringRequestMatchers("/mcp/**", "/api/public/contact", "/api/internal/evaluation/reset"))
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
             .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
@@ -78,7 +78,7 @@ public class SecurityConfig {
                     "/v3/api-docs/**",
                     "/h2-console/**"
                 ).permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/public/contact").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/public/contact", "/api/internal/evaluation/reset").permitAll()
                 .requestMatchers(HttpMethod.PUT, "/platform-admin/recovery-email", "/api/platform-admin/recovery-email")
                     .hasAuthority("ROLE_PLATFORM_ADMIN")
                 .requestMatchers(HttpMethod.GET, "/users/**", "/api/users/**").hasAuthority(RbacPermissions.USER_READ)
