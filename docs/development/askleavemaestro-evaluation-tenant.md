@@ -22,3 +22,13 @@ The reset deletes and recreates only the configured EVALUATION tenant in a trans
 - #639: stronger fixture-derived business assertions and repeatability checks.
 
 Never enable evaluation provisioning in production without a separate secret and authorized reset orchestration.
+
+## GitHub Action integration (#638)
+
+The live workflow requires repository variable `ASSISTANT_LIVE_EVAL_BASE_URL` (HTTPS) and `ASSISTANT_LIVE_EVAL_TENANT_ID` (`EVALUATION`), plus secrets `ASSISTANT_LIVE_EVAL_PASSWORD` and `ASSISTANT_LIVE_EVAL_RESET_TOKEN`. No production API URL or DEMO credentials are used as fallback.
+
+The backend must be deployed with `evaluation.tenant.enabled=true`, `evaluation.tenant.id=EVALUATION`, `evaluation.tenant.password` equal to the workflow password, and `evaluation.tenant.reset-token` equal to the workflow reset token. Use separate strong random secrets and do not publish them. The reset endpoint is `/api/internal/evaluation/reset`, accepts only the reset token header, and returns 403 otherwise. Restrict ingress and monitor/reset-token rotation where infrastructure permits.
+
+Before scenarios, the evaluator resets the tenant, verifies the response type and ID, then signs in as `evaluation.staff` / `evaluation.manager` through ordinary tenant-aware `/auth/login` and verifies `/auth/me` tenant identity. PR runs only perform static validation and do not access secrets or live services. Nightly/manual runs fail closed if configuration is absent or invalid.
+
+**Deployment dependency:** this workflow will not run successfully until the backend changes are deployed and the corresponding GitHub variables/secrets are configured. Do not point it at the public DEMO tenant.
