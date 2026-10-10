@@ -21,7 +21,7 @@ public class DemoTenantPolicy {
     }
 
     public boolean isDemoTenant(String tenantId) {
-        return tenantType(tenantId) == TenantType.DEMO;
+        return tenantType(tenantId) != TenantType.STANDARD;
     }
 
     public boolean suppressOutboundSideEffects(String tenantId, String sideEffect) {

@@ -59,24 +59,48 @@ public class DemoTenantSeedService {
     @Value("${demo.tenant.password:Demo123!}")
     private String demoPassword;
 
+    @Value("${evaluation.tenant.id:EVALUATION}")
+    private String evaluationTenantId;
+
+    @Value("${evaluation.tenant.password:}")
+    private String evaluationPassword;
+
+    @Value("${evaluation.tenant.enabled:false}")
+    private boolean evaluationEnabled;
+
+    @Transactional
+    public DemoSeedResult resetEvaluationTenant() {
+        if (!evaluationEnabled || evaluationPassword == null || evaluationPassword.isBlank()) {
+            throw new IllegalStateException("Evaluation tenant provisioning requires explicit enablement and a password");
+        }
+        String evaluationId = normalizeTenantId(evaluationTenantId);
+        if (evaluationId.equals(normalizeTenantId(configuredTenantId))) {
+            throw new IllegalStateException("Evaluation tenant must differ from public DEMO tenant");
+        }
+        return reset(evaluationId, true, TenantType.EVALUATION, evaluationPassword);
+    }
+
     @Transactional
     public DemoSeedResult resetConfiguredDemoTenant() {
-        return reset(configuredTenantId, true);
+        return reset(configuredTenantId, true, TenantType.DEMO, demoPassword);
     }
 
     @Transactional
     public DemoSeedResult resetExistingDemoTenant(String tenantId) {
-        return reset(tenantId, false);
+        return reset(tenantId, false, TenantType.DEMO, demoPassword);
     }
 
-    private DemoSeedResult reset(String tenantId, boolean allowCreate) {
+    private DemoSeedResult reset(String tenantId, boolean allowCreate, TenantType expectedType, String password) {
         String normalizedTenantId = normalizeTenantId(tenantId);
         Tenant existing = tenantRepository.findById(normalizedTenantId).orElse(null);
         if (existing == null && !allowCreate) {
             throw new TenantNotFoundException(normalizedTenantId);
         }
-        if (existing != null && existing.getType() != TenantType.DEMO) {
-            throw new DemoTenantOperationException("reset non-DEMO tenant " + normalizedTenantId);
+        if (expectedType == TenantType.EVALUATION && normalizedTenantId.equals(normalizeTenantId(configuredTenantId))) {
+            throw new DemoTenantOperationException("reset public demo through evaluation provisioning");
+        }
+        if (existing != null && existing.getType() != expectedType) {
+            throw new DemoTenantOperationException("reset non-" + expectedType + " tenant " + normalizedTenantId);
         }
 
         if (existing != null) {
@@ -89,13 +113,13 @@ public class DemoTenantSeedService {
 
         Tenant tenant = Tenant.builder()
                 .id(normalizedTenantId)
-                .name("Demo Company Pte Ltd")
-                .tenantAdminEmail("admin@demo.invalid")
+                .name(expectedType == TenantType.EVALUATION ? "Evaluation Company Pte Ltd" : "Demo Company Pte Ltd")
+                .tenantAdminEmail(expectedType == TenantType.EVALUATION ? "admin@evaluation.invalid" : "admin@demo.invalid")
                 .jurisdictionId(SG)
                 .jurisdictionIds(List.of(SG))
                 .startDate(yearStart.minusYears(5))
                 .status(TenantStatus.ACTIVE)
-                .type(TenantType.DEMO)
+                .type(expectedType)
                 .lastModified(LocalDateTime.now())
                 .build();
         tenantService.save(tenant);
@@ -127,15 +151,15 @@ public class DemoTenantSeedService {
         ben = managedStaff(managedStaff, ben.getId());
 
         leaveApproverRepository.saveAll(List.of(
-                approver(normalizedTenantId, alice, manager, hr, yearStart),
-                approver(normalizedTenantId, ben, manager, hr, yearStart)
+                approver(normalizedTenantId, alice, manager, hr, yearStart, expectedType),
+                approver(normalizedTenantId, ben, manager, hr, yearStart, expectedType)
         ));
 
         appUserRepository.saveAll(List.of(
-                user(normalizedTenantId, "demo.hr", hr, hrRole),
-                user(normalizedTenantId, "demo.manager", manager, managerRole),
-                user(normalizedTenantId, "demo.staff", alice, staffRole),
-                user(normalizedTenantId, "demo.staff2", ben, staffRole)
+                user(normalizedTenantId, login(expectedType, "hr"), hr, hrRole, password),
+                user(normalizedTenantId, login(expectedType, "manager"), manager, managerRole, password),
+                user(normalizedTenantId, login(expectedType, "staff"), alice, staffRole, password),
+                user(normalizedTenantId, login(expectedType, "staff2"), ben, staffRole, password)
         ));
 
         leaveApplicationRepository.saveAll(List.of(
@@ -145,7 +169,7 @@ public class DemoTenantSeedService {
                 application(normalizedTenantId, ben, annualLeave, manager, today.plusDays(21), LeaveStatus.APPROVED, today.minusDays(3), today.minusDays(2))
         ));
 
-        return new DemoSeedResult(normalizedTenantId, TenantType.DEMO, 4, 4, 4, today);
+        return new DemoSeedResult(normalizedTenantId, expectedType, 4, 4, 4, today);
     }
 
     private Staff managedStaff(Map<String, Staff> managedStaff, String staffId) {
@@ -198,10 +222,14 @@ public class DemoTenantSeedService {
         staff.getLeaveEntitlements().add(entitlement);
     }
 
-    private AppUser user(String tenantId, String loginName, Staff staff, AppRole role) {
+    private String login(TenantType type, String persona) {
+        return (type == TenantType.EVALUATION ? "evaluation." : "demo.") + persona;
+    }
+
+    private AppUser user(String tenantId, String loginName, Staff staff, AppRole role, String password) {
         return AppUser.builder()
                 .loginName(loginName)
-                .password(passwordEncoder.encode(demoPassword))
+                .password(passwordEncoder.encode(password))
                 .email(staff.getEmail())
                 .active(true)
                 .staffId(staff.getId())
@@ -210,13 +238,13 @@ public class DemoTenantSeedService {
                 .build();
     }
 
-    private LeaveApprover approver(String tenantId, Staff staff, Staff manager, Staff admin, LocalDate effectiveFrom) {
+    private LeaveApprover approver(String tenantId, Staff staff, Staff manager, Staff admin, LocalDate effectiveFrom, TenantType type) {
         return LeaveApprover.builder()
                 .staff(staff)
                 .approver(manager)
                 .effectiveFrom(effectiveFrom)
                 .admin(admin)
-                .adminLoginName("demo.hr")
+                .adminLoginName(login(type, "hr"))
                 .adminDate(effectiveFrom)
                 .tenantId(tenantId)
                 .build();
