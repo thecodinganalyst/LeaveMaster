@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       base_url:
-        description: 'Deployed LeaveMaestro API base URL (blank uses repository variable/default)'
+        description: 'Dedicated evaluation API base URL (blank uses repository variable)'
         required: false
         type: string
       full_suite:
@@ -47,7 +47,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      LIVE_EVAL_BASE_URL: ${{ inputs.base_url || vars.ASSISTANT_LIVE_EVAL_BASE_URL || 'https://leavemaster-api-63vdkoko4a-as.a.run.app' }}
+      LIVE_EVAL_BASE_URL: ${{ inputs.base_url || vars.ASSISTANT_LIVE_EVAL_BASE_URL }}
+      LIVE_EVAL_TENANT_ID: ${{ vars.ASSISTANT_LIVE_EVAL_TENANT_ID }}
+      LIVE_EVAL_PASSWORD: ${{ secrets.ASSISTANT_LIVE_EVAL_PASSWORD }}
+      LIVE_EVAL_RESET_TOKEN: ${{ secrets.ASSISTANT_LIVE_EVAL_RESET_TOKEN }}
       LIVE_EVAL_MAX_ATTEMPTS: '2'
     steps:
       - uses: actions/checkout@v7
