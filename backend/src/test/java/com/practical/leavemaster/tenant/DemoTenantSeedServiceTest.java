@@ -147,6 +147,64 @@ class DemoTenantSeedServiceTest {
         verify(tenantService, never()).save(any());
     }
 
+    @Test
+    void evaluationProvisioningRequiresExplicitOptIn() {
+        ReflectionTestUtils.setField(service, "evaluationTenantId", "EVALUATION");
+        ReflectionTestUtils.setField(service, "evaluationPassword", "strong-evaluation-secret");
+        assertThatThrownBy(() -> service.resetEvaluationTenant())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("explicit enablement");
+        verify(tenantService, never()).delete(any());
+    }
+
+    @Test
+    void evaluationProvisioningRefusesPublicDemoTenant() {
+        ReflectionTestUtils.setField(service, "evaluationEnabled", true);
+        ReflectionTestUtils.setField(service, "evaluationTenantId", "DEMO");
+        ReflectionTestUtils.setField(service, "evaluationPassword", "strong-evaluation-secret");
+        assertThatThrownBy(() -> service.resetEvaluationTenant())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("must differ");
+        verify(tenantService, never()).delete(any());
+    }
+
+    @Test
+    void evaluationProvisioningRefusesExistingStandardTenant() {
+        ReflectionTestUtils.setField(service, "evaluationEnabled", true);
+        ReflectionTestUtils.setField(service, "evaluationTenantId", "EVALUATION");
+        ReflectionTestUtils.setField(service, "evaluationPassword", "strong-evaluation-secret");
+        when(tenantRepository.findById("EVALUATION")).thenReturn(Optional.of(
+                Tenant.builder().id("EVALUATION").type(TenantType.STANDARD).build()));
+        assertThatThrownBy(() -> service.resetEvaluationTenant())
+                .isInstanceOf(DemoTenantOperationException.class);
+        verify(tenantService, never()).delete(any());
+    }
+
+    @Test
+    void evaluationProvisioningUsesSeparateTenantAndCredentials() {
+        ReflectionTestUtils.setField(service, "evaluationEnabled", true);
+        ReflectionTestUtils.setField(service, "evaluationTenantId", "EVALUATION");
+        ReflectionTestUtils.setField(service, "evaluationPassword", "strong-evaluation-secret");
+        when(tenantRepository.findById("EVALUATION")).thenReturn(Optional.empty());
+        when(appRoleRepository.findById("EVALUATION_HR")).thenReturn(Optional.of(role("EVALUATION_HR")));
+        when(appRoleRepository.findById("EVALUATION_Manager")).thenReturn(Optional.of(role("EVALUATION_Manager")));
+        when(appRoleRepository.findById("EVALUATION_Staff")).thenReturn(Optional.of(role("EVALUATION_Staff")));
+        when(leaveTypeRepository.findAllByTenantId("EVALUATION")).thenReturn(List.of(
+                LeaveType.builder().sourceJurisdictionLeaveTypeId("SG:ANNUAL_LEAVE").build()));
+        when(passwordEncoder.encode("strong-evaluation-secret")).thenReturn("encoded-evaluation");
+        stubStaffRepositoryMergeSemantics();
+        DemoTenantSeedService.DemoSeedResult result = service.resetEvaluationTenant();
+        assertThat(result.tenantType()).isEqualTo(TenantType.EVALUATION);
+        verify(tenantService).save(argThat(t -> t.getType() == TenantType.EVALUATION && "EVALUATION".equals(t.getId())));
+        verify(appUserRepository).saveAll(argThat(users -> {
+            java.util.Set<String> names = StreamSupport.stream(users.spliterator(), false)
+                    .map(com.practical.leavemaster.user.AppUser::getLoginName)
+                    .collect(Collectors.toSet());
+            return names.containsAll(List.of("evaluation.staff", "evaluation.manager", "evaluation.hr"))
+                    && names.stream().noneMatch(name -> name.startsWith("demo."));
+        }));
+    }
+
     private void stubStaffRepositoryMergeSemantics() {
         when(staffRepository.saveAll(any())).thenAnswer(invocation -> {
             List<Staff> submittedStaff = invocation.getArgument(0);
