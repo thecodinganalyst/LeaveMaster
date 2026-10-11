@@ -79,22 +79,28 @@ data "google_secret_manager_secret" "google_oauth_client_secret" {
   secret_id = var.google_oauth_client_secret_id
 }
 
-data "google_secret_manager_secret" "evaluation_password" {
+resource "google_secret_manager_secret" "evaluation_password" {
   count     = var.enable_evaluation_tenant ? 1 : 0
   project   = var.project_id
   secret_id = var.evaluation_password_secret_id
+  replication {
+    auto {}
+  }
 }
 
-data "google_secret_manager_secret" "evaluation_reset_token" {
+resource "google_secret_manager_secret" "evaluation_reset_token" {
   count     = var.enable_evaluation_tenant ? 1 : 0
   project   = var.project_id
   secret_id = var.evaluation_reset_token_secret_id
+  replication {
+    auto {}
+  }
 }
 
 resource "google_secret_manager_secret_iam_member" "cloud_run_evaluation_password" {
   count     = var.enable_evaluation_tenant ? 1 : 0
   project   = var.project_id
-  secret_id = data.google_secret_manager_secret.evaluation_password[0].secret_id
+  secret_id = google_secret_manager_secret.evaluation_password[0].secret_id
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${google_service_account.cloud_run.email}"
 }
@@ -102,9 +108,25 @@ resource "google_secret_manager_secret_iam_member" "cloud_run_evaluation_passwor
 resource "google_secret_manager_secret_iam_member" "cloud_run_evaluation_reset_token" {
   count     = var.enable_evaluation_tenant ? 1 : 0
   project   = var.project_id
-  secret_id = data.google_secret_manager_secret.evaluation_reset_token[0].secret_id
+  secret_id = google_secret_manager_secret.evaluation_reset_token[0].secret_id
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${google_service_account.cloud_run.email}"
+}
+
+resource "google_secret_manager_secret_iam_member" "github_evaluation_password" {
+  count     = var.enable_evaluation_tenant ? 1 : 0
+  project   = var.project_id
+  secret_id = google_secret_manager_secret.evaluation_password[0].secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${var.github_actions_service_account}"
+}
+
+resource "google_secret_manager_secret_iam_member" "github_evaluation_reset_token" {
+  count     = var.enable_evaluation_tenant ? 1 : 0
+  project   = var.project_id
+  secret_id = google_secret_manager_secret.evaluation_reset_token[0].secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${var.github_actions_service_account}"
 }
 
 resource "google_project_service" "required" {
@@ -319,7 +341,7 @@ resource "google_cloud_run_v2_service" "api" {
           name = "EVALUATION_TENANT_PASSWORD"
           value_source {
             secret_key_ref {
-              secret  = data.google_secret_manager_secret.evaluation_password[0].secret_id
+              secret  = google_secret_manager_secret.evaluation_password[0].secret_id
               version = "latest"
             }
           }
@@ -332,7 +354,7 @@ resource "google_cloud_run_v2_service" "api" {
           name = "EVALUATION_TENANT_RESET_TOKEN"
           value_source {
             secret_key_ref {
-              secret  = data.google_secret_manager_secret.evaluation_reset_token[0].secret_id
+              secret  = google_secret_manager_secret.evaluation_reset_token[0].secret_id
               version = "latest"
             }
           }
