@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       base_url:
-        description: 'Deployed LeaveMaestro API base URL (blank uses repository variable/default)'
+        description: 'Dedicated evaluation API base URL (blank uses repository variable)'
         required: false
         type: string
       full_suite:
@@ -23,6 +23,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 concurrency:
   group: askleavemaestro-live-evaluation
@@ -47,15 +48,44 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      LIVE_EVAL_BASE_URL: ${{ inputs.base_url || vars.ASSISTANT_LIVE_EVAL_BASE_URL || 'https://leavemaster-api-63vdkoko4a-as.a.run.app' }}
+      LIVE_EVAL_BASE_URL: ${{ inputs.base_url || vars.ASSISTANT_LIVE_EVAL_BASE_URL }}
+      LIVE_EVAL_TENANT_ID: ${{ vars.ASSISTANT_LIVE_EVAL_TENANT_ID }}
       LIVE_EVAL_MAX_ATTEMPTS: '2'
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v6
         with:
           node-version: '24'
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
+      - name: Set up Google Cloud CLI
+        uses: google-github-actions/setup-gcloud@v3
+      - name: Retrieve evaluation credentials from Secret Manager
+        env:
+          PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          PASSWORD_SECRET_ID: ${{ vars.ASSISTANT_LIVE_EVAL_PASSWORD_SECRET_ID || 'leavemaestro-evaluation-password' }}
+          RESET_SECRET_ID: ${{ vars.ASSISTANT_LIVE_EVAL_RESET_TOKEN_SECRET_ID || 'leavemaestro-evaluation-reset-token' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$PROJECT_ID"
+          umask 077
+          gcloud secrets versions access latest --project="$PROJECT_ID" --secret="$PASSWORD_SECRET_ID" > "$RUNNER_TEMP/evaluation-password"
+          gcloud secrets versions access latest --project="$PROJECT_ID" --secret="$RESET_SECRET_ID" > "$RUNNER_TEMP/evaluation-reset-token"
+          test -s "$RUNNER_TEMP/evaluation-password"
+          test -s "$RUNNER_TEMP/evaluation-reset-token"
       - name: Run live configured-model evaluation
-        run: node scripts/assistant-live-eval/run.mjs
+        shell: bash
+        run: |
+          set -euo pipefail
+          export LIVE_EVAL_PASSWORD="$(cat "$RUNNER_TEMP/evaluation-password")"
+          export LIVE_EVAL_RESET_TOKEN="$(cat "$RUNNER_TEMP/evaluation-reset-token")"
+          rm -f "$RUNNER_TEMP/evaluation-password" "$RUNNER_TEMP/evaluation-reset-token"
+          node scripts/assistant-live-eval/run.mjs
       - name: Add report to workflow summary
         if: always()
         run: |

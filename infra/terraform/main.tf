@@ -79,6 +79,56 @@ data "google_secret_manager_secret" "google_oauth_client_secret" {
   secret_id = var.google_oauth_client_secret_id
 }
 
+resource "google_secret_manager_secret" "evaluation_password" {
+  count     = var.enable_evaluation_tenant ? 1 : 0
+  project   = var.project_id
+  secret_id = var.evaluation_password_secret_id
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret" "evaluation_reset_token" {
+  count     = var.enable_evaluation_tenant ? 1 : 0
+  project   = var.project_id
+  secret_id = var.evaluation_reset_token_secret_id
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_iam_member" "cloud_run_evaluation_password" {
+  count     = var.enable_evaluation_tenant ? 1 : 0
+  project   = var.project_id
+  secret_id = google_secret_manager_secret.evaluation_password[0].secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.cloud_run.email}"
+}
+
+resource "google_secret_manager_secret_iam_member" "cloud_run_evaluation_reset_token" {
+  count     = var.enable_evaluation_tenant ? 1 : 0
+  project   = var.project_id
+  secret_id = google_secret_manager_secret.evaluation_reset_token[0].secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.cloud_run.email}"
+}
+
+resource "google_secret_manager_secret_iam_member" "github_evaluation_password" {
+  count     = var.enable_evaluation_tenant ? 1 : 0
+  project   = var.project_id
+  secret_id = google_secret_manager_secret.evaluation_password[0].secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${var.github_actions_service_account}"
+}
+
+resource "google_secret_manager_secret_iam_member" "github_evaluation_reset_token" {
+  count     = var.enable_evaluation_tenant ? 1 : 0
+  project   = var.project_id
+  secret_id = google_secret_manager_secret.evaluation_reset_token[0].secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${var.github_actions_service_account}"
+}
+
 resource "google_project_service" "required" {
   for_each = local.required_apis
 
@@ -276,6 +326,42 @@ resource "google_cloud_run_v2_service" "api" {
       }
 
       env {
+        name  = "EVALUATION_TENANT_ENABLED"
+        value = tostring(var.enable_evaluation_tenant)
+      }
+
+      env {
+        name  = "EVALUATION_TENANT_ID"
+        value = var.evaluation_tenant_id
+      }
+
+      dynamic "env" {
+        for_each = var.enable_evaluation_tenant ? [1] : []
+        content {
+          name = "EVALUATION_TENANT_PASSWORD"
+          value_source {
+            secret_key_ref {
+              secret  = google_secret_manager_secret.evaluation_password[0].secret_id
+              version = "latest"
+            }
+          }
+        }
+      }
+
+      dynamic "env" {
+        for_each = var.enable_evaluation_tenant ? [1] : []
+        content {
+          name = "EVALUATION_TENANT_RESET_TOKEN"
+          value_source {
+            secret_key_ref {
+              secret  = google_secret_manager_secret.evaluation_reset_token[0].secret_id
+              version = "latest"
+            }
+          }
+        }
+      }
+
+      env {
         name  = "SPRING_PROFILES_ACTIVE"
         value = "cloudrun"
       }
@@ -458,6 +544,8 @@ resource "google_cloud_run_v2_service" "api" {
   depends_on = [
     google_project_service.required["run.googleapis.com"],
     google_secret_manager_secret_iam_member.cloud_run_database_password,
+    google_secret_manager_secret_iam_member.cloud_run_evaluation_password,
+    google_secret_manager_secret_iam_member.cloud_run_evaluation_reset_token,
     google_secret_manager_secret_iam_member.cloud_run_platform_admin_password,
     google_secret_manager_secret_iam_member.cloud_run_openai_api_key,
     google_secret_manager_secret_iam_member.cloud_run_gemini_api_key,

@@ -5,7 +5,10 @@ const baseUrl = (process.env.LIVE_EVAL_BASE_URL || '').replace(/\/$/, '');
 const scenariosPath = process.env.LIVE_EVAL_SCENARIOS || 'scripts/assistant-live-eval/scenarios.json';
 const reportDir = process.env.LIVE_EVAL_REPORT_DIR || 'build/reports/assistant-live-evaluation';
 const maxAttempts = Number(process.env.LIVE_EVAL_MAX_ATTEMPTS || '2');
-if (!baseUrl) throw new Error('LIVE_EVAL_BASE_URL is required');
+const tenantId = process.env.LIVE_EVAL_TENANT_ID;
+const password = process.env.LIVE_EVAL_PASSWORD;
+const resetToken = process.env.LIVE_EVAL_RESET_TOKEN;
+if (!baseUrl.startsWith('https://') || !tenantId || ['DEMO','PLATFORM'].includes(tenantId) || !password || !resetToken) throw new Error('Dedicated HTTPS evaluation configuration is required');
 
 const scenarios = JSON.parse(await fs.readFile(scenariosPath, 'utf8'));
 const cookies = new Map();
@@ -22,12 +25,21 @@ async function request(persona, url, options = {}) {
   rememberCookie(persona, response);
   return response;
 }
+async function resetEvaluation() {
+  const response = await fetch(baseUrl + '/api/internal/evaluation/reset', {method:'POST',headers:{'X-Evaluation-Reset-Token':resetToken},redirect:'manual'});
+  if (!response.ok) throw new Error('Evaluation reset failed: HTTP ' + response.status);
+  const data = await response.json();
+  if (data.tenantId !== tenantId || data.tenantType !== 'EVALUATION') throw new Error('Unexpected evaluation tenant');
+}
+await resetEvaluation();
 async function login(persona) {
   const csrf = await request(persona, '/auth/csrf', {headers:{Accept:'application/json'}});
   if (!csrf.ok) throw new Error(`CSRF failed for ${persona}: HTTP ${csrf.status}`);
   const token = await csrf.json();
-  const login = await request(persona, '/auth/demo-login', {method:'POST',headers:{'Content-Type':'application/json',[token.headerName]:token.token},body:JSON.stringify({persona})});
-  if (!login.ok) throw new Error(`Demo login failed for ${persona}: HTTP ${login.status}`);
+  const login = await request(persona, '/auth/login', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded',[token.headerName]:token.token},body:new URLSearchParams({tenantId,username:'evaluation.'+persona,password}).toString()});
+  if (!login.ok) throw new Error(`Evaluation login failed for ${persona}: HTTP ${login.status}`);
+  const me = await request(persona, '/auth/me', {headers:{Accept:'application/json'}});
+  if (!me.ok || (await me.json()).tenantId !== tenantId) throw new Error('Evaluation session tenant mismatch');
   return token;
 }
 const csrfByPersona = new Map();
@@ -62,7 +74,7 @@ const criticalFailures=results.filter(x=>x.critical&&!x.passed);
 const isolationFailures=results.filter(x=>x.category==='tenant-isolation'&&!x.passed);
 const passRate=results.length?passed/results.length:0;
 const gate={criticalPass:criticalFailures.length===0,tenantIsolationPass:isolationFailures.length===0,overallPass:passRate>=0.95,passRate};
-const report={generatedAt:new Date().toISOString(),baseUrl,provider:'configured-deployment-provider',results,gate};
+const report={generatedAt:new Date().toISOString(),baseUrl,tenantId,provider:'configured-deployment-provider',results,gate};
 await fs.mkdir(reportDir,{recursive:true});
 await fs.writeFile(path.join(reportDir,'live-evaluation.json'),JSON.stringify(report,null,2));
 const rows=results.map(r=>`| ${r.id} | ${r.category} | ${r.critical?'yes':'no'} | ${r.passed?'PASS':'FAIL'} | ${r.attempts.length} | ${r.attempts.at(-1)?.latencyMs??''} | ${(r.attempts.at(-1)?.tools||[]).join(', ')} |`).join('\n');
