@@ -25,10 +25,19 @@ Never enable evaluation provisioning in production without a separate secret and
 
 ## GitHub Action integration (#638)
 
-The live workflow requires repository variable `ASSISTANT_LIVE_EVAL_BASE_URL` (HTTPS) and `ASSISTANT_LIVE_EVAL_TENANT_ID` (`EVALUATION`), plus secrets `ASSISTANT_LIVE_EVAL_PASSWORD` and `ASSISTANT_LIVE_EVAL_RESET_TOKEN`. No production API URL or DEMO credentials are used as fallback.
+The live workflow requires repository variable `ASSISTANT_LIVE_EVAL_BASE_URL` (HTTPS) and `ASSISTANT_LIVE_EVAL_TENANT_ID` (`EVALUATION`), plus optional repository variables `ASSISTANT_LIVE_EVAL_PASSWORD_SECRET_ID` and `ASSISTANT_LIVE_EVAL_RESET_TOKEN_SECRET_ID` (defaults `leavemaestro-evaluation-password` and `leavemaestro-evaluation-reset-token`). Do not store the credential values as GitHub secrets. No production API URL or DEMO credentials are used as fallback.
 
-The backend must be deployed with `evaluation.tenant.enabled=true`, `evaluation.tenant.id=EVALUATION`, `evaluation.tenant.password` equal to the workflow password, and `evaluation.tenant.reset-token` equal to the workflow reset token. Use separate strong random secrets and do not publish them. The reset endpoint is `/api/internal/evaluation/reset`, accepts only the reset token header, and returns 403 otherwise. Restrict ingress and monitor/reset-token rotation where infrastructure permits.
+Set GitHub variable `ENABLE_EVALUATION_TENANT=true` before running the Cloud Run deployment workflow. Terraform injects the backend environment variables and Secret Manager references automatically. Create both secrets and nonempty latest versions in Google Cloud Secret Manager before deployment. The GitHub workload identity service account must have `roles/secretmanager.secretAccessor` on those two secrets for the evaluation workflow; the Cloud Run service account is granted access by Terraform. Use separate strong random secrets and do not publish them. The reset endpoint is `/api/internal/evaluation/reset`, accepts only the reset token header, and returns 403 otherwise. Restrict ingress and monitor/reset-token rotation where infrastructure permits.
 
 Before scenarios, the evaluator resets the tenant, verifies the response type and ID, then signs in as `evaluation.staff` / `evaluation.manager` through ordinary tenant-aware `/auth/login` and verifies `/auth/me` tenant identity. PR runs only perform static validation and do not access secrets or live services. Nightly/manual runs fail closed if configuration is absent or invalid.
 
 **Deployment dependency:** this workflow will not run successfully until the backend changes are deployed and the corresponding GitHub variables/secrets are configured. Do not point it at the public DEMO tenant.
+
+### Setup checklist
+
+1. Create `leavemaestro-evaluation-password` and `leavemaestro-evaluation-reset-token` in Google Cloud Secret Manager, with independent strong values.
+2. Grant the existing GitHub Actions WIF service account `roles/secretmanager.secretAccessor` **only on these two secrets** using the Google Cloud console or privileged IAM bootstrap. Do not grant broad project-level access.
+3. Set GitHub Actions repository variables `ENABLE_EVALUATION_TENANT=true`, `ASSISTANT_LIVE_EVAL_TENANT_ID=EVALUATION`, and `ASSISTANT_LIVE_EVAL_BASE_URL` to the current direct HTTPS Cloud Run API URL. Optional `ASSISTANT_LIVE_EVAL_*_SECRET_ID` variables override the default secret IDs.
+4. Deploy Terraform and backend, then manually dispatch the live evaluation workflow. The script fails closed on missing credentials, wrong tenant, or reset failure.
+
+The scheduled job remains disabled by its configuration preconditions until the credentials and backend are provisioned. The GitHub WIF identity needs read-only Secret Manager access for the two evaluation secrets; routine Terraform deploy permissions should not be broadened to manage its own project IAM.
