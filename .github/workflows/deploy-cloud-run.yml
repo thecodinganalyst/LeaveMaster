@@ -38,6 +38,10 @@ env:
   TF_VAR_public_app_url: ${{ vars.PUBLIC_APP_URL || 'https://app.leavemaestro.com' }}
   TF_VAR_marketing_site_origins: ${{ vars.MARKETING_SITE_ORIGINS || '["https://leavemaestro.com","https://www.leavemaestro.com"]' }}
   TF_VAR_allowed_frontend_origins: ${{ vars.ALLOWED_FRONTEND_ORIGINS || '[]' }}
+  TF_VAR_enable_evaluation_tenant: ${{ vars.ENABLE_EVALUATION_TENANT || 'false' }}
+  TF_VAR_evaluation_tenant_id: ${{ vars.ASSISTANT_LIVE_EVAL_TENANT_ID || 'EVALUATION' }}
+  TF_VAR_evaluation_password_secret_id: ${{ vars.ASSISTANT_LIVE_EVAL_PASSWORD_SECRET_ID || 'leavemaestro-evaluation-password' }}
+  TF_VAR_evaluation_reset_token_secret_id: ${{ vars.ASSISTANT_LIVE_EVAL_RESET_TOKEN_SECRET_ID || 'leavemaestro-evaluation-reset-token' }}
   TF_VAR_enable_ai_assistant: ${{ vars.ENABLE_AI_ASSISTANT || 'false' }}
   TF_VAR_ai_assistant_provider: ${{ vars.AI_ASSISTANT_PROVIDER || 'openai' }}
   TF_VAR_ai_assistant_model: ${{ vars.AI_ASSISTANT_MODEL || 'gpt-5-mini' }}
@@ -120,6 +124,8 @@ jobs:
             -target=google_service_account.cloud_run \
             -target=google_secret_manager_secret.database_password \
             -target=google_secret_manager_secret_iam_member.cloud_run_database_password \
+            -target=google_secret_manager_secret_iam_member.cloud_run_evaluation_password \
+            -target=google_secret_manager_secret_iam_member.cloud_run_evaluation_reset_token \
             -target=google_secret_manager_secret.platform_admin_password \
             -target=google_secret_manager_secret_iam_member.cloud_run_platform_admin_password \
             -target=google_secret_manager_secret_iam_member.cloud_run_openai_api_key \
