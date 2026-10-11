@@ -264,3 +264,31 @@ variable "monitoring_notification_email" {
     error_message = "monitoring_notification_email must be a valid email address when provided."
   }
 }
+
+variable "enable_evaluation_tenant" {
+  description = "Opt in to isolated live evaluation tenant provisioning"
+  type        = bool
+  default     = false
+}
+
+variable "evaluation_tenant_id" {
+  description = "Isolated tenant ID, never DEMO or PLATFORM"
+  type        = string
+  default     = "EVALUATION"
+  validation {
+    condition     = !contains(["DEMO", "PLATFORM", ""], upper(trimspace(var.evaluation_tenant_id)))
+    error_message = "Evaluation tenant must not be DEMO, PLATFORM, or blank."
+  }
+}
+
+variable "evaluation_password_secret_id" {
+  description = "Existing Google Secret Manager secret ID for evaluation account password"
+  type        = string
+  default     = "leavemaestro-evaluation-password"
+}
+
+variable "evaluation_reset_token_secret_id" {
+  description = "Existing Google Secret Manager secret ID for evaluation reset token"
+  type        = string
+  default     = "leavemaestro-evaluation-reset-token"
+}
