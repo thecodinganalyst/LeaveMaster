@@ -124,6 +124,10 @@ jobs:
             -target=google_service_account.cloud_run \
             -target=google_secret_manager_secret.database_password \
             -target=google_secret_manager_secret_iam_member.cloud_run_database_password \
+            -target=google_secret_manager_secret.evaluation_password \
+            -target=google_secret_manager_secret.evaluation_reset_token \
+            -target=google_secret_manager_secret_iam_member.github_evaluation_password \
+            -target=google_secret_manager_secret_iam_member.github_evaluation_reset_token \
             -target=google_secret_manager_secret_iam_member.cloud_run_evaluation_password \
             -target=google_secret_manager_secret_iam_member.cloud_run_evaluation_reset_token \
             -target=google_secret_manager_secret.platform_admin_password \
