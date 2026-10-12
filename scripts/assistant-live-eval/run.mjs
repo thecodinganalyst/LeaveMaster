@@ -11,6 +11,11 @@ const resetToken = process.env.LIVE_EVAL_RESET_TOKEN;
 if (!baseUrl.startsWith('https://') || !tenantId || ['DEMO','PLATFORM'].includes(tenantId) || !password || !resetToken) throw new Error('Dedicated HTTPS evaluation configuration is required');
 
 const scenarios = JSON.parse(await fs.readFile(scenariosPath, 'utf8'));
+if (!Array.isArray(scenarios) || scenarios.length === 0) throw new Error('Nonempty evaluation scenario catalogue required');
+for (const scenario of scenarios) {
+  if (!scenario.id || !['staff', 'staff2', 'manager', 'hr'].includes(scenario.persona)) throw new Error('Invalid evaluation scenario persona');
+}
+
 const cookies = new Map();
 
 function cookieHeader(persona) { return cookies.get(persona) || ''; }
