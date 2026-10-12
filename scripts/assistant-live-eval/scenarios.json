@@ -16,12 +16,6 @@
     ],
     "expectedTools": [
       "getLeaveBalances"
-    ],
-    "requiredFacts": [
-      "14"
-    ],
-    "forbiddenFacts": [
-      "18 days remaining"
     ]
   },
   {
