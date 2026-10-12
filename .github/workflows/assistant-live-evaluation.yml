@@ -46,16 +46,31 @@ jobs:
   live-evaluation:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    environment: production
     timeout-minutes: 20
     env:
       LIVE_EVAL_BASE_URL: ${{ inputs.base_url || vars.ASSISTANT_LIVE_EVAL_BASE_URL }}
-      LIVE_EVAL_TENANT_ID: ${{ vars.ASSISTANT_LIVE_EVAL_TENANT_ID }}
+      LIVE_EVAL_TENANT_ID: ${{ vars.ASSISTANT_LIVE_EVAL_TENANT_ID || 'EVALUATION' }}
       LIVE_EVAL_MAX_ATTEMPTS: '2'
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v6
         with:
           node-version: '24'
+      - name: Validate evaluation target and cloud identity configuration
+        env:
+          PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          WIF_PROVIDER: ${{ vars.WIF_PROVIDER }}
+          WIF_SERVICE_ACCOUNT: ${{ vars.WIF_SERVICE_ACCOUNT }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$PROJECT_ID" || { echo 'GCP_PROJECT_ID is required'; exit 1; }
+          test -n "$WIF_PROVIDER" || { echo 'WIF_PROVIDER is required'; exit 1; }
+          test -n "$WIF_SERVICE_ACCOUNT" || { echo 'WIF_SERVICE_ACCOUNT is required'; exit 1; }
+          test -n "$LIVE_EVAL_BASE_URL" || { echo 'ASSISTANT_LIVE_EVAL_BASE_URL is required'; exit 1; }
+          [[ "$LIVE_EVAL_BASE_URL" == https://* ]] || { echo 'Evaluation URL must be HTTPS'; exit 1; }
+          [[ "$LIVE_EVAL_TENANT_ID" != DEMO && "$LIVE_EVAL_TENANT_ID" != PLATFORM ]] || { echo 'Evaluation tenant must be isolated'; exit 1; }
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v3
         with:
