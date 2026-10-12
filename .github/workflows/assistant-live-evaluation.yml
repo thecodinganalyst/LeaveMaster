@@ -94,6 +94,23 @@ jobs:
           gcloud secrets versions access latest --project="$PROJECT_ID" --secret="$RESET_SECRET_ID" > "$RUNNER_TEMP/evaluation-reset-token"
           test -s "$RUNNER_TEMP/evaluation-password"
           test -s "$RUNNER_TEMP/evaluation-reset-token"
+      - name: Diagnose evaluation reset endpoint security
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Missing token MUST be rejected by the controller with 403.
+          # A 401 means the request was rejected before controller token validation.
+          probe_url="${LIVE_EVAL_BASE_URL%/}/api/internal/evaluation/reset"
+          status="$(curl --silent --show-error --output "$RUNNER_TEMP/evaluation-reset-probe" --write-out '%{http_code}' --max-time 60 --request POST "$probe_url")"
+          echo "Evaluation reset missing-token status: $status"
+          if [ "$status" = "401" ]; then
+            echo "::error::Reset endpoint returned 401 before token validation. Check Cloud Run public invoker IAM, active revision, and Spring Security routing. Expected 403."
+            exit 1
+          fi
+          if [ "$status" != "403" ]; then
+            echo "::error::Reset endpoint missing-token check returned HTTP $status (expected 403). Do not run destructive reset."
+            exit 1
+          fi
       - name: Run live configured-model evaluation
         shell: bash
         run: |

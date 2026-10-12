@@ -7,6 +7,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -25,6 +26,14 @@ class SecurityConfigRbacAuthorizationTest {
                 .andExpect(status().isUnauthorized());
         mockMvc.perform(get("/api/staff/missing/dependants"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void evaluationResetIsReachedWithoutLoginAndRejectsMissingToken() throws Exception {
+        // The controller returns 403 for an absent reset token. A 401 would
+        // indicate Spring Security rejected the request before token validation.
+        mockMvc.perform(post("/api/internal/evaluation/reset"))
+                .andExpect(status().isForbidden());
     }
 
     @Test
