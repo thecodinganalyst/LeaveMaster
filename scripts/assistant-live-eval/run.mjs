@@ -32,7 +32,16 @@ async function request(persona, url, options = {}) {
 }
 async function resetEvaluation() {
   const response = await fetch(baseUrl + '/api/internal/evaluation/reset', {method:'POST',headers:{'X-Evaluation-Reset-Token':resetToken},redirect:'manual'});
-  if (!response.ok) throw new Error('Evaluation reset failed: HTTP ' + response.status);
+  if (!response.ok) {
+    const server = response.headers.get('server') || 'unspecified';
+    const wwwAuthenticate = response.headers.has('www-authenticate');
+    const diagnostic = response.status === 401
+      ? 'HTTP 401 before reset controller token validation (which returns 403): inspect Cloud Run IAM, deployed revision, gateway, and Spring Security routing'
+      : response.status === 403
+        ? 'HTTP 403: evaluation reset token mismatch or evaluation feature disabled'
+        : 'HTTP ' + response.status;
+    throw new Error('Evaluation reset failed: ' + diagnostic + '; server=' + server + '; authChallenge=' + wwwAuthenticate);
+  }
   const data = await response.json();
   if (data.tenantId !== tenantId || data.tenantType !== 'EVALUATION') throw new Error('Unexpected evaluation tenant');
 }
