@@ -101,8 +101,14 @@ jobs:
           # Missing token MUST be rejected by the controller with 403.
           # A 401 means the request was rejected before controller token validation.
           probe_url="${LIVE_EVAL_BASE_URL%/}/api/internal/evaluation/reset"
-          status="$(curl --silent --show-error --output "$RUNNER_TEMP/evaluation-reset-probe" --write-out '%{http_code}' --max-time 60 --request POST "$probe_url")"
-          echo "Evaluation reset missing-token status: $status"
+          for attempt in 1 2 3 4; do
+            status="$(curl --silent --show-error --output "$RUNNER_TEMP/evaluation-reset-probe" --write-out '%{http_code}' --max-time 60 --request POST "$probe_url" || true)"
+            echo "Evaluation reset missing-token attempt $attempt: HTTP $status"
+            if [ "$status" != "500" ] && [ "$status" != "502" ] && [ "$status" != "503" ] && [ "$status" != "504" ] && [ "$status" != "000" ]; then
+              break
+            fi
+            if [ "$attempt" -lt 4 ]; then sleep $((attempt * 5)); fi
+          done
           if [ "$status" = "401" ]; then
             echo "::error::Reset endpoint returned 401 before token validation. Check Cloud Run public invoker IAM, active revision, and Spring Security routing. Expected 403."
             exit 1
