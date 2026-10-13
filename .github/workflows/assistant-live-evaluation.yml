@@ -111,6 +111,24 @@ jobs:
             echo "::error::Reset endpoint missing-token check returned HTTP $status (expected 403). Do not run destructive reset."
             exit 1
           fi
+      - name: Diagnose token-header routing without resetting data
+        shell: bash
+        run: |
+          set -euo pipefail
+          probe_url="${LIVE_EVAL_BASE_URL%/}/api/internal/evaluation/reset"
+          # Deliberately invalid token: controller must return 403, never reset data.
+          status="$(curl --silent --show-error --output "$RUNNER_TEMP/evaluation-invalid-token-probe" --write-out '%{http_code}' --max-time 60 --request POST --header 'X-Evaluation-Reset-Token: deliberately-invalid-evaluation-probe' "$probe_url")"
+          echo "Evaluation reset invalid-token status: $status"
+          if [ "$status" != "403" ]; then
+            echo "::error::A reset request with an invalid token returned HTTP $status instead of 403. Investigate header-sensitive upstream/security handling."
+            exit 1
+          fi
+          node --input-type=module -e '
+            const url = process.env.LIVE_EVAL_BASE_URL.replace(/\\/$/, "") + "/api/internal/evaluation/reset";
+            const response = await fetch(url, { method: "POST", headers: { "X-Evaluation-Reset-Token": "deliberately-invalid-evaluation-probe" }, redirect: "manual" });
+            console.log("Node fetch invalid-token status:", response.status);
+            if (response.status !== 403) process.exitCode = 1;
+          '
       - name: Run live configured-model evaluation
         shell: bash
         run: |
