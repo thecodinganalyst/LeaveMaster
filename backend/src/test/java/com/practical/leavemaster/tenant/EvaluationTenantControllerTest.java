@@ -46,6 +46,15 @@ class EvaluationTenantControllerTest {
     }
 
     @Test
+    void propagatesResetFailureAfterValidToken() {
+        when(seedService.resetEvaluationTenant()).thenThrow(new IllegalStateException("seed failed"));
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> controller.reset("private-reset-token"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("seed failed");
+        verify(seedService).resetEvaluationTenant();
+    }
+
+    @Test
     void authorizedResetReturnsEvaluationIdentity() {
         when(seedService.resetEvaluationTenant()).thenReturn(new DemoTenantSeedService.DemoSeedResult(
                 "EVALUATION", TenantType.EVALUATION, 4, 4, 4, LocalDate.of(2026, 10, 10)));
