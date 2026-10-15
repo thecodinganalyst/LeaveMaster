@@ -1,0 +1,1 @@
+-- H2 V66 has no tenant_type check constraint; EVALUATION is already permitted.

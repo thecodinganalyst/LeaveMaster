@@ -205,6 +205,29 @@ class DemoTenantSeedServiceTest {
         }));
     }
 
+    @Test
+    void evaluationTenantCanBeResetRepeatedly() {
+        ReflectionTestUtils.setField(service, "evaluationEnabled", true);
+        ReflectionTestUtils.setField(service, "evaluationTenantId", "EVALUATION");
+        ReflectionTestUtils.setField(service, "evaluationPassword", "strong-evaluation-secret");
+        Tenant existing = Tenant.builder().id("EVALUATION").type(TenantType.EVALUATION).build();
+        when(tenantRepository.findById("EVALUATION")).thenReturn(Optional.empty(), Optional.of(existing));
+        when(appRoleRepository.findById("EVALUATION_HR")).thenReturn(Optional.of(role("EVALUATION_HR")));
+        when(appRoleRepository.findById("EVALUATION_Manager")).thenReturn(Optional.of(role("EVALUATION_Manager")));
+        when(appRoleRepository.findById("EVALUATION_Staff")).thenReturn(Optional.of(role("EVALUATION_Staff")));
+        when(leaveTypeRepository.findAllByTenantId("EVALUATION")).thenReturn(List.of(
+                LeaveType.builder().sourceJurisdictionLeaveTypeId("SG:ANNUAL_LEAVE").build()));
+        when(passwordEncoder.encode("strong-evaluation-secret")).thenReturn("encoded-evaluation");
+        stubStaffRepositoryMergeSemantics();
+
+        assertThat(service.resetEvaluationTenant().tenantType()).isEqualTo(TenantType.EVALUATION);
+        assertThat(service.resetEvaluationTenant().tenantType()).isEqualTo(TenantType.EVALUATION);
+
+        verify(tenantService).delete("EVALUATION");
+        org.mockito.Mockito.verify(tenantService, org.mockito.Mockito.times(2))
+                .save(argThat(t -> t.getType() == TenantType.EVALUATION));
+    }
+
     private void stubStaffRepositoryMergeSemantics() {
         when(staffRepository.saveAll(any())).thenAnswer(invocation -> {
             List<Staff> submittedStaff = invocation.getArgument(0);
