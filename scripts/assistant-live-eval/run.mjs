@@ -1,3 +1,4 @@
+import { evaluateChatLeave } from './chat-leave.mjs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
@@ -44,8 +45,9 @@ async function resetEvaluation() {
   }
   const data = await response.json();
   if (data.tenantId !== tenantId || data.tenantType !== 'EVALUATION') throw new Error('Unexpected evaluation tenant');
+  return data;
 }
-await resetEvaluation();
+const resetResult = await resetEvaluation();
 async function login(persona) {
   const csrf = await request(persona, '/auth/csrf', {headers:{Accept:'application/json'}});
   if (!csrf.ok) throw new Error(`CSRF failed for ${persona}: HTTP ${csrf.status}`);
@@ -83,6 +85,9 @@ async function evaluate(scenario) {
 }
 const results=[];
 for(const scenario of scenarios) results.push(await evaluate(scenario));
+// Mutating scenario runs last and uses the same authenticated staff session.
+if (!csrfByPersona.has('staff')) csrfByPersona.set('staff', await login('staff'));
+results.push(await evaluateChatLeave({request,csrf:csrfByPersona.get('staff'),tenantId,baselineDate:resetResult.baselineDate}));
 const passed=results.filter(x=>x.passed).length;
 const criticalFailures=results.filter(x=>x.critical&&!x.passed);
 const isolationFailures=results.filter(x=>x.category==='tenant-isolation'&&!x.passed);
