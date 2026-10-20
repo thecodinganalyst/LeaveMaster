@@ -18,7 +18,11 @@ export async function evaluateChatLeave({request, csrf, tenantId, baselineDate})
   const chat = async (message, conversationId) => {
     const response = await request('staff', '/api/assistant/chat', {method:'POST',headers:{'Content-Type':'application/json',[csrf.headerName]:csrf.token},body:JSON.stringify({message,conversationId})});
     const body = await response.json().catch(()=>({}));
-    if (!response.ok) throw new Error('Chat HTTP ' + response.status + ': ' + String(body.error || 'unknown error'));
+    if (!response.ok) {
+      const error = new Error('Chat HTTP ' + response.status + ': ' + String(body.error || 'unknown error'));
+      error.status = response.status;
+      throw error;
+    }
     return body;
   };
   const started = Date.now();
@@ -26,11 +30,25 @@ export async function evaluateChatLeave({request, csrf, tenantId, baselineDate})
     const before = await readApplications();
     const baseline = matching(before);
     if (baseline.length) throw new Error('Reset fixture already contains target leave date');
-    let reply = await chat('Apply one full day of annual leave on ' + leaveDate + '. Please prepare the application for my confirmation.', null);
+    // Retry only transient provider failures before confirmation. Check persisted state
+    // between attempts so an ambiguous response can never cause a duplicate write.
+    const safeChat = async (message, conversationId) => {
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+          return await chat(message, conversationId);
+        } catch (error) {
+          if (![502, 503, 504].includes(error.status) || attempt === 2) throw error;
+          if (matching(await readApplications()).length !== 0) {
+            throw new Error('Leave changed during failed chat response; refusing retry');
+          }
+        }
+      }
+    };
+    let reply = await safeChat('Apply one full day of annual leave on ' + leaveDate + '. Please prepare the application for my confirmation.', null);
     let pending = (reply.pendingActions || []).filter(x=>x.toolName==='applyForLeave');
     for (let turn=0; turn<4 && pending.length===0; turn++) {
       if (!reply.conversationId) throw new Error('Assistant did not return a conversation ID');
-      reply = await chat(turn===0 ? 'Yes, annual leave for the full day on ' + leaveDate + '. Please prepare it for confirmation.' : 'Please prepare the annual leave application for ' + leaveDate + ' and ask me to confirm.', reply.conversationId);
+      reply = await safeChat(turn===0 ? 'Yes, annual leave for the full day on ' + leaveDate + '. Please prepare it for confirmation.' : 'Please prepare the annual leave application for ' + leaveDate + ' and ask me to confirm.', reply.conversationId);
       pending = (reply.pendingActions || []).filter(x=>x.toolName==='applyForLeave');
     }
     if (pending.length !== 1 || !pending[0].confirmationToken) throw new Error('Exactly one pending applyForLeave confirmation is required');
