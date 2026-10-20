@@ -36,3 +36,49 @@ test('chat leave evaluation rejects duplicate confirmation side effects',async()
   assert.equal(result.passed,false);
   assert.match(result.attempts[0].failures.join(' '),/duplicate/);
 });
+
+test('transient provider 502 is retried before confirmation without duplicate leave',async()=>{
+  const base=fixture();
+  let chatCalls=0;
+  const request=async(persona,url,options)=>{
+    if(url==='/api/assistant/chat' && ++chatCalls===1)
+      return {ok:false,status:502,json:async()=>({error:'The AI provider could not complete the request'})};
+    return base.request(persona,url,options);
+  };
+  const result=await evaluateChatLeave({...base,request});
+  assert.equal(result.passed,true,JSON.stringify(result.attempts));
+  assert.equal(chatCalls,2);
+});
+test('persistent provider 502 fails rather than bypassing quality gate',async()=>{
+  const base=fixture();
+  let chatCalls=0;
+  const request=async(persona,url,options)=>{
+    if(url==='/api/assistant/chat') {
+      chatCalls++;
+      return {ok:false,status:502,json:async()=>({error:'provider unavailable'})};
+    }
+    return base.request(persona,url,options);
+  };
+  const result=await evaluateChatLeave({...base,request});
+  assert.equal(result.passed,false);
+  assert.equal(chatCalls,2);
+  assert.match(result.attempts[0].failures.join(' '),/Chat HTTP 502/);
+});
+test('failed chat with unexpected persisted leave refuses retry',async()=>{
+  const base=fixture();
+  const rows=[{leaveDate:'2026-11-23',staff:{id:'EVALUATION-EMP001'},leaveType:{name:'Annual Leave'},leaveDuration:'FULL'}];
+  let chats=0;
+  let reads=0;
+  const request=async(persona,url,options)=>{
+    if(url.startsWith('/leave-applications?')) return {ok:true,json:async()=>++reads===1?[]:rows};
+    if(url==='/api/assistant/chat') {
+      chats++;
+      return {ok:false,status:502,json:async()=>({error:'provider unavailable'})};
+    }
+    return base.request(persona,url,options);
+  };
+  const result=await evaluateChatLeave({...base,request});
+  assert.equal(result.passed,false);
+  assert.equal(chats,1);
+  assert.match(result.attempts[0].failures.join(' '),/refusing retry/);
+});
