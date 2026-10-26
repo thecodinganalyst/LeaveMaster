@@ -210,6 +210,25 @@ resource "google_artifact_registry_repository" "docker" {
   location      = var.region
   repository_id = var.artifact_repository
   format        = "DOCKER"
+
+  # Deliberately dry-run until Cloud Run active and rollback digests are audited.
+  cleanup_policy_dry_run = true
+
+  cleanup_policies {
+    id     = "delete-older-than-30-days"
+    action = "DELETE"
+    condition {
+      older_than = "2592000s"
+    }
+  }
+
+  cleanup_policies {
+    id     = "keep-20-most-recent"
+    action = "KEEP"
+    most_recent_versions {
+      keep_count = 20
+    }
+  }
 }
 
 resource "google_service_account" "cloud_run" {
