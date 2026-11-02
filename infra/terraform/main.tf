@@ -211,8 +211,9 @@ resource "google_artifact_registry_repository" "docker" {
   repository_id = var.artifact_repository
   format        = "DOCKER"
 
-  # Deliberately dry-run until Cloud Run active and rollback digests are audited.
-  cleanup_policy_dry_run = true
+  # Enable deletion after initial dry-run rollout. KEEP protects the newest 20
+  # versions per package; older Cloud Run revisions are not automatically protected.
+  cleanup_policy_dry_run = false
 
   cleanup_policies {
     id     = "delete-older-than-30-days"
