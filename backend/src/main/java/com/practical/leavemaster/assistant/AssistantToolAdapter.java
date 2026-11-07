@@ -103,7 +103,7 @@ final class AssistantToolAdapter {
             }
             Map<String, Object> arguments = parseArguments(objectMapper, toolInput);
             pendingActions.add(confirmationService.issue(name, arguments, required, user, conversationId));
-            return "Action requires explicit user confirmation and has not been executed.";
+            return pendingConfirmationResult(objectMapper, name);
         }));
     }
 
@@ -142,6 +142,19 @@ final class AssistantToolAdapter {
             if (cause.getCause() == cause) break;
         }
         return false;
+    }
+
+    private static String pendingConfirmationResult(ObjectMapper objectMapper, String toolName) {
+        try {
+            return objectMapper.writeValueAsString(Map.of(
+                    "status", "PENDING_CONFIRMATION",
+                    "tool", toolName,
+                    "message", "Action requires explicit user confirmation and has not been executed."));
+        } catch (Exception serializationFailure) {
+            log.error("Failed to serialize assistant pending-confirmation payload: tool={}, exceptionType={}",
+                    toolName, serializationFailure.getClass().getName());
+            return "{\"status\":\"PENDING_CONFIRMATION\",\"message\":\"Action requires explicit user confirmation and has not been executed.\"}";
+        }
     }
 
     private static String accessDeniedResult(ObjectMapper objectMapper, String toolName) {
