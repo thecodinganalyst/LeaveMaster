@@ -12,6 +12,10 @@ const login = async (
   loginName: string,
   password: string,
 ) => {
+  // Finish pending page requests before switching authenticated users. Otherwise
+  // navigation cancels in-flight /auth/me or leave-data fetches and trips the
+  // browser failure guard even though no backend request actually failed.
+  if (page.url() !== 'about:blank') await page.waitForLoadState('networkidle');
   await page.goto('about:blank');
   await page.context().clearCookies();
   await page.goto('/login');
@@ -23,6 +27,7 @@ const login = async (
   await passwordInput.fill(password);
   await page.getByRole('button', { name: 'Sign in' }).click();
   await expect(page).toHaveURL(/\/$/);
+  await page.waitForLoadState('networkidle');
 };
 
 const applyAnnualLeave = async (page: Page, date: string) => {
@@ -34,6 +39,7 @@ const applyAnnualLeave = async (page: Page, date: string) => {
   await page.getByLabel('To date').fill(date);
   await page.getByRole('button', { name: 'Submit request' }).click();
   await expect(page).toHaveURL(/\/leave-requests$/);
+  await page.waitForLoadState('networkidle');
 };
 
 const reviewRequest = async (page: Page, staffName: string, decision: 'Approve' | 'Reject') => {
@@ -111,6 +117,7 @@ test("SCN-008 unrelated manager cannot see or act on another manager's pending r
   await page.goto('/approvals');
   await expect(page.getByRole('heading', { name: 'Approval inbox' })).toBeVisible();
   await expect(page.getByRole('row').filter({ hasText: 'E2E Normal Staff' })).toHaveCount(0);
+  await page.waitForLoadState('networkidle');
   await assertHealthy();
 });
 
@@ -127,6 +134,7 @@ test('SCN-009 browser staff list remains isolated between persisted tenants @smo
     await expect(page.getByText('E2E Normal Staff', { exact: true })).toBeVisible();
     await expect(page.locator('body')).not.toContainText(second.tenantId);
     await expect(page.locator('body')).not.toContainText(second.users.staff001.staffId);
+    await page.waitForLoadState('networkidle');
     await assertHealthy();
   } finally {
     await deletePersistedScenario(request, second.scenarioId);
