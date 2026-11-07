@@ -200,7 +200,7 @@ class AssistantToolAdapterTest {
     }
 
     @Test
-    void shouldTurnAuthorizedWriteIntoPersistedPendingActionWithoutExecutingIt() {
+    void shouldTurnAuthorizedWriteIntoPersistedPendingActionWithoutExecutingIt() throws Exception {
         ToolCallback write = callback("createTenant");
         var authentication = authentication(RbacPermissions.TENANT_WRITE);
         List<AssistantDtos.PendingAction> pending = new ArrayList<>();
@@ -214,7 +214,13 @@ class AssistantToolAdapterTest {
                 "c1", confirmations, mock(AssistantAuditService.class));
 
         String input = "{\"id\":\"T1\",\"name\":\"Tenant One\"}";
-        assertThat(adapted[0].call(input)).contains("confirmation");
+        String toolResult = adapted[0].call(input);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> payload = new ObjectMapper().readValue(toolResult, Map.class);
+        assertThat(payload)
+                .containsEntry("status", "PENDING_CONFIRMATION")
+                .containsEntry("tool", "createTenant")
+                .containsEntry("message", "Action requires explicit user confirmation and has not been executed.");
         assertThat(pending).containsExactly(pendingAction);
         verify(write, never()).call(input);
     }
