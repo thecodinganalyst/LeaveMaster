@@ -19,7 +19,8 @@ on:
         default: true
         type: boolean
   schedule:
-    - cron: '30 18 * * *'
+    # 02:30 Singapore time every Monday (18:30 UTC Sunday).
+    - cron: '30 18 * * 0'
 
 permissions:
   contents: read
